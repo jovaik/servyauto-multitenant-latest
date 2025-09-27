@@ -65,15 +65,15 @@ export async function POST(request: NextRequest) {
     if (solicitaFactura) {
       // Si cliente solicita factura expresamente, siempre generar FACTURA
       tipo = 'FACTURA'
-    } else if (metodoPago === 'TPV_UNICAJA' || metodoPago === 'TPV_NACIONAL') {
-      // TPV UNICAJA o cualquier TPV NACIONAL ESPAÑOL siempre generan FACTURA
+    } else if (metodoPago === 'TPV_UNICAJA') {
+      // TPV UNICAJA siempre genera FACTURA
       tipo = 'FACTURA'
     } else if (metodoPago === 'EFECTIVO' || metodoPago === 'TARJETA_SUMUP') {
       // EFECTIVO (CASH) o SUMUP generan TICKET
       tipo = 'TICKET'
     } else {
-      // Por defecto FACTURA para otros métodos (TARJETA, TRANSFERENCIA)
-      tipo = 'FACTURA'
+      // Por defecto TICKET para simplificar (TARJETA, TRANSFERENCIA)
+      tipo = 'TICKET'
     }
 
     // Calcular totales
@@ -83,26 +83,28 @@ export async function POST(request: NextRequest) {
 
     // Generar número de documento con formato correcto
     const año = new Date().getFullYear()
+    const prefijo = tipo === 'FACTURA' ? 'FAC' : 'TICKET'
+    
+    // Buscar la última factura o ticket del mismo tipo y año
     const ultimaFactura = await prisma.factura.findFirst({
       where: { 
         tipo,
         numero: {
-          contains: `/${año}/`
+          startsWith: `${prefijo}/${año}/`
         }
       },
-      orderBy: { numero: 'desc' }
+      orderBy: { createdAt: 'desc' }
     })
 
     let numeroSecuencia = 1
     if (ultimaFactura) {
       const partes = ultimaFactura.numero.split('/')
-      if (partes.length === 3) {
+      if (partes.length === 3 && partes[0] === prefijo) {
         const ultimoNumero = parseInt(partes[2]) || 0
         numeroSecuencia = ultimoNumero + 1
       }
     }
 
-    const prefijo = tipo === 'FACTURA' ? 'FAC' : 'TICKET'
     const numero = `${prefijo}/${año}/${numeroSecuencia.toString().padStart(4, '0')}`
 
     // Crear factura

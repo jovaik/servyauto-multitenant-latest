@@ -138,9 +138,9 @@ export function NuevaFacturaDialog({ onFacturaCreada }: NuevaFacturaDialogProps)
 
   const determinarTipoDocumento = () => {
     if (solicitaFactura) return 'FACTURA'
-    if (metodoPago === 'TPV_UNICAJA' || metodoPago === 'TPV_NACIONAL') return 'FACTURA'
+    if (metodoPago === 'TPV_UNICAJA') return 'FACTURA'
     if (metodoPago === 'EFECTIVO' || metodoPago === 'TARJETA_SUMUP') return 'TICKET'
-    return 'FACTURA' // Por defecto FACTURA para otros métodos (TARJETA, TRANSFERENCIA)
+    return 'TICKET' // Por defecto TICKET para simplificar (TRANSFERENCIA)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -273,12 +273,10 @@ export function NuevaFacturaDialog({ onFacturaCreada }: NuevaFacturaDialogProps)
                 <SelectValue placeholder="Seleccionar método de pago" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="EFECTIVO">Efectivo</SelectItem>
-                <SelectItem value="TARJETA">Tarjeta</SelectItem>
-                <SelectItem value="TARJETA_SUMUP">Tarjeta SUMUP</SelectItem>
-                <SelectItem value="TPV_UNICAJA">TPV Unicaja</SelectItem>
-                <SelectItem value="TPV_NACIONAL">TPV Nacional</SelectItem>
-                <SelectItem value="TRANSFERENCIA">Transferencia</SelectItem>
+                <SelectItem value="EFECTIVO">Efectivo (TICKET)</SelectItem>
+                <SelectItem value="TARJETA_SUMUP">TPV SUMUP (TICKET)</SelectItem>
+                <SelectItem value="TPV_UNICAJA">TPV UNICAJA (FACTURA)</SelectItem>
+                <SelectItem value="TRANSFERENCIA">Transferencia (TICKET)</SelectItem>
               </SelectContent>
             </Select>
           </div>
