@@ -101,7 +101,7 @@ export function NuevaCitaDialog({
     '17:00', '17:30', '18:00', '18:30', '19:00'
   ]
 
-  const metodosPago = ['EFECTIVO', 'TARJETA']
+  const metodosPago = ['EFECTIVO', 'TARJETA_SUMUP', 'TPV_UNICAJA']
 
   useEffect(() => {
     if (open) {
@@ -602,14 +602,24 @@ export function NuevaCitaDialog({
                 <SelectValue placeholder="Selecciona método de pago" />
               </SelectTrigger>
               <SelectContent>
-                {metodosPago.map((metodo) => (
-                  <SelectItem key={metodo} value={metodo}>
-                    <div className="flex items-center">
-                      <CreditCard className="mr-2 h-4 w-4" />
-                      {metodo}
-                    </div>
-                  </SelectItem>
-                ))}
+                <SelectItem value="EFECTIVO">
+                  <div className="flex items-center">
+                    <CreditCard className="mr-2 h-4 w-4" />
+                    Efectivo
+                  </div>
+                </SelectItem>
+                <SelectItem value="TARJETA_SUMUP">
+                  <div className="flex items-center">
+                    <CreditCard className="mr-2 h-4 w-4" />
+                    TPV SUMUP
+                  </div>
+                </SelectItem>
+                <SelectItem value="TPV_UNICAJA">
+                  <div className="flex items-center">
+                    <CreditCard className="mr-2 h-4 w-4" />
+                    TPV UNICAJA
+                  </div>
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>

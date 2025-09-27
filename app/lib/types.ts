@@ -110,7 +110,8 @@ export enum EstadoFactura {
 
 export enum MetodoPago {
   EFECTIVO = "EFECTIVO",
-  TARJETA = "TARJETA",
+  TARJETA_SUMUP = "TARJETA_SUMUP",
+  TPV_UNICAJA = "TPV_UNICAJA",
 }
 
 export interface DashboardStats {
