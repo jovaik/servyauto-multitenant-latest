@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
       // EFECTIVO (CASH) o SUMUP generan TICKET
       tipo = 'TICKET'
     } else {
-      // Por defecto TICKET para simplificar (TARJETA, TRANSFERENCIA)
+      // Por defecto TICKET para otros métodos
       tipo = 'TICKET'
     }
 

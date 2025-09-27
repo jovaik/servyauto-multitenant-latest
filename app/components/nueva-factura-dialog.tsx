@@ -140,7 +140,7 @@ export function NuevaFacturaDialog({ onFacturaCreada }: NuevaFacturaDialogProps)
     if (solicitaFactura) return 'FACTURA'
     if (metodoPago === 'TPV_UNICAJA') return 'FACTURA'
     if (metodoPago === 'EFECTIVO' || metodoPago === 'TARJETA_SUMUP') return 'TICKET'
-    return 'TICKET' // Por defecto TICKET para simplificar (TRANSFERENCIA)
+    return 'TICKET' // Por defecto TICKET
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -276,7 +276,6 @@ export function NuevaFacturaDialog({ onFacturaCreada }: NuevaFacturaDialogProps)
                 <SelectItem value="EFECTIVO">Efectivo (TICKET)</SelectItem>
                 <SelectItem value="TARJETA_SUMUP">TPV SUMUP (TICKET)</SelectItem>
                 <SelectItem value="TPV_UNICAJA">TPV UNICAJA (FACTURA)</SelectItem>
-                <SelectItem value="TRANSFERENCIA">Transferencia (TICKET)</SelectItem>
               </SelectContent>
             </Select>
           </div>

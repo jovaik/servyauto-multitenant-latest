@@ -101,7 +101,7 @@ export function NuevaCitaDialog({
     '17:00', '17:30', '18:00', '18:30', '19:00'
   ]
 
-  const metodosPago = ['EFECTIVO', 'TARJETA', 'TRANSFERENCIA']
+  const metodosPago = ['EFECTIVO', 'TARJETA']
 
   useEffect(() => {
     if (open) {
@@ -159,8 +159,32 @@ export function NuevaCitaDialog({
 
   const getClienteVehiculos = () => {
     const cliente = clientes?.find(c => c.id === formData.clienteId)
-    return cliente?.vehiculos || []
+    const vehiculos = cliente?.vehiculos || []
+    
+    // Debug: log para ayudar a diagnosticar el problema
+    if (formData.clienteId && vehiculos.length === 0) {
+      console.log('Cliente seleccionado sin vehículos:', {
+        clienteId: formData.clienteId,
+        clienteNombre: cliente?.nombre + ' ' + cliente?.apellido,
+        totalVehiculos: vehiculos.length
+      })
+    }
+    
+    return vehiculos
   }
+
+  // Efecto para limpiar vehículo seleccionado cuando cambia el cliente
+  useEffect(() => {
+    if (formData.clienteId) {
+      const vehiculosDisponibles = getClienteVehiculos()
+      if (vehiculosDisponibles.length === 0) {
+        setFormData(prev => ({ ...prev, vehiculoId: '' }))
+      } else if (formData.vehiculoId && !vehiculosDisponibles.find(v => v.id === formData.vehiculoId)) {
+        // Si el vehículo seleccionado no pertenece al nuevo cliente, limpiar selección
+        setFormData(prev => ({ ...prev, vehiculoId: '' }))
+      }
+    }
+  }, [formData.clienteId, clientes])
 
   const addNewVehiculo = async () => {
     if (!formData.clienteId || !newVehiculo.marca || !newVehiculo.modelo || !newVehiculo.matricula) {
@@ -444,26 +468,47 @@ export function NuevaCitaDialog({
                 </div>
                 
                 {!showNewVehiculo ? (
-                  <Select value={formData.vehiculoId || ""} onValueChange={(value) => 
-                    setFormData(prev => ({ ...prev, vehiculoId: value }))
-                  }>
-                    <SelectTrigger>
-                      <SelectValue placeholder={formData.clienteId ? "Selecciona un vehículo" : "Primero selecciona un cliente"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getClienteVehiculos()?.map((vehiculo) => (
-                        <SelectItem key={vehiculo.id} value={vehiculo.id}>
-                          <div className="flex items-center">
-                            <Car className="mr-2 h-4 w-4" />
-                            <div className="flex flex-col">
-                              <span>{vehiculo.marca} {vehiculo.modelo}</span>
-                              <span className="text-xs text-gray-500">{vehiculo.matricula}</span>
-                            </div>
+                  <>
+                    <Select value={formData.vehiculoId || ""} onValueChange={(value) => 
+                      setFormData(prev => ({ ...prev, vehiculoId: value }))
+                    }>
+                      <SelectTrigger>
+                        <SelectValue placeholder={
+                          !formData.clienteId 
+                            ? "Primero selecciona un cliente" 
+                            : getClienteVehiculos().length === 0 
+                              ? "Este cliente no tiene vehículos registrados"
+                              : "Selecciona un vehículo"
+                        } />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getClienteVehiculos().length === 0 ? (
+                          <div className="p-4 text-center text-gray-500">
+                            <Car className="mx-auto mb-2 h-8 w-8 text-gray-300" />
+                            <p className="text-sm">Sin vehículos registrados</p>
+                            <p className="text-xs">Usa el botón "Nuevo Vehículo" para agregar uno</p>
                           </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                        ) : (
+                          getClienteVehiculos().map((vehiculo) => (
+                            <SelectItem key={vehiculo.id} value={vehiculo.id}>
+                              <div className="flex items-center">
+                                <Car className="mr-2 h-4 w-4" />
+                                <div className="flex flex-col">
+                                  <span>{vehiculo.marca} {vehiculo.modelo}</span>
+                                  <span className="text-xs text-gray-500">{vehiculo.matricula}</span>
+                                </div>
+                              </div>
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    {formData.clienteId && getClienteVehiculos().length === 0 && (
+                      <div className="text-xs text-amber-600 bg-amber-50 p-2 rounded border border-amber-200">
+                        ⚠️ Este cliente no tiene vehículos. Haz clic en "Nuevo Vehículo" para agregar uno.
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <div className="border rounded-lg p-4 space-y-3 bg-gray-50">
                     <div className="grid grid-cols-2 gap-3">
