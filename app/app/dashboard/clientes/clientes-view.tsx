@@ -63,7 +63,10 @@ export function ClientesView() {
             Gestiona la información de los clientes y sus vehículos
           </p>
         </div>
-        <Button className="bg-blue-600 hover:bg-blue-700">
+        <Button 
+          className="bg-blue-600 hover:bg-blue-700"
+          onClick={() => alert('Funcionalidad de Nuevo Cliente - En desarrollo')}
+        >
           <Plus className="mr-2 h-4 w-4" />
           Nuevo Cliente
         </Button>

@@ -66,14 +66,14 @@ export async function POST(request: NextRequest) {
       // Si cliente solicita factura expresamente, siempre generar FACTURA
       tipo = 'FACTURA'
     } else if (metodoPago === 'TPV_UNICAJA' || metodoPago === 'TPV_NACIONAL') {
-      // TPV UNICAJA o NACIONAL siempre generan FACTURA
+      // TPV UNICAJA o cualquier TPV NACIONAL ESPAÑOL siempre generan FACTURA
       tipo = 'FACTURA'
-    } else if (metodoPago === 'TARJETA_SUMUP') {
-      // SUMUP genera TICKET
+    } else if (metodoPago === 'EFECTIVO' || metodoPago === 'TARJETA_SUMUP') {
+      // EFECTIVO (CASH) o SUMUP generan TICKET
       tipo = 'TICKET'
     } else {
-      // Por defecto TICKET para otros métodos (EFECTIVO, TRANSFERENCIA)
-      tipo = 'TICKET'
+      // Por defecto FACTURA para otros métodos (TARJETA, TRANSFERENCIA)
+      tipo = 'FACTURA'
     }
 
     // Calcular totales

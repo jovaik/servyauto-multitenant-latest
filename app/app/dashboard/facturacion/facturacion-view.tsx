@@ -19,6 +19,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { NuevaFacturaDialog } from '@/components/nueva-factura-dialog'
+import { ConvertirTicketDialog } from '@/components/convertir-ticket-dialog'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { 
@@ -106,21 +107,7 @@ export function FacturacionView() {
     }
   }
 
-  const convertirAFactura = async (facturaId: string) => {
-    try {
-      const response = await fetch(`/api/facturas/${facturaId}/convertir`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' }
-      })
-      
-      if (response.ok) {
-        loadFacturas()
-        // TODO: Show success notification
-      }
-    } catch (error) {
-      console.error('Error converting to factura:', error)
-    }
-  }
+
 
   const descargarPDF = async (facturaId: string) => {
     try {
@@ -364,10 +351,11 @@ export function FacturacionView() {
                             Descargar Documento
                           </DropdownMenuItem>
                           {factura.tipo === 'TICKET' && (
-                            <DropdownMenuItem onClick={() => convertirAFactura(factura.id)}>
-                              <RefreshCw className="mr-2 h-4 w-4" />
-                              Convertir a Factura
-                            </DropdownMenuItem>
+                            <ConvertirTicketDialog 
+                              ticketId={factura.id}
+                              ticketNumero={factura.numero}
+                              onConvertido={loadFacturas}
+                            />
                           )}
                           <DropdownMenuItem onClick={() => verDetalles(factura)}>
                             <Eye className="mr-2 h-4 w-4" />

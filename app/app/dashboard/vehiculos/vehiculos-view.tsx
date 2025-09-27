@@ -70,7 +70,10 @@ export function VehiculosView() {
             Gestiona la información de todos los vehículos registrados
           </p>
         </div>
-        <Button className="bg-blue-600 hover:bg-blue-700">
+        <Button 
+          className="bg-blue-600 hover:bg-blue-700"
+          onClick={() => alert('Funcionalidad de Nuevo Vehículo - En desarrollo')}
+        >
           <Plus className="mr-2 h-4 w-4" />
           Nuevo Vehículo
         </Button>

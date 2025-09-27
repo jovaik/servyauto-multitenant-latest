@@ -139,7 +139,8 @@ export function NuevaFacturaDialog({ onFacturaCreada }: NuevaFacturaDialogProps)
   const determinarTipoDocumento = () => {
     if (solicitaFactura) return 'FACTURA'
     if (metodoPago === 'TPV_UNICAJA' || metodoPago === 'TPV_NACIONAL') return 'FACTURA'
-    return 'TICKET'
+    if (metodoPago === 'EFECTIVO' || metodoPago === 'TARJETA_SUMUP') return 'TICKET'
+    return 'FACTURA' // Por defecto FACTURA para otros métodos (TARJETA, TRANSFERENCIA)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -159,9 +160,7 @@ export function NuevaFacturaDialog({ onFacturaCreada }: NuevaFacturaDialogProps)
         items: items.filter(item => item.descripcion && item.precio > 0),
         metodoPago,
         solicitaFactura,
-        datosFacturacion: solicitaFactura || metodoPago === 'TPV_UNICAJA' || metodoPago === 'TPV_NACIONAL' 
-          ? datosFacturacion 
-          : null
+        datosFacturacion: tipoDocumento === 'FACTURA' ? datosFacturacion : null
       }
 
       const response = await fetch('/api/facturas', {
@@ -208,7 +207,7 @@ export function NuevaFacturaDialog({ onFacturaCreada }: NuevaFacturaDialogProps)
 
   const { subtotal, iva, total } = calcularTotales()
   const tipoDocumento = determinarTipoDocumento()
-  const requiereDatosFacturacion = solicitaFactura || metodoPago === 'TPV_UNICAJA' || metodoPago === 'TPV_NACIONAL'
+  const requiereDatosFacturacion = tipoDocumento === 'FACTURA'
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
