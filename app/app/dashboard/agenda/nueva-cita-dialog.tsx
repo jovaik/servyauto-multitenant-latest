@@ -395,7 +395,7 @@ export function NuevaCitaDialog({
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="horaFin">Hora fin</Label>
+                  <Label htmlFor="horaFin">Hora de recogida</Label>
                   <Input
                     id="horaFin"
                     value={formData.horaFin}

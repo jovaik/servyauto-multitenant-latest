@@ -263,12 +263,12 @@ export function EditarCitaDialog({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="horaFin">Hora fin</Label>
+              <Label htmlFor="horaFin">Hora de recogida</Label>
               <Select value={formData.horaFin || ""} onValueChange={(value) => 
                 setFormData(prev => ({ ...prev, horaFin: value }))
               }>
                 <SelectTrigger>
-                  <SelectValue placeholder="Hora fin" />
+                  <SelectValue placeholder="Hora de recogida" />
                 </SelectTrigger>
                 <SelectContent>
                   {timeSlots.map((time) => (

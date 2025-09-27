@@ -76,8 +76,10 @@ async function main() {
   console.log('✅ Clientes creados')
 
   // Crear vehículos de ejemplo
-  const vehiculo1 = await prisma.vehiculo.create({
-    data: {
+  const vehiculo1 = await prisma.vehiculo.upsert({
+    where: { matricula: '1234ABC' },
+    update: {},
+    create: {
       marca: 'Volkswagen',
       modelo: 'Golf',
       anio: 2020,
@@ -90,8 +92,10 @@ async function main() {
     },
   })
 
-  const vehiculo2 = await prisma.vehiculo.create({
-    data: {
+  const vehiculo2 = await prisma.vehiculo.upsert({
+    where: { matricula: '5678DEF' },
+    update: {},
+    create: {
       marca: 'Toyota',
       modelo: 'Corolla',
       anio: 2019,

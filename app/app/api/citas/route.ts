@@ -148,6 +148,64 @@ export async function POST(req: NextRequest) {
       },
     })
 
+    // NUEVA FUNCIONALIDAD: Crear factura/ticket automáticamente según método de pago
+    if (metodoPago && total > 0 && servicios?.length > 0) {
+      const tipoDocumento = metodoPago === 'EFECTIVO' ? 'TICKET' : 'FACTURA'
+      
+      // Generar número de documento
+      const ultimaFactura = await prisma.factura.findFirst({
+        where: { tipo: tipoDocumento },
+        orderBy: { numero: 'desc' }
+      })
+
+      let numeroSecuencia = 1
+      if (ultimaFactura) {
+        const ultimoNumero = parseInt(ultimaFactura.numero.split('-')[1]) || 0
+        numeroSecuencia = ultimoNumero + 1
+      }
+
+      const prefijo = tipoDocumento === 'FACTURA' ? 'FAC' : 'TIC'
+      const numero = `${prefijo}-${numeroSecuencia.toString().padStart(6, '0')}`
+
+      // Crear items de factura a partir de los servicios de la cita
+      const itemsFactura = await Promise.all(
+        servicios.map(async (s: any) => {
+          const servicio = await prisma.servicio.findUnique({
+            where: { id: s.servicioId }
+          })
+          return {
+            descripcion: servicio?.nombre || 'Servicio',
+            cantidad: 1,
+            precio: s.precio || 0,
+            total: s.precio || 0
+          }
+        })
+      )
+
+      // Calcular totales de facturación
+      const subtotal = total / 1.21 // Descontar IVA del total
+      const iva = total - subtotal
+
+      // Crear la factura/ticket
+      await prisma.factura.create({
+        data: {
+          numero,
+          tipo: tipoDocumento,
+          subtotal,
+          iva,
+          total,
+          metodoPago,
+          clienteId,
+          citaId: cita.id,
+          items: {
+            create: itemsFactura
+          }
+        }
+      })
+
+      console.log(`✅ ${tipoDocumento} ${numero} creado automáticamente para cita ${cita.id}`)
+    }
+
     return NextResponse.json(cita, { status: 201 })
   } catch (error) {
     console.error('Error creating appointment:', error)
