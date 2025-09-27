@@ -150,16 +150,25 @@ model CitaServicio {
 model Factura {
   id        String      @id @default(cuid())
   numero    String      @unique
+  tipo      TipoFactura @default(TICKET)  // TICKET o FACTURA
   fecha     DateTime    @default(now())
   subtotal  Float
   iva       Float
   total     Float
   estado    EstadoFactura @default(PENDIENTE)
+  metodoPago MetodoPago?
   clienteId String
   citaId    String?     @unique
   cliente   Cliente     @relation(fields: [clienteId], references: [id])
   cita      Cita?       @relation(fields: [citaId], references: [id])
   items     FacturaItem[]
+  
+  // Datos específicos para facturas (cuando tipo = FACTURA)
+  datosFacturacion String? // JSON con datos fiscales del cliente
+  
+  // Archivo PDF generado
+  pdfPath   String?
+  
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
 
@@ -200,6 +209,11 @@ enum MetodoPago {
   TRANSFERENCIA
 }
 
+enum TipoFactura {
+  TICKET
+  FACTURA
+}
+
 model Reserva {
   id        String   @id @default(cuid())
   nombre    String
@@ -222,4 +236,28 @@ enum EstadoReserva {
   PENDIENTE
   CONFIRMADA
   CANCELADA
+}
+
+model Configuracion {
+  id          String    @id @default(cuid())
+  clave       String    @unique
+  valor       String
+  tipo        TipoConfiguracion
+  categoria   String    // "sistema", "empresa", "horarios", "precios", "boxes", etc.
+  descripcion String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("configuraciones")
+}
+
+enum TipoConfiguracion {
+  TEXTO
+  NUMERO
+  BOOLEANO
+  JSON
+  EMAIL
+  TELEFONO
+  DIRECCION
+  ARCHIVO
 }

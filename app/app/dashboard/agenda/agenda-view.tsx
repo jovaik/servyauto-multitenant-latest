@@ -28,12 +28,17 @@ interface AgendaSlot {
 }
 
 export function AgendaView() {
-  const [selectedDate, setSelectedDate] = useState(new Date())
+  const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()))
   const [citas, setCitas] = useState<Cita[]>([])
   const [loading, setLoading] = useState(true)
   const [showNuevaCita, setShowNuevaCita] = useState(false)
   const [showEditarCita, setShowEditarCita] = useState(false)
   const [selectedCita, setSelectedCita] = useState<Cita | null>(null)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const timeSlots = [
     '08:00', '08:30', '09:00', '09:30', '10:00', '10:30',
@@ -113,7 +118,37 @@ export function AgendaView() {
   }
 
   const goToToday = () => {
-    setSelectedDate(new Date())
+    setSelectedDate(startOfDay(new Date()))
+  }
+
+  if (!mounted) {
+    return (
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Agenda</h1>
+            <p className="text-gray-600">
+              Gestiona las citas y horarios del taller
+            </p>
+          </div>
+          <Button className="bg-blue-600 hover:bg-blue-700">
+            <Plus className="mr-2 h-4 w-4" />
+            Nueva Cita
+          </Button>
+        </div>
+
+        {/* Loading placeholder */}
+        <Card>
+          <CardContent className="p-6">
+            <div className="animate-pulse space-y-4">
+              <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+              <div className="h-8 bg-gray-200 rounded w-1/2"></div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
