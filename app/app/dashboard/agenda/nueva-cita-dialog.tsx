@@ -208,29 +208,7 @@ export function NuevaCitaDialog({
     }
   }
 
-  const calculateEndTime = (startTime: string, servicioIds: string[]) => {
-    if (!startTime || servicioIds.length === 0) return ''
-    
-    const totalDuration = servicioIds.reduce((total, servicioId) => {
-      const servicio = servicios?.find((s: Servicio) => s.id === servicioId)
-      return total + (servicio?.duracion || 0)
-    }, 0)
-    
-    const [hours, minutes] = startTime.split(':').map(Number)
-    const startMinutes = hours * 60 + minutes
-    const endMinutes = startMinutes + totalDuration
-    const endHours = Math.floor(endMinutes / 60)
-    const endMins = endMinutes % 60
-    
-    return `${endHours.toString().padStart(2, '0')}:${endMins.toString().padStart(2, '0')}`
-  }
 
-  useEffect(() => {
-    if (formData.horaInicio && formData.servicios.length > 0) {
-      const endTime = calculateEndTime(formData.horaInicio, formData.servicios)
-      setFormData(prev => ({ ...prev, horaFin: endTime }))
-    }
-  }, [formData.horaInicio, formData.servicios, servicios])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -395,14 +373,21 @@ export function NuevaCitaDialog({
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="horaFin">Hora de recogida</Label>
-                  <Input
-                    id="horaFin"
-                    value={formData.horaFin}
-                    placeholder="Se calculará automáticamente"
-                    readOnly
-                    className="bg-gray-50"
-                  />
+                  <Label htmlFor="horaFin">Hora de recogida *</Label>
+                  <Select value={formData.horaFin || ""} onValueChange={(value) => 
+                    setFormData(prev => ({ ...prev, horaFin: value }))
+                  }>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecciona hora de recogida" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {timeSlots.map((time) => (
+                        <SelectItem key={time} value={time}>
+                          {time}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </CardContent>

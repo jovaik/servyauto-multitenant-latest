@@ -85,11 +85,11 @@ export async function GET(
       }
     })
 
-    // Retornar PDF
+    // Retornar como texto plano temporalmente (cambiar por PDF real en producción)
     return new NextResponse(pdfBuffer, {
       headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${factura.numero}.pdf"`
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Content-Disposition': `attachment; filename="${factura.numero}.txt"`
       }
     })
   } catch (error) {

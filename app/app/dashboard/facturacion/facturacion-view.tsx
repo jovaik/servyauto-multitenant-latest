@@ -34,6 +34,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 
@@ -57,6 +64,8 @@ export function FacturacionView() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterType, setFilterType] = useState<'ALL' | 'TICKET' | 'FACTURA'>('ALL')
+  const [selectedFactura, setSelectedFactura] = useState<Factura | null>(null)
+  const [showDetalles, setShowDetalles] = useState(false)
   const [stats, setStats] = useState({
     totalFacturas: 0,
     totalTickets: 0,
@@ -121,7 +130,7 @@ export function FacturacionView() {
         const a = document.createElement('a')
         a.style.display = 'none'
         a.href = url
-        a.download = `factura-${facturaId}.pdf`
+        a.download = `factura-${facturaId}.txt`
         document.body.appendChild(a)
         a.click()
         window.URL.revokeObjectURL(url)
@@ -129,7 +138,14 @@ export function FacturacionView() {
       }
     } catch (error) {
       console.error('Error downloading PDF:', error)
+      // Mostrar mensaje de error al usuario
+      alert('Error al descargar el PDF. Por favor intenta de nuevo.')
     }
+  }
+
+  const verDetalles = (factura: Factura) => {
+    setSelectedFactura(factura)
+    setShowDetalles(true)
   }
 
   const getEstadoColor = (estado: string) => {
@@ -335,7 +351,7 @@ export function FacturacionView() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => descargarPDF(factura.id)}>
                             <Download className="mr-2 h-4 w-4" />
-                            Descargar PDF
+                            Descargar Documento
                           </DropdownMenuItem>
                           {factura.tipo === 'TICKET' && (
                             <DropdownMenuItem onClick={() => convertirAFactura(factura.id)}>
@@ -343,7 +359,7 @@ export function FacturacionView() {
                               Convertir a Factura
                             </DropdownMenuItem>
                           )}
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => verDetalles(factura)}>
                             <Eye className="mr-2 h-4 w-4" />
                             Ver Detalles
                           </DropdownMenuItem>
@@ -363,6 +379,85 @@ export function FacturacionView() {
           )}
         </CardContent>
       </Card>
+
+      {/* Modal de Detalles */}
+      <Dialog open={showDetalles} onOpenChange={setShowDetalles}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <FileText className="mr-2 h-5 w-5" />
+              Detalles de {selectedFactura?.tipo || 'Documento'}
+            </DialogTitle>
+            <DialogDescription>
+              Información completa del documento #{selectedFactura?.numero}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedFactura && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Número</p>
+                  <p className="text-sm">{selectedFactura.numero}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Tipo</p>
+                  <Badge className={getTipoColor(selectedFactura.tipo)}>
+                    {selectedFactura.tipo}
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Fecha</p>
+                  <p className="text-sm">
+                    {format(new Date(selectedFactura.fecha), "d 'de' MMMM 'de' yyyy", { locale: es })}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Estado</p>
+                  <Badge className={getEstadoColor(selectedFactura.estado)}>
+                    {selectedFactura.estado}
+                  </Badge>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-sm font-medium text-gray-500">Cliente</p>
+                <p className="text-sm">{selectedFactura.cliente.nombre} {selectedFactura.cliente.apellido}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Total</p>
+                  <p className="text-lg font-semibold text-green-600">€{selectedFactura.total.toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Método de Pago</p>
+                  <p className="text-sm">{selectedFactura.metodoPago || 'No especificado'}</p>
+                </div>
+              </div>
+
+              <div className="flex justify-between pt-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => descargarPDF(selectedFactura.id)}
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Descargar Documento
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowDetalles(false)}
+                >
+                  Cerrar
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
