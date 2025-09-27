@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { NuevaFacturaDialog } from '@/components/nueva-factura-dialog'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { 
@@ -164,6 +165,18 @@ export function FacturacionView() {
       : 'bg-purple-100 text-purple-800 border-purple-200'
   }
 
+  const formatMetodoPago = (metodoPago: string) => {
+    const metodos: { [key: string]: string } = {
+      'EFECTIVO': 'Efectivo',
+      'TARJETA': 'Tarjeta',
+      'TARJETA_SUMUP': 'Tarjeta SUMUP',
+      'TPV_UNICAJA': 'TPV Unicaja', 
+      'TPV_NACIONAL': 'TPV Nacional',
+      'TRANSFERENCIA': 'Transferencia'
+    }
+    return metodos[metodoPago] || metodoPago
+  }
+
   const filteredFacturas = facturas.filter(factura => {
     const matchesSearch = searchTerm === '' || 
       factura.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -184,10 +197,7 @@ export function FacturacionView() {
             Gestión de facturas, tickets y reportes financieros
           </p>
         </div>
-        <Button className="bg-blue-600 hover:bg-blue-700">
-          <Plus className="mr-2 h-4 w-4" />
-          Nueva Factura
-        </Button>
+        <NuevaFacturaDialog onFacturaCreada={loadFacturas} />
       </div>
 
       {/* Stats Cards */}
@@ -339,7 +349,7 @@ export function FacturacionView() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {factura.metodoPago || '-'}
+                      {factura.metodoPago ? formatMetodoPago(factura.metodoPago) : '-'}
                     </TableCell>
                     <TableCell>
                       <DropdownMenu>
@@ -435,7 +445,7 @@ export function FacturacionView() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500">Método de Pago</p>
-                  <p className="text-sm">{selectedFactura.metodoPago || 'No especificado'}</p>
+                  <p className="text-sm">{selectedFactura.metodoPago ? formatMetodoPago(selectedFactura.metodoPago) : 'No especificado'}</p>
                 </div>
               </div>
 

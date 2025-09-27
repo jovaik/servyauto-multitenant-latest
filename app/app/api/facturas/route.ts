@@ -51,33 +51,59 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const {
-      tipo = 'TICKET', // TICKET por defecto
       clienteId,
       citaId,
       items,
       metodoPago,
-      datosFacturacion
+      datosFacturacion,
+      solicitaFactura = false // Si el cliente solicita expresamente una factura
     } = body
+
+    // Determinar el tipo de documento según método de pago y solicitud del cliente
+    let tipo: 'TICKET' | 'FACTURA'
+    
+    if (solicitaFactura) {
+      // Si cliente solicita factura expresamente, siempre generar FACTURA
+      tipo = 'FACTURA'
+    } else if (metodoPago === 'TPV_UNICAJA' || metodoPago === 'TPV_NACIONAL') {
+      // TPV UNICAJA o NACIONAL siempre generan FACTURA
+      tipo = 'FACTURA'
+    } else if (metodoPago === 'TARJETA_SUMUP') {
+      // SUMUP genera TICKET
+      tipo = 'TICKET'
+    } else {
+      // Por defecto TICKET para otros métodos (EFECTIVO, TRANSFERENCIA)
+      tipo = 'TICKET'
+    }
 
     // Calcular totales
     const subtotal = items.reduce((sum: number, item: any) => sum + (item.cantidad * item.precio), 0)
     const iva = subtotal * 0.21 // 21% IVA
     const total = subtotal + iva
 
-    // Generar número de documento
+    // Generar número de documento con formato correcto
+    const año = new Date().getFullYear()
     const ultimaFactura = await prisma.factura.findFirst({
-      where: { tipo },
+      where: { 
+        tipo,
+        numero: {
+          contains: `/${año}/`
+        }
+      },
       orderBy: { numero: 'desc' }
     })
 
     let numeroSecuencia = 1
     if (ultimaFactura) {
-      const ultimoNumero = parseInt(ultimaFactura.numero.split('-')[1]) || 0
-      numeroSecuencia = ultimoNumero + 1
+      const partes = ultimaFactura.numero.split('/')
+      if (partes.length === 3) {
+        const ultimoNumero = parseInt(partes[2]) || 0
+        numeroSecuencia = ultimoNumero + 1
+      }
     }
 
-    const prefijo = tipo === 'FACTURA' ? 'FAC' : 'TIC'
-    const numero = `${prefijo}-${numeroSecuencia.toString().padStart(6, '0')}`
+    const prefijo = tipo === 'FACTURA' ? 'FAC' : 'TICKET'
+    const numero = `${prefijo}/${año}/${numeroSecuencia.toString().padStart(4, '0')}`
 
     // Crear factura
     const factura = await prisma.factura.create({

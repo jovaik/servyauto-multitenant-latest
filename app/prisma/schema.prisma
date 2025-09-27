@@ -206,6 +206,9 @@ enum EstadoFactura {
 enum MetodoPago {
   EFECTIVO
   TARJETA
+  TARJETA_SUMUP
+  TPV_UNICAJA
+  TPV_NACIONAL
   TRANSFERENCIA
 }
 

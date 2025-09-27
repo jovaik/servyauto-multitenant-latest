@@ -36,19 +36,28 @@ export async function PUT(
       )
     }
 
-    // Generar nuevo número de factura
+    // Generar nuevo número de factura manteniendo correlatividad
+    const año = new Date().getFullYear()
     const ultimaFactura = await prisma.factura.findFirst({
-      where: { tipo: 'FACTURA' },
+      where: { 
+        tipo: 'FACTURA',
+        numero: {
+          contains: `/${año}/`
+        }
+      },
       orderBy: { numero: 'desc' }
     })
 
     let numeroSecuencia = 1
     if (ultimaFactura) {
-      const ultimoNumero = parseInt(ultimaFactura.numero.split('-')[1]) || 0
-      numeroSecuencia = ultimoNumero + 1
+      const partes = ultimaFactura.numero.split('/')
+      if (partes.length === 3) {
+        const ultimoNumero = parseInt(partes[2]) || 0
+        numeroSecuencia = ultimoNumero + 1
+      }
     }
 
-    const nuevoNumero = `FAC-${numeroSecuencia.toString().padStart(6, '0')}`
+    const nuevoNumero = `FAC/${año}/${numeroSecuencia.toString().padStart(4, '0')}`
 
     // Obtener datos de facturación del request body
     const body = await request.json()
