@@ -150,7 +150,18 @@ export async function POST(req: NextRequest) {
 
     // NUEVA FUNCIONALIDAD: Crear factura/ticket automáticamente según método de pago
     if (metodoPago && total > 0 && servicios?.length > 0) {
-      const tipoDocumento = metodoPago === 'EFECTIVO' ? 'TICKET' : 'FACTURA'
+      // Determinar el tipo de documento según método de pago
+      let tipoDocumento: 'TICKET' | 'FACTURA'
+      if (metodoPago === 'TPV_UNICAJA') {
+        // TPV UNICAJA siempre genera FACTURA
+        tipoDocumento = 'FACTURA'
+      } else if (metodoPago === 'EFECTIVO' || metodoPago === 'TARJETA_SUMUP') {
+        // EFECTIVO o TPV SUMUP generan TICKET
+        tipoDocumento = 'TICKET'
+      } else {
+        // Por defecto TICKET para otros métodos
+        tipoDocumento = 'TICKET'
+      }
       
       // Generar número de documento
       const ultimaFactura = await prisma.factura.findFirst({
