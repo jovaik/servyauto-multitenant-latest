@@ -14,9 +14,10 @@ import {
   RotateCcw,
   Car,
   FileText,
-  Database
+  Database,
+  Calendar
 } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -48,11 +49,18 @@ interface ConfiguracionState {
     descansoInicio: string
     descansoFin: string
     diasTrabajo: string[]
+    sabadoApertura?: string
+    sabadoCierre?: string
+    domingoApertura?: string
+    domingoCierre?: string
   }
   precios: {
     ivaGeneral: string
     descuentoMaximo: string
     tarifaHora: string
+    descuentoRegular?: string
+    descuentoVIP?: string
+    descuentoEmpresa?: string
   }
   boxes: {
     cantidad: string
@@ -158,14 +166,21 @@ export function ConfiguracionView() {
         // Horarios
         { clave: 'horarios.apertura', valor: config.horarios.apertura, tipo: 'TEXTO', categoria: 'horarios', descripcion: 'Hora de apertura' },
         { clave: 'horarios.cierre', valor: config.horarios.cierre, tipo: 'TEXTO', categoria: 'horarios', descripcion: 'Hora de cierre' },
-        { clave: 'horarios.descansoInicio', valor: config.horarios.descansoInicio, tipo: 'TEXTO', categoria: 'horarios', descripcion: 'Inicio descanso' },
-        { clave: 'horarios.descansoFin', valor: config.horarios.descansoFin, tipo: 'TEXTO', categoria: 'horarios', descripcion: 'Fin descanso' },
+        { clave: 'horarios.descansoInicio', valor: config.horarios.descansoInicio || '', tipo: 'TEXTO', categoria: 'horarios', descripcion: 'Inicio descanso' },
+        { clave: 'horarios.descansoFin', valor: config.horarios.descansoFin || '', tipo: 'TEXTO', categoria: 'horarios', descripcion: 'Fin descanso' },
         { clave: 'horarios.diasTrabajo', valor: JSON.stringify(config.horarios.diasTrabajo), tipo: 'JSON', categoria: 'horarios', descripcion: 'Días de trabajo' },
+        { clave: 'horarios.sabadoApertura', valor: config.horarios.sabadoApertura || '09:00', tipo: 'TEXTO', categoria: 'horarios', descripcion: 'Apertura sábado' },
+        { clave: 'horarios.sabadoCierre', valor: config.horarios.sabadoCierre || '14:00', tipo: 'TEXTO', categoria: 'horarios', descripcion: 'Cierre sábado' },
+        { clave: 'horarios.domingoApertura', valor: config.horarios.domingoApertura || '10:00', tipo: 'TEXTO', categoria: 'horarios', descripcion: 'Apertura domingo' },
+        { clave: 'horarios.domingoCierre', valor: config.horarios.domingoCierre || '13:00', tipo: 'TEXTO', categoria: 'horarios', descripcion: 'Cierre domingo' },
         
         // Precios
         { clave: 'precios.ivaGeneral', valor: config.precios.ivaGeneral, tipo: 'NUMERO', categoria: 'precios', descripcion: 'IVA general (%)' },
         { clave: 'precios.descuentoMaximo', valor: config.precios.descuentoMaximo, tipo: 'NUMERO', categoria: 'precios', descripcion: 'Descuento máximo (%)' },
         { clave: 'precios.tarifaHora', valor: config.precios.tarifaHora, tipo: 'NUMERO', categoria: 'precios', descripcion: 'Tarifa por hora (€)' },
+        { clave: 'precios.descuentoRegular', valor: config.precios.descuentoRegular || '0', tipo: 'NUMERO', categoria: 'precios', descripcion: 'Descuento cliente regular (%)' },
+        { clave: 'precios.descuentoVIP', valor: config.precios.descuentoVIP || '5', tipo: 'NUMERO', categoria: 'precios', descripcion: 'Descuento cliente VIP (%)' },
+        { clave: 'precios.descuentoEmpresa', valor: config.precios.descuentoEmpresa || '10', tipo: 'NUMERO', categoria: 'precios', descripcion: 'Descuento cliente empresa (%)' },
         
         // Boxes
         { clave: 'boxes.cantidad', valor: config.boxes.cantidad, tipo: 'NUMERO', categoria: 'boxes', descripcion: 'Cantidad de boxes' },
@@ -219,8 +234,25 @@ export function ConfiguracionView() {
     setHasChanges(true)
   }
 
-  const removeBox = (index: number) => {
+  const removeBox = async (index: number) => {
     if (config.boxes.nombres.length > 1) {
+      const boxToRemove = config.boxes.nombres[index]
+      
+      // Verificar si hay citas programadas para este box
+      try {
+        const response = await fetch(`/api/citas?box=${encodeURIComponent(boxToRemove)}`)
+        if (response.ok) {
+          const citas = await response.json()
+          if (citas && citas.length > 0) {
+            if (!window.confirm(`El box "${boxToRemove}" tiene ${citas.length} citas programadas. ¿Estás seguro de eliminarlo?`)) {
+              return
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error checking appointments:', error)
+      }
+
       const newNombres = config.boxes.nombres.filter((_, i) => i !== index)
       setConfig(prev => ({
         ...prev,
@@ -403,124 +435,350 @@ export function ConfiguracionView() {
 
         {/* Horarios Tab */}
         <TabsContent value="horarios">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Clock className="mr-2 h-5 w-5" />
-                Horarios de Trabajo
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
-                  <Label htmlFor="apertura">Apertura</Label>
-                  <Input
-                    id="apertura"
-                    type="time"
-                    value={config.horarios.apertura}
-                    onChange={(e) => handleInputChange('horarios', 'apertura', e.target.value)}
+          <div className="space-y-6">
+            {/* Horarios Generales */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Clock className="mr-2 h-5 w-5" />
+                  Horarios de Trabajo Generales
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center space-x-3 mb-4">
+                  <Switch
+                    id="horarioIninterrumpido"
+                    checked={!config.horarios.descansoInicio || config.horarios.descansoInicio === config.horarios.descansoFin}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        handleInputChange('horarios', 'descansoInicio', '')
+                        handleInputChange('horarios', 'descansoFin', '')
+                      } else {
+                        handleInputChange('horarios', 'descansoInicio', '13:00')
+                        handleInputChange('horarios', 'descansoFin', '14:00')
+                      }
+                    }}
                   />
+                  <Label htmlFor="horarioIninterrumpido" className="font-medium">
+                    Horario ininterrumpido (sin descanso)
+                  </Label>
                 </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <Label htmlFor="apertura">Apertura *</Label>
+                    <Input
+                      id="apertura"
+                      type="time"
+                      value={config.horarios.apertura}
+                      onChange={(e) => handleInputChange('horarios', 'apertura', e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="cierre">Cierre *</Label>
+                    <Input
+                      id="cierre"
+                      type="time"
+                      value={config.horarios.cierre}
+                      onChange={(e) => handleInputChange('horarios', 'cierre', e.target.value)}
+                    />
+                  </div>
+                  {config.horarios.descansoInicio && config.horarios.descansoFin && (
+                    <>
+                      <div>
+                        <Label htmlFor="descansoInicio">Inicio descanso</Label>
+                        <Input
+                          id="descansoInicio"
+                          type="time"
+                          value={config.horarios.descansoInicio}
+                          onChange={(e) => handleInputChange('horarios', 'descansoInicio', e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="descansoFin">Fin descanso</Label>
+                        <Input
+                          id="descansoFin"
+                          type="time"
+                          value={config.horarios.descansoFin}
+                          onChange={(e) => handleInputChange('horarios', 'descansoFin', e.target.value)}
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
+                
                 <div>
-                  <Label htmlFor="cierre">Cierre</Label>
-                  <Input
-                    id="cierre"
-                    type="time"
-                    value={config.horarios.cierre}
-                    onChange={(e) => handleInputChange('horarios', 'cierre', e.target.value)}
-                  />
+                  <Label className="text-base font-medium">Días de trabajo</Label>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map(dia => (
+                      <Badge
+                        key={dia}
+                        variant={config.horarios.diasTrabajo.includes(dia) ? 'default' : 'outline'}
+                        className="cursor-pointer"
+                        onClick={() => {
+                          const newDias = config.horarios.diasTrabajo.includes(dia)
+                            ? config.horarios.diasTrabajo.filter(d => d !== dia)
+                            : [...config.horarios.diasTrabajo, dia]
+                          handleInputChange('horarios', 'diasTrabajo', newDias)
+                        }}
+                      >
+                        {dia}
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
-                <div>
-                  <Label htmlFor="descansoInicio">Inicio descanso</Label>
-                  <Input
-                    id="descansoInicio"
-                    type="time"
-                    value={config.horarios.descansoInicio}
-                    onChange={(e) => handleInputChange('horarios', 'descansoInicio', e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="descansoFin">Fin descanso</Label>
-                  <Input
-                    id="descansoFin"
-                    type="time"
-                    value={config.horarios.descansoFin}
-                    onChange={(e) => handleInputChange('horarios', 'descansoFin', e.target.value)}
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <Label>Días de trabajo</Label>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map(dia => (
-                    <Badge
-                      key={dia}
-                      variant={config.horarios.diasTrabajo.includes(dia) ? 'default' : 'outline'}
-                      className="cursor-pointer"
-                      onClick={() => {
-                        const newDias = config.horarios.diasTrabajo.includes(dia)
-                          ? config.horarios.diasTrabajo.filter(d => d !== dia)
-                          : [...config.horarios.diasTrabajo, dia]
+              </CardContent>
+            </Card>
+
+            {/* Horarios Especiales */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Calendar className="mr-2 h-5 w-5" />
+                  Horarios Especiales
+                </CardTitle>
+                <CardDescription>
+                  Configura horarios diferentes para días específicos
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Sábado */}
+                <div className="border rounded-lg p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-medium">Sábado</h4>
+                    <Switch
+                      checked={config.horarios.diasTrabajo.includes('Sábado')}
+                      onCheckedChange={(checked) => {
+                        const newDias = checked
+                          ? [...config.horarios.diasTrabajo, 'Sábado']
+                          : config.horarios.diasTrabajo.filter(d => d !== 'Sábado')
                         handleInputChange('horarios', 'diasTrabajo', newDias)
                       }}
-                    >
-                      {dia}
-                    </Badge>
-                  ))}
+                    />
+                  </div>
+                  
+                  {config.horarios.diasTrabajo.includes('Sábado') && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Apertura Sábado</Label>
+                        <Input
+                          type="time"
+                          value={config.horarios.sabadoApertura || '09:00'}
+                          onChange={(e) => handleInputChange('horarios', 'sabadoApertura', e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <Label>Cierre Sábado</Label>
+                        <Input
+                          type="time"
+                          value={config.horarios.sabadoCierre || '14:00'}
+                          onChange={(e) => handleInputChange('horarios', 'sabadoCierre', e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+
+                {/* Domingo */}
+                <div className="border rounded-lg p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-medium">Domingo</h4>
+                    <Switch
+                      checked={config.horarios.diasTrabajo.includes('Domingo')}
+                      onCheckedChange={(checked) => {
+                        const newDias = checked
+                          ? [...config.horarios.diasTrabajo, 'Domingo']
+                          : config.horarios.diasTrabajo.filter(d => d !== 'Domingo')
+                        handleInputChange('horarios', 'diasTrabajo', newDias)
+                      }}
+                    />
+                  </div>
+                  
+                  {config.horarios.diasTrabajo.includes('Domingo') && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Apertura Domingo</Label>
+                        <Input
+                          type="time"
+                          value={config.horarios.domingoApertura || '10:00'}
+                          onChange={(e) => handleInputChange('horarios', 'domingoApertura', e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <Label>Cierre Domingo</Label>
+                        <Input
+                          type="time"
+                          value={config.horarios.domingoCierre || '13:00'}
+                          onChange={(e) => handleInputChange('horarios', 'domingoCierre', e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         {/* Precios Tab */}
         <TabsContent value="precios">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Euro className="mr-2 h-5 w-5" />
-                Configuración de Precios
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="ivaGeneral">IVA General (%)</Label>
-                  <Input
-                    id="ivaGeneral"
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={config.precios.ivaGeneral}
-                    onChange={(e) => handleInputChange('precios', 'ivaGeneral', e.target.value)}
-                  />
+          <div className="space-y-6">
+            {/* Configuración General */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Euro className="mr-2 h-5 w-5" />
+                  Configuración General de Precios
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="ivaGeneral">IVA General (%) *</Label>
+                    <Input
+                      id="ivaGeneral"
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={config.precios.ivaGeneral}
+                      onChange={(e) => handleInputChange('precios', 'ivaGeneral', e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="tarifaHora">Tarifa Base por Hora (€)</Label>
+                    <Input
+                      id="tarifaHora"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={config.precios.tarifaHora}
+                      onChange={(e) => handleInputChange('precios', 'tarifaHora', e.target.value)}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Usado como base para servicios sin precio específico</p>
+                  </div>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Descuentos por Tipo de Cliente */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Users className="mr-2 h-5 w-5" />
+                  Descuentos por Tipo de Cliente
+                </CardTitle>
+                <CardDescription>
+                  Configura descuentos fijos según el tipo de cliente
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label>Cliente Regular</Label>
+                    <div className="flex items-center space-x-2">
+                      <Input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={config.precios.descuentoRegular || '0'}
+                        onChange={(e) => handleInputChange('precios', 'descuentoRegular', e.target.value)}
+                        placeholder="0"
+                      />
+                      <span className="text-sm text-gray-500">%</span>
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Cliente VIP</Label>
+                    <div className="flex items-center space-x-2">
+                      <Input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={config.precios.descuentoVIP || '5'}
+                        onChange={(e) => handleInputChange('precios', 'descuentoVIP', e.target.value)}
+                        placeholder="5"
+                      />
+                      <span className="text-sm text-gray-500">%</span>
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Cliente Empresa</Label>
+                    <div className="flex items-center space-x-2">
+                      <Input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={config.precios.descuentoEmpresa || '10'}
+                        onChange={(e) => handleInputChange('precios', 'descuentoEmpresa', e.target.value)}
+                        placeholder="10"
+                      />
+                      <span className="text-sm text-gray-500">%</span>
+                    </div>
+                  </div>
+                </div>
+                
                 <div>
-                  <Label htmlFor="descuentoMaximo">Descuento Máximo (%)</Label>
+                  <Label>Descuento Máximo Permitido (%)</Label>
                   <Input
-                    id="descuentoMaximo"
                     type="number"
                     min="0"
                     max="100"
                     value={config.precios.descuentoMaximo}
                     onChange={(e) => handleInputChange('precios', 'descuentoMaximo', e.target.value)}
+                    className="w-32"
                   />
+                  <p className="text-xs text-gray-500 mt-1">Límite máximo para cualquier descuento manual</p>
                 </div>
-                <div>
-                  <Label htmlFor="tarifaHora">Tarifa por Hora (€)</Label>
-                  <Input
-                    id="tarifaHora"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={config.precios.tarifaHora}
-                    onChange={(e) => handleInputChange('precios', 'tarifaHora', e.target.value)}
-                  />
+              </CardContent>
+            </Card>
+
+            {/* Servicios y Productos */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Settings className="mr-2 h-5 w-5" />
+                  Gestión de Servicios y Productos
+                </CardTitle>
+                <CardDescription>
+                  Los servicios se gestionan individualmente con precio y duración específicos
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-start space-x-3">
+                    <div className="bg-blue-100 p-2 rounded-full">
+                      <FileText className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-blue-900">Servicios Individuales</h4>
+                      <p className="text-sm text-blue-700 mt-1">
+                        Cada servicio (Cambio de aceite, Revisión, Reparaciones, etc.) tiene:
+                      </p>
+                      <ul className="text-sm text-blue-700 mt-2 space-y-1">
+                        <li>• <strong>Precio específico:</strong> Definido individualmente</li>
+                        <li>• <strong>Duración estimada:</strong> En minutos</li>
+                        <li>• <strong>Descripción:</strong> Detalles del servicio</li>
+                      </ul>
+                      <div className="mt-3">
+                        <Button 
+                          onClick={() => {
+                            // Navigate to services management
+                            window.location.href = '/dashboard/servicios'
+                          }}
+                          size="sm" 
+                          variant="outline"
+                          className="bg-white hover:bg-blue-50"
+                        >
+                          <Settings className="mr-2 h-4 w-4" />
+                          Gestionar Servicios
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         {/* Boxes Tab */}

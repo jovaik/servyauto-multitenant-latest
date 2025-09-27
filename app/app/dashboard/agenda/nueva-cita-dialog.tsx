@@ -4,7 +4,7 @@
 import React, { useState, useEffect } from 'react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { Calendar, Clock, User, Car, CreditCard } from 'lucide-react'
+import { Calendar, Clock, User, Car, CreditCard, Settings } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 interface Cliente {
   id: string
@@ -56,29 +57,41 @@ interface NuevaCitaDialogProps {
   onOpenChange: (open: boolean) => void
   onSuccess: () => void
   selectedDate: Date
+  preselectedSlot?: {time: string, box: string} | null
 }
 
 export function NuevaCitaDialog({ 
   open, 
   onOpenChange, 
   onSuccess,
-  selectedDate 
+  selectedDate,
+  preselectedSlot 
 }: NuevaCitaDialogProps) {
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [servicios, setServicios] = useState<Servicio[]>([])
+  const [showNewVehiculo, setShowNewVehiculo] = useState(false)
+  const [boxes, setBoxes] = useState(['Box 1', 'Box 2', 'Box 3'])
   
   const [formData, setFormData] = useState({
     fecha: format(selectedDate, 'yyyy-MM-dd'),
-    horaInicio: '',
+    horaInicio: preselectedSlot?.time || '',
     horaFin: '',
-    box: '',
+    box: preselectedSlot?.box || '',
     clienteId: '',
     vehiculoId: '',
     servicios: [] as string[],
     observaciones: '',
     metodoPago: '',
+  })
+
+  // Nuevo vehículo para cliente existente
+  const [newVehiculo, setNewVehiculo] = useState({
+    marca: '',
+    modelo: '',
+    matricula: '',
+    anio: new Date().getFullYear()
   })
 
   const timeSlots = [
@@ -88,19 +101,37 @@ export function NuevaCitaDialog({
     '17:00', '17:30', '18:00', '18:30', '19:00'
   ]
 
-  const boxes = ['Box 1', 'Box 2', 'Box 3']
   const metodosPago = ['EFECTIVO', 'TARJETA', 'TRANSFERENCIA']
 
   useEffect(() => {
     if (open) {
       loadClientes()
       loadServicios()
+      loadBoxes()
       setFormData(prev => ({ 
         ...prev, 
-        fecha: format(selectedDate, 'yyyy-MM-dd') 
+        fecha: format(selectedDate, 'yyyy-MM-dd'),
+        horaInicio: preselectedSlot?.time || '',
+        box: preselectedSlot?.box || ''
       }))
     }
-  }, [open, selectedDate])
+  }, [open, selectedDate, preselectedSlot])
+
+  const loadBoxes = async () => {
+    try {
+      const response = await fetch('/api/configuracion')
+      if (response.ok) {
+        const configs = await response.json()
+        const boxesConfig = configs?.find((c: any) => c.clave === 'boxes.nombres')
+        if (boxesConfig) {
+          const boxNames = JSON.parse(boxesConfig.valor)
+          setBoxes(boxNames)
+        }
+      }
+    } catch (error) {
+      console.error('Error loading boxes:', error)
+    }
+  }
 
   const loadClientes = async () => {
     try {
@@ -131,6 +162,52 @@ export function NuevaCitaDialog({
     return cliente?.vehiculos || []
   }
 
+  const addNewVehiculo = async () => {
+    if (!formData.clienteId || !newVehiculo.marca || !newVehiculo.modelo || !newVehiculo.matricula) {
+      toast({
+        title: "Error",
+        description: "Por favor completa todos los campos del vehículo",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      const response = await fetch('/api/vehiculos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...newVehiculo,
+          clienteId: formData.clienteId
+        })
+      })
+
+      if (response.ok) {
+        const vehiculo = await response.json()
+        // Refresh clientes to get updated vehicle list
+        await loadClientes()
+        setFormData(prev => ({ ...prev, vehiculoId: vehiculo.id }))
+        setShowNewVehiculo(false)
+        setNewVehiculo({
+          marca: '',
+          modelo: '',
+          matricula: '',
+          anio: new Date().getFullYear()
+        })
+        toast({
+          title: "¡Éxito!",
+          description: "Vehículo agregado correctamente",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Error al agregar vehículo",
+        variant: "destructive",
+      })
+    }
+  }
+
   const calculateEndTime = (startTime: string, servicioIds: string[]) => {
     if (!startTime || servicioIds.length === 0) return ''
     
@@ -153,7 +230,7 @@ export function NuevaCitaDialog({
       const endTime = calculateEndTime(formData.horaInicio, formData.servicios)
       setFormData(prev => ({ ...prev, horaFin: endTime }))
     }
-  }, [formData.horaInicio, formData.servicios])
+  }, [formData.horaInicio, formData.servicios, servicios])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -215,15 +292,22 @@ export function NuevaCitaDialog({
   const resetForm = () => {
     setFormData({
       fecha: format(selectedDate, 'yyyy-MM-dd'),
-      horaInicio: '',
+      horaInicio: preselectedSlot?.time || '',
       horaFin: '',
-      box: '',
+      box: preselectedSlot?.box || '',
       clienteId: '',
       vehiculoId: '',
       servicios: [],
       observaciones: '',
       metodoPago: '',
     })
+    setNewVehiculo({
+      marca: '',
+      modelo: '',
+      matricula: '',
+      anio: new Date().getFullYear()
+    })
+    setShowNewVehiculo(false)
   }
 
   const handleClose = () => {
@@ -233,129 +317,252 @@ export function NuevaCitaDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center">
             <Calendar className="mr-2 h-5 w-5" />
             Nueva Cita
+            {preselectedSlot && (
+              <span className="ml-2 text-sm font-normal text-blue-600">
+                ({preselectedSlot.box} - {preselectedSlot.time})
+              </span>
+            )}
           </DialogTitle>
           <DialogDescription>
-            Programa una nueva cita para el {format(selectedDate, "d 'de' MMMM", { locale: es })}
+            {preselectedSlot 
+              ? `Reservando cita para el ${format(selectedDate, "d 'de' MMMM", { locale: es })} a las ${preselectedSlot.time} en ${preselectedSlot.box}`
+              : `Programa una nueva cita para el ${format(selectedDate, "d 'de' MMMM", { locale: es })}`
+            }
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Fecha y Horario */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="fecha">Fecha</Label>
-              <Input
-                id="fecha"
-                type="date"
-                value={formData.fecha}
-                onChange={(e) => setFormData(prev => ({ ...prev, fecha: e.target.value }))}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="box">Box</Label>
-              <Select value={formData.box || "box-placeholder"} onValueChange={(value) => 
-                setFormData(prev => ({ ...prev, box: value === "box-placeholder" ? "" : value }))
-              }>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona un box" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="box-placeholder" disabled>Selecciona un box</SelectItem>
-                  {boxes.map((box) => (
-                    <SelectItem key={box} value={box}>
-                      {box}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          <Card className={preselectedSlot ? "bg-blue-50 border-blue-200" : ""}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center">
+                <Clock className="mr-2 h-4 w-4" />
+                Fecha y Horario {preselectedSlot && "(Preseleccionado)"}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="fecha">Fecha *</Label>
+                  <Input
+                    id="fecha"
+                    type="date"
+                    value={formData.fecha}
+                    onChange={(e) => setFormData(prev => ({ ...prev, fecha: e.target.value }))}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="box">Box *</Label>
+                  <Select value={formData.box || "box-placeholder"} onValueChange={(value) => 
+                    setFormData(prev => ({ ...prev, box: value === "box-placeholder" ? "" : value }))
+                  }>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecciona un box" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="box-placeholder" disabled>Selecciona un box</SelectItem>
+                      {boxes.map((box) => (
+                        <SelectItem key={box} value={box}>
+                          {box}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="horaInicio">Hora inicio</Label>
-              <Select value={formData.horaInicio || "hora-placeholder"} onValueChange={(value) => 
-                setFormData(prev => ({ ...prev, horaInicio: value === "hora-placeholder" ? "" : value }))
-              }>
-                <SelectTrigger>
-                  <SelectValue placeholder="Hora inicio" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="hora-placeholder" disabled>Selecciona hora</SelectItem>
-                  {timeSlots.map((time) => (
-                    <SelectItem key={time} value={time}>
-                      {time}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="horaFin">Hora fin</Label>
-              <Input
-                id="horaFin"
-                value={formData.horaFin}
-                placeholder="Se calculará automáticamente"
-                readOnly
-                className="bg-gray-50"
-              />
-            </div>
-          </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="horaInicio">Hora inicio *</Label>
+                  <Select value={formData.horaInicio || "hora-placeholder"} onValueChange={(value) => 
+                    setFormData(prev => ({ ...prev, horaInicio: value === "hora-placeholder" ? "" : value }))
+                  }>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Hora inicio" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="hora-placeholder" disabled>Selecciona hora</SelectItem>
+                      {timeSlots.map((time) => (
+                        <SelectItem key={time} value={time}>
+                          {time}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="horaFin">Hora fin</Label>
+                  <Input
+                    id="horaFin"
+                    value={formData.horaFin}
+                    placeholder="Se calculará automáticamente"
+                    readOnly
+                    className="bg-gray-50"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Cliente y Vehículo */}
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Cliente</Label>
-              <Select value={formData.clienteId || "cliente-placeholder"} onValueChange={(value) => 
-                setFormData(prev => ({ 
-                  ...prev, 
-                  clienteId: value === "cliente-placeholder" ? "" : value, 
-                  vehiculoId: "" 
-                }))
-              }>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona un cliente" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="cliente-placeholder" disabled>Selecciona un cliente</SelectItem>
-                  {clientes?.map((cliente) => (
-                    <SelectItem key={cliente.id} value={cliente.id}>
-                      <div className="flex items-center">
-                        <User className="mr-2 h-4 w-4" />
-                        {cliente.nombre} {cliente.apellido}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center">
+                <User className="mr-2 h-4 w-4" />
+                Cliente y Vehículo
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Cliente *</Label>
+                <Select value={formData.clienteId || "cliente-placeholder"} onValueChange={(value) => 
+                  setFormData(prev => ({ 
+                    ...prev, 
+                    clienteId: value === "cliente-placeholder" ? "" : value, 
+                    vehiculoId: "" 
+                  }))
+                }>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona un cliente" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cliente-placeholder" disabled>Selecciona un cliente</SelectItem>
+                    {clientes?.map((cliente) => (
+                      <SelectItem key={cliente.id} value={cliente.id}>
+                        <div className="flex items-center">
+                          <User className="mr-2 h-4 w-4" />
+                          {cliente.nombre} {cliente.apellido} - {cliente.telefono}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div className="space-y-2">
-              <Label>Vehículo</Label>
-              <Select value={formData.vehiculoId || "vehiculo-placeholder"} onValueChange={(value) => 
-                setFormData(prev => ({ ...prev, vehiculoId: value === "vehiculo-placeholder" ? "" : value }))
-              }>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona un vehículo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="vehiculo-placeholder" disabled>Selecciona un vehículo</SelectItem>
-                  {getClienteVehiculos()?.map((vehiculo) => (
-                    <SelectItem key={vehiculo.id} value={vehiculo.id}>
-                      <div className="flex items-center">
-                        <Car className="mr-2 h-4 w-4" />
-                        {vehiculo.marca} {vehiculo.modelo} - {vehiculo.matricula}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Vehículo *</Label>
+                  {formData.clienteId && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setShowNewVehiculo(!showNewVehiculo)}
+                    >
+                      <Settings className="mr-1 h-3 w-3" />
+                      {showNewVehiculo ? 'Cancelar' : 'Nuevo Vehículo'}
+                    </Button>
+                  )}
+                </div>
+                
+                {!showNewVehiculo ? (
+                  <Select value={formData.vehiculoId || "vehiculo-placeholder"} onValueChange={(value) => 
+                    setFormData(prev => ({ ...prev, vehiculoId: value === "vehiculo-placeholder" ? "" : value }))
+                  }>
+                    <SelectTrigger>
+                      <SelectValue placeholder={formData.clienteId ? "Selecciona un vehículo" : "Primero selecciona un cliente"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="vehiculo-placeholder" disabled>Selecciona un vehículo</SelectItem>
+                      {getClienteVehiculos()?.map((vehiculo) => (
+                        <SelectItem key={vehiculo.id} value={vehiculo.id}>
+                          <div className="flex items-center">
+                            <Car className="mr-2 h-4 w-4" />
+                            <div className="flex flex-col">
+                              <span>{vehiculo.marca} {vehiculo.modelo}</span>
+                              <span className="text-xs text-gray-500">{vehiculo.matricula}</span>
+                            </div>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="border rounded-lg p-4 space-y-3 bg-gray-50">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label>Marca *</Label>
+                        <Input
+                          value={newVehiculo.marca}
+                          onChange={(e) => setNewVehiculo(prev => ({ ...prev, marca: e.target.value }))}
+                          placeholder="Ej: Ford, Toyota, BMW"
+                          required
+                        />
                       </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                      <div>
+                        <Label>Modelo *</Label>
+                        <Input
+                          value={newVehiculo.modelo}
+                          onChange={(e) => setNewVehiculo(prev => ({ ...prev, modelo: e.target.value }))}
+                          placeholder="Ej: Focus, Corolla, X3"
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label>Matrícula *</Label>
+                        <Input
+                          value={newVehiculo.matricula}
+                          onChange={(e) => setNewVehiculo(prev => ({ ...prev, matricula: e.target.value.toUpperCase() }))}
+                          placeholder="1234ABC"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label>Año</Label>
+                        <Input
+                          type="number"
+                          value={newVehiculo.anio}
+                          onChange={(e) => setNewVehiculo(prev => ({ ...prev, anio: parseInt(e.target.value) }))}
+                          min="1980"
+                          max={new Date().getFullYear() + 1}
+                        />
+                      </div>
+                    </div>
+                    <Button type="button" onClick={addNewVehiculo} size="sm" className="w-full">
+                      Agregar Vehículo
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Servicios */}
+          <div className="space-y-2">
+            <Label>Servicios</Label>
+            <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto border rounded-lg p-3">
+              {servicios?.map((servicio) => (
+                <label key={servicio.id} className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.servicios.includes(servicio.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setFormData(prev => ({ 
+                          ...prev, 
+                          servicios: [...prev.servicios, servicio.id] 
+                        }))
+                      } else {
+                        setFormData(prev => ({ 
+                          ...prev, 
+                          servicios: prev.servicios.filter(s => s !== servicio.id) 
+                        }))
+                      }
+                    }}
+                  />
+                  <span className="text-sm">
+                    {servicio.nombre} (€{servicio.precio} - {servicio.duracion}min)
+                  </span>
+                </label>
+              ))}
             </div>
           </div>
 

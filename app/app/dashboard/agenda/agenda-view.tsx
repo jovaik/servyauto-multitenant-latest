@@ -34,6 +34,7 @@ export function AgendaView() {
   const [showNuevaCita, setShowNuevaCita] = useState(false)
   const [showEditarCita, setShowEditarCita] = useState(false)
   const [selectedCita, setSelectedCita] = useState<Cita | null>(null)
+  const [preselectedSlot, setPreselectedSlot] = useState<{time: string, box: string} | null>(null)
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -47,11 +48,28 @@ export function AgendaView() {
     '17:00', '17:30', '18:00', '18:30', '19:00'
   ]
 
-  const boxes = ['Box 1', 'Box 2', 'Box 3']
+  const [boxes, setBoxes] = useState(['Box 1', 'Box 2', 'Box 3'])
 
   useEffect(() => {
     loadCitas()
+    loadBoxes()
   }, [selectedDate])
+
+  const loadBoxes = async () => {
+    try {
+      const response = await fetch('/api/configuracion')
+      if (response.ok) {
+        const configs = await response.json()
+        const boxesConfig = configs?.find((c: any) => c.clave === 'boxes.nombres')
+        if (boxesConfig) {
+          const boxNames = JSON.parse(boxesConfig.valor)
+          setBoxes(boxNames)
+        }
+      }
+    } catch (error) {
+      console.error('Error loading boxes:', error)
+    }
+  }
 
   const loadCitas = async () => {
     try {
@@ -76,9 +94,10 @@ export function AgendaView() {
       
       citas?.forEach((cita) => {
         if (cita?.horaInicio === time) {
-          if (cita.box === 'Box 1') slot.box1 = cita
-          else if (cita.box === 'Box 2') slot.box2 = cita
-          else if (cita.box === 'Box 3') slot.box3 = cita
+          const boxIndex = boxes.findIndex(box => box === cita.box)
+          if (boxIndex === 0) slot.box1 = cita
+          else if (boxIndex === 1) slot.box2 = cita
+          else if (boxIndex === 2) slot.box3 = cita
         }
       })
       
@@ -102,11 +121,28 @@ export function AgendaView() {
     setShowEditarCita(true)
   }
 
+  // NUEVA FUNCIONALIDAD: Reservar directamente desde slot
+  const handleSlotClick = (time: string, box: string, cita?: Cita) => {
+    if (cita) {
+      handleEditCita(cita)
+    } else {
+      // Crear nueva cita con fecha y hora exactas preseleccionadas
+      setPreselectedSlot({ time, box })
+      setShowNuevaCita(true)
+    }
+  }
+
   const handleCitaUpdated = () => {
     loadCitas()
     setShowNuevaCita(false)
     setShowEditarCita(false)
     setSelectedCita(null)
+    setPreselectedSlot(null)
+  }
+
+  const handleNewCitaClose = () => {
+    setShowNuevaCita(false)
+    setPreselectedSlot(null)
   }
 
   const navigateDate = (direction: 'prev' | 'next') => {
@@ -158,7 +194,7 @@ export function AgendaView() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Agenda</h1>
           <p className="text-gray-600">
-            Gestiona las citas y horarios del taller
+            Gestiona las citas y horarios del taller - Click en cualquier slot para reservar
           </p>
         </div>
         <Button onClick={() => setShowNuevaCita(true)} className="bg-blue-600 hover:bg-blue-700">
@@ -236,7 +272,7 @@ export function AgendaView() {
             <div className="overflow-x-auto">
               <div className="min-w-full">
                 {/* Header row */}
-                <div className="grid grid-cols-4 gap-2 mb-4 pb-2 border-b">
+                <div className={`grid gap-2 mb-4 pb-2 border-b`} style={{gridTemplateColumns: `100px repeat(${boxes.length}, 1fr)`}}>
                   <div className="font-medium text-gray-700 p-2">Hora</div>
                   {boxes.map((box) => (
                     <div key={box} className="font-medium text-gray-700 p-2 text-center">
@@ -250,9 +286,10 @@ export function AgendaView() {
                   {getSlotData().map((slot, index) => (
                     <div 
                       key={slot.time} 
-                      className={`grid grid-cols-4 gap-2 min-h-[60px] ${
+                      className={`grid gap-2 min-h-[60px] ${
                         index % 2 === 0 ? 'bg-gray-50' : 'bg-white'
                       } rounded-lg p-1`}
+                      style={{gridTemplateColumns: `100px repeat(${boxes.length}, 1fr)`}}
                     >
                       <div className="flex items-center p-2">
                         <span className="font-mono text-sm text-gray-600">
@@ -261,7 +298,7 @@ export function AgendaView() {
                       </div>
                       
                       {boxes.map((box, boxIndex) => {
-                        const cita = boxIndex === 0 ? slot.box1 : boxIndex === 1 ? slot.box2 : slot.box3
+                        const cita = boxIndex === 0 ? slot.box1 : boxIndex === 1 ? slot.box2 : boxIndex === 2 ? slot.box3 : undefined
                         
                         return (
                           <div key={box} className="p-1">
@@ -271,7 +308,7 @@ export function AgendaView() {
                                   p-3 rounded-lg border cursor-pointer transition-all hover:shadow-md
                                   ${getEstadoColor(cita.estado)}
                                 `}
-                                onClick={() => handleEditCita(cita)}
+                                onClick={() => handleSlotClick(slot.time, box, cita)}
                               >
                                 <div className="space-y-1">
                                   <div className="flex items-center text-xs">
@@ -292,9 +329,15 @@ export function AgendaView() {
                                 </div>
                               </div>
                             ) : (
-                              <div className="h-full min-h-[50px] border-2 border-dashed border-gray-200 rounded-lg flex items-center justify-center opacity-50 hover:opacity-75 transition-opacity">
-                                <span className="text-xs text-gray-400">Disponible</span>
-                              </div>
+                              <button
+                                onClick={() => handleSlotClick(slot.time, box)}
+                                className="w-full h-full min-h-[50px] border-2 border-dashed border-gray-200 rounded-lg flex items-center justify-center opacity-50 hover:opacity-100 hover:border-blue-300 hover:bg-blue-50 transition-all group"
+                              >
+                                <div className="text-center">
+                                  <Plus className="h-4 w-4 text-gray-400 group-hover:text-blue-500 mx-auto mb-1" />
+                                  <span className="text-xs text-gray-400 group-hover:text-blue-500">Reservar</span>
+                                </div>
+                              </button>
                             )}
                           </div>
                         )
@@ -311,9 +354,10 @@ export function AgendaView() {
       {/* Dialogs */}
       <NuevaCitaDialog 
         open={showNuevaCita}
-        onOpenChange={setShowNuevaCita}
+        onOpenChange={handleNewCitaClose}
         onSuccess={handleCitaUpdated}
         selectedDate={selectedDate}
+        preselectedSlot={preselectedSlot}
       />
 
       {selectedCita && (
