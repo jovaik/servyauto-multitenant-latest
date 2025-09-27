@@ -158,8 +158,7 @@ export function FacturacionView() {
       'TARJETA': 'Tarjeta',
       'TARJETA_SUMUP': 'Tarjeta SUMUP',
       'TPV_UNICAJA': 'TPV Unicaja', 
-      'TPV_NACIONAL': 'TPV Nacional',
-      'TRANSFERENCIA': 'Transferencia'
+      'TPV_NACIONAL': 'TPV Nacional'
     }
     return metodos[metodoPago] || metodoPago
   }

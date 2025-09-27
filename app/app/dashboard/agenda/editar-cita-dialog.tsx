@@ -63,7 +63,7 @@ export function EditarCitaDialog({
 
   const boxes = ['Box 1', 'Box 2', 'Box 3']
   const estados = Object.values(EstadoCita)
-  const metodosPago = Object.values(MetodoPago)
+  const metodosPago = ['EFECTIVO', 'TARJETA']
 
   useEffect(() => {
     if (open && cita) {
