@@ -227,14 +227,13 @@ export function EditarCitaDialog({
             </div>
             <div className="space-y-2">
               <Label htmlFor="box">Box</Label>
-              <Select value={formData.box || "box-placeholder"} onValueChange={(value) => 
-                setFormData(prev => ({ ...prev, box: value === "box-placeholder" ? "" : value }))
+              <Select value={formData.box || ""} onValueChange={(value) => 
+                setFormData(prev => ({ ...prev, box: value }))
               }>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecciona un box" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="box-placeholder" disabled>Selecciona un box</SelectItem>
                   {boxes.map((box) => (
                     <SelectItem key={box} value={box}>
                       {box}
@@ -248,14 +247,13 @@ export function EditarCitaDialog({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="horaInicio">Hora inicio</Label>
-              <Select value={formData.horaInicio || "hora-placeholder"} onValueChange={(value) => 
-                setFormData(prev => ({ ...prev, horaInicio: value === "hora-placeholder" ? "" : value }))
+              <Select value={formData.horaInicio || ""} onValueChange={(value) => 
+                setFormData(prev => ({ ...prev, horaInicio: value }))
               }>
                 <SelectTrigger>
                   <SelectValue placeholder="Hora inicio" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="hora-placeholder" disabled>Selecciona hora</SelectItem>
                   {timeSlots.map((time) => (
                     <SelectItem key={time} value={time}>
                       {time}
@@ -266,14 +264,13 @@ export function EditarCitaDialog({
             </div>
             <div className="space-y-2">
               <Label htmlFor="horaFin">Hora fin</Label>
-              <Select value={formData.horaFin || "hora-fin-placeholder"} onValueChange={(value) => 
-                setFormData(prev => ({ ...prev, horaFin: value === "hora-fin-placeholder" ? "" : value }))
+              <Select value={formData.horaFin || ""} onValueChange={(value) => 
+                setFormData(prev => ({ ...prev, horaFin: value }))
               }>
                 <SelectTrigger>
                   <SelectValue placeholder="Hora fin" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="hora-fin-placeholder" disabled>Selecciona hora fin</SelectItem>
                   {timeSlots.map((time) => (
                     <SelectItem key={time} value={time}>
                       {time}
@@ -287,14 +284,13 @@ export function EditarCitaDialog({
           {/* Estado */}
           <div className="space-y-2">
             <Label>Estado de la cita</Label>
-            <Select value={formData.estado || "estado-placeholder"} onValueChange={(value) => 
-              setFormData(prev => ({ ...prev, estado: value === "estado-placeholder" ? EstadoCita.PENDIENTE : value as EstadoCita }))
+            <Select value={formData.estado || ""} onValueChange={(value) => 
+              setFormData(prev => ({ ...prev, estado: value as EstadoCita }))
             }>
               <SelectTrigger>
                 <SelectValue placeholder="Estado de la cita" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="estado-placeholder" disabled>Selecciona estado</SelectItem>
                 {estados.map((estado) => (
                   <SelectItem key={estado} value={estado}>
                     {estado.replace('_', ' ')}
@@ -307,14 +303,13 @@ export function EditarCitaDialog({
           {/* Método de Pago */}
           <div className="space-y-2">
             <Label>Método de pago</Label>
-            <Select value={formData.metodoPago || "pago-placeholder"} onValueChange={(value) => 
-              setFormData(prev => ({ ...prev, metodoPago: value === "pago-placeholder" ? "" : value }))
+            <Select value={formData.metodoPago || ""} onValueChange={(value) => 
+              setFormData(prev => ({ ...prev, metodoPago: value }))
             }>
               <SelectTrigger>
                 <SelectValue placeholder="Selecciona método de pago" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="pago-placeholder" disabled>Selecciona método</SelectItem>
                 {metodosPago.map((metodo) => (
                   <SelectItem key={metodo} value={metodo}>
                     <div className="flex items-center">

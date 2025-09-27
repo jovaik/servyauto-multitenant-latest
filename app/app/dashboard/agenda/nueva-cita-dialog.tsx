@@ -359,14 +359,13 @@ export function NuevaCitaDialog({
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="box">Box *</Label>
-                  <Select value={formData.box || "box-placeholder"} onValueChange={(value) => 
-                    setFormData(prev => ({ ...prev, box: value === "box-placeholder" ? "" : value }))
+                  <Select value={formData.box || ""} onValueChange={(value) => 
+                    setFormData(prev => ({ ...prev, box: value }))
                   }>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecciona un box" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="box-placeholder" disabled>Selecciona un box</SelectItem>
                       {boxes.map((box) => (
                         <SelectItem key={box} value={box}>
                           {box}
@@ -380,14 +379,13 @@ export function NuevaCitaDialog({
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="horaInicio">Hora inicio *</Label>
-                  <Select value={formData.horaInicio || "hora-placeholder"} onValueChange={(value) => 
-                    setFormData(prev => ({ ...prev, horaInicio: value === "hora-placeholder" ? "" : value }))
+                  <Select value={formData.horaInicio || ""} onValueChange={(value) => 
+                    setFormData(prev => ({ ...prev, horaInicio: value }))
                   }>
                     <SelectTrigger>
                       <SelectValue placeholder="Hora inicio" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="hora-placeholder" disabled>Selecciona hora</SelectItem>
                       {timeSlots.map((time) => (
                         <SelectItem key={time} value={time}>
                           {time}
@@ -421,10 +419,10 @@ export function NuevaCitaDialog({
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label>Cliente *</Label>
-                <Select value={formData.clienteId || "cliente-placeholder"} onValueChange={(value) => 
+                <Select value={formData.clienteId || ""} onValueChange={(value) => 
                   setFormData(prev => ({ 
                     ...prev, 
-                    clienteId: value === "cliente-placeholder" ? "" : value, 
+                    clienteId: value, 
                     vehiculoId: "" 
                   }))
                 }>
@@ -432,7 +430,6 @@ export function NuevaCitaDialog({
                     <SelectValue placeholder="Selecciona un cliente" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="cliente-placeholder" disabled>Selecciona un cliente</SelectItem>
                     {clientes?.map((cliente) => (
                       <SelectItem key={cliente.id} value={cliente.id}>
                         <div className="flex items-center">
@@ -462,14 +459,13 @@ export function NuevaCitaDialog({
                 </div>
                 
                 {!showNewVehiculo ? (
-                  <Select value={formData.vehiculoId || "vehiculo-placeholder"} onValueChange={(value) => 
-                    setFormData(prev => ({ ...prev, vehiculoId: value === "vehiculo-placeholder" ? "" : value }))
+                  <Select value={formData.vehiculoId || ""} onValueChange={(value) => 
+                    setFormData(prev => ({ ...prev, vehiculoId: value }))
                   }>
                     <SelectTrigger>
                       <SelectValue placeholder={formData.clienteId ? "Selecciona un vehículo" : "Primero selecciona un cliente"} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="vehiculo-placeholder" disabled>Selecciona un vehículo</SelectItem>
                       {getClienteVehiculos()?.map((vehiculo) => (
                         <SelectItem key={vehiculo.id} value={vehiculo.id}>
                           <div className="flex items-center">
@@ -569,14 +565,13 @@ export function NuevaCitaDialog({
           {/* Método de Pago */}
           <div className="space-y-2">
             <Label>Método de pago</Label>
-            <Select value={formData.metodoPago || "pago-placeholder"} onValueChange={(value) => 
-              setFormData(prev => ({ ...prev, metodoPago: value === "pago-placeholder" ? "" : value }))
+            <Select value={formData.metodoPago || ""} onValueChange={(value) => 
+              setFormData(prev => ({ ...prev, metodoPago: value }))
             }>
               <SelectTrigger>
                 <SelectValue placeholder="Selecciona método de pago" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="pago-placeholder" disabled>Selecciona método</SelectItem>
                 {metodosPago.map((metodo) => (
                   <SelectItem key={metodo} value={metodo}>
                     <div className="flex items-center">
