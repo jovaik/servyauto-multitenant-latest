@@ -83,14 +83,14 @@ export async function POST(request: NextRequest) {
 
     // Generar número de documento con formato correcto
     const año = new Date().getFullYear()
-    const prefijo = tipo === 'FACTURA' ? 'FAC' : 'TICKET'
+    const prefijo = tipo === 'FACTURA' ? 'FAC' : 'TICK'
     
     // Buscar la última factura o ticket del mismo tipo y año
     const ultimaFactura = await prisma.factura.findFirst({
       where: { 
         tipo,
         numero: {
-          startsWith: `${prefijo}/${año}/`
+          startsWith: `${prefijo}-${año}-`
         }
       },
       orderBy: { createdAt: 'desc' }
@@ -98,14 +98,14 @@ export async function POST(request: NextRequest) {
 
     let numeroSecuencia = 1
     if (ultimaFactura) {
-      const partes = ultimaFactura.numero.split('/')
+      const partes = ultimaFactura.numero.split('-')
       if (partes.length === 3 && partes[0] === prefijo) {
         const ultimoNumero = parseInt(partes[2]) || 0
         numeroSecuencia = ultimoNumero + 1
       }
     }
 
-    const numero = `${prefijo}/${año}/${numeroSecuencia.toString().padStart(4, '0')}`
+    const numero = `${prefijo}-${año}-${numeroSecuencia.toString().padStart(4, '0')}`
 
     // Crear factura
     const factura = await prisma.factura.create({

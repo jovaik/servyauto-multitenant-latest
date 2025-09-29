@@ -139,7 +139,7 @@ export function NuevaFacturaDialog({ onFacturaCreada }: NuevaFacturaDialogProps)
   const determinarTipoDocumento = () => {
     if (solicitaFactura) return 'FACTURA'
     if (metodoPago === 'TPV_UNICAJA') return 'FACTURA'
-    if (metodoPago === 'EFECTIVO' || metodoPago === 'TARJETA_SUMUP') return 'TICKET'
+    if (metodoPago === 'EFECTIVO' || metodoPago === 'TPV_SUMUP') return 'TICKET'
     return 'TICKET' // Por defecto TICKET
   }
 
@@ -274,7 +274,7 @@ export function NuevaFacturaDialog({ onFacturaCreada }: NuevaFacturaDialogProps)
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="EFECTIVO">Efectivo (TICKET)</SelectItem>
-                <SelectItem value="TARJETA_SUMUP">TPV SUMUP (TICKET)</SelectItem>
+                <SelectItem value="TPV_SUMUP">TPV SUMUP (TICKET)</SelectItem>
                 <SelectItem value="TPV_UNICAJA">TPV UNICAJA (FACTURA)</SelectItem>
               </SelectContent>
             </Select>

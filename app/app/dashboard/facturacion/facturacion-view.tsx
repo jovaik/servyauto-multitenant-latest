@@ -20,6 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { NuevaFacturaDialog } from '@/components/nueva-factura-dialog'
 import { ConvertirTicketDialog } from '@/components/convertir-ticket-dialog'
+import { EditarFacturaDialog } from '@/components/editar-factura-dialog'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { 
@@ -113,21 +114,24 @@ export function FacturacionView() {
     try {
       const response = await fetch(`/api/facturas/${facturaId}/pdf`)
       if (response.ok) {
-        const blob = await response.blob()
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.style.display = 'none'
-        a.href = url
-        a.download = `factura-${facturaId}.txt`
-        document.body.appendChild(a)
-        a.click()
-        window.URL.revokeObjectURL(url)
-        document.body.removeChild(a)
+        // Obtener el documento como HTML y abrirlo en nueva ventana para imprimir
+        const htmlContent = await response.text()
+        const newWindow = window.open('', '_blank')
+        if (newWindow) {
+          newWindow.document.write(htmlContent)
+          newWindow.document.close()
+          
+          // Auto-imprimir cuando la página cargue
+          newWindow.onload = () => {
+            newWindow.print()
+          }
+        }
+      } else {
+        throw new Error('Error en la respuesta del servidor')
       }
     } catch (error) {
-      console.error('Error downloading PDF:', error)
-      // Mostrar mensaje de error al usuario
-      alert('Error al descargar el PDF. Por favor intenta de nuevo.')
+      console.error('Error downloading document:', error)
+      alert('Error al generar el documento. Por favor intenta de nuevo.')
     }
   }
 
@@ -155,10 +159,8 @@ export function FacturacionView() {
   const formatMetodoPago = (metodoPago: string) => {
     const metodos: { [key: string]: string } = {
       'EFECTIVO': 'Efectivo',
-      'TARJETA': 'Tarjeta',
-      'TARJETA_SUMUP': 'Tarjeta SUMUP',
-      'TPV_UNICAJA': 'TPV Unicaja', 
-      'TPV_NACIONAL': 'TPV Nacional'
+      'TPV_SUMUP': 'TPV SUMUP',
+      'TPV_UNICAJA': 'TPV UNICAJA'
     }
     return metodos[metodoPago] || metodoPago
   }
@@ -349,6 +351,17 @@ export function FacturacionView() {
                             <Download className="mr-2 h-4 w-4" />
                             Descargar Documento
                           </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => verDetalles(factura)}>
+                            <Eye className="mr-2 h-4 w-4" />
+                            Ver Detalles
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <EditarFacturaDialog 
+                              facturaId={factura.id}
+                              facturaNumero={factura.numero}
+                              onFacturaActualizada={loadFacturas}
+                            />
+                          </DropdownMenuItem>
                           {factura.tipo === 'TICKET' && (
                             <ConvertirTicketDialog 
                               ticketId={factura.id}
@@ -356,10 +369,6 @@ export function FacturacionView() {
                               onConvertido={loadFacturas}
                             />
                           )}
-                          <DropdownMenuItem onClick={() => verDetalles(factura)}>
-                            <Eye className="mr-2 h-4 w-4" />
-                            Ver Detalles
-                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

@@ -6,36 +6,177 @@ import { prisma } from '@/lib/db'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 
-// Simulación de generación de PDF (en producción usarías una librería como puppeteer o jsPDF)
-function generatePDF(factura: any): Buffer {
-  // Esta es una implementación simplificada
-  // En producción deberías usar una librería real de PDF
-  const content = `
-    SERVYAUTO - Sistema de Gestión Automotriz
-    
-    ${factura.tipo}: ${factura.numero}
-    Fecha: ${format(new Date(factura.fecha), 'dd/MM/yyyy', { locale: es })}
-    
-    Cliente: ${factura.cliente.nombre} ${factura.cliente.apellido}
-    Email: ${factura.cliente.email || 'N/A'}
-    Teléfono: ${factura.cliente.telefono || 'N/A'}
-    
-    DETALLES:
-    ${factura.items.map((item: any) => 
-      `- ${item.descripcion}: ${item.cantidad} x €${item.precio.toFixed(2)} = €${item.total.toFixed(2)}`
-    ).join('\n')}
-    
-    Subtotal: €${factura.subtotal.toFixed(2)}
-    IVA (21%): €${factura.iva.toFixed(2)}
-    TOTAL: €${factura.total.toFixed(2)}
-    
-    Método de Pago: ${factura.metodoPago || 'N/A'}
-    Estado: ${factura.estado}
-    
-    Generado el: ${format(new Date(), 'dd/MM/yyyy HH:mm', { locale: es })}
+// Generar HTML mejorado del documento
+function generateHTML(factura: any): string {
+  const formatMetodoPago = (metodoPago: string) => {
+    const metodos: { [key: string]: string } = {
+      'EFECTIVO': 'Efectivo',
+      'TPV_SUMUP': 'TPV SUMUP',
+      'TPV_UNICAJA': 'TPV UNICAJA',
+    }
+    return metodos[metodoPago] || metodoPago
+  }
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>${factura.tipo} ${factura.numero}</title>
+      <style>
+        body { 
+          font-family: Arial, sans-serif; 
+          margin: 40px; 
+          color: #333; 
+          line-height: 1.6;
+        }
+        .header { 
+          text-align: center; 
+          border-bottom: 2px solid #4F46E5; 
+          padding-bottom: 20px; 
+          margin-bottom: 30px; 
+        }
+        .company-name { 
+          font-size: 24px; 
+          font-weight: bold; 
+          color: #4F46E5; 
+          margin-bottom: 5px; 
+        }
+        .document-type { 
+          font-size: 20px; 
+          font-weight: bold; 
+          margin: 20px 0; 
+          color: #1F2937;
+        }
+        .info-grid { 
+          display: grid; 
+          grid-template-columns: 1fr 1fr; 
+          gap: 30px; 
+          margin: 30px 0; 
+        }
+        .info-section { 
+          background: #F9FAFB; 
+          padding: 20px; 
+          border-radius: 8px; 
+        }
+        .info-title { 
+          font-weight: bold; 
+          font-size: 16px; 
+          margin-bottom: 10px; 
+          color: #374151;
+        }
+        .items-table { 
+          width: 100%; 
+          border-collapse: collapse; 
+          margin: 30px 0; 
+        }
+        .items-table th, .items-table td { 
+          border: 1px solid #D1D5DB; 
+          padding: 12px; 
+          text-align: left; 
+        }
+        .items-table th { 
+          background: #4F46E5; 
+          color: white; 
+          font-weight: bold; 
+        }
+        .items-table tr:nth-child(even) { 
+          background: #F9FAFB; 
+        }
+        .totals { 
+          margin-top: 30px; 
+          padding: 20px; 
+          background: #F3F4F6; 
+          border-radius: 8px; 
+        }
+        .totals-row { 
+          display: flex; 
+          justify-content: space-between; 
+          margin: 8px 0; 
+        }
+        .total-final { 
+          font-size: 18px; 
+          font-weight: bold; 
+          color: #059669; 
+          border-top: 2px solid #D1D5DB; 
+          padding-top: 10px; 
+          margin-top: 10px; 
+        }
+        .footer { 
+          text-align: center; 
+          margin-top: 40px; 
+          font-size: 12px; 
+          color: #6B7280; 
+        }
+        .text-right { text-align: right; }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <div class="company-name">SERVYAUTO</div>
+        <div>Sistema de Gestión Automotriz</div>
+        <div class="document-type">${factura.tipo}: ${factura.numero}</div>
+      </div>
+
+      <div class="info-grid">
+        <div class="info-section">
+          <div class="info-title">Información del Cliente</div>
+          <div><strong>Cliente:</strong> ${factura.cliente.nombre} ${factura.cliente.apellido}</div>
+          <div><strong>Email:</strong> ${factura.cliente.email || 'No especificado'}</div>
+          <div><strong>Teléfono:</strong> ${factura.cliente.telefono || 'No especificado'}</div>
+        </div>
+        
+        <div class="info-section">
+          <div class="info-title">Información del Documento</div>
+          <div><strong>Fecha:</strong> ${format(new Date(factura.createdAt), 'dd/MM/yyyy', { locale: es })}</div>
+          <div><strong>Estado:</strong> ${factura.estado}</div>
+          <div><strong>Método de Pago:</strong> ${formatMetodoPago(factura.metodoPago || '')}</div>
+        </div>
+      </div>
+
+      <table class="items-table">
+        <thead>
+          <tr>
+            <th>Descripción</th>
+            <th>Cantidad</th>
+            <th class="text-right">Precio Unitario</th>
+            <th class="text-right">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${factura.items.map((item: any) => `
+            <tr>
+              <td>${item.descripcion}</td>
+              <td>${item.cantidad}</td>
+              <td class="text-right">€${item.precio.toFixed(2)}</td>
+              <td class="text-right">€${item.total.toFixed(2)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+
+      <div class="totals">
+        <div class="totals-row">
+          <span>Subtotal:</span>
+          <span>€${factura.subtotal.toFixed(2)}</span>
+        </div>
+        <div class="totals-row">
+          <span>IVA (21%):</span>
+          <span>€${factura.iva.toFixed(2)}</span>
+        </div>
+        <div class="totals-row total-final">
+          <span>TOTAL:</span>
+          <span>€${factura.total.toFixed(2)}</span>
+        </div>
+      </div>
+
+      <div class="footer">
+        <p>Documento generado el ${format(new Date(), "dd 'de' MMMM 'de' yyyy 'a las' HH:mm", { locale: es })}</p>
+        <p>SERVYAUTO - Sistema de Gestión Automotriz</p>
+      </div>
+    </body>
+    </html>
   `
-  
-  return Buffer.from(content, 'utf8')
 }
 
 export async function GET(
@@ -74,28 +215,29 @@ export async function GET(
       )
     }
 
-    // Generar PDF
-    const pdfBuffer = generatePDF(factura)
+    // Generar HTML del documento
+    const htmlContent = generateHTML(factura)
+    const htmlBuffer = Buffer.from(htmlContent, 'utf-8')
 
     // Actualizar ruta de PDF en base de datos (opcional)
     await prisma.factura.update({
       where: { id: params.id },
       data: {
-        pdfPath: `/pdfs/${factura.numero}.pdf`
+        pdfPath: `/documentos/${factura.numero}.html`
       }
     })
 
-    // Retornar como texto plano temporalmente (cambiar por PDF real en producción)
-    return new NextResponse(pdfBuffer, {
+    // Retornar como HTML que se puede imprimir fácilmente
+    return new NextResponse(htmlBuffer, {
       headers: {
-        'Content-Type': 'text/plain; charset=utf-8',
-        'Content-Disposition': `attachment; filename="${factura.numero}.txt"`
+        'Content-Type': 'text/html; charset=utf-8',
+        'Content-Disposition': `inline; filename="${factura.numero}.html"`
       }
     })
   } catch (error) {
-    console.error('Error generating PDF:', error)
+    console.error('Error generating document:', error)
     return NextResponse.json(
-      { error: 'Error al generar PDF' },
+      { error: 'Error al generar el documento' },
       { status: 500 }
     )
   }
