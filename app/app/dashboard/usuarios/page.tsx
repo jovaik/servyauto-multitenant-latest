@@ -61,7 +61,9 @@ export default function UsuariosPage() {
 
   const loadUsuarios = async () => {
     try {
-      const response = await fetch('/api/usuarios')
+      const response = await fetch('/api/usuarios', {
+        credentials: 'include'
+      })
       if (!response.ok) throw new Error('Error al cargar usuarios')
       const data = await response.json()
       setUsuarios(data)
@@ -85,6 +87,7 @@ export default function UsuariosPage() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify(formData),
       })
 
@@ -120,6 +123,7 @@ export default function UsuariosPage() {
     try {
       const response = await fetch(`/api/usuarios/${id}`, {
         method: 'DELETE',
+        credentials: 'include',
       })
 
       if (!response.ok) {
