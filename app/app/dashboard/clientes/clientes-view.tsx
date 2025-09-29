@@ -2,10 +2,14 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Users, User, Car, Phone, Mail, Plus } from 'lucide-react'
+import { Users, User, Car, Phone, Mail, Plus, Edit, Trash2, X } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { toast } from 'react-hot-toast'
 
 interface Cliente {
   id: string
@@ -32,6 +36,17 @@ interface Vehiculo {
 export function ClientesView() {
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [loading, setLoading] = useState(true)
+  const [showModal, setShowModal] = useState(false)
+  const [editingCliente, setEditingCliente] = useState<Cliente | null>(null)
+  const [formData, setFormData] = useState({
+    nombre: '',
+    apellido: '',
+    email: '',
+    telefono: '',
+    direccion: '',
+    dni: ''
+  })
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     loadClientes()
@@ -48,8 +63,106 @@ export function ClientesView() {
       }
     } catch (error) {
       console.error('Error loading clients:', error)
+      toast.error('Error al cargar clientes')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleOpenModal = (cliente?: Cliente) => {
+    if (cliente) {
+      setEditingCliente(cliente)
+      setFormData({
+        nombre: cliente.nombre,
+        apellido: cliente.apellido,
+        email: cliente.email || '',
+        telefono: cliente.telefono,
+        direccion: cliente.direccion || '',
+        dni: cliente.dni || ''
+      })
+    } else {
+      setEditingCliente(null)
+      setFormData({
+        nombre: '',
+        apellido: '',
+        email: '',
+        telefono: '',
+        direccion: '',
+        dni: ''
+      })
+    }
+    setShowModal(true)
+  }
+
+  const handleCloseModal = () => {
+    setShowModal(false)
+    setEditingCliente(null)
+    setFormData({
+      nombre: '',
+      apellido: '',
+      email: '',
+      telefono: '',
+      direccion: '',
+      dni: ''
+    })
+  }
+
+  const handleSubmit = async () => {
+    if (!formData.nombre || !formData.apellido || !formData.telefono) {
+      toast.error('Nombre, apellido y teléfono son obligatorios')
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      const url = '/api/clientes'
+      const method = editingCliente ? 'PUT' : 'POST'
+      const body = editingCliente 
+        ? { ...formData, id: editingCliente.id }
+        : formData
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      })
+
+      if (response.ok) {
+        toast.success(editingCliente ? 'Cliente actualizado correctamente' : 'Cliente creado correctamente')
+        handleCloseModal()
+        await loadClientes()
+      } else {
+        const error = await response.json()
+        toast.error(error.error || 'Error al guardar cliente')
+      }
+    } catch (error) {
+      console.error('Error saving client:', error)
+      toast.error('Error al guardar cliente')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleDelete = async (cliente: Cliente) => {
+    if (!confirm(`¿Estás seguro de eliminar el cliente ${cliente.nombre} ${cliente.apellido}?`)) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/clientes?id=${cliente.id}`, {
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        toast.success('Cliente eliminado correctamente')
+        await loadClientes()
+      } else {
+        const error = await response.json()
+        toast.error(error.error || 'Error al eliminar cliente')
+      }
+    } catch (error) {
+      console.error('Error deleting client:', error)
+      toast.error('Error al eliminar cliente')
     }
   }
 
@@ -65,7 +178,7 @@ export function ClientesView() {
         </div>
         <Button 
           className="bg-blue-600 hover:bg-blue-700"
-          onClick={() => alert('Funcionalidad de Nuevo Cliente - En desarrollo')}
+          onClick={() => handleOpenModal()}
         >
           <Plus className="mr-2 h-4 w-4" />
           Nuevo Cliente
@@ -156,9 +269,26 @@ export function ClientesView() {
                         )}
                       </div>
                     </div>
-                    <Badge variant="secondary">
-                      {cliente?.vehiculos?.length || 0} vehículo{(cliente?.vehiculos?.length || 0) !== 1 ? 's' : ''}
-                    </Badge>
+                    <div className="flex items-center space-x-2">
+                      <Badge variant="secondary">
+                        {cliente?.vehiculos?.length || 0} vehículo{(cliente?.vehiculos?.length || 0) !== 1 ? 's' : ''}
+                      </Badge>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleOpenModal(cliente)}
+                      >
+                        <Edit className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDelete(cliente)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600 mb-4">
@@ -219,6 +349,94 @@ export function ClientesView() {
           )}
         </CardContent>
       </Card>
+
+      {/* Modal para crear/editar cliente */}
+      <Dialog open={showModal} onOpenChange={setShowModal}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>
+              {editingCliente ? 'Editar Cliente' : 'Nuevo Cliente'}
+            </DialogTitle>
+            <DialogDescription>
+              {editingCliente 
+                ? 'Modifica los datos del cliente' 
+                : 'Completa los datos para crear un nuevo cliente'
+              }
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="nombre">Nombre *</Label>
+                <Input
+                  id="nombre"
+                  value={formData.nombre}
+                  onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                  placeholder="Juan"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="apellido">Apellido *</Label>
+                <Input
+                  id="apellido"
+                  value={formData.apellido}
+                  onChange={(e) => setFormData({ ...formData, apellido: e.target.value })}
+                  placeholder="Pérez"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                placeholder="juan@example.com"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="telefono">Teléfono *</Label>
+              <Input
+                id="telefono"
+                value={formData.telefono}
+                onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
+                placeholder="612345678"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="dni">DNI</Label>
+              <Input
+                id="dni"
+                value={formData.dni}
+                onChange={(e) => setFormData({ ...formData, dni: e.target.value })}
+                placeholder="12345678A"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="direccion">Dirección</Label>
+              <Input
+                id="direccion"
+                value={formData.direccion}
+                onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
+                placeholder="Calle Principal 123"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCloseModal}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleSubmit} 
+              disabled={submitting}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {submitting ? 'Guardando...' : editingCliente ? 'Actualizar' : 'Crear'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

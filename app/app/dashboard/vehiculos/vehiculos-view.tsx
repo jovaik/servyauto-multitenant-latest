@@ -2,10 +2,24 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Car, User, Plus, Calendar, Wrench } from 'lucide-react'
+import { Car, User, Plus, Calendar, Wrench, Edit, Trash2 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
+import { toast } from 'react-hot-toast'
+
+interface Cliente {
+  id: string
+  nombre: string
+  apellido: string
+  email?: string
+  telefono: string
+}
 
 interface Vehiculo {
   id: string
@@ -18,6 +32,7 @@ interface Vehiculo {
   motor?: string
   combustible?: string
   observaciones?: string
+  clienteId?: string
   cliente?: {
     id: string
     nombre: string
@@ -29,10 +44,27 @@ interface Vehiculo {
 
 export function VehiculosView() {
   const [vehiculos, setVehiculos] = useState<Vehiculo[]>([])
+  const [clientes, setClientes] = useState<Cliente[]>([])
   const [loading, setLoading] = useState(true)
+  const [showModal, setShowModal] = useState(false)
+  const [editingVehiculo, setEditingVehiculo] = useState<Vehiculo | null>(null)
+  const [formData, setFormData] = useState({
+    marca: '',
+    modelo: '',
+    matricula: '',
+    anio: new Date().getFullYear(),
+    color: '',
+    kilometraje: '',
+    motor: '',
+    combustible: '',
+    observaciones: '',
+    clienteId: ''
+  })
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     loadVehiculos()
+    loadClientes()
   }, [])
 
   const loadVehiculos = async () => {
@@ -46,8 +78,133 @@ export function VehiculosView() {
       }
     } catch (error) {
       console.error('Error loading vehicles:', error)
+      toast.error('Error al cargar vehículos')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadClientes = async () => {
+    try {
+      const response = await fetch('/api/clientes')
+      
+      if (response.ok) {
+        const data = await response.json()
+        setClientes(data || [])
+      }
+    } catch (error) {
+      console.error('Error loading clients:', error)
+    }
+  }
+
+  const handleOpenModal = (vehiculo?: Vehiculo) => {
+    if (vehiculo) {
+      setEditingVehiculo(vehiculo)
+      setFormData({
+        marca: vehiculo.marca,
+        modelo: vehiculo.modelo,
+        matricula: vehiculo.matricula,
+        anio: vehiculo.anio,
+        color: vehiculo.color || '',
+        kilometraje: vehiculo.kilometraje?.toString() || '',
+        motor: vehiculo.motor || '',
+        combustible: vehiculo.combustible || '',
+        observaciones: vehiculo.observaciones || '',
+        clienteId: vehiculo.clienteId || vehiculo.cliente?.id || ''
+      })
+    } else {
+      setEditingVehiculo(null)
+      setFormData({
+        marca: '',
+        modelo: '',
+        matricula: '',
+        anio: new Date().getFullYear(),
+        color: '',
+        kilometraje: '',
+        motor: '',
+        combustible: '',
+        observaciones: '',
+        clienteId: ''
+      })
+    }
+    setShowModal(true)
+  }
+
+  const handleCloseModal = () => {
+    setShowModal(false)
+    setEditingVehiculo(null)
+    setFormData({
+      marca: '',
+      modelo: '',
+      matricula: '',
+      anio: new Date().getFullYear(),
+      color: '',
+      kilometraje: '',
+      motor: '',
+      combustible: '',
+      observaciones: '',
+      clienteId: ''
+    })
+  }
+
+  const handleSubmit = async () => {
+    if (!formData.marca || !formData.modelo || !formData.matricula || !formData.clienteId) {
+      toast.error('Marca, modelo, matrícula y cliente son obligatorios')
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      const url = '/api/vehiculos'
+      const method = editingVehiculo ? 'PUT' : 'POST'
+      const body = {
+        ...formData,
+        kilometraje: formData.kilometraje ? parseInt(formData.kilometraje) : null,
+        id: editingVehiculo?.id
+      }
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      })
+
+      if (response.ok) {
+        toast.success(editingVehiculo ? 'Vehículo actualizado correctamente' : 'Vehículo creado correctamente')
+        handleCloseModal()
+        await loadVehiculos()
+      } else {
+        const error = await response.json()
+        toast.error(error.error || 'Error al guardar vehículo')
+      }
+    } catch (error) {
+      console.error('Error saving vehicle:', error)
+      toast.error('Error al guardar vehículo')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleDelete = async (vehiculo: Vehiculo) => {
+    if (!confirm(`¿Estás seguro de eliminar el vehículo ${vehiculo.marca} ${vehiculo.modelo} (${vehiculo.matricula})?`)) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/vehiculos?id=${vehiculo.id}`, {
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        toast.success('Vehículo eliminado correctamente')
+        await loadVehiculos()
+      } else {
+        const error = await response.json()
+        toast.error(error.error || 'Error al eliminar vehículo')
+      }
+    } catch (error) {
+      console.error('Error deleting vehicle:', error)
+      toast.error('Error al eliminar vehículo')
     }
   }
 
@@ -72,7 +229,7 @@ export function VehiculosView() {
         </div>
         <Button 
           className="bg-blue-600 hover:bg-blue-700"
-          onClick={() => alert('Funcionalidad de Nuevo Vehículo - En desarrollo')}
+          onClick={() => handleOpenModal()}
         >
           <Plus className="mr-2 h-4 w-4" />
           Nuevo Vehículo
@@ -201,9 +358,26 @@ export function VehiculosView() {
                         </p>
                       </div>
                     </div>
-                    <Badge variant="outline">
-                      {vehiculo.anio}
-                    </Badge>
+                    <div className="flex items-center space-x-2">
+                      <Badge variant="outline">
+                        {vehiculo.anio}
+                      </Badge>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleOpenModal(vehiculo)}
+                      >
+                        <Edit className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDelete(vehiculo)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </div>
 
                   <div className="space-y-2 text-sm text-gray-600">
@@ -255,6 +429,158 @@ export function VehiculosView() {
           )}
         </CardContent>
       </Card>
+
+      {/* Modal para crear/editar vehículo */}
+      <Dialog open={showModal} onOpenChange={setShowModal}>
+        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {editingVehiculo ? 'Editar Vehículo' : 'Nuevo Vehículo'}
+            </DialogTitle>
+            <DialogDescription>
+              {editingVehiculo 
+                ? 'Modifica los datos del vehículo' 
+                : 'Completa los datos para registrar un nuevo vehículo'
+              }
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="cliente">Cliente *</Label>
+              <Select value={formData.clienteId} onValueChange={(value) => setFormData({ ...formData, clienteId: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona un cliente" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clientes.map((cliente) => (
+                    <SelectItem key={cliente.id} value={cliente.id}>
+                      {cliente.nombre} {cliente.apellido} - {cliente.telefono}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="marca">Marca *</Label>
+                <Input
+                  id="marca"
+                  value={formData.marca}
+                  onChange={(e) => setFormData({ ...formData, marca: e.target.value })}
+                  placeholder="Toyota"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="modelo">Modelo *</Label>
+                <Input
+                  id="modelo"
+                  value={formData.modelo}
+                  onChange={(e) => setFormData({ ...formData, modelo: e.target.value })}
+                  placeholder="Corolla"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="matricula">Matrícula *</Label>
+                <Input
+                  id="matricula"
+                  value={formData.matricula}
+                  onChange={(e) => setFormData({ ...formData, matricula: e.target.value.toUpperCase() })}
+                  placeholder="1234ABC"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="anio">Año</Label>
+                <Input
+                  id="anio"
+                  type="number"
+                  min="1900"
+                  max={new Date().getFullYear() + 1}
+                  value={formData.anio}
+                  onChange={(e) => setFormData({ ...formData, anio: parseInt(e.target.value) || new Date().getFullYear() })}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="color">Color</Label>
+                <Input
+                  id="color"
+                  value={formData.color}
+                  onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                  placeholder="Azul"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="kilometraje">Kilometraje</Label>
+                <Input
+                  id="kilometraje"
+                  type="number"
+                  min="0"
+                  value={formData.kilometraje}
+                  onChange={(e) => setFormData({ ...formData, kilometraje: e.target.value })}
+                  placeholder="50000"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="motor">Motor</Label>
+                <Input
+                  id="motor"
+                  value={formData.motor}
+                  onChange={(e) => setFormData({ ...formData, motor: e.target.value })}
+                  placeholder="1.6 16V"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="combustible">Combustible</Label>
+                <Select value={formData.combustible} onValueChange={(value) => setFormData({ ...formData, combustible: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Tipo de combustible" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="GASOLINA">Gasolina</SelectItem>
+                    <SelectItem value="DIESEL">Diésel</SelectItem>
+                    <SelectItem value="HIBRIDO">Híbrido</SelectItem>
+                    <SelectItem value="ELECTRICO">Eléctrico</SelectItem>
+                    <SelectItem value="GLP">GLP</SelectItem>
+                    <SelectItem value="GNC">GNC</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="observaciones">Observaciones</Label>
+              <Textarea
+                id="observaciones"
+                value={formData.observaciones}
+                onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })}
+                placeholder="Notas adicionales sobre el vehículo..."
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCloseModal}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleSubmit} 
+              disabled={submitting}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {submitting ? 'Guardando...' : editingVehiculo ? 'Actualizar' : 'Crear'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

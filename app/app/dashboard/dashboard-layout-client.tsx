@@ -1,7 +1,7 @@
 
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { signOut } from 'next-auth/react'
 import { Session } from 'next-auth'
 import Link from 'next/link'
@@ -18,17 +18,11 @@ import {
   BarChart3,
   Clock,
   UserCheck,
-  CreditCard
+  CreditCard,
+  ChevronDown
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 
 interface DashboardLayoutClientProps {
   children: React.ReactNode
@@ -54,11 +48,32 @@ const navigation: NavItem[] = [
 
 export function DashboardLayoutClient({ children, session }: DashboardLayoutClientProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
   const pathname = usePathname()
+  const userMenuRef = useRef<HTMLDivElement>(null)
 
   const handleSignOut = () => {
     signOut({ callbackUrl: '/login' })
   }
+
+  const handleProfileClick = () => {
+    alert(`Perfil de ${session?.user?.name}\nEmail: ${session?.user?.email}\nRol: ${(session?.user as any)?.role || 'Admin'}`)
+    setUserMenuOpen(false)
+  }
+
+  // Close user menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setUserMenuOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -122,40 +137,54 @@ export function DashboardLayoutClient({ children, session }: DashboardLayoutClie
           })}
         </nav>
 
-        <div className="border-t px-4 py-4">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="w-full justify-start h-auto p-2">
-                <div className="flex items-center space-x-3">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={session?.user?.image || undefined} />
-                    <AvatarFallback>
-                      {session?.user?.name?.split(' ').map(n => n[0]).join('') || 'U'}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 text-left">
-                    <p className="text-sm font-medium text-gray-900">
-                      {session?.user?.name || 'Usuario'}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {session?.user?.email}
-                    </p>
-                  </div>
-                </div>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuItem disabled>
+        <div className="border-t px-4 py-4 relative" ref={userMenuRef}>
+          <Button 
+            variant="ghost" 
+            className="w-full justify-start h-auto p-2 hover:bg-gray-100"
+            onClick={() => setUserMenuOpen(!userMenuOpen)}
+          >
+            <div className="flex items-center space-x-3 w-full">
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={session?.user?.image || undefined} />
+                <AvatarFallback>
+                  {session?.user?.name?.split(' ').map(n => n[0]).join('') || 'U'}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 text-left">
+                <p className="text-sm font-medium text-gray-900">
+                  {session?.user?.name || 'Usuario'}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {session?.user?.email}
+                </p>
+              </div>
+              <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} />
+            </div>
+          </Button>
+          
+          {/* Custom dropdown menu */}
+          {userMenuOpen && (
+            <div className="absolute bottom-full left-4 right-4 mb-2 bg-white border border-gray-200 rounded-lg shadow-lg py-2 z-50">
+              <button
+                onClick={handleProfileClick}
+                className="w-full flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+              >
                 <Settings className="mr-2 h-4 w-4" />
                 Mi perfil
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleSignOut}>
+              </button>
+              <hr className="my-1 border-gray-200" />
+              <button
+                onClick={() => {
+                  handleSignOut()
+                  setUserMenuOpen(false)
+                }}
+                className="w-full flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+              >
                 <LogOut className="mr-2 h-4 w-4" />
                 Cerrar sesión
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

@@ -17,3 +17,62 @@
  ✓ Compiled /api/auth/[...nextauth] in 167ms (564 modules)
  GET /api/auth/session 200 in 576ms
  GET /api/auth/session 200 in 34ms
+ GET / 307 in 79ms
+ GET /login 200 in 45ms
+ GET / 307 in 40ms
+ GET /login 200 in 37ms
+ GET /api/auth/session 200 in 34ms
+ GET /api/auth/session 200 in 26ms
+ GET /api/auth/providers 200 in 33ms
+ GET /api/auth/csrf 200 in 34ms
+ POST /api/auth/callback/credentials 200 in 408ms
+ GET /api/auth/session 200 in 33ms
+ ○ Compiling /dashboard ...
+ ✓ Compiled /dashboard in 771ms (1080 modules)
+ GET /dashboard?_rsc=3y0gy 200 in 49ms
+ ✓ Compiled /api/dashboard/citas-recientes in 175ms (695 modules)
+ ✓ Compiled (697 modules)
+ GET /api/dashboard/stats 200 in 454ms
+ GET /api/dashboard/citas-recientes 200 in 450ms
+ GET /api/dashboard/citas-recientes 200 in 33ms
+ GET /api/dashboard/stats 200 in 32ms
+ ○ Compiling /dashboard/agenda ...
+ ✓ Compiled /dashboard/agenda in 909ms (2285 modules)
+ GET /dashboard/agenda?_rsc=434dd 200 in 35ms
+ ✓ Compiled /api/configuracion in 268ms (1289 modules)
+ ✓ Compiled (1291 modules)
+ GET /api/citas?fecha=2025-09-29 200 in 601ms
+ GET /api/configuracion 200 in 604ms
+ GET /api/citas?fecha=2025-09-29 200 in 26ms
+ GET /api/configuracion 200 in 26ms
+ ○ Compiling /dashboard/reservas ...
+ ✓ Compiled /dashboard/reservas in 549ms (2310 modules)
+ GET /dashboard/reservas?_rsc=xz0fe 200 in 34ms
+ ✓ Compiled /api/reservas in 274ms (1305 modules)
+ GET /api/reservas 200 in 340ms
+ GET /api/reservas 200 in 28ms
+ ✓ Compiled /dashboard/clientes in 461ms (2321 modules)
+ GET /dashboard/clientes?_rsc=1p1uk 200 in 32ms
+ ○ Compiling /api/clientes ...
+ ✓ Compiled /api/clientes in 545ms (1313 modules)
+ GET /api/clientes 200 in 635ms
+ GET /api/clientes 200 in 27ms
+ GET / 307 in 87ms
+ GET /login 200 in 50ms
+ ○ Compiling /dashboard/vehiculos ...
+ ✓ Compiled /dashboard/vehiculos in 563ms (2334 modules)
+ GET /dashboard/vehiculos?_rsc=14pho 200 in 41ms
+ ✓ Compiled /api/vehiculos in 364ms (1322 modules)
+ GET /api/vehiculos 200 in 436ms
+ GET /api/vehiculos 200 in 27ms
+ ○ Compiling /dashboard/facturacion ...
+ ✓ Compiled /dashboard/facturacion in 1162ms (2379 modules)
+ GET /dashboard/facturacion?_rsc=cg1if 200 in 38ms
+ ✓ Compiled /api/facturas in 468ms (1347 modules)
+ ✓ Compiled (1349 modules)
+ GET /api/facturas/stats 200 in 865ms
+ GET /api/facturas 200 in 869ms
+ GET /api/facturas 200 in 42ms
+ GET /api/facturas/stats 200 in 42ms
+ GET / 307 in 88ms
+ GET /login 200 in 49ms
