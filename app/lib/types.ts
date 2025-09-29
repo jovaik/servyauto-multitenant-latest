@@ -110,8 +110,25 @@ export enum EstadoFactura {
 
 export enum MetodoPago {
   EFECTIVO = "EFECTIVO",
-  TARJETA_SUMUP = "TARJETA_SUMUP",
+  TPV_SUMUP = "TPV_SUMUP",
   TPV_UNICAJA = "TPV_UNICAJA",
+}
+
+export enum RolUsuario {
+  SUPER_ADMIN = "SUPER_ADMIN",
+  ADMIN = "ADMIN",
+  OPERADOR = "OPERADOR",
+  CLIENTE = "CLIENTE",
+}
+
+export interface Usuario {
+  id: string;
+  name?: string;
+  email: string;
+  role: RolUsuario;
+  activo: boolean;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface DashboardStats {

@@ -47,7 +47,8 @@ model User {
   emailVerified DateTime?
   image         String?
   password      String?
-  role          String    @default("admin")
+  role          RolUsuario @default(ADMIN)
+  activo        Boolean   @default(true)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   accounts      Account[]
@@ -263,4 +264,11 @@ enum TipoConfiguracion {
   TELEFONO
   DIRECCION
   ARCHIVO
+}
+
+enum RolUsuario {
+  SUPER_ADMIN
+  ADMIN
+  OPERADOR
+  CLIENTE
 }

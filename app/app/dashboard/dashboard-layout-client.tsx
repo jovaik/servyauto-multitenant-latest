@@ -21,6 +21,7 @@ import {
   CreditCard,
   ChevronDown
 } from 'lucide-react'
+import { RolUsuario } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
@@ -46,6 +47,16 @@ const navigation: NavItem[] = [
   { name: 'Configuración', href: '/dashboard/configuracion', icon: Settings },
 ]
 
+const getRoleLabel = (role: string): string => {
+  const roleLabels: { [key: string]: string } = {
+    [RolUsuario.SUPER_ADMIN]: 'Super Admin',
+    [RolUsuario.ADMIN]: 'Admin',
+    [RolUsuario.OPERADOR]: 'Operador',
+    [RolUsuario.CLIENTE]: 'Cliente',
+  }
+  return roleLabels[role] || role
+}
+
 export function DashboardLayoutClient({ children, session }: DashboardLayoutClientProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
@@ -57,7 +68,8 @@ export function DashboardLayoutClient({ children, session }: DashboardLayoutClie
   }
 
   const handleProfileClick = () => {
-    alert(`Perfil de ${session?.user?.name}\nEmail: ${session?.user?.email}\nRol: ${(session?.user as any)?.role || 'Admin'}`)
+    const role = (session?.user as any)?.role
+    alert(`Perfil de ${session?.user?.name}\nEmail: ${session?.user?.email}\nRol: ${getRoleLabel(role)}`)
     setUserMenuOpen(false)
   }
 
