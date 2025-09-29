@@ -163,20 +163,31 @@ export async function POST(req: NextRequest) {
         tipoDocumento = 'TICKET'
       }
       
-      // Generar número de documento
+      // Generar número de documento con formato correcto
+      const año = new Date().getFullYear()
+      const prefijo = tipoDocumento === 'FACTURA' ? 'FAC' : 'TICK'
+      
+      // Buscar la última factura o ticket del mismo tipo y año
       const ultimaFactura = await prisma.factura.findFirst({
-        where: { tipo: tipoDocumento },
-        orderBy: { numero: 'desc' }
+        where: { 
+          tipo: tipoDocumento,
+          numero: {
+            startsWith: `${prefijo}-${año}-`
+          }
+        },
+        orderBy: { createdAt: 'desc' }
       })
 
       let numeroSecuencia = 1
       if (ultimaFactura) {
-        const ultimoNumero = parseInt(ultimaFactura.numero.split('-')[1]) || 0
-        numeroSecuencia = ultimoNumero + 1
+        const partes = ultimaFactura.numero.split('-')
+        if (partes.length === 3 && partes[0] === prefijo) {
+          const ultimoNumero = parseInt(partes[2]) || 0
+          numeroSecuencia = ultimoNumero + 1
+        }
       }
 
-      const prefijo = tipoDocumento === 'FACTURA' ? 'FAC' : 'TIC'
-      const numero = `${prefijo}-${numeroSecuencia.toString().padStart(6, '0')}`
+      const numero = `${prefijo}-${año}-${numeroSecuencia.toString().padStart(4, '0')}`
 
       // Crear items de factura a partir de los servicios de la cita
       const itemsFactura = await Promise.all(
