@@ -14,7 +14,8 @@ import {
   Search,
   MoreHorizontal,
   ArrowUpDown,
-  Eye
+  Eye,
+  Trash2
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -138,6 +139,29 @@ export function FacturacionView() {
   const verDetalles = (factura: Factura) => {
     setSelectedFactura(factura)
     setShowDetalles(true)
+  }
+
+  const eliminarFactura = async (facturaId: string, numeroFactura: string) => {
+    if (!confirm(`¿Está seguro que desea eliminar el documento ${numeroFactura}? Esta acción no se puede deshacer.`)) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/facturas/${facturaId}`, {
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        alert('Documento eliminado correctamente')
+        loadFacturas() // Recargar la lista
+        loadStats() // Recargar estadísticas
+      } else {
+        throw new Error('Error en la respuesta del servidor')
+      }
+    } catch (error) {
+      console.error('Error deleting factura:', error)
+      alert('Error al eliminar el documento. Por favor intenta de nuevo.')
+    }
   }
 
   const getEstadoColor = (estado: string) => {
@@ -369,6 +393,13 @@ export function FacturacionView() {
                               onConvertido={loadFacturas}
                             />
                           )}
+                          <DropdownMenuItem 
+                            onClick={() => eliminarFactura(factura.id, factura.numero)}
+                            className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Eliminar Documento
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

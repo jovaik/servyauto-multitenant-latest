@@ -160,7 +160,7 @@ export function NuevaFacturaDialog({ onFacturaCreada }: NuevaFacturaDialogProps)
         items: items.filter(item => item.descripcion && item.precio > 0),
         metodoPago,
         solicitaFactura,
-        datosFacturacion: tipoDocumento === 'FACTURA' ? datosFacturacion : null
+        datosFacturacion: determinarTipoDocumento() === 'FACTURA' ? datosFacturacion : null
       }
 
       const response = await fetch('/api/facturas', {

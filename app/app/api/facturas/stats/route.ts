@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 
+// Mark this route as dynamic
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
@@ -13,58 +14,45 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
-    // Fecha actual para filtrar el mes
-    const now = new Date()
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+    // Obtener fecha del inicio del mes actual
+    const inicioMes = new Date()
+    inicioMes.setDate(1)
+    inicioMes.setHours(0, 0, 0, 0)
 
-    // Estadísticas paralelas
-    const [totalFacturas, totalTickets, ingresosMes, pendientesCobro] = await Promise.all([
-      // Total facturas
-      prisma.factura.count({
-        where: { tipo: 'FACTURA' }
-      }),
-      
-      // Total tickets
-      prisma.factura.count({
-        where: { tipo: 'TICKET' }
-      }),
-      
-      // Ingresos del mes actual
-      prisma.factura.aggregate({
-        where: {
-          estado: 'PAGADA',
-          fecha: {
-            gte: startOfMonth,
-            lte: endOfMonth
-          }
-        },
-        _sum: {
-          total: true
-        }
-      }),
-      
-      // Pendientes de cobro
-      prisma.factura.aggregate({
-        where: {
-          estado: 'PENDIENTE'
-        },
-        _sum: {
-          total: true
-        }
-      })
-    ])
+    // Obtener todas las facturas
+    const todasFacturas = await prisma.factura.findMany({
+      select: {
+        tipo: true,
+        total: true,
+        estado: true,
+        createdAt: true
+      }
+    })
+
+    // Calcular estadísticas
+    const totalFacturas = todasFacturas.filter(f => f.tipo === 'FACTURA').length
+    const totalTickets = todasFacturas.filter(f => f.tipo === 'TICKET').length
+    
+    // Ingresos del mes actual
+    const ingresosMes = todasFacturas
+      .filter(f => f.createdAt >= inicioMes && f.estado === 'PAGADA')
+      .reduce((sum, f) => sum + f.total, 0)
+
+    // Pendientes de cobro (estado PENDIENTE)
+    const pendientesCobro = todasFacturas
+      .filter(f => f.estado === 'PENDIENTE')
+      .reduce((sum, f) => sum + f.total, 0)
 
     const stats = {
       totalFacturas,
       totalTickets,
-      ingresosMes: ingresosMes._sum.total || 0,
-      pendientesCobro: pendientesCobro._sum.total || 0
+      ingresosMes,
+      pendientesCobro
     }
 
     return NextResponse.json(stats)
   } catch (error) {
-    console.error('Error fetching factura stats:', error)
+    console.error('Error fetching stats:', error)
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 }
