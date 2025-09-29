@@ -5,45 +5,15 @@
     · outputFileTracingRoot
 
  ✓ Starting...
- ✓ Ready in 1683ms
- ○ Compiling /dashboard/facturacion ...
- ✓ Compiled /dashboard/facturacion in 2.6s (2193 modules)
- GET /dashboard/facturacion 307 in 3027ms
- ✓ Compiled in 544ms (982 modules)
+ ✓ Ready in 1347ms
  ○ Compiling / ...
- ✓ Compiled / in 543ms (2185 modules)
- GET / 307 in 638ms
+ ✓ Compiled / in 2.1s (844 modules)
+ GET / 307 in 2513ms
+ ✓ Compiled in 471ms (309 modules)
+ GET / 307 in 57ms
  ○ Compiling /login ...
- ✓ Compiled /login in 508ms (2212 modules)
- GET /login 200 in 604ms
- ✓ Compiled /api/auth/[...nextauth] in 289ms (1238 modules)
- GET /api/auth/session 200 in 706ms
- GET /api/auth/session 200 in 37ms
- GET /api/auth/signin 302 in 34ms
- ✓ Compiled /dashboard in 380ms (2229 modules)
- GET /dashboard 307 in 485ms
- ✓ Compiled in 423ms (996 modules)
- GET /login?_rsc=v3pub 200 in 44ms
- ✓ Compiled in 256ms (996 modules)
- GET /login?_rsc=v3pub 200 in 42ms
- ✓ Compiled in 388ms (996 modules)
- GET /login?_rsc=v3pub 200 in 37ms
- ✓ Compiled in 602ms (1551 modules)
- GET /login?_rsc=v3pub 200 in 95ms
- ✓ Compiled in 610ms (1010 modules)
- GET /login?_rsc=v3pub 200 in 37ms
- ✓ Compiled in 321ms (1010 modules)
- GET /login?_rsc=v3pub 200 in 35ms
- ✓ Compiled in 348ms (1010 modules)
- GET /login?_rsc=v3pub 200 in 34ms
- ✓ Compiled in 359ms (1010 modules)
- GET /login?_rsc=v3pub 200 in 36ms
- ✓ Compiled in 346ms (1010 modules)
- GET /login?_rsc=v3pub 200 in 39ms
- ✓ Compiled in 377ms (1010 modules)
- GET /login?_rsc=v3pub 200 in 39ms
- ✓ Compiled in 259ms (1010 modules)
- GET /login?_rsc=v3pub 200 in 42ms
- ✓ Compiled in 251ms (1010 modules)
- GET /login?_rsc=v3pub 200 in 37ms
-[?25h
+ ✓ Compiled /login in 578ms (869 modules)
+ GET /login 200 in 728ms
+ ✓ Compiled /api/auth/[...nextauth] in 167ms (564 modules)
+ GET /api/auth/session 200 in 576ms
+ GET /api/auth/session 200 in 34ms
