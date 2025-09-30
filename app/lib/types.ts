@@ -35,6 +35,8 @@ export interface Servicio {
   precio: number;
   duracion: number;
   activo: boolean;
+  imagen?: string;
+  categoria?: CategoriaVehiculo;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -121,6 +123,13 @@ export enum RolUsuario {
   CLIENTE = "CLIENTE",
 }
 
+export enum CategoriaVehiculo {
+  PEQUENO = "PEQUENO",
+  MEDIO = "MEDIO", 
+  GRANDE = "GRANDE",
+  SUPER_GRANDE = "SUPER_GRANDE",
+}
+
 export interface Usuario {
   id: string;
   name?: string;
@@ -149,4 +158,44 @@ export interface CalendarSlot {
   box1?: Cita;
   box2?: Cita;
   box3?: Cita;
+}
+
+export interface GaleriaAntesDespues {
+  id: string;
+  titulo: string;
+  descripcion?: string;
+  imagenAntes: string;
+  imagenDespues: string;
+  servicio: string;
+  vehiculo: string;
+  categoria: CategoriaVehiculo;
+  destacado: boolean;
+  activo: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface PortfolioTrabajo {
+  id: string;
+  titulo: string;
+  descripcion?: string;
+  imagenes: string[];
+  servicio: string;
+  vehiculo: string;
+  categoria: CategoriaVehiculo;
+  destacado: boolean;
+  activo: boolean;
+  fechaRealizado?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ImagenCategoria {
+  id: string;
+  categoria: CategoriaVehiculo;
+  imagen: string;
+  descripcion?: string;
+  activo: boolean;
+  createdAt: Date;
+  updatedAt: Date;
 }

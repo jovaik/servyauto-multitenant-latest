@@ -107,6 +107,8 @@ model Servicio {
   precio      Float
   duracion    Int    // duracion en minutos
   activo      Boolean @default(true)
+  imagen      String? // URL de la imagen principal del servicio
+  categoria   CategoriaVehiculo? // Pequeño, Medio, Grande, Super Grande
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   citaServicios CitaServicio[]
@@ -268,4 +270,60 @@ enum RolUsuario {
   ADMIN
   OPERADOR
   CLIENTE
+}
+
+enum CategoriaVehiculo {
+  PEQUENO     // Coches pequeños (Ej: Fiat 500, Citroën C1)
+  MEDIO       // Coches medianos (Ej: Golf, Corolla)  
+  GRANDE      // Coches grandes (Ej: BMW Serie 5, Mercedes Clase E)
+  SUPER_GRANDE // SUVs, furgonetas (Ej: BMW X5, Mercedes Sprinter)
+}
+
+// Modelo para galería de trabajos antes/después
+model GaleriaAntesDespues {
+  id          String   @id @default(cuid())
+  titulo      String
+  descripcion String?
+  imagenAntes String   // URL de la imagen "antes"
+  imagenDespues String // URL de la imagen "después"
+  servicio    String   // Tipo de servicio realizado
+  vehiculo    String   // Información del vehículo
+  categoria   CategoriaVehiculo
+  destacado   Boolean  @default(false)
+  activo      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("galeria_antes_despues")
+}
+
+// Modelo para portfolio de trabajos terminados
+model PortfolioTrabajo {
+  id          String   @id @default(cuid())
+  titulo      String
+  descripcion String?
+  imagenes    String[] // Array de URLs de imágenes
+  servicio    String   // Servicio realizado
+  vehiculo    String   // Información del vehículo
+  categoria   CategoriaVehiculo
+  destacado   Boolean  @default(false)
+  activo      Boolean  @default(true)
+  fechaRealizado DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("portfolio_trabajos")
+}
+
+// Modelo para imágenes de categorías de vehículos
+model ImagenCategoria {
+  id          String   @id @default(cuid())
+  categoria   CategoriaVehiculo @unique
+  imagen      String   // URL de la imagen representativa
+  descripcion String?
+  activo      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("imagenes_categorias")
 }
