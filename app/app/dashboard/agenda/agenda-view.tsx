@@ -59,10 +59,15 @@ export function AgendaView() {
     
     while (
       currentHour < cierreHour || 
-      (currentHour === cierreHour && currentMinute < cierreMinute)
+      (currentHour === cierreHour && currentMinute <= cierreMinute)
     ) {
       const timeString = `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`
       slots.push(timeString)
+      
+      // Si llegamos exactamente a la hora de cierre, parar
+      if (currentHour === cierreHour && currentMinute === cierreMinute) {
+        break
+      }
       
       currentMinute += 30
       if (currentMinute >= 60) {

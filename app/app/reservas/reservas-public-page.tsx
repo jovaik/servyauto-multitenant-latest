@@ -35,6 +35,8 @@ export function ReservasPublicPage() {
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [timeSlots, setTimeSlots] = useState<string[]>([])
+  const [servicios, setServicios] = useState<any[]>([])
+  const [horarios, setHorarios] = useState({ apertura: '09:00', cierre: '19:00' })
   const [formData, setFormData] = useState({
     nombre: '',
     apellido: '',
@@ -49,6 +51,7 @@ export function ReservasPublicPage() {
 
   useEffect(() => {
     loadConfiguration()
+    loadServicios()
   }, [])
 
   const generateTimeSlots = (apertura: string, cierre: string): string[] => {
@@ -61,10 +64,15 @@ export function ReservasPublicPage() {
     
     while (
       currentHour < cierreHour || 
-      (currentHour === cierreHour && currentMinute < cierreMinute)
+      (currentHour === cierreHour && currentMinute <= cierreMinute)
     ) {
       const timeString = `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`
       slots.push(timeString)
+      
+      // Si llegamos exactamente a la hora de cierre, parar
+      if (currentHour === cierreHour && currentMinute === cierreMinute) {
+        break
+      }
       
       currentMinute += 30
       if (currentMinute >= 60) {
@@ -89,6 +97,8 @@ export function ReservasPublicPage() {
         const apertura = aperturaConfig?.valor || '09:00'
         const cierre = cierreConfig?.valor || '19:00'
         
+        setHorarios({ apertura, cierre })
+        
         const slots = generateTimeSlots(apertura, cierre)
         setTimeSlots(slots)
       }
@@ -96,22 +106,34 @@ export function ReservasPublicPage() {
       console.error('Error loading configuration:', error)
       // Fallback a horarios por defecto
       setTimeSlots(generateTimeSlots('09:00', '19:00'))
+      setHorarios({ apertura: '09:00', cierre: '19:00' })
     }
   }
 
-  const servicios = [
-    'Cambio de aceite',
-    'Revisión general', 
-    'Cambio de frenos',
-    'Alineación',
-    'Cambio de neumáticos',
-    'Revisión de motor',
-    'Mantenimiento preventivo',
-    'Diagnóstico computarizado',
-    'Reparación de transmisión',
-    'Servicio de aire acondicionado',
-    'Otro (especificar en mensaje)'
-  ]
+  const loadServicios = async () => {
+    try {
+      const response = await fetch('/api/servicios')
+      if (response.ok) {
+        const data = await response.json()
+        setServicios(data || [])
+      }
+    } catch (error) {
+      console.error('Error loading servicios:', error)
+      // Fallback a servicios por defecto
+      setServicios([
+        { id: 1, nombre: 'Lavado exterior básico' },
+        { id: 2, nombre: 'Lavado completo + interior' },
+        { id: 3, nombre: 'Detailing completo' },
+        { id: 4, nombre: 'Pulido y encerado' },
+        { id: 5, nombre: 'Tratamiento nanocerámico' },
+        { id: 6, nombre: 'Vinilado' },
+        { id: 7, nombre: 'Colocación PPF' },
+        { id: 8, nombre: 'Otro (especificar en mensaje)' }
+      ])
+    }
+  }
+
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -200,7 +222,7 @@ export function ReservasPublicPage() {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">ServyAuto</h1>
-                <p className="text-sm text-gray-500">Taller Automotriz</p>
+                <p className="text-sm text-gray-500">Lavado & Detailing</p>
               </div>
             </div>
             <div className="flex items-center space-x-4">
@@ -218,10 +240,10 @@ export function ReservasPublicPage() {
           <div>
             <div className="mb-8">
               <h2 className="text-4xl font-bold text-gray-900 mb-4">
-                Reserva tu Cita
+                Reserva tu Servicio
               </h2>
               <p className="text-xl text-gray-600">
-                Solicita una cita para el mantenimiento y reparación de tu vehículo. Te contactaremos para confirmar la disponibilidad.
+                Solicita una cita para el lavado y cuidado estético de tu vehículo. Te contactaremos para confirmar la disponibilidad.
               </p>
             </div>
 
@@ -231,9 +253,9 @@ export function ReservasPublicPage() {
                   <Settings className="h-6 w-6 text-blue-600" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-2">Servicios Profesionales</h3>
+                  <h3 className="font-semibold text-gray-900 mb-2">Servicios Especializados</h3>
                   <p className="text-gray-600">
-                    Mantenimiento preventivo, reparaciones, diagnóstico computarizado y más servicios especializados.
+                    Detailing completo, pulido profesional, tratamientos nanocerámicos, vinilado y protección PPF.
                   </p>
                 </div>
               </div>
@@ -243,9 +265,9 @@ export function ReservasPublicPage() {
                   <Shield className="h-6 w-6 text-green-600" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-2">Confianza y Calidad</h3>
+                  <h3 className="font-semibold text-gray-900 mb-2">Calidad Premium</h3>
                   <p className="text-gray-600">
-                    Más de 10 años de experiencia en el sector automotriz con técnicos certificados.
+                    Productos y técnicas de última generación para el cuidado estético de tu vehículo.
                   </p>
                 </div>
               </div>
@@ -255,9 +277,9 @@ export function ReservasPublicPage() {
                   <Star className="h-6 w-6 text-yellow-600" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-2">Atención Personalizada</h3>
+                  <h3 className="font-semibold text-gray-900 mb-2">Cuidado Personalizado</h3>
                   <p className="text-gray-600">
-                    Cada vehículo es único. Ofrecemos soluciones personalizadas para tus necesidades.
+                    Cada vehículo recibe el tratamiento específico que necesita según su estado y características.
                   </p>
                 </div>
               </div>
@@ -268,11 +290,11 @@ export function ReservasPublicPage() {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Lunes - Viernes:</span>
-                  <span className="font-medium">8:00 - 19:00</span>
+                  <span className="font-medium">{horarios.apertura} - {horarios.cierre}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Sábados:</span>
-                  <span className="font-medium">8:00 - 14:00</span>
+                  <span className="font-medium">{horarios.apertura} - 14:00</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Domingos:</span>
@@ -419,8 +441,8 @@ export function ReservasPublicPage() {
                       <SelectContent>
                         <SelectItem value="servicio-placeholder" disabled>Selecciona servicio</SelectItem>
                         {servicios.map((servicio) => (
-                          <SelectItem key={servicio} value={servicio}>
-                            {servicio}
+                          <SelectItem key={servicio.id || servicio.nombre} value={servicio.nombre}>
+                            {servicio.nombre}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -437,7 +459,7 @@ export function ReservasPublicPage() {
                       id="mensaje"
                       value={formData.mensaje}
                       onChange={(e) => setFormData(prev => ({ ...prev, mensaje: e.target.value }))}
-                      placeholder="Describe cualquier detalle específico sobre tu vehículo o el servicio requerido..."
+                      placeholder="Describe el estado del vehículo, tipo de acabado, o detalles específicos del servicio requerido..."
                       rows={3}
                     />
                   </div>

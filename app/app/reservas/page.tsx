@@ -3,8 +3,8 @@ import { ReservasPublicPage } from './reservas-public-page'
 import { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Reserva tu Cita - ServyAuto Manager',
-  description: 'Solicita una cita para el mantenimiento y reparación de tu vehículo',
+  title: 'Reserva tu Servicio - ServyAuto Manager',
+  description: 'Solicita una cita para el lavado y cuidado estético de tu vehículo',
 }
 
 export default function PublicReservasPage() {
