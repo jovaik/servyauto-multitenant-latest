@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { format } from 'date-fns'
+import { es } from 'date-fns/locale'
 import { 
   Car, 
   Calendar, 
@@ -34,9 +35,11 @@ import Link from 'next/link'
 export function ReservasPublicPage() {
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [currentStep, setCurrentStep] = useState(1) // 1: servicios, 2: fecha/hora, 3: datos personales
   const [timeSlots, setTimeSlots] = useState<string[]>([])
   const [servicios, setServicios] = useState<any[]>([])
   const [horarios, setHorarios] = useState({ apertura: '09:00', cierre: '19:00' })
+  const [selectedService, setSelectedService] = useState<any>(null)
   const [formData, setFormData] = useState({
     nombre: '',
     apellido: '',
@@ -119,17 +122,89 @@ export function ReservasPublicPage() {
       }
     } catch (error) {
       console.error('Error loading servicios:', error)
-      // Fallback a servicios por defecto
+      // Fallback a servicios por defecto con precios
       setServicios([
-        { id: 1, nombre: 'Lavado exterior básico' },
-        { id: 2, nombre: 'Lavado completo + interior' },
-        { id: 3, nombre: 'Detailing completo' },
-        { id: 4, nombre: 'Pulido y encerado' },
-        { id: 5, nombre: 'Tratamiento nanocerámico' },
-        { id: 6, nombre: 'Vinilado' },
-        { id: 7, nombre: 'Colocación PPF' },
-        { id: 8, nombre: 'Otro (especificar en mensaje)' }
+        { 
+          id: 1, 
+          nombre: 'Lavado Exterior Básico', 
+          precio: 15, 
+          descripcion: 'Lavado exterior completo con jabón y aclarado. Incluye llantas y cristales.',
+          duracion: '30 min',
+          imagen: '/api/placeholder/300/200'
+        },
+        { 
+          id: 2, 
+          nombre: 'Lavado Completo + Interior', 
+          precio: 25, 
+          descripcion: 'Lavado exterior completo más aspirado interior, limpieza de salpicadero y cristales interiores.',
+          duracion: '45 min',
+          imagen: '/api/placeholder/300/200'
+        },
+        { 
+          id: 3, 
+          nombre: 'Detailing Completo', 
+          precio: 65, 
+          descripcion: 'Servicio premium: lavado, descontaminación, pulido suave, cera protectora y acondicionador de interiores.',
+          duracion: '2 horas',
+          imagen: '/api/placeholder/300/200'
+        },
+        { 
+          id: 4, 
+          nombre: 'Pulido y Encerado', 
+          precio: 45, 
+          descripcion: 'Corrección de arañazos menores, pulido para devolver el brillo original y aplicación de cera protectora.',
+          duracion: '90 min',
+          imagen: '/api/placeholder/300/200'
+        },
+        { 
+          id: 5, 
+          nombre: 'Tratamiento Nanocerámico', 
+          precio: 180, 
+          descripcion: 'Protección avanzada con recubrimiento cerámico. Durabilidad de 12-24 meses. Incluye preparación completa.',
+          duracion: '4 horas',
+          imagen: '/api/placeholder/300/200'
+        },
+        { 
+          id: 6, 
+          nombre: 'Vinilado Personalizado', 
+          precio: 299, 
+          descripcion: 'Vinilado completo o parcial del vehículo. Amplia gama de colores y acabados. Consulta diseños personalizados.',
+          duracion: '6-8 horas',
+          imagen: '/api/placeholder/300/200'
+        },
+        { 
+          id: 7, 
+          nombre: 'Instalación PPF', 
+          precio: 450, 
+          descripcion: 'Paint Protection Film de alta calidad. Protección invisible contra impactos. Zonas de alta exposición.',
+          duracion: '1-2 días',
+          imagen: '/api/placeholder/300/200'
+        },
+        { 
+          id: 8, 
+          nombre: 'Servicio Personalizado', 
+          precio: 0, 
+          descripcion: 'Consulta para servicios específicos o combinaciones. Presupuesto personalizado según necesidades.',
+          duracion: 'Variable',
+          imagen: '/api/placeholder/300/200'
+        }
       ])
+    }
+  }
+
+  const handleServiceSelect = (servicio: any) => {
+    setSelectedService(servicio)
+    setFormData(prev => ({ ...prev, servicio: servicio.nombre }))
+    setCurrentStep(2)
+  }
+
+  const handleDateTimeSelect = () => {
+    setCurrentStep(3)
+  }
+
+  const goBack = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1)
     }
   }
 
@@ -235,88 +310,239 @@ export function ReservasPublicPage() {
       </div>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid lg:grid-cols-2 gap-12">
-          {/* Left Column - Info */}
+        {/* Progress Steps */}
+        <div className="mb-8">
+          <div className="flex items-center justify-center space-x-4">
+            {[1, 2, 3].map((step) => (
+              <div key={step} className="flex items-center">
+                <div 
+                  className={`
+                    w-10 h-10 rounded-full flex items-center justify-center font-semibold
+                    ${currentStep >= step 
+                      ? 'bg-blue-600 text-white' 
+                      : 'bg-gray-200 text-gray-600'
+                    }
+                  `}
+                >
+                  {step}
+                </div>
+                <span 
+                  className={`ml-2 font-medium ${
+                    currentStep >= step ? 'text-blue-600' : 'text-gray-500'
+                  }`}
+                >
+                  {step === 1 && 'Elige tu servicio'}
+                  {step === 2 && 'Fecha y hora'}
+                  {step === 3 && 'Tus datos'}
+                </span>
+                {step < 3 && (
+                  <div 
+                    className={`w-12 h-0.5 ml-4 ${
+                      currentStep > step ? 'bg-blue-600' : 'bg-gray-200'
+                    }`}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* STEP 1: Servicios */}
+        {currentStep === 1 && (
           <div>
-            <div className="mb-8">
+            <div className="text-center mb-12">
               <h2 className="text-4xl font-bold text-gray-900 mb-4">
-                Reserva tu Servicio
+                Nuestros Servicios
               </h2>
-              <p className="text-xl text-gray-600">
-                Solicita una cita para el lavado y cuidado estético de tu vehículo. Te contactaremos para confirmar la disponibilidad.
+              <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+                Desde lavados básicos hasta tratamientos premium de protección. Elige el servicio que mejor se adapte a las necesidades de tu vehículo.
               </p>
             </div>
 
-            <div className="space-y-6">
-              <div className="flex items-start space-x-4">
-                <div className="bg-blue-100 p-3 rounded-full">
-                  <Settings className="h-6 w-6 text-blue-600" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900 mb-2">Servicios Especializados</h3>
-                  <p className="text-gray-600">
-                    Detailing completo, pulido profesional, tratamientos nanocerámicos, vinilado y protección PPF.
-                  </p>
-                </div>
-              </div>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+              {servicios.map((servicio) => (
+                <Card 
+                  key={servicio.id} 
+                  className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:-translate-y-1"
+                  onClick={() => handleServiceSelect(servicio)}
+                >
+                  <div className="aspect-video bg-gradient-to-br from-blue-100 to-blue-200 rounded-t-lg flex items-center justify-center">
+                    <Car className="h-16 w-16 text-blue-600" />
+                  </div>
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <CardTitle className="text-lg">{servicio.nombre}</CardTitle>
+                      <div className="text-right">
+                        <div className="text-2xl font-bold text-blue-600">
+                          {servicio.precio > 0 ? `${servicio.precio}€` : 'Consultar'}
+                        </div>
+                        <div className="text-sm text-gray-500">{servicio.duracion}</div>
+                      </div>
+                    </div>
+                    <CardDescription className="text-sm leading-relaxed">
+                      {servicio.descripcion}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <Button className="w-full">
+                      Seleccionar este servicio
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
 
-              <div className="flex items-start space-x-4">
-                <div className="bg-green-100 p-3 rounded-full">
-                  <Shield className="h-6 w-6 text-green-600" />
+            {/* Info adicional */}
+            <div className="grid md:grid-cols-3 gap-6 mb-12">
+              <div className="text-center">
+                <div className="bg-blue-100 p-4 rounded-full inline-block mb-4">
+                  <Settings className="h-8 w-8 text-blue-600" />
                 </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900 mb-2">Calidad Premium</h3>
-                  <p className="text-gray-600">
-                    Productos y técnicas de última generación para el cuidado estético de tu vehículo.
-                  </p>
-                </div>
+                <h3 className="font-semibold text-gray-900 mb-2">Equipos Profesionales</h3>
+                <p className="text-gray-600 text-sm">
+                  Utilizamos los mejores productos y herramientas del mercado para garantizar resultados excepcionales.
+                </p>
               </div>
-
-              <div className="flex items-start space-x-4">
-                <div className="bg-yellow-100 p-3 rounded-full">
-                  <Star className="h-6 w-6 text-yellow-600" />
+              
+              <div className="text-center">
+                <div className="bg-green-100 p-4 rounded-full inline-block mb-4">
+                  <Shield className="h-8 w-8 text-green-600" />
                 </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900 mb-2">Cuidado Personalizado</h3>
-                  <p className="text-gray-600">
-                    Cada vehículo recibe el tratamiento específico que necesita según su estado y características.
-                  </p>
+                <h3 className="font-semibold text-gray-900 mb-2">Garantía de Calidad</h3>
+                <p className="text-gray-600 text-sm">
+                  Todos nuestros servicios incluyen garantía y la tranquilidad de un trabajo bien hecho.
+                </p>
+              </div>
+              
+              <div className="text-center">
+                <div className="bg-yellow-100 p-4 rounded-full inline-block mb-4">
+                  <Star className="h-8 w-8 text-yellow-600" />
                 </div>
+                <h3 className="font-semibold text-gray-900 mb-2">Atención Personalizada</h3>
+                <p className="text-gray-600 text-sm">
+                  Cada vehículo recibe un tratamiento único según su estado y necesidades específicas.
+                </p>
               </div>
             </div>
 
-            <div className="mt-8 p-6 bg-white rounded-xl shadow-sm">
-              <h3 className="font-semibold text-gray-900 mb-4">Horarios de Atención</h3>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Lunes - Viernes:</span>
-                  <span className="font-medium">{horarios.apertura} - {horarios.cierre}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Sábados:</span>
-                  <span className="font-medium">{horarios.apertura} - 14:00</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Domingos:</span>
-                  <span className="font-medium">Cerrado</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Column - Form */}
-          <div>
-            <Card>
+            {/* Horarios */}
+            <Card className="max-w-md mx-auto">
               <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Calendar className="mr-2 h-5 w-5" />
-                  Formulario de Reserva
-                </CardTitle>
-                <CardDescription>
-                  Completa tus datos y te contactaremos para confirmar tu cita
-                </CardDescription>
+                <CardTitle className="text-center">Horarios de Atención</CardTitle>
               </CardHeader>
               <CardContent>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Lunes - Viernes:</span>
+                    <span className="font-medium">{horarios.apertura} - {horarios.cierre}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Sábados:</span>
+                    <span className="font-medium">10:00 - 19:00</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Domingos:</span>
+                    <span className="font-medium">Cerrado</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* STEP 2: Fecha y Hora */}
+        {currentStep === 2 && (
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold text-gray-900 mb-4">
+                Selecciona Fecha y Hora
+              </h2>
+              <p className="text-lg text-gray-600">
+                Has seleccionado: <span className="font-semibold text-blue-600">{selectedService?.nombre}</span>
+                {selectedService?.precio > 0 && (
+                  <span> - {selectedService.precio}€</span>
+                )}
+              </p>
+            </div>
+
+            <Card>
+              <CardContent className="p-8">
+                <div className="grid md:grid-cols-2 gap-8">
+                  {/* Fecha */}
+                  <div className="space-y-4">
+                    <Label className="text-lg font-semibold flex items-center">
+                      <Calendar className="mr-2 h-5 w-5" />
+                      Elige la fecha
+                    </Label>
+                    <Input
+                      type="date"
+                      required
+                      min={format(new Date(), 'yyyy-MM-dd')}
+                      value={formData.fecha}
+                      onChange={(e) => setFormData(prev => ({ ...prev, fecha: e.target.value }))}
+                      className="text-lg p-4"
+                    />
+                  </div>
+
+                  {/* Hora */}
+                  <div className="space-y-4">
+                    <Label className="text-lg font-semibold flex items-center">
+                      <Clock className="mr-2 h-5 w-5" />
+                      Elige la hora
+                    </Label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {timeSlots.map((time) => (
+                        <Button
+                          key={time}
+                          variant={formData.hora === time ? "default" : "outline"}
+                          onClick={() => setFormData(prev => ({ ...prev, hora: time }))}
+                          className="p-3"
+                        >
+                          {time}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-between mt-8">
+                  <Button variant="outline" onClick={goBack}>
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Cambiar servicio
+                  </Button>
+                  <Button 
+                    onClick={handleDateTimeSelect}
+                    disabled={!formData.fecha || !formData.hora}
+                    size="lg"
+                  >
+                    Continuar con mis datos
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* STEP 3: Datos Personales */}
+        {currentStep === 3 && (
+          <div className="max-w-2xl mx-auto">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold text-gray-900 mb-4">
+                Completa tu Reserva
+              </h2>
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <p className="text-lg text-gray-700">
+                  <span className="font-semibold">{selectedService?.nombre}</span>
+                  {selectedService?.precio > 0 && <span> - {selectedService.precio}€</span>}
+                </p>
+                <p className="text-gray-600">
+                  {format(new Date(formData.fecha + 'T00:00:00'), "EEEE, d 'de' MMMM", { locale: es })} a las {formData.hora}
+                </p>
+              </div>
+            </div>
+
+            <Card>
+              <CardContent className="p-8">
                 <form onSubmit={handleSubmit} className="space-y-6">
                   {/* Datos personales */}
                   <div className="grid grid-cols-2 gap-4">
@@ -375,45 +601,6 @@ export function ReservasPublicPage() {
                     />
                   </div>
 
-                  {/* Fecha y hora */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="fecha">
-                        <Calendar className="inline mr-1 h-4 w-4" />
-                        Fecha preferida *
-                      </Label>
-                      <Input
-                        id="fecha"
-                        type="date"
-                        required
-                        min={format(new Date(), 'yyyy-MM-dd')}
-                        value={formData.fecha}
-                        onChange={(e) => setFormData(prev => ({ ...prev, fecha: e.target.value }))}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>
-                        <Clock className="inline mr-1 h-4 w-4" />
-                        Hora preferida *
-                      </Label>
-                      <Select value={formData.hora || "hora-placeholder"} onValueChange={(value) => 
-                        setFormData(prev => ({ ...prev, hora: value === "hora-placeholder" ? "" : value }))
-                      }>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecciona hora" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="hora-placeholder" disabled>Selecciona hora</SelectItem>
-                          {timeSlots.map((time) => (
-                            <SelectItem key={time} value={time}>
-                              {time}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
                   {/* Vehículo */}
                   <div className="space-y-2">
                     <Label htmlFor="vehiculo">
@@ -429,31 +616,11 @@ export function ReservasPublicPage() {
                     />
                   </div>
 
-                  {/* Servicio */}
-                  <div className="space-y-2">
-                    <Label>Servicio requerido *</Label>
-                    <Select value={formData.servicio || "servicio-placeholder"} onValueChange={(value) => 
-                      setFormData(prev => ({ ...prev, servicio: value === "servicio-placeholder" ? "" : value }))
-                    }>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecciona el servicio" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="servicio-placeholder" disabled>Selecciona servicio</SelectItem>
-                        {servicios.map((servicio) => (
-                          <SelectItem key={servicio.id || servicio.nombre} value={servicio.nombre}>
-                            {servicio.nombre}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
                   {/* Mensaje */}
                   <div className="space-y-2">
                     <Label htmlFor="mensaje">
                       <MessageSquare className="inline mr-1 h-4 w-4" />
-                      Mensaje adicional
+                      Mensaje adicional (opcional)
                     </Label>
                     <Textarea
                       id="mensaje"
@@ -464,14 +631,20 @@ export function ReservasPublicPage() {
                     />
                   </div>
 
-                  <Button 
-                    type="submit" 
-                    className="w-full" 
-                    disabled={loading}
-                    size="lg"
-                  >
-                    {loading ? 'Enviando...' : 'Enviar Solicitud de Reserva'}
-                  </Button>
+                  <div className="flex justify-between">
+                    <Button variant="outline" onClick={goBack}>
+                      <ArrowLeft className="mr-2 h-4 w-4" />
+                      Cambiar fecha/hora
+                    </Button>
+                    <Button 
+                      type="submit" 
+                      disabled={loading}
+                      size="lg"
+                      className="px-8"
+                    >
+                      {loading ? 'Enviando...' : 'Confirmar Reserva'}
+                    </Button>
+                  </div>
 
                   <p className="text-xs text-gray-500 text-center">
                     * Campos requeridos. Te contactaremos en las próximas horas para confirmar tu cita.
@@ -480,7 +653,7 @@ export function ReservasPublicPage() {
               </CardContent>
             </Card>
           </div>
-        </div>
+        )}
       </div>
     </div>
   )
