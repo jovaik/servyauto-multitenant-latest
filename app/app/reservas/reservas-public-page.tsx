@@ -1,7 +1,7 @@
 
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { format } from 'date-fns'
 import { 
   Car, 
@@ -34,6 +34,7 @@ import Link from 'next/link'
 export function ReservasPublicPage() {
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [timeSlots, setTimeSlots] = useState<string[]>([])
   const [formData, setFormData] = useState({
     nombre: '',
     apellido: '',
@@ -46,12 +47,57 @@ export function ReservasPublicPage() {
     mensaje: ''
   })
 
-  const timeSlots = [
-    '08:00', '08:30', '09:00', '09:30', '10:00', '10:30',
-    '11:00', '11:30', '12:00', '12:30', '13:00', '13:30',
-    '14:00', '14:30', '15:00', '15:30', '16:00', '16:30',
-    '17:00', '17:30', '18:00', '18:30'
-  ]
+  useEffect(() => {
+    loadConfiguration()
+  }, [])
+
+  const generateTimeSlots = (apertura: string, cierre: string): string[] => {
+    const slots: string[] = []
+    const [aperturaHour, aperturaMinute] = apertura.split(':').map(Number)
+    const [cierreHour, cierreMinute] = cierre.split(':').map(Number)
+    
+    let currentHour = aperturaHour
+    let currentMinute = aperturaMinute
+    
+    while (
+      currentHour < cierreHour || 
+      (currentHour === cierreHour && currentMinute < cierreMinute)
+    ) {
+      const timeString = `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`
+      slots.push(timeString)
+      
+      currentMinute += 30
+      if (currentMinute >= 60) {
+        currentHour += 1
+        currentMinute = 0
+      }
+    }
+    
+    return slots
+  }
+
+  const loadConfiguration = async () => {
+    try {
+      const response = await fetch('/api/configuracion')
+      if (response.ok) {
+        const configs = await response.json()
+        
+        // Cargar horarios
+        const aperturaConfig = configs?.find((c: any) => c.clave === 'horarios.apertura')
+        const cierreConfig = configs?.find((c: any) => c.clave === 'horarios.cierre')
+        
+        const apertura = aperturaConfig?.valor || '09:00'
+        const cierre = cierreConfig?.valor || '19:00'
+        
+        const slots = generateTimeSlots(apertura, cierre)
+        setTimeSlots(slots)
+      }
+    } catch (error) {
+      console.error('Error loading configuration:', error)
+      // Fallback a horarios por defecto
+      setTimeSlots(generateTimeSlots('09:00', '19:00'))
+    }
+  }
 
   const servicios = [
     'Cambio de aceite',
