@@ -1,0 +1,157 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instalación Sin SSH - ServyAuto Manager</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; background: #f5f5f5; }
+        .card { background: white; padding: 20px; margin: 20px 0; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .step { background: #e3f2fd; padding: 15px; margin: 10px 0; border-left: 5px solid #2196f3; border-radius: 5px; }
+        .warning { background: #fff3cd; color: #856404; padding: 15px; border-radius: 5px; border: 1px solid #ffeaa7; }
+        .success { background: #d4edda; color: #155724; padding: 15px; border-radius: 5px; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; padding: 15px; border-radius: 5px; border: 1px solid #f5c6cb; }
+        .code { background: #f8f9fa; padding: 10px; border-radius: 5px; font-family: monospace; margin: 10px 0; }
+        h1 { color: #2196f3; text-align: center; }
+        h2 { color: #4caf50; }
+        h3 { color: #ff9800; }
+        .btn { display: inline-block; padding: 10px 20px; background: #2196f3; color: white; text-decoration: none; border-radius: 5px; margin: 10px 5px; }
+        .btn:hover { background: #1976d2; }
+        ul { line-height: 1.6; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🚀 Instalación ServyAuto Manager v8.9</h1>
+        <h2>Sin acceso SSH - Solo Administrador de Archivos</h2>
+    </div>
+
+    <div class="card">
+        <h2>🎯 OPCIÓN 1: Instalador Web Automático (RECOMENDADO)</h2>
+        <div class="step">
+            <h3>Paso 1: Subir el instalador</h3>
+            <p>Sube el archivo <strong>instalador-web.php</strong> a tu carpeta principal del hosting usando el administrador de archivos.</p>
+        </div>
+        
+        <div class="step">
+            <h3>Paso 2: Ejecutar instalador</h3>
+            <p>Abre tu navegador y ve a:</p>
+            <div class="code">http://tu-dominio.com/instalador-web.php</div>
+            <p>Haz clic en <strong>"Instalación Completa"</strong> y espera a que termine.</p>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>🛠️ OPCIÓN 2: A través del Panel de Control del Hosting</h2>
+        <div class="warning">
+            <strong>📝 Pasos en tu Panel de Hosting:</strong>
+        </div>
+        
+        <div class="step">
+            <h3>1. Buscar "Terminal" o "SSH"</h3>
+            <p>Muchos hostings tienen un terminal web en el panel de control. Búscalo en secciones como:</p>
+            <ul>
+                <li>"Herramientas Avanzadas"</li>
+                <li>"Terminal Web"</li>
+                <li>"SSH Terminal"</li>
+                <li>"Línea de Comandos"</li>
+            </ul>
+        </div>
+        
+        <div class="step">
+            <h3>2. Si encuentras terminal web:</h3>
+            <div class="code">
+cd /ruta/donde/esta/tu/proyecto<br>
+chmod +x install.sh<br>
+./install.sh
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>🔧 OPCIÓN 3: Hosting Específico</h2>
+        
+        <div class="step">
+            <h3>cPanel (muy común):</h3>
+            <p>1. Busca "Terminal" en cPanel<br>
+            2. Ejecuta los comandos de instalación</p>
+        </div>
+        
+        <div class="step">
+            <h3>Hostinger:</h3>
+            <p>1. Ve a "Hosting" > "Administrar"<br>
+            2. Busca "SSH Access" o "Terminal"</p>
+        </div>
+        
+        <div class="step">
+            <h3>SiteGround:</h3>
+            <p>1. Site Tools > "Dev" > "SSH Keys Manager"</p>
+        </div>
+        
+        <div class="step">
+            <h3>GoDaddy:</h3>
+            <p>1. cPanel > "Terminal"</p>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>🆘 OPCIÓN 4: Si nada funciona</h2>
+        
+        <div class="error">
+            <h3>Tu hosting podría no soportar Node.js</h3>
+            <p>Muchos hostings compartidos básicos no soportan aplicaciones Node.js. En este caso necesitas:</p>
+            <ul>
+                <li><strong>VPS</strong> (Servidor Virtual Privado)</li>
+                <li><strong>Hosting especializado en Node.js</strong> como:
+                    <ul>
+                        <li>Heroku</li>
+                        <li>Vercel</li>
+                        <li>Netlify</li>
+                        <li>DigitalOcean</li>
+                        <li>Railway</li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+        
+        <div class="success">
+            <h3>✅ Alternativas gratuitas para probar:</h3>
+            <ul>
+                <li><strong>Vercel:</strong> Perfecto para Next.js</li>
+                <li><strong>Railway:</strong> Fácil deploy</li>
+                <li><strong>Heroku:</strong> Clásico y confiable</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>📞 Contactar a tu Proveedor de Hosting</h2>
+        <div class="warning">
+            <h3>Pregunta específica que puedes hacer:</h3>
+            <p><em>"Hola, necesito instalar una aplicación Node.js (Next.js) en mi hosting. ¿Tienen soporte para Node.js y npm? ¿Cómo puedo ejecutar comandos de instalación?"</em></p>
+        </div>
+        
+        <div class="step">
+            <h3>Información que debes proporcionar:</h3>
+            <ul>
+                <li>Es una aplicación <strong>Next.js</strong></li>
+                <li>Necesitas ejecutar <strong>npm install</strong> y <strong>npm run build</strong></li>
+                <li>La aplicación usa el puerto <strong>3000</strong></li>
+                <li>Tienes base de datos <strong>PostgreSQL</strong> configurada</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="success">
+            <h2>🎉 Una vez instalado:</h2>
+            <p>Tu aplicación estará disponible en:<br>
+            <strong>http://tu-dominio.com:3000</strong></p>
+            <p>O sin puerto si configuras proxy reverso:<br>
+            <strong>http://tu-dominio.com</strong></p>
+        </div>
+    </div>
+
+</body>
+</html>
