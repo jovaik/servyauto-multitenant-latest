@@ -1,0 +1,49 @@
+
+=== COMANDOS PARA EJECUTAR EN TU HOSTING ===
+
+📁 1. SUBIR ARCHIVOS
+- Sube toda la carpeta "servyauto_manager_v89" a tu hosting
+- Ubicación recomendada: /home/usuario/public_html/servyauto/
+
+🔧 2. CONECTAR POR SSH Y NAVEGAR
+ssh usuario@tu-servidor.com
+cd /ruta/donde/subiste/servyauto_manager_v89
+
+⚡ 3. INSTALACIÓN RÁPIDA (RECOMENDADA)
+chmod +x install.sh
+./install.sh
+
+🚀 4. INICIAR APLICACIÓN
+cd app
+npm run start
+
+📋 5. COMANDOS INDIVIDUALES (si prefieres manual)
+cd app
+npm install
+npx prisma generate  
+npx prisma db push
+npm run build
+npm run start
+
+🔄 6. REINICIAR APLICACIÓN
+pkill -f "next start"
+cd app
+npm run start
+
+📊 7. VERIFICAR QUE FUNCIONA
+curl http://localhost:3000
+# O abrir en navegador: http://tu-dominio.com:3000
+
+🔍 8. VER LOGS
+tail -f logs/app.log
+
+📝 NOTAS IMPORTANTES:
+- La app se ejecuta en el puerto 3000
+- Para acceso sin puerto, configura proxy reverso
+- Base de datos ya configurada en .env
+- Todos los archivos listos para producción
+
+¿PROBLEMAS?
+1. Verificar que Node.js está instalado: node --version
+2. Verificar permisos de archivos: chmod -R 755 .
+3. Verificar puerto disponible: netstat -tlpn | grep :3000
