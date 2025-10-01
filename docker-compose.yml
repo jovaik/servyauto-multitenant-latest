@@ -1,0 +1,73 @@
+
+# Docker Compose para ServyAuto Manager v8.9 en Synology
+# Usar desde Container Manager en DSM
+
+version: '3.8'
+
+services:
+  # Base de datos PostgreSQL
+  postgres:
+    image: postgres:14-alpine
+    container_name: postgres-servyauto
+    restart: always
+    environment:
+      POSTGRES_USER: servyauto
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-TuPasswordSeguro123}
+      POSTGRES_DB: servyauto_db
+      POSTGRES_INITDB_ARGS: "-E UTF8"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - servyauto-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U servyauto"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Aplicación ServyAuto Manager
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: servyauto-app
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://servyauto:${DB_PASSWORD:-TuPasswordSeguro123}@postgres:5432/servyauto_db?schema=public
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      PORT: 3000
+    volumes:
+      - ./app/.env:/app/.env:ro
+    ports:
+      - "3000:3000"
+    networks:
+      - servyauto-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  postgres-data:
+    driver: local
+
+networks:
+  servyauto-network:
+    driver: bridge
+
+# Configuración de recursos (ajustar según tu Synology)
+# x-resources: &default-resources
+#   limits:
+#     cpus: '2'
+#     memory: 4G
+#   reservations:
+#     memory: 2G

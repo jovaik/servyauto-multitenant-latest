@@ -1,0 +1,486 @@
+
+╔══════════════════════════════════════════════════════════════╗
+║                                                              ║
+║   🚀 SYNOLOGY - COMANDOS RÁPIDOS PARA SERVYAUTO MANAGER    ║
+║                                                              ║
+╚══════════════════════════════════════════════════════════════╝
+
+
+📋 INSTALACIÓN RÁPIDA (MÉTODO DOCKER)
+═══════════════════════════════════════════════════════════════
+
+
+🔧 1. PREPARACIÓN INICIAL
+───────────────────────────
+
+# Conectar por SSH
+ssh admin@tu-synology.local
+
+
+# Crear directorios
+sudo mkdir -p /volume1/docker/servyauto
+sudo mkdir -p /volume1/docker/postgres
+
+
+═══════════════════════════════════════════════════════════════
+
+
+🗄️ 2. INSTALAR POSTGRESQL
+──────────────────────────
+
+docker run -d \
+  --name postgres-servyauto \
+  --restart always \
+  -e POSTGRES_USER=servyauto \
+  -e POSTGRES_PASSWORD=TuPasswordSeguro123 \
+  -e POSTGRES_DB=servyauto_db \
+  -v /volume1/docker/postgres:/var/lib/postgresql/data \
+  -p 5432:5432 \
+  postgres:14-alpine
+
+
+# Verificar que está corriendo
+docker ps | grep postgres
+
+
+═══════════════════════════════════════════════════════════════
+
+
+📂 3. SUBIR ARCHIVOS
+────────────────────
+
+# Opción A: Usando FileStation (más fácil)
+1. Abrir FileStation en DSM
+2. Ir a /docker/servyauto/
+3. Subir y extraer servyauto_manager_v89_completo.zip
+
+
+# Opción B: Usando SCP desde tu PC
+scp servyauto_manager_v89_completo.zip admin@tu-synology:/volume1/docker/servyauto/
+
+# Luego en Synology:
+cd /volume1/docker/servyauto
+unzip servyauto_manager_v89_completo.zip
+
+
+═══════════════════════════════════════════════════════════════
+
+
+⚙️ 4. CONFIGURAR .ENV
+─────────────────────
+
+cd /volume1/docker/servyauto/servyauto_manager_v89/app
+nano .env
+
+
+# Pegar este contenido (ajustar valores):
+───────────────────────────────────────────────────────────────
+DATABASE_URL="postgresql://servyauto:TuPasswordSeguro123@postgres-servyauto:5432/servyauto_db?schema=public"
+NEXTAUTH_URL="http://tu-synology.local:3000"
+NEXTAUTH_SECRET="resultado-de-comando-siguiente"
+PORT=3000
+───────────────────────────────────────────────────────────────
+
+
+# Generar NEXTAUTH_SECRET
+openssl rand -base64 32
+# Copiar resultado y pegarlo en NEXTAUTH_SECRET
+
+
+# Guardar archivo: Ctrl+X, Y, Enter
+
+
+═══════════════════════════════════════════════════════════════
+
+
+🐳 5. CREAR DOCKERFILE
+──────────────────────
+
+cd /volume1/docker/servyauto/servyauto_manager_v89
+nano Dockerfile
+
+
+# Pegar este contenido:
+───────────────────────────────────────────────────────────────
+FROM node:18-alpine
+
+RUN apk add --no-cache libc6-compat openssl
+
+WORKDIR /app
+
+COPY app/package.json app/yarn.lock ./
+RUN yarn install --frozen-lockfile
+
+COPY app/ ./
+RUN yarn prisma generate
+RUN yarn build
+
+EXPOSE 3000
+ENV NODE_ENV=production
+
+CMD ["yarn", "start"]
+───────────────────────────────────────────────────────────────
+
+
+# Guardar: Ctrl+X, Y, Enter
+
+
+═══════════════════════════════════════════════════════════════
+
+
+🔨 6. CONSTRUIR IMAGEN DOCKER
+──────────────────────────────
+
+cd /volume1/docker/servyauto/servyauto_manager_v89
+
+docker build -t servyauto:latest .
+
+# Esto toma 5-10 minutos
+# Esperar hasta ver: "Successfully built..."
+
+
+═══════════════════════════════════════════════════════════════
+
+
+🚀 7. EJECUTAR APLICACIÓN
+─────────────────────────
+
+docker run -d \
+  --name servyauto-app \
+  --restart always \
+  -p 3000:3000 \
+  -v /volume1/docker/servyauto/servyauto_manager_v89/app/.env:/app/.env \
+  --link postgres-servyauto:postgres \
+  servyauto:latest
+
+
+# Verificar estado
+docker ps
+
+
+# Ver logs en tiempo real
+docker logs -f servyauto-app
+
+# Presiona Ctrl+C para salir de los logs
+
+
+═══════════════════════════════════════════════════════════════
+
+
+🗄️ 8. INICIALIZAR BASE DE DATOS
+────────────────────────────────
+
+docker exec servyauto-app yarn prisma db push
+
+
+# Deberías ver:
+# ✅ Your database is now in sync with your schema
+
+
+═══════════════════════════════════════════════════════════════
+
+
+✅ 9. PROBAR LA APLICACIÓN
+──────────────────────────
+
+# Abre tu navegador y ve a:
+http://tu-synology.local:3000
+
+# O usando la IP:
+http://192.168.1.XXX:3000
+
+# Deberías ver la página de login de ServyAuto Manager
+
+
+═══════════════════════════════════════════════════════════════
+
+
+🌐 10. CONFIGURAR ACCESO DESDE INTERNET (OPCIONAL)
+───────────────────────────────────────────────────
+
+A. Configurar Reverse Proxy:
+   DSM → Control Panel → Login Portal → Advanced → Reverse Proxy
+   
+   Create:
+   - Source Protocol: HTTPS
+   - Source Hostname: servyauto.tudominio.com
+   - Source Port: 443
+   - Destination Protocol: HTTP
+   - Destination Hostname: localhost
+   - Destination Port: 3000
+
+
+B. Configurar SSL:
+   Control Panel → Security → Certificate
+   Add → Let's Encrypt
+   Domain: servyauto.tudominio.com
+
+
+C. Port Forwarding en router:
+   Puerto 443 → IP de Synology
+
+
+D. Actualizar .env:
+   nano /volume1/docker/servyauto/servyauto_manager_v89/app/.env
+   
+   Cambiar:
+   NEXTAUTH_URL="https://servyauto.tudominio.com"
+   
+   Reiniciar:
+   docker restart servyauto-app
+
+
+═══════════════════════════════════════════════════════════════
+
+
+🔄 COMANDOS DE MANTENIMIENTO
+═════════════════════════════
+
+
+# Ver logs en tiempo real
+docker logs -f servyauto-app
+
+
+# Ver estado de contenedores
+docker ps -a
+
+
+# Reiniciar aplicación
+docker restart servyauto-app
+
+
+# Detener aplicación
+docker stop servyauto-app
+
+
+# Iniciar aplicación
+docker start servyauto-app
+
+
+# Ver recursos (CPU, RAM)
+docker stats servyauto-app
+
+
+# Acceder al shell del contenedor
+docker exec -it servyauto-app sh
+
+
+# Salir del shell
+exit
+
+
+═══════════════════════════════════════════════════════════════
+
+
+🗄️ COMANDOS BASE DE DATOS
+═══════════════════════════
+
+
+# Acceder a PostgreSQL
+docker exec -it postgres-servyauto psql -U servyauto -d servyauto_db
+
+
+# Listar tablas
+\dt
+
+
+# Ver datos de una tabla
+SELECT * FROM "Cita" LIMIT 10;
+
+
+# Salir de PostgreSQL
+\q
+
+
+# Backup de base de datos
+docker exec postgres-servyauto pg_dump -U servyauto servyauto_db > backup_$(date +%Y%m%d).sql
+
+
+# Restaurar base de datos
+cat backup_20251001.sql | docker exec -i postgres-servyauto psql -U servyauto -d servyauto_db
+
+
+═══════════════════════════════════════════════════════════════
+
+
+🔄 ACTUALIZAR LA APLICACIÓN
+════════════════════════════
+
+
+# Detener contenedor actual
+docker stop servyauto-app
+docker rm servyauto-app
+
+
+# Reconstruir imagen con nuevo código
+cd /volume1/docker/servyauto/servyauto_manager_v89
+docker build -t servyauto:latest .
+
+
+# Ejecutar nuevo contenedor (mismo comando del paso 7)
+docker run -d \
+  --name servyauto-app \
+  --restart always \
+  -p 3000:3000 \
+  -v /volume1/docker/servyauto/servyauto_manager_v89/app/.env:/app/.env \
+  --link postgres-servyauto:postgres \
+  servyauto:latest
+
+
+# Verificar que funciona
+docker logs -f servyauto-app
+
+
+═══════════════════════════════════════════════════════════════
+
+
+❌ SOLUCIÓN DE PROBLEMAS
+═════════════════════════
+
+
+PROBLEMA: "Cannot find module @prisma/client"
+SOLUCIÓN:
+  docker exec servyauto-app yarn prisma generate
+  docker restart servyauto-app
+
+
+PROBLEMA: Error de conexión a base de datos
+SOLUCIÓN:
+  docker logs postgres-servyauto
+  docker exec -it postgres-servyauto psql -U servyauto -d servyauto_db -c "SELECT 1;"
+
+
+PROBLEMA: Puerto 3000 ya en uso
+SOLUCIÓN:
+  # Ver qué está usando el puerto
+  sudo netstat -tuln | grep 3000
+  
+  # Detener proceso que usa el puerto
+  docker ps
+  docker stop <nombre-contenedor>
+  
+  # O cambiar puerto en docker run:
+  -p 3001:3000
+
+
+PROBLEMA: Contenedor no arranca
+SOLUCIÓN:
+  docker logs servyauto-app
+  docker ps -a
+  docker rm servyauto-app
+  # Revisar .env y volver a ejecutar docker run
+
+
+═══════════════════════════════════════════════════════════════
+
+
+🔧 COMANDOS DE EMERGENCIA
+══════════════════════════
+
+
+# Detener TODOS los contenedores
+docker stop $(docker ps -aq)
+
+
+# Eliminar TODOS los contenedores (sin borrar imágenes)
+docker rm $(docker ps -aq)
+
+
+# Ver imágenes
+docker images
+
+
+# Eliminar imagen específica
+docker rmi servyauto:latest
+
+
+# Limpiar todo (contenedores, imágenes, volúmenes no usados)
+docker system prune -a --volumes
+
+
+# Ver espacio usado por Docker
+docker system df
+
+
+═══════════════════════════════════════════════════════════════
+
+
+📊 SCRIPT DE BACKUP AUTOMÁTICO
+═══════════════════════════════
+
+
+# Crear archivo de backup
+nano /volume1/docker/servyauto/backup.sh
+
+
+# Contenido:
+───────────────────────────────────────────────────────────────
+#!/bin/bash
+DATE=$(date +%Y%m%d_%H%M%S)
+BACKUP_DIR="/volume1/docker/servyauto/backups"
+mkdir -p $BACKUP_DIR
+
+# Backup de base de datos
+docker exec postgres-servyauto pg_dump -U servyauto servyauto_db > $BACKUP_DIR/db_$DATE.sql
+
+# Comprimir
+gzip $BACKUP_DIR/db_$DATE.sql
+
+# Eliminar backups antiguos (más de 30 días)
+find $BACKUP_DIR -name "*.sql.gz" -mtime +30 -delete
+
+echo "Backup completado: db_$DATE.sql.gz"
+───────────────────────────────────────────────────────────────
+
+
+# Dar permisos
+chmod +x /volume1/docker/servyauto/backup.sh
+
+
+# Probar
+/volume1/docker/servyauto/backup.sh
+
+
+# Configurar en Task Scheduler (DSM):
+# Control Panel → Task Scheduler → Create → Scheduled Task
+# Script: /volume1/docker/servyauto/backup.sh
+# Schedule: Daily at 2:00 AM
+
+
+═══════════════════════════════════════════════════════════════
+
+
+✅ CHECKLIST DE INSTALACIÓN
+════════════════════════════
+
+□ 1. PostgreSQL corriendo (docker ps)
+□ 2. Archivos subidos y extraídos
+□ 3. Archivo .env configurado
+□ 4. Dockerfile creado
+□ 5. Imagen Docker construida
+□ 6. Contenedor corriendo (docker ps)
+□ 7. Base de datos inicializada
+□ 8. Aplicación accesible en http://synology:3000
+□ 9. (Opcional) Reverse proxy configurado
+□ 10. (Opcional) Backup automático configurado
+
+
+═══════════════════════════════════════════════════════════════
+
+
+📞 ¿NECESITAS AYUDA?
+════════════════════
+
+Si algo no funciona:
+
+1. Verifica logs: docker logs servyauto-app
+2. Verifica PostgreSQL: docker ps | grep postgres
+3. Verifica .env: cat /volume1/docker/servyauto/servyauto_manager_v89/app/.env
+4. Pregunta específicamente en qué paso estás
+
+
+═══════════════════════════════════════════════════════════════
+
+Última actualización: 1 de Octubre 2025
+Versión: ServyAuto Manager v8.9
+Compatible con: Synology DSM 7.0+

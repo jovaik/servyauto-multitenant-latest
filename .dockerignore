@@ -1,0 +1,56 @@
+
+# Archivos a ignorar al construir imagen Docker
+
+# Node modules
+node_modules/
+npm-debug.log
+yarn-error.log
+yarn-debug.log
+
+# Next.js
+.next/
+out/
+
+# Archivos de desarrollo
+.git/
+.gitignore
+.env.local
+.env.development
+.env.test
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Tests
+coverage/
+.nyc_output/
+
+# Build
+dist/
+build/
+
+# Logs
+*.log
+logs/
+
+# Temporales
+tmp/
+temp/
+
+# Documentación
+*.md
+!README.md
+
+# Archivos de instalación
+*.zip
+*.tar.gz
+*.sh
+instalador-web.php
+test-hosting.php

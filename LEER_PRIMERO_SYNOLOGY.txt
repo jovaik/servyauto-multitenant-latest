@@ -1,0 +1,324 @@
+
+╔══════════════════════════════════════════════════════════════╗
+║                                                              ║
+║     🚀 SERVYAUTO MANAGER v8.9 - INSTALACIÓN EN SYNOLOGY    ║
+║                                                              ║
+╚══════════════════════════════════════════════════════════════╝
+
+
+🎉 ¡EXCELENTE ELECCIÓN! Synology es PERFECTO para esta aplicación.
+═══════════════════════════════════════════════════════════════
+
+
+✅ VENTAJAS DE USAR TU SYNOLOGY:
+═════════════════════════════════
+
+✓ Control total - Es tu propio servidor
+✓ Node.js soportado nativamente
+✓ Docker disponible - Instalación profesional
+✓ PostgreSQL incluido
+✓ SSL/HTTPS automático con Let's Encrypt
+✓ DynDNS gratuito de Synology
+✓ Sin costos mensuales adicionales
+✓ Backups automáticos integrados
+
+
+📚 DOCUMENTACIÓN INCLUIDA:
+═══════════════════════════
+
+He preparado 4 guías diferentes para ti:
+
+1. 📘 INSTALACION_SYNOLOGY.md (Guía completa detallada)
+   → Incluye dos métodos: Docker y directo
+   → Paso a paso con explicaciones
+
+2. 📗 SYNOLOGY_GUIA_VISUAL.md (Guía visual con interfaz DSM)
+   → Para usar solo la interfaz web de Synology
+   → Sin necesidad de SSH
+   → Ideal si prefieres usar el ratón
+
+3. 📙 SYNOLOGY_COMANDOS_RAPIDOS.txt (Solo comandos)
+   → Para usuarios avanzados con SSH
+   → Copia y pega los comandos
+   → Instalación en 15 minutos
+
+4. 📕 Versiones PDF de todas las guías
+   → Puedes imprimirlas
+   → Fáciles de leer en cualquier dispositivo
+
+
+🎯 ¿CUÁL GUÍA SEGUIR?
+═════════════════════
+
+➤ Si NUNCA has usado SSH:
+   👉 Sigue: SYNOLOGY_GUIA_VISUAL.md
+   
+➤ Si SABES usar SSH y quieres ir rápido:
+   👉 Sigue: SYNOLOGY_COMANDOS_RAPIDOS.txt
+   
+➤ Si quieres ENTENDER cada paso:
+   👉 Sigue: INSTALACION_SYNOLOGY.md
+
+
+═══════════════════════════════════════════════════════════════
+
+
+🚀 INSTALACIÓN RÁPIDA (RESUMEN)
+════════════════════════════════
+
+
+Método recomendado: DOCKER
+
+┌────────────────────────────────────────────────────────────┐
+│  PASO 1: Preparar Synology                                 │
+└────────────────────────────────────────────────────────────┘
+
+1. Abrir DSM (panel web de Synology)
+2. Package Center → Instalar "Container Manager"
+3. Package Center → Instalar "PostgreSQL 14"
+4. Configurar PostgreSQL:
+   - Usuario: servyauto
+   - Password: [tu password seguro]
+   - Base de datos: servyauto_db
+
+
+┌────────────────────────────────────────────────────────────┐
+│  PASO 2: Subir aplicación                                  │
+└────────────────────────────────────────────────────────────┘
+
+1. File Station → Crear carpeta /docker/servyauto
+2. Subir servyauto_synology_completo.zip
+3. Extraer el ZIP
+
+
+┌────────────────────────────────────────────────────────────┐
+│  PASO 3: Configurar .env                                   │
+└────────────────────────────────────────────────────────────┘
+
+Ubicación: /docker/servyauto/servyauto_manager_v89/app/.env
+
+Contenido:
+──────────────────────────────────────────────────────────────
+DATABASE_URL="postgresql://servyauto:TuPassword@localhost:5432/servyauto_db?schema=public"
+NEXTAUTH_URL="http://tu-synology.local:3000"
+NEXTAUTH_SECRET="[generar con: openssl rand -base64 32]"
+PORT=3000
+──────────────────────────────────────────────────────────────
+
+Para generar NEXTAUTH_SECRET:
+- Por SSH: openssl rand -base64 32
+- Online: https://generate-secret.vercel.app/32
+
+
+┌────────────────────────────────────────────────────────────┐
+│  PASO 4: Desplegar con Docker                              │
+└────────────────────────────────────────────────────────────┘
+
+OPCIÓN A - Via Container Manager (sin SSH):
+1. Abrir Container Manager
+2. Project → Create
+3. Project Name: servyauto
+4. Path: /docker/servyauto/servyauto_manager_v89
+5. Source: Create docker-compose.yml
+6. Pegar contenido del archivo docker-compose.yml
+7. Done → Esperar a que compile (5-10 min)
+
+OPCIÓN B - Via SSH (más rápido):
+ssh admin@tu-synology.local
+cd /volume1/docker/servyauto/servyauto_manager_v89
+docker-compose up -d
+
+
+┌────────────────────────────────────────────────────────────┐
+│  PASO 5: Inicializar base de datos                         │
+└────────────────────────────────────────────────────────────┘
+
+Container Manager → Container → servyauto-app
+Details → Terminal → Ejecutar:
+
+yarn prisma db push
+
+
+┌────────────────────────────────────────────────────────────┐
+│  PASO 6: ¡LISTO! Acceder a la aplicación                  │
+└────────────────────────────────────────────────────────────┘
+
+Abre tu navegador:
+http://tu-synology.local:3000
+
+O usando IP:
+http://192.168.1.XXX:3000
+
+Deberías ver la página de LOGIN 🎉
+
+
+═══════════════════════════════════════════════════════════════
+
+
+🌐 CONFIGURAR ACCESO DESDE INTERNET (OPCIONAL)
+═══════════════════════════════════════════════
+
+
+Si quieres acceder desde fuera de tu casa:
+
+1. Control Panel → Login Portal → Advanced → Reverse Proxy
+2. Create → Configurar:
+   - Source: HTTPS, servyauto.tudominio.com, 443
+   - Destination: HTTP, localhost, 3000
+
+3. Control Panel → Security → Certificate
+   - Add → Let's Encrypt
+   - Domain: servyauto.tudominio.com
+
+4. En tu router: Port Forwarding
+   - Puerto 443 → IP de Synology
+
+5. Control Panel → External Access → DDNS
+   - Configurar dominio (ej: tuservyauto.synology.me)
+
+6. Actualizar .env:
+   NEXTAUTH_URL="https://servyauto.tudominio.com"
+
+7. Reiniciar contenedor
+
+
+═══════════════════════════════════════════════════════════════
+
+
+📋 ARCHIVOS IMPORTANTES EN ESTE ZIP:
+═════════════════════════════════════
+
+
+Documentación:
+  📄 LEER_PRIMERO_SYNOLOGY.txt (este archivo)
+  📄 INSTALACION_SYNOLOGY.md (guía completa)
+  📄 SYNOLOGY_GUIA_VISUAL.md (guía interfaz web)
+  📄 SYNOLOGY_COMANDOS_RAPIDOS.txt (comandos SSH)
+  
+Configuración Docker:
+  🐳 Dockerfile (imagen de la aplicación)
+  🐳 docker-compose.yml (orquestación)
+  🐳 .dockerignore (optimización)
+  
+Configuración:
+  ⚙️ .env.example (plantilla de configuración)
+  
+Aplicación:
+  📁 app/ (código de ServyAuto Manager)
+  
+
+═══════════════════════════════════════════════════════════════
+
+
+💡 CONSEJOS IMPORTANTES:
+═════════════════════════
+
+✓ Anota tu password de PostgreSQL en lugar seguro
+✓ Genera un NEXTAUTH_SECRET único (no uses ejemplos)
+✓ Configura backups automáticos (guía incluida)
+✓ Mantén DSM actualizado
+✓ Revisa logs regularmente en Container Manager
+
+
+═══════════════════════════════════════════════════════════════
+
+
+🔧 COMANDOS ÚTILES (Via SSH):
+══════════════════════════════
+
+
+# Ver logs en tiempo real
+docker logs -f servyauto-app
+
+
+# Reiniciar aplicación
+docker restart servyauto-app
+
+
+# Ver estado de contenedores
+docker ps
+
+
+# Acceder al shell del contenedor
+docker exec -it servyauto-app sh
+
+
+# Backup de base de datos
+docker exec postgres-servyauto pg_dump -U servyauto servyauto_db > backup.sql
+
+
+═══════════════════════════════════════════════════════════════
+
+
+❓ ¿PROBLEMAS?
+══════════════
+
+Si algo no funciona:
+
+1. Verifica logs:
+   Container Manager → Container → servyauto-app → Details → Log
+
+2. Verifica que PostgreSQL está corriendo:
+   Container Manager → Container → postgres-servyauto
+
+3. Verifica archivo .env:
+   File Station → /docker/servyauto/.../app/.env
+
+4. Consulta la sección "Solución de Problemas" en:
+   INSTALACION_SYNOLOGY.md
+
+
+═══════════════════════════════════════════════════════════════
+
+
+📞 PRÓXIMOS PASOS:
+═══════════════════
+
+1. ✓ Extrae este ZIP en tu Synology
+2. ✓ Elige una guía (recomiendo SYNOLOGY_GUIA_VISUAL.md)
+3. ✓ Sigue los pasos
+4. ✓ Disfruta de tu aplicación 🎉
+
+
+═══════════════════════════════════════════════════════════════
+
+
+🎯 DIFERENCIAS CON RESELLERCLUB:
+═════════════════════════════════
+
+RESELLERCLUB (NO funciona):
+  ❌ No soporta Node.js
+  ❌ Solo para PHP
+  ❌ Sin acceso SSH
+  ❌ Limitaciones fuertes
+
+SYNOLOGY (PERFECTO):
+  ✅ Node.js soportado
+  ✅ Docker disponible
+  ✅ PostgreSQL incluido
+  ✅ Control total
+  ✅ Sin costos extra
+  ✅ Tu propio servidor
+
+
+═══════════════════════════════════════════════════════════════
+
+
+🎉 ¡ADELANTE!
+═════════════
+
+Todo está preparado para que instales ServyAuto Manager en tu
+Synology de forma profesional y segura.
+
+Cualquier duda, revisa las guías detalladas incluidas.
+
+¡Éxito con tu instalación! 🚀
+
+
+═══════════════════════════════════════════════════════════════
+
+Última actualización: 1 de Octubre 2025
+Versión: ServyAuto Manager v8.9
+Compatible con: Synology DSM 7.0+
+Métodos de pago: EFECTIVO, TPV SUMUP, TPV UNICAJA
+Lógica documentos: TPV UNICAJA→FACTURA, EFECTIVO/TPV SUMUP→TICKET
