@@ -1,0 +1,199 @@
+
+╔══════════════════════════════════════════════════════════════╗
+║                                                              ║
+║     🚨 SERVYAUTO MANAGER v8.9 - PROBLEMA DE INSTALACIÓN     ║
+║                                                              ║
+╚══════════════════════════════════════════════════════════════╝
+
+
+📌 SITUACIÓN ACTUAL:
+════════════════════
+
+✓ Aplicación subida a ResellerClub
+✗ ResellerClub NO soporta aplicaciones Node.js
+✗ Los instaladores PHP no funcionan (limitación del hosting)
+
+
+❌ POR QUÉ NO FUNCIONA EN RESELLERCLUB:
+═══════════════════════════════════════
+
+ResellerClub es un hosting compartido diseñado para:
+  • Sitios web PHP (WordPress, Joomla, etc.)
+  • Contenido estático (HTML, CSS, JS)
+  • NO para aplicaciones Node.js
+
+ServyAuto Manager v8.9 necesita:
+  • Node.js v18+
+  • Servidor que ejecute comandos permanentemente
+  • PostgreSQL
+  • Proceso activo 24/7
+
+
+═══════════════════════════════════════════════════════════════
+
+
+✅ SOLUCIONES DISPONIBLES:
+══════════════════════════
+
+
+┌──────────────────────────────────────────────────────────┐
+│  OPCIÓN 1: VERCEL (Gratis) ⭐ MÁS FÁCIL Y RÁPIDO         │
+└──────────────────────────────────────────────────────────┘
+
+✓ Especializado en Next.js
+✓ Despliegue en 5 minutos
+✓ SSL automático
+✓ Dominio gratis (.vercel.app)
+✓ Puedes usar tu dominio de ResellerClub
+
+PASOS:
+1. Crear cuenta en https://vercel.com
+2. Conectar repositorio GitHub o subir código
+3. Agregar variables de entorno
+4. Deploy automático
+5. (Opcional) Configurar dominio personalizado
+
+COSTO: GRATIS hasta 100GB transferencia/mes
+
+BASE DE DATOS:
+  • Supabase (gratis): https://supabase.com
+  • Neon (gratis): https://neon.tech
+
+
+═══════════════════════════════════════════════════════════════
+
+
+┌──────────────────────────────────────────────────────────┐
+│  OPCIÓN 2: HOSTINGER VPS ⚡ RECOMENDADO SI QUIERES SSH  │
+└──────────────────────────────────────────────────────────┘
+
+✓ Acceso SSH completo
+✓ Node.js preinstalado
+✓ PostgreSQL incluido
+✓ Panel cPanel intuitivo
+✓ Soporte en español
+
+PLANES:
+  • VPS 1: 4,99€/mes (1 vCPU, 4GB RAM)
+  • VPS 2: 8,99€/mes (2 vCPU, 8GB RAM)
+
+PASOS:
+1. Contratar plan VPS en https://www.hostinger.es
+2. Acceder por SSH
+3. Subir aplicación (SCP o File Manager)
+4. Seguir comandos del archivo: COMANDOS_SSH_INSTALACION.txt
+5. Configurar Nginx como proxy
+
+TIEMPO: 30-45 minutos
+
+
+═══════════════════════════════════════════════════════════════
+
+
+┌──────────────────────────────────────────────────────────┐
+│  OPCIÓN 3: MANTENER RESELLERCLUB SOLO PARA EL DOMINIO   │
+└──────────────────────────────────────────────────────────┘
+
+✓ No pierdes tu inversión en ResellerClub
+✓ Usas Vercel/Hostinger para la aplicación
+✓ Tu dominio apunta a la nueva ubicación
+
+PASOS:
+1. Desplegar app en Vercel o Hostinger
+2. En ResellerClub → DNS Management
+3. Crear registro CNAME:
+   Host: www
+   Apunta a: cname.vercel-dns.com (o IP de Hostinger)
+4. Guardar cambios (propaga en 24-48h)
+
+TIEMPO: 15 minutos (+ tiempo de propagación DNS)
+
+
+═══════════════════════════════════════════════════════════════
+
+
+┌──────────────────────────────────────────────────────────┐
+│  OPCIÓN 4: OTROS HOSTINGS ESPAÑOLES CON NODE.JS         │
+└──────────────────────────────────────────────────────────┘
+
+• Webempresa Cloud: 9,95€/mes
+  https://www.webempresa.com
+
+• Raiola Networks VPS: 9,95€/mes
+  https://raiolanetworks.es
+
+• SiteGround Cloud: desde 100€/mes
+  https://www.siteground.es
+
+
+═══════════════════════════════════════════════════════════════
+
+
+📊 COMPARATIVA RÁPIDA:
+══════════════════════
+
+┌────────────────┬─────────┬──────────┬───────────┬─────────┐
+│ HOSTING        │ PRECIO  │ SSH      │ NODE.JS   │ BD      │
+├────────────────┼─────────┼──────────┼───────────┼─────────┤
+│ ResellerClub   │ Pagado  │ NO       │ NO ❌     │ MySQL   │
+│ Vercel         │ GRATIS  │ NO       │ SÍ ✅     │ Externa │
+│ Hostinger VPS  │ 4,99€   │ SÍ ✅    │ SÍ ✅     │ SÍ ✅   │
+│ Webempresa     │ 9,95€   │ SÍ ✅    │ SÍ ✅     │ SÍ ✅   │
+└────────────────┴─────────┴──────────┴───────────┴─────────┘
+
+
+═══════════════════════════════════════════════════════════════
+
+
+🎯 RECOMENDACIÓN FINAL:
+═══════════════════════
+
+Para poner en marcha ServyAuto Manager AHORA MISMO:
+
+1. USA VERCEL (gratis) + SUPABASE (gratis)
+   ➜ Puedes estar online en menos de 1 hora
+   ➜ Zero configuración de servidor
+   ➜ Escalable automáticamente
+
+2. Sigue las instrucciones detalladas en:
+   📄 INSTALACION_RESELLERCLUB.md → Sección "OPCIÓN 3"
+
+3. Si necesitas más control o features enterprise:
+   ➜ Migra a Hostinger VPS (4,99€/mes)
+   ➜ Sigue los comandos en: COMANDOS_SSH_INSTALACION.txt
+
+
+═══════════════════════════════════════════════════════════════
+
+
+💬 ¿QUÉ QUIERES HACER?
+══════════════════════
+
+Responde con UNA de estas opciones:
+
+A) Quiero usar VERCEL (gratis) - Dame instrucciones paso a paso
+B) Quiero migrar a HOSTINGER VPS - Ayúdame con la instalación
+C) Quiero mantener ResellerClub para el dominio - Configurar DNS
+D) Otra opción / Tengo dudas
+
+
+═══════════════════════════════════════════════════════════════
+
+
+📞 CONTACTO SOPORTE RESELLERCLUB:
+═════════════════════════════════
+
+Si quieres confirmar directamente con ellos:
+
+📧 Email: support@resellerclub.com
+📱 Teléfono: +91-22-40334000
+🌐 Panel: https://manage.resellerclub.com
+
+Pregunta específicamente:
+"¿Su hosting soporta aplicaciones Node.js con Next.js?"
+
+
+═══════════════════════════════════════════════════════════════
+
+Última actualización: 1 de Octubre 2025
+Versión: ServyAuto Manager v8.9

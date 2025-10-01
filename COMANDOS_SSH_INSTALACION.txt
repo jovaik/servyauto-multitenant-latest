@@ -1,0 +1,340 @@
+
+═══════════════════════════════════════════════════════════════
+  COMANDOS DE INSTALACIÓN - ServyAuto Manager v8.9
+  (Para hosting con acceso SSH y soporte Node.js)
+═══════════════════════════════════════════════════════════════
+
+📋 REQUISITOS PREVIOS:
+─────────────────────
+✓ Node.js v18 o superior
+✓ PostgreSQL disponible
+✓ Acceso SSH al servidor
+✓ Permisos de escritura en el directorio
+
+
+🔧 PASO 1: VERIFICAR ENTORNO
+─────────────────────────────
+
+# Verificar versión de Node.js
+node --version
+
+# Debe mostrar v18.x.x o superior
+# Si no está instalado, instalar Node.js primero
+
+
+# Verificar npm
+npm --version
+
+
+# Verificar yarn (opcional pero recomendado)
+yarn --version
+
+# Si no tienes yarn, instalarlo:
+npm install -g yarn
+
+
+═══════════════════════════════════════════════════════════════
+
+
+🗂️ PASO 2: SUBIR Y DESCOMPRIMIR ARCHIVOS
+──────────────────────────────────────────
+
+# Opción A: Si subes el ZIP por FTP/File Manager
+cd /ruta/donde/subiste/el/zip
+unzip servyauto_manager_v89_completo.zip
+
+
+# Opción B: Si usas SCP desde tu PC
+scp servyauto_manager_v89_completo.zip usuario@servidor:/home/usuario/
+ssh usuario@servidor
+cd ~
+unzip servyauto_manager_v89_completo.zip
+
+
+# Entrar al directorio
+cd servyauto_manager_v89/app
+
+
+═══════════════════════════════════════════════════════════════
+
+
+⚙️ PASO 3: CONFIGURAR VARIABLES DE ENTORNO
+───────────────────────────────────────────
+
+# Crear archivo .env
+nano .env
+
+
+# Pegar este contenido (ajustar con tus datos):
+─────────────────────────────────────────────
+DATABASE_URL="postgresql://usuario:password@host:5432/basedatos?schema=public"
+NEXTAUTH_URL="https://tudominio.com"
+NEXTAUTH_SECRET="pegar-aqui-el-secret-generado"
+─────────────────────────────────────────────
+
+
+# Para generar NEXTAUTH_SECRET ejecuta:
+openssl rand -base64 32
+
+# Copia el resultado y pégalo en NEXTAUTH_SECRET
+
+
+# Guardar archivo:
+# Presiona Ctrl + X
+# Presiona Y
+# Presiona Enter
+
+
+═══════════════════════════════════════════════════════════════
+
+
+📦 PASO 4: INSTALAR DEPENDENCIAS
+─────────────────────────────────
+
+# Instalar paquetes con yarn (recomendado)
+yarn install
+
+# O con npm si no tienes yarn:
+# npm install
+
+
+# Esto puede tardar 2-5 minutos
+# Verás muchas líneas de texto, es normal
+
+
+═══════════════════════════════════════════════════════════════
+
+
+🗄️ PASO 5: CONFIGURAR BASE DE DATOS
+────────────────────────────────────
+
+# Generar Prisma Client
+yarn prisma generate
+
+
+# Aplicar migraciones (crear tablas en la BD)
+yarn prisma db push
+
+
+# Si todo va bien, verás:
+# ✅ Your database is now in sync with your schema
+
+
+# (Opcional) Verificar la base de datos
+yarn prisma studio
+# Abre un navegador en localhost:5555 para ver la BD
+
+
+═══════════════════════════════════════════════════════════════
+
+
+🏗️ PASO 6: COMPILAR LA APLICACIÓN
+───────────────────────────────────
+
+# Compilar para producción
+yarn build
+
+
+# Esto puede tardar 3-10 minutos
+# Al finalizar verás:
+# ✓ Compiled successfully
+
+
+═══════════════════════════════════════════════════════════════
+
+
+🚀 PASO 7: INICIAR LA APLICACIÓN
+─────────────────────────────────
+
+# OPCIÓN A: Con PM2 (Recomendado - mantiene la app corriendo)
+────────────────────────────────────────────────────────────
+
+# Instalar PM2 globalmente
+npm install -g pm2
+
+
+# Iniciar aplicación con PM2
+pm2 start yarn --name "servyauto" -- start
+
+
+# Configurar PM2 para reiniciar al reiniciar el servidor
+pm2 save
+pm2 startup
+
+
+# Ver estado de la aplicación
+pm2 status
+
+
+# Ver logs en tiempo real
+pm2 logs servyauto
+
+
+# Comandos útiles de PM2:
+pm2 restart servyauto    # Reiniciar app
+pm2 stop servyauto        # Detener app
+pm2 delete servyauto      # Eliminar app de PM2
+
+
+─────────────────────────────────────────────────────────────
+
+# OPCIÓN B: Sin PM2 (Solo para pruebas)
+────────────────────────────────────────
+
+# Iniciar en primer plano
+yarn start
+
+
+# Para correr en background:
+nohup yarn start > app.log 2>&1 &
+
+
+# Ver logs:
+tail -f app.log
+
+
+═══════════════════════════════════════════════════════════════
+
+
+🌐 PASO 8: CONFIGURAR SERVIDOR WEB (NGINX/APACHE)
+──────────────────────────────────────────────────
+
+La aplicación corre en el puerto 3000 por defecto.
+Necesitas configurar un proxy inverso.
+
+
+# CONFIGURACIÓN NGINX:
+─────────────────────
+
+sudo nano /etc/nginx/sites-available/servyauto
+
+
+# Pegar esta configuración:
+────────────────────────────────────────────────────────
+server {
+    listen 80;
+    server_name tudominio.com www.tudominio.com;
+
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+────────────────────────────────────────────────────────
+
+
+# Activar sitio:
+sudo ln -s /etc/nginx/sites-available/servyauto /etc/nginx/sites-enabled/
+
+
+# Verificar configuración:
+sudo nginx -t
+
+
+# Reiniciar Nginx:
+sudo systemctl restart nginx
+
+
+# Configurar SSL con Let's Encrypt (RECOMENDADO):
+sudo apt install certbot python3-certbot-nginx
+sudo certbot --nginx -d tudominio.com -d www.tudominio.com
+
+
+═══════════════════════════════════════════════════════════════
+
+
+✅ VERIFICACIÓN FINAL
+─────────────────────
+
+1. Abre tu navegador
+2. Ve a: https://tudominio.com
+3. Deberías ver la página de login de ServyAuto Manager
+
+
+# Si algo no funciona, verifica los logs:
+pm2 logs servyauto
+
+
+# O si usaste nohup:
+tail -f app.log
+
+
+═══════════════════════════════════════════════════════════════
+
+
+🔄 ACTUALIZAR LA APLICACIÓN
+────────────────────────────
+
+# Cuando necesites actualizar el código:
+
+cd servyauto_manager_v89/app
+
+# Detener la app
+pm2 stop servyauto
+
+# Subir nuevos archivos y luego:
+yarn install
+yarn prisma generate
+yarn build
+
+# Reiniciar
+pm2 restart servyauto
+
+
+═══════════════════════════════════════════════════════════════
+
+
+❌ SOLUCIÓN DE PROBLEMAS
+─────────────────────────
+
+PROBLEMA: "Cannot find module '@prisma/client'"
+SOLUCIÓN:
+  cd servyauto_manager_v89/app
+  yarn prisma generate
+  pm2 restart servyauto
+
+
+PROBLEMA: Error de conexión a la base de datos
+SOLUCIÓN:
+  - Verifica DATABASE_URL en .env
+  - Asegúrate de que PostgreSQL está corriendo
+  - Verifica usuario y contraseña
+  
+
+PROBLEMA: Puerto 3000 ya en uso
+SOLUCIÓN:
+  # Cambiar puerto en package.json o usar variable:
+  PORT=3001 pm2 start yarn --name "servyauto" -- start
+
+
+PROBLEMA: La app se detiene sola
+SOLUCIÓN:
+  # Usar PM2 en vez de yarn start directamente
+  # PM2 reinicia automáticamente si la app crashea
+
+
+═══════════════════════════════════════════════════════════════
+
+
+📞 SOPORTE
+──────────
+
+Si sigues estos pasos y algo no funciona:
+
+1. Verifica los logs: pm2 logs servyauto
+2. Verifica que Node.js sea v18+
+3. Verifica que la base de datos esté accesible
+4. Asegúrate de que el archivo .env existe y está configurado
+
+
+═══════════════════════════════════════════════════════════════
+
+Última actualización: 1 de Octubre 2025
+Versión: ServyAuto Manager v8.9
