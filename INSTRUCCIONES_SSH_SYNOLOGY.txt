@@ -1,0 +1,156 @@
+╔══════════════════════════════════════════════════════════════╗
+║                                                              ║
+║       🚀 INSTALACIÓN EN SYNOLOGY VÍA SSH                    ║
+║          ServyAuto Manager - Instalador Automático          ║
+║                                                              ║
+╚══════════════════════════════════════════════════════════════╝
+
+
+📋 REQUISITOS PREVIOS:
+   ✅ SSH habilitado en puerto 22
+   ✅ Container Manager instalado
+   ✅ Carpeta servyauto creada en volume2
+   ✅ Archivos de la app en /volume2/servyauto/app
+
+
+═══════════════════════════════════════════════════════════════
+
+✅ PASO 1: PREPARAR LOS ARCHIVOS
+
+1. Descarga el instalador desde aquí:
+   /home/ubuntu/servyauto_manager_v89/install_synology_auto.sh
+
+2. Sube estos 2 elementos a tu Synology usando File Station:
+   
+   A) La carpeta "app" completa → súbela a /servyauto/
+      (Debe quedar: /servyauto/app/)
+   
+   B) El archivo "install_synology_auto.sh" → súbelo a /servyauto/
+      (Debe quedar: /servyauto/install_synology_auto.sh)
+
+═══════════════════════════════════════════════════════════════
+
+✅ PASO 2: CONECTARSE POR SSH
+
+Opción A - Desde Windows (usando PowerShell):
+   1. Presiona Windows + X
+   2. Selecciona "Windows PowerShell" o "Terminal"
+   3. Escribe este comando:
+      
+      ssh TU_USUARIO@192.168.1.119
+      
+      (Reemplaza TU_USUARIO por tu usuario de Synology, ej: admin)
+   
+   4. Escribe tu contraseña cuando te la pida
+   5. Ya estás dentro del Synology
+
+Opción B - Desde Mac/Linux (usando Terminal):
+   1. Abre Terminal
+   2. Escribe:
+      
+      ssh TU_USUARIO@192.168.1.119
+   
+   3. Escribe tu contraseña
+   4. Ya estás dentro
+
+Opción C - Usando un programa (Putty en Windows):
+   1. Descarga PuTTY: https://www.putty.org/
+   2. Host Name: 192.168.1.119
+   3. Port: 22
+   4. Clic en "Open"
+   5. Login y password
+
+═══════════════════════════════════════════════════════════════
+
+✅ PASO 3: EJECUTAR EL INSTALADOR
+
+Una vez conectado por SSH, copia y pega estos comandos:
+
+   cd /volume2/servyauto
+   chmod +x install_synology_auto.sh
+   sudo ./install_synology_auto.sh
+
+Te pedirá la contraseña del sudo (la misma de tu usuario).
+
+El instalador hará TODO automáticamente:
+   • Verificará los requisitos
+   • Instalará PostgreSQL
+   • Configurará la base de datos
+   • Instalará la aplicación
+   • Configurará todo
+   • Iniciará los servicios
+
+═══════════════════════════════════════════════════════════════
+
+✅ PASO 4: ESPERAR
+
+La instalación tardará entre 5-10 minutos.
+
+Verás mensajes como:
+   [INFO] === PASO 1/8: Verificando Docker ===
+   [INFO] ✓ Docker instalado correctamente
+   ...
+   [INFO] === PASO 8/8: Verificando instalación ===
+   ✓ INSTALACIÓN COMPLETADA
+
+═══════════════════════════════════════════════════════════════
+
+✅ PASO 5: ACCEDER A LA APLICACIÓN
+
+Cuando termine, el instalador te mostrará:
+
+   Tu aplicación está disponible en:
+   http://192.168.1.119:3000
+
+Copia ese link y ábrelo en tu navegador.
+
+═══════════════════════════════════════════════════════════════
+
+🎉 ¡LISTO! TU APLICACIÓN FUNCIONA
+
+Podrás acceder desde cualquier dispositivo en tu red local:
+   http://192.168.1.119:3000
+
+═══════════════════════════════════════════════════════════════
+
+📊 COMANDOS ÚTILES (opcional)
+
+Ver logs de la aplicación:
+   docker logs -f servyauto-app
+
+Ver logs de la base de datos:
+   docker logs -f servyauto-db
+
+Detener la aplicación:
+   docker stop servyauto-app servyauto-db
+
+Iniciar la aplicación:
+   docker start servyauto-db servyauto-app
+
+Reiniciar la aplicación:
+   docker restart servyauto-app servyauto-db
+
+═══════════════════════════════════════════════════════════════
+
+🆘 SI ALGO FALLA
+
+1. Verifica los logs:
+   docker logs servyauto-app
+
+2. Asegúrate de que los archivos estén en:
+   /volume2/servyauto/app/
+
+3. Verifica que Container Manager esté instalado
+
+4. Reinicia Synology si es necesario
+
+═══════════════════════════════════════════════════════════════
+
+💾 COPIA DE SEGURIDAD
+
+Tus datos estarán en:
+   /volume2/servyauto/postgres-data/
+
+Para hacer backup, simplemente copia esa carpeta.
+
+═══════════════════════════════════════════════════════════════
