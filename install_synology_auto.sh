@@ -35,7 +35,7 @@ info "Detectado Synology: $(cat /etc/synoinfo.conf | grep upnpmodelname | cut -d
 echo ""
 
 # Configuración
-APP_DIR="/volume2/servyauto"
+APP_DIR="/volume1/servyauto"
 DB_NAME="servyauto_db"
 DB_USER="servyauto_user"
 DB_PASS="ServyAuto2024!"

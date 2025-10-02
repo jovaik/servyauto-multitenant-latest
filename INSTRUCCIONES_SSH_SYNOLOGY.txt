@@ -2,6 +2,7 @@
 ║                                                              ║
 ║       🚀 INSTALACIÓN EN SYNOLOGY VÍA SSH                    ║
 ║          ServyAuto Manager - Instalador Automático          ║
+║          Usuario: mvIj | IP: 192.168.1.119                  ║
 ║                                                              ║
 ╚══════════════════════════════════════════════════════════════╝
 
@@ -9,24 +10,35 @@
 📋 REQUISITOS PREVIOS:
    ✅ SSH habilitado en puerto 22
    ✅ Container Manager instalado
-   ✅ Carpeta servyauto creada en volume2
-   ✅ Archivos de la app en /volume2/servyauto/app
+   ✅ Usuario: mvIj
+   ✅ Volumen: volume1
 
 
 ═══════════════════════════════════════════════════════════════
 
-✅ PASO 1: PREPARAR LOS ARCHIVOS
+✅ PASO 1: PREPARAR LOS ARCHIVOS EN SYNOLOGY
 
-1. Descarga el instalador desde aquí:
-   /home/ubuntu/servyauto_manager_v89/install_synology_auto.sh
+1. Abre File Station en tu navegador:
+   http://192.168.1.119:5000
 
-2. Sube estos 2 elementos a tu Synology usando File Station:
+2. Ve a la carpeta raíz de volume1 (debería estar visible por defecto)
+
+3. Crea una nueva carpeta llamada "servyauto"
+   (Clic derecho → Crear → Carpeta nueva → Nombre: servyauto)
+
+4. Sube estos archivos a /volume1/servyauto/:
    
-   A) La carpeta "app" completa → súbela a /servyauto/
-      (Debe quedar: /servyauto/app/)
+   A) La carpeta "app" completa (arrastra y suelta)
+      Debe quedar: /volume1/servyauto/app/
    
-   B) El archivo "install_synology_auto.sh" → súbelo a /servyauto/
-      (Debe quedar: /servyauto/install_synology_auto.sh)
+   B) El archivo "install_synology_auto.sh" (arrastra y suelta)
+      Debe quedar: /volume1/servyauto/install_synology_auto.sh
+
+5. Verifica que la estructura sea correcta:
+   /volume1/servyauto/
+   /volume1/servyauto/app/
+   /volume1/servyauto/install_synology_auto.sh
+
 
 ═══════════════════════════════════════════════════════════════
 
@@ -35,81 +47,106 @@
 Opción A - Desde Windows (usando PowerShell):
    1. Presiona Windows + X
    2. Selecciona "Windows PowerShell" o "Terminal"
-   3. Escribe este comando:
+   3. Escribe EXACTAMENTE este comando:
       
-      ssh TU_USUARIO@192.168.1.119
-      
-      (Reemplaza TU_USUARIO por tu usuario de Synology, ej: admin)
+      ssh mvIj@192.168.1.119
    
    4. Escribe tu contraseña cuando te la pida
    5. Ya estás dentro del Synology
 
 Opción B - Desde Mac/Linux (usando Terminal):
-   1. Abre Terminal
-   2. Escribe:
+   1. Abre Terminal (Cmd + Espacio → escribe "Terminal")
+   2. Escribe EXACTAMENTE:
       
-      ssh TU_USUARIO@192.168.1.119
+      ssh mvIj@192.168.1.119
    
    3. Escribe tu contraseña
    4. Ya estás dentro
 
-Opción C - Usando un programa (Putty en Windows):
+Opción C - Usando PuTTY (Windows):
    1. Descarga PuTTY: https://www.putty.org/
-   2. Host Name: 192.168.1.119
-   3. Port: 22
-   4. Clic en "Open"
-   5. Login y password
+   2. Abre PuTTY
+   3. Host Name: 192.168.1.119
+   4. Port: 22
+   5. Clic en "Open"
+   6. Login as: mvIj
+   7. Password: (tu contraseña)
+
 
 ═══════════════════════════════════════════════════════════════
 
 ✅ PASO 3: EJECUTAR EL INSTALADOR
 
-Una vez conectado por SSH, copia y pega estos comandos:
+Una vez conectado por SSH, verás algo como:
+   mvIj@DS220j:~$
 
-   cd /volume2/servyauto
+Ahora copia y pega estos comandos UNO POR UNO:
+
+COMANDO 1:
+   cd /volume1/servyauto
+
+COMANDO 2:
    chmod +x install_synology_auto.sh
+
+COMANDO 3:
    sudo ./install_synology_auto.sh
 
-Te pedirá la contraseña del sudo (la misma de tu usuario).
+IMPORTANTE: Cuando ejecutes el comando 3 (sudo), te pedirá la 
+contraseña del usuario mvIj. Escríbela (no se verá mientras 
+escribes) y presiona Enter.
 
-El instalador hará TODO automáticamente:
-   • Verificará los requisitos
-   • Instalará PostgreSQL
-   • Configurará la base de datos
-   • Instalará la aplicación
-   • Configurará todo
-   • Iniciará los servicios
+El instalador empezará a trabajar automáticamente.
+
 
 ═══════════════════════════════════════════════════════════════
 
-✅ PASO 4: ESPERAR
+✅ PASO 4: ESPERAR A QUE TERMINE
 
 La instalación tardará entre 5-10 minutos.
 
 Verás mensajes como:
    [INFO] === PASO 1/8: Verificando Docker ===
    [INFO] ✓ Docker instalado correctamente
+   [INFO] === PASO 2/8: Verificando estructura de directorios ===
+   [INFO] ✓ Estructura de directorios correcta
+   [INFO] === PASO 3/8: Deteniendo contenedores existentes ===
    ...
    [INFO] === PASO 8/8: Verificando instalación ===
+
+Al final verás:
+   
+   ==============================================
    ✓ INSTALACIÓN COMPLETADA
+   ==============================================
+   
+   Tu aplicación está disponible en:
+   http://192.168.1.119:3000
+
 
 ═══════════════════════════════════════════════════════════════
 
 ✅ PASO 5: ACCEDER A LA APLICACIÓN
 
-Cuando termine, el instalador te mostrará:
+1. Abre tu navegador
+2. Ve a: http://192.168.1.119:3000
+3. ¡LISTO! Tu aplicación funciona
 
-   Tu aplicación está disponible en:
-   http://192.168.1.119:3000
+Podrás acceder desde cualquier dispositivo en tu red local:
+   - Desde tu PC: http://192.168.1.119:3000
+   - Desde tu móvil: http://192.168.1.119:3000
+   - Desde tu tablet: http://192.168.1.119:3000
 
-Copia ese link y ábrelo en tu navegador.
 
 ═══════════════════════════════════════════════════════════════
 
-🎉 ¡LISTO! TU APLICACIÓN FUNCIONA
+🎉 ¡LISTO! TU APLICACIÓN FUNCIONA EN SYNOLOGY
 
-Podrás acceder desde cualquier dispositivo en tu red local:
-   http://192.168.1.119:3000
+Características:
+   ✅ 100% GRATIS (sin costos mensuales)
+   ✅ Datos en tu servidor (control total)
+   ✅ Acceso en red local
+   ✅ Backups automáticos en Synology
+
 
 ═══════════════════════════════════════════════════════════════
 
@@ -124,33 +161,86 @@ Ver logs de la base de datos:
 Detener la aplicación:
    docker stop servyauto-app servyauto-db
 
-Iniciar la aplicación:
+Iniciar la aplicación (después de detenerla):
    docker start servyauto-db servyauto-app
 
 Reiniciar la aplicación:
    docker restart servyauto-app servyauto-db
 
+Ver estado de los contenedores:
+   docker ps -a
+
+
 ═══════════════════════════════════════════════════════════════
 
 🆘 SI ALGO FALLA
 
-1. Verifica los logs:
-   docker logs servyauto-app
+PROBLEMA: "No such file or directory: /volume1/servyauto"
+SOLUCIÓN: Verifica que subiste los archivos a la carpeta correcta
+          en File Station. Debe estar en /volume1/servyauto/
 
-2. Asegúrate de que los archivos estén en:
-   /volume2/servyauto/app/
+PROBLEMA: "Permission denied"
+SOLUCIÓN: Asegúrate de usar "sudo" antes del comando
+          sudo ./install_synology_auto.sh
 
-3. Verifica que Container Manager esté instalado
+PROBLEMA: "Docker not found"
+SOLUCIÓN: Verifica que Container Manager esté instalado en
+          Package Center
 
-4. Reinicia Synology si es necesario
+PROBLEMA: La aplicación no abre en el navegador
+SOLUCIÓN: 1. Verifica los logs: docker logs servyauto-app
+          2. Espera 1-2 minutos más (puede tardar en iniciar)
+          3. Verifica que los contenedores estén corriendo:
+             docker ps
+
+PROBLEMA: No puedo conectarme por SSH
+SOLUCIÓN: 1. Verifica que SSH esté habilitado (Panel de Control
+             → Terminal & SNMP)
+          2. Verifica que estés en la misma red que el Synology
+          3. Prueba hacer ping: ping 192.168.1.119
+
 
 ═══════════════════════════════════════════════════════════════
 
 💾 COPIA DE SEGURIDAD
 
 Tus datos estarán en:
-   /volume2/servyauto/postgres-data/
+   /volume1/servyauto/postgres-data/
 
-Para hacer backup, simplemente copia esa carpeta.
+Para hacer backup:
+   1. Ve a File Station
+   2. Navega a servyauto/postgres-data
+   3. Clic derecho → Descargar
+   4. O configura backup automático en Hyper Backup
+
+
+═══════════════════════════════════════════════════════════════
+
+🔄 ACTUALIZACIONES FUTURAS
+
+Si necesitas actualizar la aplicación:
+   1. Sube los nuevos archivos a /volume1/servyauto/app/
+   2. Ejecuta: docker restart servyauto-app
+
+
+═══════════════════════════════════════════════════════════════
+
+🌐 ACCESO DESDE INTERNET (opcional)
+
+Si quieres acceder desde fuera de tu casa:
+   1. Configura QuickConnect en Synology
+   2. O configura Port Forwarding en tu router (puerto 3000)
+   3. O usa VPN de Synology
+
+
+═══════════════════════════════════════════════════════════════
+
+📞 SOPORTE
+
+Si tienes problemas:
+   1. Revisa los logs: docker logs servyauto-app
+   2. Verifica el estado: docker ps -a
+   3. Consulta este documento de nuevo
+
 
 ═══════════════════════════════════════════════════════════════
