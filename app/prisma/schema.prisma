@@ -1,11 +1,6 @@
 
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
     provider = "prisma-client-js"
-    binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
-    output = "/home/ubuntu/servyauto_manager_v89/app/node_modules/.prisma/client"
 }
 
 datasource db {
@@ -48,11 +43,10 @@ model User {
   image         String?
   password      String?
   role          RolUsuario @default(ADMIN)
-  activo        Boolean   @default(true)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
   accounts      Account[]
   sessions      Session[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }
 
 model VerificationToken {
@@ -63,146 +57,82 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+enum RolUsuario {
+  ADMIN
+  MECANICO
+  RECEPCIONISTA
+}
+
 model Cliente {
-  id        String     @id @default(cuid())
+  id        String   @id @default(cuid())
   nombre    String
-  apellido  String
-  email     String?    @unique
-  telefono  String
+  apellidos String?
+  email     String?
+  telefono  String?
   direccion String?
-  dni       String?
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  nif       String?  @unique
   vehiculos Vehiculo[]
   citas     Cita[]
   facturas  Factura[]
-
-  @@map("clientes")
+  tickets   Ticket[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Vehiculo {
-  id           String   @id @default(cuid())
-  marca        String
-  modelo       String
-  anio         Int
-  color        String?
-  matricula    String   @unique
-  kilometraje  Int?
-  motor        String?
-  combustible  String?
-  observaciones String?
-  clienteId    String
-  cliente      Cliente  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  citas        Cita[]
-
-  @@map("vehiculos")
+  id            String   @id @default(cuid())
+  matricula     String   @unique
+  marca         String
+  modelo        String
+  anio          Int?
+  color         String?
+  kilometraje   Int?
+  clienteId     String
+  cliente       Cliente  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  citas         Cita[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model Servicio {
-  id          String @id @default(cuid())
-  nombre      String
+  id          String   @id @default(cuid())
+  nombre      String   @unique
   descripcion String?
   precio      Float
-  duracion    Int    // duracion en minutos
-  activo      Boolean @default(true)
-  imagen      String? // URL de la imagen principal del servicio
-  categoria   CategoriaVehiculo? // Pequeño, Medio, Grande, Super Grande
+  duracion    Int      // Duración en minutos
+  activo      Boolean  @default(true)
+  citas       Cita[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  citaServicios CitaServicio[]
-
-  @@map("servicios")
 }
 
 model Cita {
-  id           String         @id @default(cuid())
-  fecha        DateTime
-  horaInicio   String         // "09:00"
-  horaFin      String         // "10:30"
-  box          String         // "Box 1", "Box 2", etc.
-  estado       EstadoCita     @default(PENDIENTE)
-  observaciones String?
-  metodoPago   MetodoPago?
-  total        Float?
-  clienteId    String
-  vehiculoId   String
-  cliente      Cliente        @relation(fields: [clienteId], references: [id])
-  vehiculo     Vehiculo       @relation(fields: [vehiculoId], references: [id])
-  servicios    CitaServicio[]
-  factura      Factura?
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-
-  @@map("citas")
-}
-
-model CitaServicio {
-  id         String   @id @default(cuid())
-  citaId     String
-  servicioId String
-  precio     Float
-  cita       Cita     @relation(fields: [citaId], references: [id], onDelete: Cascade)
-  servicio   Servicio @relation(fields: [servicioId], references: [id])
-
-  @@unique([citaId, servicioId])
-  @@map("cita_servicios")
-}
-
-model Factura {
-  id        String      @id @default(cuid())
-  numero    String      @unique
-  tipo      TipoFactura @default(TICKET)  // TICKET o FACTURA
-  fecha     DateTime    @default(now())
-  subtotal  Float
-  iva       Float
-  total     Float
-  estado    EstadoFactura @default(PENDIENTE)
-  metodoPago MetodoPago?
-  clienteId String
-  citaId    String?     @unique
-  cliente   Cliente     @relation(fields: [clienteId], references: [id])
-  cita      Cita?       @relation(fields: [citaId], references: [id])
-  items     FacturaItem[]
-  
-  // Datos específicos para facturas (cuando tipo = FACTURA)
-  datosFacturacion String? // JSON con datos fiscales del cliente
-  
-  // Archivo PDF generado
-  pdfPath   String?
-  
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
-
-  @@map("facturas")
-}
-
-model FacturaItem {
-  id          String  @id @default(cuid())
-  descripcion String
-  cantidad    Int
-  precio      Float
-  total       Float
-  facturaId   String
-  factura     Factura @relation(fields: [facturaId], references: [id], onDelete: Cascade)
-
-  @@map("factura_items")
+  id                 String      @id @default(cuid())
+  fecha              DateTime
+  horaInicio         String
+  horaFin            String
+  clienteId          String
+  vehiculoId         String
+  servicioId         String
+  mecanico           String?
+  estado             EstadoCita  @default(PENDIENTE)
+  observaciones      String?
+  precioFinal        Float?
+  metodoPago         MetodoPago?
+  pagado             Boolean     @default(false)
+  tipoDocumento      TipoDocumento?
+  numeroDocumento    String?
+  cliente            Cliente     @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  vehiculo           Vehiculo    @relation(fields: [vehiculoId], references: [id], onDelete: Cascade)
+  servicio           Servicio    @relation(fields: [servicioId], references: [id], onDelete: Cascade)
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
 }
 
 enum EstadoCita {
   PENDIENTE
-  CONFIRMADA
-  EN_PROCESO
+  EN_CURSO
   COMPLETADA
-  CANCELADA
-  NO_SHOW
-}
-
-enum EstadoFactura {
-  PENDIENTE
-  PAGADA
-  VENCIDA
   CANCELADA
 }
 
@@ -212,118 +142,46 @@ enum MetodoPago {
   TPV_UNICAJA
 }
 
-enum TipoFactura {
+enum TipoDocumento {
   TICKET
   FACTURA
 }
 
-model Reserva {
-  id        String   @id @default(cuid())
-  nombre    String
-  apellido  String
-  email     String
-  telefono  String
-  fecha     DateTime
-  hora      String
-  vehiculo  String
-  servicio  String
-  mensaje   String?
-  estado    EstadoReserva @default(PENDIENTE)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("reservas")
+model Factura {
+  id              String   @id @default(cuid())
+  numero          String   @unique
+  fecha           DateTime @default(now())
+  clienteId       String
+  cliente         Cliente  @relation(fields: [clienteId], references: [id])
+  subtotal        Float
+  iva             Float
+  total           Float
+  pagada          Boolean  @default(false)
+  metodoPago      MetodoPago?
+  observaciones   String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
-enum EstadoReserva {
-  PENDIENTE
-  CONFIRMADA
-  CANCELADA
+model Ticket {
+  id              String   @id @default(cuid())
+  numero          String   @unique
+  fecha           DateTime @default(now())
+  clienteId       String
+  cliente         Cliente  @relation(fields: [clienteId], references: [id])
+  subtotal        Float
+  iva             Float
+  total           Float
+  pagado          Boolean  @default(false)
+  metodoPago      MetodoPago?
+  observaciones   String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
-model Configuracion {
-  id          String    @id @default(cuid())
-  clave       String    @unique
-  valor       String
-  tipo        TipoConfiguracion
-  categoria   String    // "sistema", "empresa", "horarios", "precios", "boxes", etc.
-  descripcion String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  @@map("configuraciones")
-}
-
-enum TipoConfiguracion {
-  TEXTO
-  NUMERO
-  BOOLEANO
-  JSON
-  EMAIL
-  TELEFONO
-  DIRECCION
-  ARCHIVO
-}
-
-enum RolUsuario {
-  SUPER_ADMIN
-  ADMIN
-  OPERADOR
-  CLIENTE
-}
-
-enum CategoriaVehiculo {
-  PEQUENO     // Coches pequeños (Ej: Fiat 500, Citroën C1)
-  MEDIO       // Coches medianos (Ej: Golf, Corolla)  
-  GRANDE      // Coches grandes (Ej: BMW Serie 5, Mercedes Clase E)
-  SUPER_GRANDE // SUVs, furgonetas (Ej: BMW X5, Mercedes Sprinter)
-}
-
-// Modelo para galería de trabajos antes/después
-model GaleriaAntesDespues {
-  id          String   @id @default(cuid())
-  titulo      String
-  descripcion String?
-  imagenAntes String   // URL de la imagen "antes"
-  imagenDespues String // URL de la imagen "después"
-  servicio    String   // Tipo de servicio realizado
-  vehiculo    String   // Información del vehículo
-  categoria   CategoriaVehiculo
-  destacado   Boolean  @default(false)
-  activo      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@map("galeria_antes_despues")
-}
-
-// Modelo para portfolio de trabajos terminados
-model PortfolioTrabajo {
-  id          String   @id @default(cuid())
-  titulo      String
-  descripcion String?
-  imagenes    String[] // Array de URLs de imágenes
-  servicio    String   // Servicio realizado
-  vehiculo    String   // Información del vehículo
-  categoria   CategoriaVehiculo
-  destacado   Boolean  @default(false)
-  activo      Boolean  @default(true)
-  fechaRealizado DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@map("portfolio_trabajos")
-}
-
-// Modelo para imágenes de categorías de vehículos
-model ImagenCategoria {
-  id          String   @id @default(cuid())
-  categoria   CategoriaVehiculo @unique
-  imagen      String   // URL de la imagen representativa
-  descripcion String?
-  activo      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@map("imagenes_categorias")
+model SecuenciaDocumento {
+  id              String   @id @default(cuid())
+  tipo            TipoDocumento @unique
+  ultimoNumero    Int      @default(0)
+  updatedAt       DateTime @updatedAt
 }

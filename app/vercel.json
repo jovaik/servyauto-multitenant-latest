@@ -1,0 +1,7 @@
+
+{
+  "buildCommand": "yarn prisma generate && yarn build",
+  "installCommand": "yarn install",
+  "framework": "nextjs",
+  "regions": ["fra1"]
+}
