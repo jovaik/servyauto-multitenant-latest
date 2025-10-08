@@ -140,7 +140,7 @@ export function LoginForm() {
             </div>
             <div className="relative flex justify-center text-xs uppercase">
               <span className="bg-background px-2 text-muted-foreground">
-                O prueba acceso rápido
+                ¿Primera vez?
               </span>
             </div>
           </div>
@@ -149,11 +149,10 @@ export function LoginForm() {
             type="button"
             variant="outline"
             className="w-full"
-            onClick={handleQuickAccess}
+            onClick={() => router.push('/signup')}
             disabled={isLoading}
           >
-            <Zap className="mr-2 h-4 w-4" />
-            Super Admin (Demo)
+            Crear Cuenta de Administrador
           </Button>
         </CardFooter>
       </form>
