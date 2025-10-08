@@ -65,24 +65,6 @@ function generateHTML(factura: any): string {
           margin-bottom: 10px; 
           color: #374151;
         }
-        .items-table { 
-          width: 100%; 
-          border-collapse: collapse; 
-          margin: 30px 0; 
-        }
-        .items-table th, .items-table td { 
-          border: 1px solid #D1D5DB; 
-          padding: 12px; 
-          text-align: left; 
-        }
-        .items-table th { 
-          background: #4F46E5; 
-          color: white; 
-          font-weight: bold; 
-        }
-        .items-table tr:nth-child(even) { 
-          background: #F9FAFB; 
-        }
         .totals { 
           margin-top: 30px; 
           padding: 20px; 
@@ -121,39 +103,26 @@ function generateHTML(factura: any): string {
       <div class="info-grid">
         <div class="info-section">
           <div class="info-title">Información del Cliente</div>
-          <div><strong>Cliente:</strong> ${factura.cliente.nombre} ${factura.cliente.apellido}</div>
+          <div><strong>Cliente:</strong> ${factura.cliente.nombre} ${factura.cliente.apellidoss || ''}</div>
           <div><strong>Email:</strong> ${factura.cliente.email || 'No especificado'}</div>
           <div><strong>Teléfono:</strong> ${factura.cliente.telefono || 'No especificado'}</div>
+          ${factura.cliente.nif ? `<div><strong>NIF:</strong> ${factura.cliente.nif}</div>` : ''}
         </div>
         
         <div class="info-section">
           <div class="info-title">Información del Documento</div>
-          <div><strong>Fecha:</strong> ${format(new Date(factura.createdAt), 'dd/MM/yyyy', { locale: es })}</div>
-          <div><strong>Estado:</strong> ${factura.estado}</div>
-          <div><strong>Método de Pago:</strong> ${formatMetodoPago(factura.metodoPago || '')}</div>
+          <div><strong>Fecha:</strong> ${format(new Date(factura.fecha), 'dd/MM/yyyy', { locale: es })}</div>
+          <div><strong>Estado:</strong> ${factura.pagada ? 'Pagada' : 'Pendiente'}</div>
+          ${factura.metodoPago ? `<div><strong>Método de Pago:</strong> ${formatMetodoPago(factura.metodoPago)}</div>` : ''}
         </div>
       </div>
 
-      <table class="items-table">
-        <thead>
-          <tr>
-            <th>Descripción</th>
-            <th>Cantidad</th>
-            <th class="text-right">Precio Unitario</th>
-            <th class="text-right">Total</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${factura.items.map((item: any) => `
-            <tr>
-              <td>${item.descripcion}</td>
-              <td>${item.cantidad}</td>
-              <td class="text-right">€${item.precio.toFixed(2)}</td>
-              <td class="text-right">€${item.total.toFixed(2)}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
+      ${factura.observaciones ? `
+        <div class="info-section" style="margin: 20px 0;">
+          <div class="info-title">Observaciones</div>
+          <div>${factura.observaciones}</div>
+        </div>
+      ` : ''}
 
       <div class="totals">
         <div class="totals-row">
@@ -194,17 +163,6 @@ export async function GET(
       where: { id: params.id },
       include: {
         cliente: true,
-        items: true,
-        cita: {
-          include: {
-            vehiculo: true,
-            servicios: {
-              include: {
-                servicio: true
-              }
-            }
-          }
-        }
       }
     })
 
@@ -218,14 +176,6 @@ export async function GET(
     // Generar HTML del documento
     const htmlContent = generateHTML(factura)
     const htmlBuffer = Buffer.from(htmlContent, 'utf-8')
-
-    // Actualizar ruta de PDF en base de datos (opcional)
-    await prisma.factura.update({
-      where: { id: params.id },
-      data: {
-        pdfPath: `/documentos/${factura.numero}.html`
-      }
-    })
 
     // Retornar como HTML que se puede imprimir fácilmente
     return new NextResponse(htmlBuffer, {

@@ -19,7 +19,6 @@ export async function GET(request: NextRequest) {
         name: true,
         email: true,
         role: true,
-        activo: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -74,14 +73,12 @@ export async function POST(request: NextRequest) {
         email,
         password: hashedPassword,
         role: role as RolUsuario,
-        activo: activo !== undefined ? activo : true,
       },
       select: {
         id: true,
         name: true,
         email: true,
         role: true,
-        activo: true,
         createdAt: true,
         updatedAt: true,
       }

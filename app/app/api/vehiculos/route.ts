@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
           select: {
             id: true,
             nombre: true,
-            apellido: true,
+            apellidos: true,
             telefono: true,
           }
         },
@@ -103,9 +103,6 @@ export async function POST(request: NextRequest) {
         anio: anio || new Date().getFullYear(),
         color: color || null,
         kilometraje: kilometraje || null,
-        motor: motor || null,
-        combustible: combustible || null,
-        observaciones: observaciones || null,
         clienteId,
       },
       include: {
@@ -113,7 +110,7 @@ export async function POST(request: NextRequest) {
           select: {
             id: true,
             nombre: true,
-            apellido: true,
+            apellidos: true,
             telefono: true,
           }
         },
@@ -205,9 +202,6 @@ export async function PUT(request: NextRequest) {
         anio: anio || new Date().getFullYear(),
         color: color || null,
         kilometraje: kilometraje || null,
-        motor: motor || null,
-        combustible: combustible || null,
-        observaciones: observaciones || null,
         clienteId,
       },
       include: {
@@ -215,7 +209,7 @@ export async function PUT(request: NextRequest) {
           select: {
             id: true,
             nombre: true,
-            apellido: true,
+            apellidos: true,
             telefono: true,
           }
         },
@@ -256,7 +250,7 @@ export async function DELETE(request: NextRequest) {
       where: {
         vehiculoId: id,
         estado: {
-          in: ['PENDIENTE', 'CONFIRMADA', 'EN_PROCESO']
+          in: ['PENDIENTE', 'PENDIENTE', 'EN_CURSO']
         }
       }
     })

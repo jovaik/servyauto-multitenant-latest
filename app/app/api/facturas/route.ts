@@ -16,16 +16,9 @@ export async function GET(request: NextRequest) {
         cliente: {
           select: {
             nombre: true,
-            apellido: true
+            apellidos: true
           }
         },
-        cita: {
-          select: {
-            id: true,
-            fecha: true
-          }
-        },
-        items: true
       },
       orderBy: {
         createdAt: 'desc'
@@ -52,43 +45,20 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const {
       clienteId,
-      citaId,
-      items,
       metodoPago,
-      datosFacturacion,
-      solicitaFactura = false // Si el cliente solicita expresamente una factura
+      observaciones,
+      subtotal,
+      iva,
+      total
     } = body
 
-    // Determinar el tipo de documento según método de pago y solicitud del cliente
-    let tipo: 'TICKET' | 'FACTURA'
-    
-    if (solicitaFactura) {
-      // Si cliente solicita factura expresamente, siempre generar FACTURA
-      tipo = 'FACTURA'
-    } else if (metodoPago === 'TPV_UNICAJA') {
-      // TPV UNICAJA siempre genera FACTURA
-      tipo = 'FACTURA'
-    } else if (metodoPago === 'EFECTIVO' || metodoPago === 'TARJETA_SUMUP') {
-      // EFECTIVO (CASH) o SUMUP generan TICKET
-      tipo = 'TICKET'
-    } else {
-      // Por defecto TICKET para otros métodos
-      tipo = 'TICKET'
-    }
-
-    // Calcular totales
-    const subtotal = items.reduce((sum: number, item: any) => sum + (item.cantidad * item.precio), 0)
-    const iva = subtotal * 0.21 // 21% IVA
-    const total = subtotal + iva
-
-    // Generar número de documento con formato correcto
+    // Generar número de factura
     const año = new Date().getFullYear()
-    const prefijo = tipo === 'FACTURA' ? 'FAC' : 'TICK'
+    const prefijo = 'FAC'
     
-    // Buscar la última factura o ticket del mismo tipo y año
+    // Buscar la última factura del año
     const ultimaFactura = await prisma.factura.findFirst({
       where: { 
-        tipo,
         numero: {
           startsWith: `${prefijo}-${año}-`
         }
@@ -111,27 +81,15 @@ export async function POST(request: NextRequest) {
     const factura = await prisma.factura.create({
       data: {
         numero,
-        tipo,
-        subtotal,
-        iva,
-        total,
-        metodoPago,
+        subtotal: subtotal || 0,
+        iva: iva || 0,
+        total: total || 0,
+        metodoPago: metodoPago || null,
+        observaciones: observaciones || null,
         clienteId,
-        citaId,
-        datosFacturacion: datosFacturacion ? JSON.stringify(datosFacturacion) : null,
-        items: {
-          create: items.map((item: any) => ({
-            descripcion: item.descripcion,
-            cantidad: item.cantidad,
-            precio: item.precio,
-            total: item.cantidad * item.precio
-          }))
-        }
       },
       include: {
         cliente: true,
-        items: true,
-        cita: true
       }
     })
 

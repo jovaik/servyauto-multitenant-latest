@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
 
     const citasFormateadas = citas?.map((cita) => ({
       id: cita.id,
-      cliente: `${cita?.cliente?.nombre} ${cita?.cliente?.apellido}`,
+      cliente: `${cita?.cliente?.nombre} ${cita?.cliente?.apellidos || ''}`,
       vehiculo: `${cita?.vehiculo?.marca} ${cita?.vehiculo?.modelo} - ${cita?.vehiculo?.matricula}`,
       hora: cita.horaInicio,
       estado: cita.estado,

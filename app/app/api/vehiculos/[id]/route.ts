@@ -23,11 +23,7 @@ export async function GET(
         cliente: true,
         citas: {
           include: {
-            servicios: {
-              include: {
-                servicio: true
-              }
-            }
+            servicio: true
           }
         }
       }
@@ -118,16 +114,13 @@ export async function PUT(
         anio: anio || existingVehicle.anio,
         color: color || null,
         kilometraje: kilometraje || null,
-        motor: motor || null,
-        combustible: combustible || null,
-        observaciones: observaciones || null,
       },
       include: {
         cliente: {
           select: {
             id: true,
             nombre: true,
-            apellido: true,
+            apellidos: true,
             telefono: true,
           }
         },
@@ -177,7 +170,7 @@ export async function DELETE(
       where: {
         vehiculoId: params.id,
         estado: {
-          in: ['PENDIENTE', 'CONFIRMADA', 'EN_PROCESO']
+          in: ['PENDIENTE', 'EN_CURSO']
         }
       }
     })
@@ -192,26 +185,9 @@ export async function DELETE(
       )
     }
 
-    // Usar transacción para eliminar vehículo y todos sus datos relacionados
-    await prisma.$transaction(async (tx) => {
-      // Eliminar servicios de citas del vehículo
-      await tx.citaServicio.deleteMany({
-        where: {
-          cita: {
-            vehiculoId: params.id
-          }
-        }
-      })
-
-      // Eliminar citas del vehículo
-      await tx.cita.deleteMany({
-        where: { vehiculoId: params.id }
-      })
-
-      // Eliminar vehículo
-      await tx.vehiculo.delete({
-        where: { id: params.id }
-      })
+    // Eliminar vehículo (las citas se eliminan automáticamente por cascade)
+    await prisma.vehiculo.delete({
+      where: { id: params.id }
     })
 
     return NextResponse.json({ 
