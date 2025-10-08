@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { uploadFile } from '@/lib/s3'
 import { getServerSession } from 'next-auth'
-import { authOptions } from '../auth/[...nextauth]/route'
+import { authOptions } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
   try {

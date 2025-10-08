@@ -22,7 +22,7 @@ function generateHTML(factura: any): string {
     <html>
     <head>
       <meta charset="UTF-8">
-      <title>${factura.tipo} ${factura.numero}</title>
+      <title>Factura ${factura.numero}</title>
       <style>
         body { 
           font-family: Arial, sans-serif; 
@@ -115,7 +115,7 @@ function generateHTML(factura: any): string {
       <div class="header">
         <div class="company-name">SERVYAUTO</div>
         <div>Sistema de Gestión Automotriz</div>
-        <div class="document-type">${factura.tipo}: ${factura.numero}</div>
+        <div class="document-type">Factura: ${factura.numero}</div>
       </div>
 
       <div class="info-grid">

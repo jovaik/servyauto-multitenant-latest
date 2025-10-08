@@ -38,8 +38,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       )
     }
 
-    // Calcular nuevo total si hay servicios
-    let total = citaExistente.total
+    // Calcular nuevo precio final si hay servicios
+    let precioFinal = citaExistente.precioFinal
     if (servicios && servicios.length > 0) {
       const serviciosData = await prisma.servicio.findMany({
         where: {
@@ -47,7 +47,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         },
       })
       
-      total = serviciosData.reduce((sum, servicio) => sum + servicio.precio, 0)
+      precioFinal = serviciosData.reduce((sum, servicio) => sum + servicio.precio, 0)
     }
 
     // Actualizar la cita
@@ -57,20 +57,15 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         ...(fecha && { fecha: new Date(fecha) }),
         ...(horaInicio && { horaInicio }),
         ...(horaFin && { horaFin }),
-        ...(box && { box }),
         ...(estado && { estado }),
         ...(observaciones !== undefined && { observaciones }),
         ...(metodoPago && { metodoPago }),
-        ...(total !== undefined && { total }),
+        ...(precioFinal !== undefined && { precioFinal }),
       },
       include: {
         cliente: true,
         vehiculo: true,
-        servicios: {
-          include: {
-            servicio: true,
-          },
-        },
+        servicio: true,
       },
     })
 

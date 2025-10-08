@@ -28,7 +28,7 @@ export async function GET(
             }
           }
         },
-        items: true
+        
       }
     })
 
@@ -91,7 +91,7 @@ export async function PUT(
         data: updateData,
         include: {
           cliente: true,
-          items: true
+          
         }
       })
 
@@ -118,7 +118,7 @@ export async function PUT(
           where: { id: params.id },
           include: {
             cliente: true,
-            items: true
+            
           }
         })
       }

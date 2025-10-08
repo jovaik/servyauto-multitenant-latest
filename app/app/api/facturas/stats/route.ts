@@ -22,26 +22,46 @@ export async function GET(request: NextRequest) {
     // Obtener todas las facturas
     const todasFacturas = await prisma.factura.findMany({
       select: {
-        tipo: true,
         total: true,
-        estado: true,
+        pagada: true,
+        createdAt: true
+      }
+    })
+
+    // Obtener todos los tickets
+    const todosTickets = await prisma.ticket.findMany({
+      select: {
+        total: true,
+        pagado: true,
         createdAt: true
       }
     })
 
     // Calcular estadísticas
-    const totalFacturas = todasFacturas.filter(f => f.tipo === 'FACTURA').length
-    const totalTickets = todasFacturas.filter(f => f.tipo === 'TICKET').length
+    const totalFacturas = todasFacturas.length
+    const totalTickets = todosTickets.length
     
     // Ingresos del mes actual
-    const ingresosMes = todasFacturas
-      .filter(f => f.createdAt >= inicioMes && f.estado === 'PAGADA')
+    const ingresosMesFacturas = todasFacturas
+      .filter(f => f.createdAt >= inicioMes && f.pagada)
       .reduce((sum, f) => sum + f.total, 0)
+      
+    const ingresosMesTickets = todosTickets
+      .filter(t => t.createdAt >= inicioMes && t.pagado)
+      .reduce((sum, t) => sum + t.total, 0)
 
-    // Pendientes de cobro (estado PENDIENTE)
-    const pendientesCobro = todasFacturas
-      .filter(f => f.estado === 'PENDIENTE')
+    const ingresosMes = ingresosMesFacturas + ingresosMesTickets
+
+    // Pendientes de cobro
+    const pendientesCobroFacturas = todasFacturas
+      .filter(f => !f.pagada)
       .reduce((sum, f) => sum + f.total, 0)
+      
+    const pendientesCobroTickets = todosTickets
+      .filter(t => !t.pagado)
+      .reduce((sum, t) => sum + t.total, 0)
+
+    const pendientesCobro = pendientesCobroFacturas + pendientesCobroTickets
 
     const stats = {
       totalFacturas,

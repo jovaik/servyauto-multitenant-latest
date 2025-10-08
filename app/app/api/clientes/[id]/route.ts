@@ -24,11 +24,7 @@ export async function GET(
         citas: {
           include: {
             vehiculo: true,
-            servicios: {
-              include: {
-                servicio: true
-              }
-            }
+            servicio: true,
           }
         }
       }
@@ -106,11 +102,11 @@ export async function PUT(
       where: { id: params.id },
       data: {
         nombre,
-        apellido,
+        apellidos: apellido,
         email: email || null,
         telefono,
         direccion: direccion || null,
-        dni: dni || null,
+        nif: dni || null,
       },
       include: {
         vehiculos: true,
@@ -155,12 +151,12 @@ export async function DELETE(
       )
     }
 
-    // Verificar si tiene citas pendientes o confirmadas
+    // Verificar si tiene citas pendientes o en curso
     const citasActivas = await prisma.cita.findMany({
       where: {
         clienteId: params.id,
         estado: {
-          in: ['PENDIENTE', 'CONFIRMADA', 'EN_PROCESO']
+          in: ['PENDIENTE', 'EN_CURSO']
         }
       }
     })
@@ -175,44 +171,9 @@ export async function DELETE(
       )
     }
 
-    // Usar transacción para eliminar cliente y todos sus datos relacionados
-    await prisma.$transaction(async (tx) => {
-      // Eliminar servicios de citas del cliente
-      await tx.citaServicio.deleteMany({
-        where: {
-          cita: {
-            clienteId: params.id
-          }
-        }
-      })
-
-      // Eliminar facturas del cliente
-      await tx.facturaItem.deleteMany({
-        where: {
-          factura: {
-            clienteId: params.id
-          }
-        }
-      })
-
-      await tx.factura.deleteMany({
-        where: { clienteId: params.id }
-      })
-
-      // Eliminar citas del cliente
-      await tx.cita.deleteMany({
-        where: { clienteId: params.id }
-      })
-
-      // Eliminar vehículos del cliente
-      await tx.vehiculo.deleteMany({
-        where: { clienteId: params.id }
-      })
-
-      // Eliminar cliente
-      await tx.cliente.delete({
-        where: { id: params.id }
-      })
+    // Eliminar cliente (cascade eliminará citas, vehículos, facturas y tickets)
+    await prisma.cliente.delete({
+      where: { id: params.id }
     })
 
     return NextResponse.json({ 

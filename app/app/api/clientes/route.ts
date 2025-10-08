@@ -42,12 +42,12 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { nombre, apellido, email, telefono, direccion, dni } = body
+    const { nombre, apellidos, email, telefono, direccion, dni } = body
 
     // Validaciones básicas
-    if (!nombre || !apellido || !telefono) {
+    if (!nombre || !apellidos || !telefono) {
       return NextResponse.json(
-        { error: 'Campos requeridos: nombre, apellido, telefono' },
+        { error: 'Campos requeridos: nombre, apellidos, telefono' },
         { status: 400 }
       )
     }
@@ -68,11 +68,11 @@ export async function POST(request: NextRequest) {
     const cliente = await prisma.cliente.create({
       data: {
         nombre,
-        apellido,
+        apellidos,
         email: email || null,
         telefono,
         direccion: direccion || null,
-        dni: dni || null,
+        nif: dni || null,
       },
       include: {
         vehiculos: true,
@@ -99,7 +99,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { id, nombre, apellido, email, telefono, direccion, dni } = body
+    const { id, nombre, apellidos, email, telefono, direccion, dni } = body
 
     if (!id) {
       return NextResponse.json(
@@ -109,9 +109,9 @@ export async function PUT(request: NextRequest) {
     }
 
     // Validaciones básicas
-    if (!nombre || !apellido || !telefono) {
+    if (!nombre || !apellidos || !telefono) {
       return NextResponse.json(
-        { error: 'Campos requeridos: nombre, apellido, telefono' },
+        { error: 'Campos requeridos: nombre, apellidos, telefono' },
         { status: 400 }
       )
     }
@@ -136,11 +136,11 @@ export async function PUT(request: NextRequest) {
       where: { id },
       data: {
         nombre,
-        apellido,
+        apellidos,
         email: email || null,
         telefono,
         direccion: direccion || null,
-        dni: dni || null,
+        nif: dni || null,
       },
       include: {
         vehiculos: true,
@@ -181,7 +181,7 @@ export async function DELETE(request: NextRequest) {
       where: {
         clienteId: id,
         estado: {
-          in: ['PENDIENTE', 'CONFIRMADA', 'EN_PROCESO']
+          in: ['PENDIENTE', 'COMPLETADA', 'EN_CURSO']
         }
       }
     })

@@ -35,11 +35,7 @@ export async function GET(req: NextRequest) {
       include: {
         cliente: true,
         vehiculo: true,
-        servicios: {
-          include: {
-            servicio: true,
-          },
-        },
+        servicio: true,
       },
       orderBy: {
         horaInicio: 'asc',
@@ -69,16 +65,16 @@ export async function POST(req: NextRequest) {
       fecha,
       horaInicio,
       horaFin,
-      box,
       clienteId,
       vehiculoId,
-      servicios,
+      servicioId,
+      mecanico,
       observaciones,
       metodoPago,
     } = body
 
     // Validar campos requeridos
-    if (!fecha || !horaInicio || !horaFin || !box || !clienteId || !vehiculoId) {
+    if (!fecha || !horaInicio || !horaFin || !clienteId || !vehiculoId || !servicioId) {
       return NextResponse.json(
         { error: 'Faltan campos requeridos' },
         { status: 400 }
@@ -94,28 +90,22 @@ export async function POST(req: NextRequest) {
           lt: new Date(fechaCita.getFullYear(), fechaCita.getMonth(), fechaCita.getDate() + 1),
         },
         horaInicio,
-        box,
       },
     })
 
     if (citaExistente) {
       return NextResponse.json(
-        { error: 'Ya existe una cita en este horario y box' },
+        { error: 'Ya existe una cita en este horario' },
         { status: 400 }
       )
     }
 
-    // Calcular total
-    let total = 0
-    if (servicios && servicios.length > 0) {
-      const serviciosData = await prisma.servicio.findMany({
-        where: {
-          id: { in: servicios.map((s: any) => s.servicioId) },
-        },
-      })
-      
-      total = serviciosData.reduce((sum, servicio) => sum + servicio.precio, 0)
-    }
+    // Obtener precio del servicio
+    const servicio = await prisma.servicio.findUnique({
+      where: { id: servicioId },
+    })
+
+    const precioFinal = servicio?.precio || 0
 
     // Crear la cita
     const cita = await prisma.cita.create({
@@ -123,110 +113,21 @@ export async function POST(req: NextRequest) {
         fecha: fechaCita,
         horaInicio,
         horaFin,
-        box,
+        clienteId,
+        vehiculoId,
+        servicioId,
+        mecanico,
         estado: 'PENDIENTE',
         observaciones,
         metodoPago,
-        total,
-        clienteId,
-        vehiculoId,
-        servicios: servicios?.length > 0 ? {
-          create: servicios.map((s: any) => ({
-            servicioId: s.servicioId,
-            precio: s.precio || 0,
-          })),
-        } : undefined,
+        precioFinal,
       },
       include: {
         cliente: true,
         vehiculo: true,
-        servicios: {
-          include: {
-            servicio: true,
-          },
-        },
+        servicio: true,
       },
     })
-
-    // NUEVA FUNCIONALIDAD: Crear factura/ticket automáticamente según método de pago
-    if (metodoPago && total > 0 && servicios?.length > 0) {
-      // Determinar el tipo de documento según método de pago
-      let tipoDocumento: 'TICKET' | 'FACTURA'
-      if (metodoPago === 'TPV_UNICAJA') {
-        // TPV UNICAJA siempre genera FACTURA
-        tipoDocumento = 'FACTURA'
-      } else if (metodoPago === 'EFECTIVO' || metodoPago === 'TARJETA_SUMUP') {
-        // EFECTIVO o TPV SUMUP generan TICKET
-        tipoDocumento = 'TICKET'
-      } else {
-        // Por defecto TICKET para otros métodos
-        tipoDocumento = 'TICKET'
-      }
-      
-      // Generar número de documento con formato correcto
-      const año = new Date().getFullYear()
-      const prefijo = tipoDocumento === 'FACTURA' ? 'FAC' : 'TICK'
-      
-      // Buscar la última factura o ticket del mismo tipo y año
-      const ultimaFactura = await prisma.factura.findFirst({
-        where: { 
-          tipo: tipoDocumento,
-          numero: {
-            startsWith: `${prefijo}-${año}-`
-          }
-        },
-        orderBy: { createdAt: 'desc' }
-      })
-
-      let numeroSecuencia = 1
-      if (ultimaFactura) {
-        const partes = ultimaFactura.numero.split('-')
-        if (partes.length === 3 && partes[0] === prefijo) {
-          const ultimoNumero = parseInt(partes[2]) || 0
-          numeroSecuencia = ultimoNumero + 1
-        }
-      }
-
-      const numero = `${prefijo}-${año}-${numeroSecuencia.toString().padStart(4, '0')}`
-
-      // Crear items de factura a partir de los servicios de la cita
-      const itemsFactura = await Promise.all(
-        servicios.map(async (s: any) => {
-          const servicio = await prisma.servicio.findUnique({
-            where: { id: s.servicioId }
-          })
-          return {
-            descripcion: servicio?.nombre || 'Servicio',
-            cantidad: 1,
-            precio: s.precio || 0,
-            total: s.precio || 0
-          }
-        })
-      )
-
-      // Calcular totales de facturación
-      const subtotal = total / 1.21 // Descontar IVA del total
-      const iva = total - subtotal
-
-      // Crear la factura/ticket
-      await prisma.factura.create({
-        data: {
-          numero,
-          tipo: tipoDocumento,
-          subtotal,
-          iva,
-          total,
-          metodoPago,
-          clienteId,
-          citaId: cita.id,
-          items: {
-            create: itemsFactura
-          }
-        }
-      })
-
-      console.log(`✅ ${tipoDocumento} ${numero} creado automáticamente para cita ${cita.id}`)
-    }
 
     return NextResponse.json(cita, { status: 201 })
   } catch (error) {

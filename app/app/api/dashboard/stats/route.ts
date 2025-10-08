@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       citasHoy: citasHoy || 0,
-      facturacionMensual: facturacionMensual._sum.total || 0,
+      facturacionMensual: facturacionMensual._sum.precioFinal || 0,
       clientesTotal: clientesTotal || 0,
       citasPendientes: citasPendientes || 0,
     })
