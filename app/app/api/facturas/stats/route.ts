@@ -19,49 +19,29 @@ export async function GET(request: NextRequest) {
     inicioMes.setDate(1)
     inicioMes.setHours(0, 0, 0, 0)
 
-    // Obtener todas las facturas
+    // Obtener todas las facturas (incluyendo tickets)
     const todasFacturas = await prisma.factura.findMany({
       select: {
+        tipo: true,
         total: true,
-        pagada: true,
-        createdAt: true
-      }
-    })
-
-    // Obtener todos los tickets
-    const todosTickets = await prisma.ticket.findMany({
-      select: {
-        total: true,
-        pagado: true,
+        estado: true,
         createdAt: true
       }
     })
 
     // Calcular estadísticas
-    const totalFacturas = todasFacturas.length
-    const totalTickets = todosTickets.length
+    const totalFacturas = todasFacturas.filter((f: any) => f.tipo === 'FACTURA').length
+    const totalTickets = todasFacturas.filter((f: any) => f.tipo === 'TICKET').length
     
     // Ingresos del mes actual
-    const ingresosMesFacturas = todasFacturas
-      .filter(f => f.createdAt >= inicioMes && f.pagada)
-      .reduce((sum, f) => sum + f.total, 0)
-      
-    const ingresosMesTickets = todosTickets
-      .filter(t => t.createdAt >= inicioMes && t.pagado)
-      .reduce((sum, t) => sum + t.total, 0)
-
-    const ingresosMes = ingresosMesFacturas + ingresosMesTickets
+    const ingresosMes = todasFacturas
+      .filter((f: any) => f.createdAt >= inicioMes && f.estado === 'PAGADA')
+      .reduce((sum: number, f: any) => sum + f.total, 0)
 
     // Pendientes de cobro
-    const pendientesCobroFacturas = todasFacturas
-      .filter(f => !f.pagada)
-      .reduce((sum, f) => sum + f.total, 0)
-      
-    const pendientesCobroTickets = todosTickets
-      .filter(t => !t.pagado)
-      .reduce((sum, t) => sum + t.total, 0)
-
-    const pendientesCobro = pendientesCobroFacturas + pendientesCobroTickets
+    const pendientesCobro = todasFacturas
+      .filter((f: any) => f.estado === 'PENDIENTE' || f.estado === 'VENCIDA')
+      .reduce((sum: number, f: any) => sum + f.total, 0)
 
     const stats = {
       totalFacturas,

@@ -39,7 +39,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     }
 
     // Calcular nuevo precio final si hay servicios
-    let precioFinal = citaExistente.precioFinal
+    let precioFinal = citaExistente.total
     if (servicios && servicios.length > 0) {
       const serviciosData = await prisma.servicio.findMany({
         where: {
@@ -60,12 +60,16 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         ...(estado && { estado }),
         ...(observaciones !== undefined && { observaciones }),
         ...(metodoPago && { metodoPago }),
-        ...(precioFinal !== undefined && { precioFinal }),
+        ...(precioFinal !== undefined && { total: precioFinal }),
       },
       include: {
         cliente: true,
         vehiculo: true,
-        servicio: true,
+        cita_servicios: {
+          include: {
+            servicios: true
+          }
+        },
       },
     })
 

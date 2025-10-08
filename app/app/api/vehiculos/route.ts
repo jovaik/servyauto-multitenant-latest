@@ -250,7 +250,7 @@ export async function DELETE(request: NextRequest) {
       where: {
         vehiculoId: id,
         estado: {
-          in: ['PENDIENTE', 'PENDIENTE', 'EN_CURSO']
+          in: ['PENDIENTE', 'CONFIRMADA', 'EN_PROCESO']
         }
       }
     })

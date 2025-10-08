@@ -35,7 +35,11 @@ export async function GET(req: NextRequest) {
       include: {
         cliente: true,
         vehiculo: true,
-        servicio: true,
+        cita_servicios: {
+          include: {
+            servicios: true
+          }
+        }
       },
       orderBy: {
         horaInicio: 'asc',
@@ -105,9 +109,9 @@ export async function POST(req: NextRequest) {
       where: { id: servicioId },
     })
 
-    const precioFinal = servicio?.precio || 0
+    const precioTotal = servicio?.precio || 0
 
-    // Crear la cita
+    // Crear la cita con su servicio asociado
     const cita = await prisma.cita.create({
       data: {
         fecha: fechaCita,
@@ -115,17 +119,27 @@ export async function POST(req: NextRequest) {
         horaFin,
         clienteId,
         vehiculoId,
-        servicioId,
-        mecanico,
+        box: mecanico || 'Box 1',
         estado: 'PENDIENTE',
         observaciones,
         metodoPago,
-        precioFinal,
+        total: precioTotal,
+        cita_servicios: {
+          create: {
+            id: `${Date.now()}_${servicioId}`,
+            servicioId: servicioId,
+            precio: precioTotal
+          }
+        }
       },
       include: {
         cliente: true,
         vehiculo: true,
-        servicio: true,
+        cita_servicios: {
+          include: {
+            servicios: true
+          }
+        }
       },
     })
 

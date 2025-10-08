@@ -181,7 +181,7 @@ export async function DELETE(request: NextRequest) {
       where: {
         clienteId: id,
         estado: {
-          in: ['PENDIENTE', 'COMPLETADA', 'EN_CURSO']
+          in: ['PENDIENTE', 'COMPLETADA', 'EN_PROCESO']
         }
       }
     })

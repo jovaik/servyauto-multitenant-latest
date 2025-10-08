@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     const {
       clienteId,
       metodoPago,
-      observaciones,
+      datosFacturacion,
       subtotal,
       iva,
       total
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
         iva: iva || 0,
         total: total || 0,
         metodoPago: metodoPago || null,
-        observaciones: observaciones || null,
+        datosFacturacion: datosFacturacion || null,
         clienteId,
       },
       include: {

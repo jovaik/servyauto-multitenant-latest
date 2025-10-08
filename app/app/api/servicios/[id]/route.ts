@@ -107,7 +107,7 @@ export async function DELETE(
     }
 
     // Verificar si hay citas que usen este servicio
-    const citasConServicio = await prisma.cita.findFirst({
+    const citasConServicio = await prisma.cita_servicios.findFirst({
       where: { servicioId }
     })
 

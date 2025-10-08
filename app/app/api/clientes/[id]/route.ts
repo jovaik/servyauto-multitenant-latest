@@ -24,7 +24,11 @@ export async function GET(
         citas: {
           include: {
             vehiculo: true,
-            servicio: true,
+            cita_servicios: {
+              include: {
+                servicios: true
+              }
+            }
           }
         }
       }
@@ -156,7 +160,7 @@ export async function DELETE(
       where: {
         clienteId: params.id,
         estado: {
-          in: ['PENDIENTE', 'EN_CURSO']
+          in: ['PENDIENTE', 'EN_PROCESO']
         }
       }
     })
