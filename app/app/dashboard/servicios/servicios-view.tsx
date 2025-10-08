@@ -145,11 +145,12 @@ export function ServiciosView() {
         loadServicios()
         alert(editingServicio ? 'Servicio actualizado correctamente' : 'Servicio creado correctamente')
       } else {
-        throw new Error('Error en la respuesta del servidor')
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Error en la respuesta del servidor')
       }
     } catch (error) {
       console.error('Error saving servicio:', error)
-      alert('Error al guardar el servicio')
+      alert(error instanceof Error ? error.message : 'Error al guardar el servicio')
     } finally {
       setSaving(false)
     }
