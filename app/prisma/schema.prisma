@@ -79,6 +79,8 @@ model Cliente {
   tickets   Ticket[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@map("clientes")
 }
 
 model Vehiculo {
@@ -94,6 +96,8 @@ model Vehiculo {
   citas         Cita[]
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
+  @@map("vehiculos")
 }
 
 model Servicio {
@@ -106,6 +110,8 @@ model Servicio {
   citas       Cita[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@map("servicios")
 }
 
 model Cita {
@@ -129,6 +135,8 @@ model Cita {
   servicio           Servicio    @relation(fields: [servicioId], references: [id], onDelete: Cascade)
   createdAt          DateTime    @default(now())
   updatedAt          DateTime    @updatedAt
+
+  @@map("citas")
 }
 
 enum EstadoCita {
@@ -163,6 +171,8 @@ model Factura {
   observaciones   String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  @@map("facturas")
 }
 
 model Ticket {
@@ -179,6 +189,8 @@ model Ticket {
   observaciones   String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  @@map("tickets")
 }
 
 model SecuenciaDocumento {
@@ -186,4 +198,6 @@ model SecuenciaDocumento {
   tipo            TipoDocumento @unique
   ultimoNumero    Int      @default(0)
   updatedAt       DateTime @updatedAt
+
+  @@map("secuencias_documentos")
 }
