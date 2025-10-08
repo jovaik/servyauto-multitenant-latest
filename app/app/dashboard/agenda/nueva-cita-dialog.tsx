@@ -72,6 +72,7 @@ export function NuevaCitaDialog({
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [servicios, setServicios] = useState<Servicio[]>([])
   const [showNewVehiculo, setShowNewVehiculo] = useState(false)
+  const [showNewCliente, setShowNewCliente] = useState(false)
   const [boxes, setBoxes] = useState(['Box 1', 'Box 2', 'Box 3'])
   
   const [formData, setFormData] = useState({
@@ -84,6 +85,15 @@ export function NuevaCitaDialog({
     servicios: [] as string[],
     observaciones: '',
     metodoPago: '',
+  })
+
+  // Nuevo cliente
+  const [newCliente, setNewCliente] = useState({
+    nombre: '',
+    apellido: '',
+    email: '',
+    telefono: '',
+    documento: ''
   })
 
   // Nuevo vehículo para cliente existente
@@ -185,6 +195,58 @@ export function NuevaCitaDialog({
       }
     }
   }, [formData.clienteId, clientes])
+
+  const addNewCliente = async () => {
+    if (!newCliente.nombre || !newCliente.apellido || !newCliente.telefono) {
+      toast({
+        title: "Error",
+        description: "Por favor completa al menos: nombre, apellido y teléfono",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      const response = await fetch('/api/clientes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newCliente)
+      })
+
+      if (response.ok) {
+        const cliente = await response.json()
+        await loadClientes()
+        setFormData(prev => ({ ...prev, clienteId: cliente.id, vehiculoId: '' }))
+        setShowNewCliente(false)
+        setNewCliente({
+          nombre: '',
+          apellido: '',
+          email: '',
+          telefono: '',
+          documento: ''
+        })
+        toast({
+          title: "¡Éxito!",
+          description: "Cliente agregado correctamente. Ahora puedes agregar su vehículo.",
+        })
+        // Automáticamente mostrar el formulario de vehículo
+        setShowNewVehiculo(true)
+      } else {
+        const error = await response.json()
+        toast({
+          title: "Error",
+          description: error.error || "Error al agregar cliente",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Error al agregar cliente",
+        variant: "destructive",
+      })
+    }
+  }
 
   const addNewVehiculo = async () => {
     if (!formData.clienteId || !newVehiculo.marca || !newVehiculo.modelo || !newVehiculo.matricula) {
@@ -303,12 +365,20 @@ export function NuevaCitaDialog({
       observaciones: '',
       metodoPago: '',
     })
+    setNewCliente({
+      nombre: '',
+      apellido: '',
+      email: '',
+      telefono: '',
+      documento: ''
+    })
     setNewVehiculo({
       marca: '',
       modelo: '',
       matricula: '',
       anio: new Date().getFullYear()
     })
+    setShowNewCliente(false)
     setShowNewVehiculo(false)
   }
 
@@ -427,28 +497,102 @@ export function NuevaCitaDialog({
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label>Cliente *</Label>
-                <Select value={formData.clienteId || ""} onValueChange={(value) => 
-                  setFormData(prev => ({ 
-                    ...prev, 
-                    clienteId: value, 
-                    vehiculoId: "" 
-                  }))
-                }>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecciona un cliente" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {clientes?.map((cliente) => (
-                      <SelectItem key={cliente.id} value={cliente.id}>
-                        <div className="flex items-center">
-                          <User className="mr-2 h-4 w-4" />
-                          {cliente.nombre} {cliente.apellido} - {cliente.telefono}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center justify-between">
+                  <Label>Cliente *</Label>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setShowNewCliente(!showNewCliente)
+                      if (showNewCliente) {
+                        // Si cerramos el formulario de cliente, también cerrar el de vehículo
+                        setShowNewVehiculo(false)
+                      }
+                    }}
+                  >
+                    <User className="mr-1 h-3 w-3" />
+                    {showNewCliente ? 'Cancelar' : 'Nuevo Cliente'}
+                  </Button>
+                </div>
+                
+                {!showNewCliente ? (
+                  <Select value={formData.clienteId || ""} onValueChange={(value) => 
+                    setFormData(prev => ({ 
+                      ...prev, 
+                      clienteId: value, 
+                      vehiculoId: "" 
+                    }))
+                  }>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecciona un cliente" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clientes?.map((cliente) => (
+                        <SelectItem key={cliente.id} value={cliente.id}>
+                          <div className="flex items-center">
+                            <User className="mr-2 h-4 w-4" />
+                            {cliente.nombre} {cliente.apellido} - {cliente.telefono}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="border rounded-lg p-4 space-y-3 bg-blue-50 border-blue-200">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label>Nombre *</Label>
+                        <Input
+                          value={newCliente.nombre}
+                          onChange={(e) => setNewCliente(prev => ({ ...prev, nombre: e.target.value }))}
+                          placeholder="Nombre"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label>Apellido *</Label>
+                        <Input
+                          value={newCliente.apellido}
+                          onChange={(e) => setNewCliente(prev => ({ ...prev, apellido: e.target.value }))}
+                          placeholder="Apellido"
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label>Teléfono *</Label>
+                        <Input
+                          value={newCliente.telefono}
+                          onChange={(e) => setNewCliente(prev => ({ ...prev, telefono: e.target.value }))}
+                          placeholder="612345678"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label>Documento (DNI/NIE/CIF)</Label>
+                        <Input
+                          value={newCliente.documento}
+                          onChange={(e) => setNewCliente(prev => ({ ...prev, documento: e.target.value.toUpperCase() }))}
+                          placeholder="12345678A"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <Label>Email</Label>
+                      <Input
+                        type="email"
+                        value={newCliente.email}
+                        onChange={(e) => setNewCliente(prev => ({ ...prev, email: e.target.value }))}
+                        placeholder="cliente@email.com"
+                      />
+                    </div>
+                    <Button type="button" onClick={addNewCliente} size="sm" className="w-full">
+                      Agregar Cliente y Continuar
+                    </Button>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">
