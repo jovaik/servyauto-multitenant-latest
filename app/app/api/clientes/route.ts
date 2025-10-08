@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { nombre, apellido, email, telefono, direccion, dni } = body
+    const { nombre, apellido, email, telefono, direccion, documento } = body
 
     // Validaciones básicas
     if (!nombre || !apellido || !telefono) {
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
         email: email || null,
         telefono,
         direccion: direccion || null,
-        dni: dni || null,
+        documento: documento || null,
       },
       include: {
         vehiculos: true,
@@ -99,7 +99,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { id, nombre, apellido, email, telefono, direccion, dni } = body
+    const { id, nombre, apellido, email, telefono, direccion, documento } = body
 
     if (!id) {
       return NextResponse.json(
@@ -140,7 +140,7 @@ export async function PUT(request: NextRequest) {
         email: email || null,
         telefono,
         direccion: direccion || null,
-        dni: dni || null,
+        documento: documento || null,
       },
       include: {
         vehiculos: true,

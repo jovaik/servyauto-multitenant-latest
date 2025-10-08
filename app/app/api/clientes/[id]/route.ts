@@ -59,7 +59,7 @@ export async function PUT(
     }
 
     const body = await request.json()
-    const { nombre, apellido, email, telefono, direccion, dni } = body
+    const { nombre, apellido, email, telefono, direccion, documento } = body
 
     // Validaciones básicas
     if (!nombre || !apellido || !telefono) {
@@ -106,7 +106,7 @@ export async function PUT(
         email: email || null,
         telefono,
         direccion: direccion || null,
-        dni: dni || null,
+        documento: documento || null,
       },
       include: {
         vehiculos: true,

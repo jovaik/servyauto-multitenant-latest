@@ -18,7 +18,7 @@ interface Cliente {
   email?: string
   telefono: string
   direccion?: string
-  dni?: string
+  documento?: string
   vehiculos?: Vehiculo[]
   createdAt: Date
 }
@@ -44,7 +44,7 @@ export function ClientesView() {
     email: '',
     telefono: '',
     direccion: '',
-    dni: ''
+    documento: ''
   })
   const [submitting, setSubmitting] = useState(false)
 
@@ -78,7 +78,7 @@ export function ClientesView() {
         email: cliente.email || '',
         telefono: cliente.telefono,
         direccion: cliente.direccion || '',
-        dni: cliente.dni || ''
+        documento: cliente.documento || ''
       })
     } else {
       setEditingCliente(null)
@@ -88,7 +88,7 @@ export function ClientesView() {
         email: '',
         telefono: '',
         direccion: '',
-        dni: ''
+        documento: ''
       })
     }
     setShowModal(true)
@@ -103,7 +103,7 @@ export function ClientesView() {
       email: '',
       telefono: '',
       direccion: '',
-      dni: ''
+      documento: ''
     })
   }
 
@@ -264,8 +264,8 @@ export function ClientesView() {
                         <h3 className="font-semibold text-gray-900">
                           {cliente.nombre} {cliente.apellido}
                         </h3>
-                        {cliente.dni && (
-                          <p className="text-sm text-gray-500">DNI: {cliente.dni}</p>
+                        {cliente.documento && (
+                          <p className="text-sm text-gray-500">Documento: {cliente.documento}</p>
                         )}
                       </div>
                     </div>
@@ -405,11 +405,11 @@ export function ClientesView() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="dni">DNI</Label>
+              <Label htmlFor="documento">Documento</Label>
               <Input
-                id="dni"
-                value={formData.dni}
-                onChange={(e) => setFormData({ ...formData, dni: e.target.value })}
+                id="documento"
+                value={formData.documento}
+                onChange={(e) => setFormData({ ...formData, documento: e.target.value })}
                 placeholder="12345678A"
               />
             </div>

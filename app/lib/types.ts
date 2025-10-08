@@ -6,7 +6,7 @@ export interface Cliente {
   email?: string;
   telefono: string;
   direccion?: string;
-  dni?: string;
+  documento?: string;
   createdAt: Date;
   updatedAt: Date;
 }
