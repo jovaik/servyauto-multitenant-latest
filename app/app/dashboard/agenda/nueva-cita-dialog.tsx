@@ -315,11 +315,19 @@ export function NuevaCitaDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!formData.fecha || !formData.horaInicio || !formData.horaFin || 
-        !formData.box || !formData.clienteId || !formData.vehiculoId) {
+    // Validación mejorada con mensajes específicos
+    const camposFaltantes = []
+    if (!formData.fecha) camposFaltantes.push("Fecha")
+    if (!formData.horaInicio) camposFaltantes.push("Hora de inicio")
+    if (!formData.horaFin) camposFaltantes.push("Hora de recogida")
+    if (!formData.box) camposFaltantes.push("Box")
+    if (!formData.clienteId) camposFaltantes.push("Cliente")
+    if (!formData.vehiculoId) camposFaltantes.push("Vehículo")
+    
+    if (camposFaltantes.length > 0) {
       toast({
-        title: "Error",
-        description: "Por favor completa todos los campos requeridos",
+        title: "Faltan campos requeridos",
+        description: `Por favor completa: ${camposFaltantes.join(', ')}`,
         variant: "destructive",
       })
       return
