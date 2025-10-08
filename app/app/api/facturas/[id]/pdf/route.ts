@@ -103,10 +103,10 @@ function generateHTML(factura: any): string {
       <div class="info-grid">
         <div class="info-section">
           <div class="info-title">Información del Cliente</div>
-          <div><strong>Cliente:</strong> ${factura.cliente.nombre} ${factura.cliente.apellidoss || ''}</div>
+          <div><strong>Cliente:</strong> ${factura.cliente.nombre} ${factura.cliente.apellido || ''}</div>
           <div><strong>Email:</strong> ${factura.cliente.email || 'No especificado'}</div>
           <div><strong>Teléfono:</strong> ${factura.cliente.telefono || 'No especificado'}</div>
-          ${factura.cliente.nif ? `<div><strong>NIF:</strong> ${factura.cliente.nif}</div>` : ''}
+          ${factura.cliente.dni ? `<div><strong>NIF:</strong> ${factura.cliente.dni}</div>` : ''}
         </div>
         
         <div class="info-section">

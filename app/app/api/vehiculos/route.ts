@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
           select: {
             id: true,
             nombre: true,
-            apellidos: true,
+            apellido: true,
             telefono: true,
           }
         },
@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
           select: {
             id: true,
             nombre: true,
-            apellidos: true,
+            apellido: true,
             telefono: true,
           }
         },
@@ -209,7 +209,7 @@ export async function PUT(request: NextRequest) {
           select: {
             id: true,
             nombre: true,
-            apellidos: true,
+            apellido: true,
             telefono: true,
           }
         },

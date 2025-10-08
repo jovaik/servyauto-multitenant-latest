@@ -42,12 +42,12 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { nombre, apellidos, email, telefono, direccion, dni } = body
+    const { nombre, apellido, email, telefono, direccion, dni } = body
 
     // Validaciones básicas
-    if (!nombre || !apellidos || !telefono) {
+    if (!nombre || !apellido || !telefono) {
       return NextResponse.json(
-        { error: 'Campos requeridos: nombre, apellidos, telefono' },
+        { error: 'Campos requeridos: nombre, apellido, telefono' },
         { status: 400 }
       )
     }
@@ -68,11 +68,11 @@ export async function POST(request: NextRequest) {
     const cliente = await prisma.cliente.create({
       data: {
         nombre,
-        apellidos,
+        apellido,
         email: email || null,
         telefono,
         direccion: direccion || null,
-        nif: dni || null,
+        dni: dni || null,
       },
       include: {
         vehiculos: true,
@@ -99,7 +99,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { id, nombre, apellidos, email, telefono, direccion, dni } = body
+    const { id, nombre, apellido, email, telefono, direccion, dni } = body
 
     if (!id) {
       return NextResponse.json(
@@ -109,9 +109,9 @@ export async function PUT(request: NextRequest) {
     }
 
     // Validaciones básicas
-    if (!nombre || !apellidos || !telefono) {
+    if (!nombre || !apellido || !telefono) {
       return NextResponse.json(
-        { error: 'Campos requeridos: nombre, apellidos, telefono' },
+        { error: 'Campos requeridos: nombre, apellido, telefono' },
         { status: 400 }
       )
     }
@@ -136,11 +136,11 @@ export async function PUT(request: NextRequest) {
       where: { id },
       data: {
         nombre,
-        apellidos,
+        apellido,
         email: email || null,
         telefono,
         direccion: direccion || null,
-        nif: dni || null,
+        dni: dni || null,
       },
       include: {
         vehiculos: true,

@@ -68,11 +68,11 @@ enum RolUsuario {
 model Cliente {
   id        String   @id @default(cuid())
   nombre    String
-  apellidos String?
+  apellido  String
   email     String?
-  telefono  String?
+  telefono  String
   direccion String?
-  nif       String?  @unique
+  dni       String?
   vehiculos Vehiculo[]
   citas     Cita[]
   facturas  Factura[]
@@ -85,12 +85,15 @@ model Cliente {
 
 model Vehiculo {
   id            String   @id @default(cuid())
-  matricula     String   @unique
   marca         String
   modelo        String
-  anio          Int?
+  anio          Int
   color         String?
+  matricula     String   @unique
   kilometraje   Int?
+  motor         String?
+  combustible   String?
+  observaciones String?
   clienteId     String
   cliente       Cliente  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
   citas         Cita[]

@@ -120,7 +120,7 @@ export async function PUT(
           select: {
             id: true,
             nombre: true,
-            apellidos: true,
+            apellido: true,
             telefono: true,
           }
         },

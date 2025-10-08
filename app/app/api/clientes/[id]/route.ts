@@ -102,11 +102,11 @@ export async function PUT(
       where: { id: params.id },
       data: {
         nombre,
-        apellidos: apellido,
+        apellido: apellido,
         email: email || null,
         telefono,
         direccion: direccion || null,
-        nif: dni || null,
+        dni: dni || null,
       },
       include: {
         vehiculos: true,
