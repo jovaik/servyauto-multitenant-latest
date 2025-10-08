@@ -71,14 +71,14 @@ export async function POST(req: NextRequest) {
       horaFin,
       clienteId,
       vehiculoId,
-      servicioId,
-      mecanico,
+      servicios,
+      box,
       observaciones,
       metodoPago,
     } = body
 
     // Validar campos requeridos
-    if (!fecha || !horaInicio || !horaFin || !clienteId || !vehiculoId || !servicioId) {
+    if (!fecha || !horaInicio || !horaFin || !clienteId || !vehiculoId || !box) {
       return NextResponse.json(
         { error: 'Faltan campos requeridos' },
         { status: 400 }
@@ -94,24 +94,41 @@ export async function POST(req: NextRequest) {
           lt: new Date(fechaCita.getFullYear(), fechaCita.getMonth(), fechaCita.getDate() + 1),
         },
         horaInicio,
+        box,
       },
     })
 
     if (citaExistente) {
       return NextResponse.json(
-        { error: 'Ya existe una cita en este horario' },
+        { error: 'Ya existe una cita en este horario y box' },
         { status: 400 }
       )
     }
 
-    // Obtener precio del servicio
-    const servicio = await prisma.servicio.findUnique({
-      where: { id: servicioId },
-    })
+    // Calcular precio total de los servicios
+    let precioTotal = 0
+    const serviciosData = []
+    
+    if (servicios && Array.isArray(servicios) && servicios.length > 0) {
+      for (const svc of servicios) {
+        const servicioId = svc.servicioId || svc
+        const servicio = await prisma.servicio.findUnique({
+          where: { id: servicioId },
+        })
+        
+        if (servicio) {
+          const precio = svc.precio || servicio.precio
+          precioTotal += precio
+          serviciosData.push({
+            id: `${Date.now()}_${servicioId}_${Math.random().toString(36).substr(2, 9)}`,
+            servicioId: servicioId,
+            precio: precio
+          })
+        }
+      }
+    }
 
-    const precioTotal = servicio?.precio || 0
-
-    // Crear la cita con su servicio asociado
+    // Crear la cita con sus servicios asociados
     const cita = await prisma.cita.create({
       data: {
         fecha: fechaCita,
@@ -119,18 +136,14 @@ export async function POST(req: NextRequest) {
         horaFin,
         clienteId,
         vehiculoId,
-        box: mecanico || 'Box 1',
+        box,
         estado: 'PENDIENTE',
         observaciones,
         metodoPago,
         total: precioTotal,
-        cita_servicios: {
-          create: {
-            id: `${Date.now()}_${servicioId}`,
-            servicioId: servicioId,
-            precio: precioTotal
-          }
-        }
+        cita_servicios: serviciosData.length > 0 ? {
+          create: serviciosData
+        } : undefined
       },
       include: {
         cliente: true,
