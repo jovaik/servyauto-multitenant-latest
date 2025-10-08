@@ -213,10 +213,11 @@ export function NuevaCitaDialog({
         body: JSON.stringify(newCliente)
       })
 
+      const data = await response.json()
+
       if (response.ok) {
-        const cliente = await response.json()
         await loadClientes()
-        setFormData(prev => ({ ...prev, clienteId: cliente.id, vehiculoId: '' }))
+        setFormData(prev => ({ ...prev, clienteId: data.id, vehiculoId: '' }))
         setShowNewCliente(false)
         setNewCliente({
           nombre: '',
@@ -232,17 +233,18 @@ export function NuevaCitaDialog({
         // Automáticamente mostrar el formulario de vehículo
         setShowNewVehiculo(true)
       } else {
-        const error = await response.json()
+        console.error('Error creating client:', data)
         toast({
-          title: "Error",
-          description: error.error || "Error al agregar cliente",
+          title: "Error al crear cliente",
+          description: data.error || "Error desconocido. Ver consola para detalles.",
           variant: "destructive",
         })
       }
     } catch (error) {
+      console.error('Error creating client:', error)
       toast({
-        title: "Error",
-        description: "Error al agregar cliente",
+        title: "Error de conexión",
+        description: "No se pudo conectar con el servidor",
         variant: "destructive",
       })
     }
@@ -259,20 +261,26 @@ export function NuevaCitaDialog({
     }
 
     try {
+      const payload = {
+        ...newVehiculo,
+        clienteId: formData.clienteId,
+        anio: newVehiculo.anio || new Date().getFullYear()
+      }
+
+      console.log('Enviando vehículo:', payload)
+
       const response = await fetch('/api/vehiculos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...newVehiculo,
-          clienteId: formData.clienteId
-        })
+        body: JSON.stringify(payload)
       })
 
+      const data = await response.json()
+
       if (response.ok) {
-        const vehiculo = await response.json()
         // Refresh clientes to get updated vehicle list
         await loadClientes()
-        setFormData(prev => ({ ...prev, vehiculoId: vehiculo.id }))
+        setFormData(prev => ({ ...prev, vehiculoId: data.id }))
         setShowNewVehiculo(false)
         setNewVehiculo({
           marca: '',
@@ -284,11 +292,19 @@ export function NuevaCitaDialog({
           title: "¡Éxito!",
           description: "Vehículo agregado correctamente",
         })
+      } else {
+        console.error('Error creating vehicle:', data)
+        toast({
+          title: "Error al crear vehículo",
+          description: data.error || "Error desconocido. Ver consola para detalles.",
+          variant: "destructive",
+        })
       }
     } catch (error) {
+      console.error('Error creating vehicle:', error)
       toast({
-        title: "Error",
-        description: "Error al agregar vehículo",
+        title: "Error de conexión",
+        description: "No se pudo conectar con el servidor",
         variant: "destructive",
       })
     }

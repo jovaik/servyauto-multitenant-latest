@@ -50,6 +50,8 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
+    console.log('Datos recibidos para crear vehículo:', body)
+    
     const { 
       marca, 
       modelo, 
@@ -117,12 +119,13 @@ export async function POST(request: NextRequest) {
       }
     })
 
+    console.log('Vehículo creado exitosamente:', vehiculo.id)
     return NextResponse.json(vehiculo, { status: 201 })
 
   } catch (error) {
     console.error('Error creating vehicle:', error)
     return NextResponse.json(
-      { error: 'Error al crear vehículo' },
+      { error: 'Error al crear vehículo: ' + (error as Error).message },
       { status: 500 }
     )
   }

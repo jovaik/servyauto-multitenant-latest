@@ -42,6 +42,8 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
+    console.log('Datos recibidos para crear cliente:', body)
+    
     const { nombre, apellido, email, telefono, direccion, documento } = body
 
     // Validaciones básicas
@@ -79,12 +81,13 @@ export async function POST(request: NextRequest) {
       }
     })
 
+    console.log('Cliente creado exitosamente:', cliente.id)
     return NextResponse.json(cliente, { status: 201 })
 
   } catch (error) {
     console.error('Error creating client:', error)
     return NextResponse.json(
-      { error: 'Error al crear cliente' },
+      { error: 'Error al crear cliente: ' + (error as Error).message },
       { status: 500 }
     )
   }
