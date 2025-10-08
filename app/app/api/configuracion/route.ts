@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { prisma } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,8 +10,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
-    // TODO: Funcionalidad de configuración pendiente de implementación
-    return NextResponse.json({ configuraciones: [] })
+    const configuraciones = await prisma.configuracion.findMany({
+      orderBy: {
+        categoria: 'asc'
+      }
+    })
+
+    return NextResponse.json(configuraciones)
   } catch (error) {
     console.error('Error fetching configuraciones:', error)
     return NextResponse.json(
@@ -27,15 +33,47 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
-    // TODO: Funcionalidad de configuración pendiente de implementación
-    return NextResponse.json(
-      { error: 'Funcionalidad no disponible' },
-      { status: 501 }
+    const configData = await request.json()
+
+    // Validar que configData sea un array
+    if (!Array.isArray(configData)) {
+      return NextResponse.json(
+        { error: 'Formato de datos inválido' },
+        { status: 400 }
+      )
+    }
+
+    // Guardar o actualizar cada configuración usando upsert
+    const results = await Promise.all(
+      configData.map((config) =>
+        prisma.configuracion.upsert({
+          where: { clave: config.clave },
+          update: {
+            valor: config.valor,
+            tipo: config.tipo,
+            categoria: config.categoria,
+            descripcion: config.descripcion
+          },
+          create: {
+            clave: config.clave,
+            valor: config.valor,
+            tipo: config.tipo,
+            categoria: config.categoria,
+            descripcion: config.descripcion
+          }
+        })
+      )
     )
+
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Configuración guardada correctamente',
+      count: results.length
+    })
   } catch (error) {
     console.error('Error saving configuraciones:', error)
     return NextResponse.json(
-      { error: 'Error interno del servidor' },
+      { error: 'Error interno del servidor', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     )
   }

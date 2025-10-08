@@ -1,13 +1,12 @@
-
 generator client {
-    provider = "prisma-client-js"
-    binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
-    output = "/home/ubuntu/servyauto_manager_v89/app/node_modules/.prisma/client"
+  provider      = "prisma-client-js"
+  output        = "/home/ubuntu/servyauto_manager_v89/app/node_modules/.prisma/client"
+  binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
 }
 
 datasource db {
-    provider = "postgresql"
-    url      = env("DATABASE_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Account {
@@ -16,15 +15,14 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
@@ -38,17 +36,18 @@ model Session {
 }
 
 model User {
-  id            String    @id @default(cuid())
+  id            String     @id @default(cuid())
   name          String?
-  email         String    @unique
+  email         String     @unique
   emailVerified DateTime?
   image         String?
   password      String?
   role          RolUsuario @default(ADMIN)
+  activo        Boolean    @default(true)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
   accounts      Account[]
   sessions      Session[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
 }
 
 model VerificationToken {
@@ -59,26 +58,19 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-enum RolUsuario {
-  ADMIN
-  MECANICO
-  RECEPCIONISTA
-}
-
 model Cliente {
-  id        String   @id @default(cuid())
+  id        String     @id @default(cuid())
   nombre    String
   apellido  String
-  email     String?
+  email     String?    @unique
   telefono  String
   direccion String?
-  documento String?  @map("dni")
-  vehiculos Vehiculo[]
+  documento String?    @map("dni")
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
   citas     Cita[]
   facturas  Factura[]
-  tickets   Ticket[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  vehiculos Vehiculo[]
 
   @@map("clientes")
 }
@@ -95,58 +87,137 @@ model Vehiculo {
   combustible   String?
   observaciones String?
   clienteId     String
-  cliente       Cliente  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  citas         Cita[]
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  citas         Cita[]
+  cliente       Cliente  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
 
   @@map("vehiculos")
 }
 
 model Servicio {
-  id          String   @id @default(cuid())
-  nombre      String   @unique
-  descripcion String?
-  precio      Float
-  duracion    Int      // Duración en minutos
-  activo      Boolean  @default(true)
-  citas       Cita[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id             String           @id @default(cuid())
+  nombre         String
+  descripcion    String?
+  precio         Float
+  duracion       Int
+  activo         Boolean          @default(true)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  cita_servicios cita_servicios[]
 
   @@map("servicios")
 }
 
 model Cita {
-  id                 String      @id @default(cuid())
-  fecha              DateTime
-  horaInicio         String
-  horaFin            String
-  clienteId          String
-  vehiculoId         String
-  servicioId         String
-  mecanico           String?
-  estado             EstadoCita  @default(PENDIENTE)
-  observaciones      String?
-  precioFinal        Float?
-  metodoPago         MetodoPago?
-  pagado             Boolean     @default(false)
-  tipoDocumento      TipoDocumento?
-  numeroDocumento    String?
-  cliente            Cliente     @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  vehiculo           Vehiculo    @relation(fields: [vehiculoId], references: [id], onDelete: Cascade)
-  servicio           Servicio    @relation(fields: [servicioId], references: [id], onDelete: Cascade)
-  createdAt          DateTime    @default(now())
-  updatedAt          DateTime    @updatedAt
+  id             String           @id @default(cuid())
+  fecha          DateTime
+  horaInicio     String
+  horaFin        String
+  box            String
+  estado         EstadoCita       @default(PENDIENTE)
+  observaciones  String?
+  metodoPago     MetodoPago?
+  total          Float?
+  clienteId      String
+  vehiculoId     String
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  cita_servicios cita_servicios[]
+  cliente        Cliente          @relation(fields: [clienteId], references: [id])
+  vehiculo       Vehiculo         @relation(fields: [vehiculoId], references: [id])
+  facturas       Factura?
 
   @@map("citas")
 }
 
+model Factura {
+  id               String          @id @default(cuid())
+  numero           String          @unique
+  tipo             TipoFactura     @default(TICKET)
+  fecha            DateTime        @default(now())
+  subtotal         Float
+  iva              Float
+  total            Float
+  estado           EstadoFactura   @default(PENDIENTE)
+  metodoPago       MetodoPago?
+  clienteId        String
+  citaId           String?         @unique
+  datosFacturacion String?
+  pdfPath          String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  factura_items    factura_items[]
+  citas            Cita?           @relation(fields: [citaId], references: [id])
+  cliente          Cliente         @relation(fields: [clienteId], references: [id])
+
+  @@map("facturas")
+}
+
+model Configuracion {
+  id          String            @id @default(cuid())
+  clave       String            @unique
+  valor       String
+  tipo        TipoConfiguracion
+  categoria   String
+  descripcion String
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@map("configuraciones")
+}
+
+model cita_servicios {
+  id         String   @id
+  citaId     String
+  servicioId String
+  precio     Float
+  citas      Cita     @relation(fields: [citaId], references: [id], onDelete: Cascade)
+  servicios  Servicio @relation(fields: [servicioId], references: [id])
+
+  @@unique([citaId, servicioId])
+}
+
+model factura_items {
+  id          String  @id
+  descripcion String
+  cantidad    Int
+  precio      Float
+  total       Float
+  facturaId   String
+  facturas    Factura @relation(fields: [facturaId], references: [id], onDelete: Cascade)
+}
+
+model reservas {
+  id        String        @id
+  nombre    String
+  apellido  String
+  email     String
+  telefono  String
+  fecha     DateTime
+  hora      String
+  vehiculo  String
+  servicio  String
+  mensaje   String?
+  estado    EstadoReserva @default(PENDIENTE)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime
+}
+
+enum RolUsuario {
+  SUPER_ADMIN
+  ADMIN
+  OPERADOR
+  CLIENTE
+}
+
 enum EstadoCita {
   PENDIENTE
-  EN_CURSO
+  CONFIRMADA
+  EN_PROCESO
   COMPLETADA
   CANCELADA
+  NO_SHOW
 }
 
 enum MetodoPago {
@@ -155,52 +226,31 @@ enum MetodoPago {
   TPV_UNICAJA
 }
 
-enum TipoDocumento {
+enum EstadoFactura {
+  PENDIENTE
+  PAGADA
+  VENCIDA
+  CANCELADA
+}
+
+enum EstadoReserva {
+  PENDIENTE
+  CONFIRMADA
+  CANCELADA
+}
+
+enum TipoConfiguracion {
+  TEXTO
+  NUMERO
+  BOOLEANO
+  JSON
+  EMAIL
+  TELEFONO
+  DIRECCION
+  ARCHIVO
+}
+
+enum TipoFactura {
   TICKET
   FACTURA
-}
-
-model Factura {
-  id              String   @id @default(cuid())
-  numero          String   @unique
-  fecha           DateTime @default(now())
-  clienteId       String
-  cliente         Cliente  @relation(fields: [clienteId], references: [id])
-  subtotal        Float
-  iva             Float
-  total           Float
-  pagada          Boolean  @default(false)
-  metodoPago      MetodoPago?
-  observaciones   String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  @@map("facturas")
-}
-
-model Ticket {
-  id              String   @id @default(cuid())
-  numero          String   @unique
-  fecha           DateTime @default(now())
-  clienteId       String
-  cliente         Cliente  @relation(fields: [clienteId], references: [id])
-  subtotal        Float
-  iva             Float
-  total           Float
-  pagado          Boolean  @default(false)
-  metodoPago      MetodoPago?
-  observaciones   String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  @@map("tickets")
-}
-
-model SecuenciaDocumento {
-  id              String   @id @default(cuid())
-  tipo            TipoDocumento @unique
-  ultimoNumero    Int      @default(0)
-  updatedAt       DateTime @updatedAt
-
-  @@map("secuencias_documentos")
 }
