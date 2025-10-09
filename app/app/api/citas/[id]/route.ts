@@ -98,11 +98,80 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
             servicios: true
           }
         },
+        facturas: true,
       },
     })
 
     console.log('=== ACTUALIZACIÓN EXITOSA ===')
     console.log('Cita actualizada:', cita.id)
+    
+    // Si la cita se marca como COMPLETADA y no tiene factura, crear una automáticamente
+    if (estado === 'COMPLETADA' && !cita.facturas) {
+      console.log('=== CREANDO FACTURA AUTOMÁTICA ===')
+      
+      // Generar número de factura
+      const año = new Date().getFullYear()
+      const prefijo = 'FAC'
+      
+      const ultimaFactura = await prisma.factura.findFirst({
+        where: { 
+          numero: {
+            startsWith: `${prefijo}-${año}-`
+          }
+        },
+        orderBy: { createdAt: 'desc' }
+      })
+
+      let numeroSecuencia = 1
+      if (ultimaFactura) {
+        const partes = ultimaFactura.numero.split('-')
+        if (partes.length === 3 && partes[0] === prefijo) {
+          const ultimoNumero = parseInt(partes[2]) || 0
+          numeroSecuencia = ultimoNumero + 1
+        }
+      }
+
+      const numeroFactura = `${prefijo}-${año}-${numeroSecuencia.toString().padStart(4, '0')}`
+      
+      // Calcular subtotal e IVA
+      const total = cita.total || 0
+      const subtotal = total / 1.21  // Asumiendo 21% de IVA
+      const iva = total - subtotal
+      
+      // Crear la factura
+      const factura = await prisma.factura.create({
+        data: {
+          numero: numeroFactura,
+          tipo: 'TICKET',
+          subtotal: Math.round(subtotal * 100) / 100,
+          iva: Math.round(iva * 100) / 100,
+          total: total,
+          metodoPago: cita.metodoPago,
+          clienteId: cita.clienteId,
+          citaId: cita.id,
+        }
+      })
+      
+      // Crear los items de la factura basados en los servicios de la cita
+      if (cita.cita_servicios && cita.cita_servicios.length > 0) {
+        const facturaItems = cita.cita_servicios.map((cs: any, index: number) => ({
+          id: `${factura.id}_item_${index}`,
+          facturaId: factura.id,
+          descripcion: cs.servicios.nombre,
+          cantidad: 1,
+          precio: cs.servicios.precio,
+          total: cs.servicios.precio,
+        }))
+        
+        await prisma.factura_items.createMany({
+          data: facturaItems
+        })
+      }
+      
+      console.log('=== FACTURA CREADA ===')
+      console.log('Factura número:', numeroFactura)
+      console.log('Total:', total)
+    }
     
     return NextResponse.json(cita)
   } catch (error: any) {
