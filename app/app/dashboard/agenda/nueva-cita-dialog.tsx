@@ -776,7 +776,7 @@ export function NuevaCitaDialog({
                     Efectivo
                   </div>
                 </SelectItem>
-                <SelectItem value="TARJETA_SUMUP">
+                <SelectItem value="TPV_SUMUP">
                   <div className="flex items-center">
                     <CreditCard className="mr-2 h-4 w-4" />
                     TPV SUMUP

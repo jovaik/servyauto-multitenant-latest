@@ -119,8 +119,12 @@ export async function POST(req: NextRequest) {
         if (servicio) {
           const precio = svc.precio || servicio.precio
           precioTotal += precio
+          
+          // Generar un ID único usando timestamp + random para evitar colisiones
+          const uniqueId = `cs_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
+          
           serviciosData.push({
-            id: `${Date.now()}_${servicioId}_${Math.random().toString(36).substr(2, 9)}`,
+            id: uniqueId,
             servicioId: servicioId,
             precio: precio
           })
