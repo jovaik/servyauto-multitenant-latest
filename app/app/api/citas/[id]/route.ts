@@ -107,13 +107,22 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     
     // Si la cita se marca como COMPLETADA y no tiene factura, crear una automáticamente
     if (estado === 'COMPLETADA' && !cita.facturas) {
-      console.log('=== CREANDO FACTURA AUTOMÁTICA ===')
+      console.log('=== CREANDO FACTURA/TICKET AUTOMÁTICA ===')
+      console.log('Método de pago:', cita.metodoPago)
       
-      // Generar número de factura
+      // Determinar tipo según método de pago
+      // EFECTIVO o TPV_SUMUP → TICKET
+      // TPV_UNICAJA → FACTURA
+      const esTicket = cita.metodoPago === 'EFECTIVO' || cita.metodoPago === 'TPV_SUMUP'
+      const tipoDocumento = esTicket ? 'TICKET' : 'FACTURA'
+      const prefijo = esTicket ? 'TICK' : 'FAC'
+      
+      console.log('Tipo de documento:', tipoDocumento, '- Prefijo:', prefijo)
+      
+      // Generar número de documento
       const año = new Date().getFullYear()
-      const prefijo = 'FAC'
       
-      const ultimaFactura = await prisma.factura.findFirst({
+      const ultimoDocumento = await prisma.factura.findFirst({
         where: { 
           numero: {
             startsWith: `${prefijo}-${año}-`
@@ -123,26 +132,28 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       })
 
       let numeroSecuencia = 1
-      if (ultimaFactura) {
-        const partes = ultimaFactura.numero.split('-')
+      if (ultimoDocumento) {
+        const partes = ultimoDocumento.numero.split('-')
         if (partes.length === 3 && partes[0] === prefijo) {
           const ultimoNumero = parseInt(partes[2]) || 0
           numeroSecuencia = ultimoNumero + 1
         }
       }
 
-      const numeroFactura = `${prefijo}-${año}-${numeroSecuencia.toString().padStart(4, '0')}`
+      const numeroDocumento = `${prefijo}-${año}-${numeroSecuencia.toString().padStart(4, '0')}`
+      
+      console.log('Número de documento generado:', numeroDocumento)
       
       // Calcular subtotal e IVA
       const total = cita.total || 0
       const subtotal = total / 1.21  // Asumiendo 21% de IVA
       const iva = total - subtotal
       
-      // Crear la factura
+      // Crear el documento (factura o ticket)
       const factura = await prisma.factura.create({
         data: {
-          numero: numeroFactura,
-          tipo: 'TICKET',
+          numero: numeroDocumento,
+          tipo: tipoDocumento,
           subtotal: Math.round(subtotal * 100) / 100,
           iva: Math.round(iva * 100) / 100,
           total: total,
@@ -168,8 +179,9 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         })
       }
       
-      console.log('=== FACTURA CREADA ===')
-      console.log('Factura número:', numeroFactura)
+      console.log('=== DOCUMENTO CREADO ===')
+      console.log('Tipo:', tipoDocumento)
+      console.log('Número:', numeroDocumento)
       console.log('Total:', total)
     }
     

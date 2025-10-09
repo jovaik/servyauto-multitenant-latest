@@ -49,7 +49,7 @@ export function ConvertirTicketDialog({ ticketId, ticketNumero, onConvertido }: 
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          datosFacturacion
+          datosFacturacion: JSON.stringify(datosFacturacion)
         })
       })
 
