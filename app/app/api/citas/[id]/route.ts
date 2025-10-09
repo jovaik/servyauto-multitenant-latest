@@ -26,8 +26,10 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       servicios,
     } = body
 
-    console.log('Datos recibidos:', body)
-    console.log('metodoPago recibido:', metodoPago, 'tipo:', typeof metodoPago)
+    console.log('=== INICIO ACTUALIZACIÓN CITA ===')
+    console.log('Cita ID:', params.id)
+    console.log('Body completo:', JSON.stringify(body, null, 2))
+    console.log('metodoPago:', metodoPago, 'tipo:', typeof metodoPago, 'es null:', metodoPago === null, 'es undefined:', metodoPago === undefined)
 
     // Verificar si la cita existe
     const citaExistente = await prisma.cita.findUnique({
@@ -70,17 +72,20 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     
     if (precioFinal !== undefined) updateData.total = precioFinal
 
-    console.log('Update data:', updateData)
-    console.log('Cita ID:', params.id)
+    console.log('=== DATOS PREPARADOS PARA PRISMA ===')
+    console.log('Update data:', JSON.stringify(updateData, null, 2))
+    console.log('Cantidad de campos:', Object.keys(updateData).length)
 
     // Verificar que hay datos para actualizar
     if (Object.keys(updateData).length === 0) {
+      console.log('ERROR: No hay datos para actualizar')
       return NextResponse.json(
         { error: 'No hay datos para actualizar' },
         { status: 400 }
       )
     }
 
+    console.log('=== EJECUTANDO PRISMA UPDATE ===')
     // Actualizar la cita
     const cita = await prisma.cita.update({
       where: { id: params.id },
@@ -96,19 +101,29 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       },
     })
 
+    console.log('=== ACTUALIZACIÓN EXITOSA ===')
+    console.log('Cita actualizada:', cita.id)
+    
     return NextResponse.json(cita)
   } catch (error: any) {
-    console.error('Error updating appointment:', error)
-    console.error('Error details:', {
-      message: error.message,
-      code: error.code,
-      meta: error.meta,
-      stack: error.stack
-    })
+    console.error('=== ERROR EN ACTUALIZACIÓN ===')
+    console.error('Error completo:', error)
+    console.error('Error message:', error.message)
+    console.error('Error code:', error.code)
+    console.error('Error meta:', error.meta)
+    console.error('Error name:', error.name)
+    
+    // Si es un error de Prisma, mostrar más detalles
+    if (error.code) {
+      console.error('Es un error de Prisma con código:', error.code)
+    }
+    
     return NextResponse.json(
       { 
         error: 'Error interno del servidor',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: error.message,
+        code: error.code,
+        details: error.meta
       },
       { status: 500 }
     )
