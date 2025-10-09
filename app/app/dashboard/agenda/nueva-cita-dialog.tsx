@@ -111,7 +111,7 @@ export function NuevaCitaDialog({
     '17:00', '17:30', '18:00', '18:30', '19:00'
   ]
 
-  const metodosPago = ['EFECTIVO', 'TARJETA_SUMUP', 'TPV_UNICAJA']
+  const metodosPago = ['EFECTIVO', 'TPV_SUMUP', 'TPV_UNICAJA']
 
   useEffect(() => {
     if (open) {
