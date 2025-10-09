@@ -22,9 +22,12 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       box,
       estado,
       observaciones,
-      metodoPago,
+      metodoPago: rawMetodoPago,
       servicios,
     } = body
+
+    // Validar metodoPago - no permitir strings vacíos
+    const metodoPago = rawMetodoPago && rawMetodoPago.trim() !== '' ? rawMetodoPago : undefined
 
     // Verificar si la cita existe
     const citaExistente = await prisma.cita.findUnique({
@@ -50,19 +53,22 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       precioFinal = serviciosData.reduce((sum, servicio) => sum + servicio.precio, 0)
     }
 
+    // Preparar datos de actualización
+    const updateData: any = {}
+    
+    if (fecha) updateData.fecha = new Date(fecha)
+    if (horaInicio) updateData.horaInicio = horaInicio
+    if (horaFin) updateData.horaFin = horaFin
+    if (box) updateData.box = box
+    if (estado) updateData.estado = estado
+    if (observaciones !== undefined) updateData.observaciones = observaciones
+    if (metodoPago) updateData.metodoPago = metodoPago
+    if (precioFinal !== undefined) updateData.total = precioFinal
+
     // Actualizar la cita
     const cita = await prisma.cita.update({
       where: { id: params.id },
-      data: {
-        ...(fecha && { fecha: new Date(fecha) }),
-        ...(horaInicio && { horaInicio }),
-        ...(horaFin && { horaFin }),
-        ...(box && { box }),
-        ...(estado && { estado }),
-        ...(observaciones !== undefined && { observaciones }),
-        ...(metodoPago && { metodoPago }),
-        ...(precioFinal !== undefined && { total: precioFinal }),
-      },
+      data: updateData,
       include: {
         cliente: true,
         vehiculo: true,
