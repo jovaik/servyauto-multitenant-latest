@@ -88,7 +88,7 @@ export function DashboardLayoutClient({ children, session }: DashboardLayoutClie
   }, [])
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50 overflow-hidden">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div 
@@ -101,7 +101,7 @@ export function DashboardLayoutClient({ children, session }: DashboardLayoutClie
 
       {/* Sidebar */}
       <div className={`
-        fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
+        fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 flex flex-col
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         <div className="flex items-center justify-between h-16 px-6 border-b">
@@ -201,9 +201,9 @@ export function DashboardLayoutClient({ children, session }: DashboardLayoutClie
       </div>
 
       {/* Main content */}
-      <div className="lg:pl-64">
+      <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top header */}
-        <div className="bg-white shadow-sm border-b h-16 flex items-center justify-between px-6">
+        <div className="bg-white shadow-sm border-b h-16 flex items-center justify-between px-6 flex-shrink-0">
           <Button
             variant="ghost"
             size="sm"
@@ -230,7 +230,7 @@ export function DashboardLayoutClient({ children, session }: DashboardLayoutClie
         </div>
 
         {/* Page content */}
-        <main className="p-6">
+        <main className="flex-1 overflow-auto p-6">
           {children}
         </main>
       </div>
