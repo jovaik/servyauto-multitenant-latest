@@ -57,6 +57,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         ...(fecha && { fecha: new Date(fecha) }),
         ...(horaInicio && { horaInicio }),
         ...(horaFin && { horaFin }),
+        ...(box && { box }),
         ...(estado && { estado }),
         ...(observaciones !== undefined && { observaciones }),
         ...(metodoPago && { metodoPago }),

@@ -63,7 +63,7 @@ export function EditarCitaDialog({
 
   const boxes = ['Box 1', 'Box 2', 'Box 3']
   const estados = Object.values(EstadoCita)
-  const metodosPago = ['EFECTIVO', 'TARJETA_SUMUP', 'TPV_UNICAJA']
+  const metodosPago = ['EFECTIVO', 'TPV_SUMUP', 'TPV_UNICAJA']
 
   useEffect(() => {
     if (open && cita) {
@@ -316,7 +316,7 @@ export function EditarCitaDialog({
                     Efectivo
                   </div>
                 </SelectItem>
-                <SelectItem value="TARJETA_SUMUP">
+                <SelectItem value="TPV_SUMUP">
                   <div className="flex items-center">
                     <CreditCard className="mr-2 h-4 w-4" />
                     TPV SUMUP
