@@ -22,12 +22,12 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       box,
       estado,
       observaciones,
-      metodoPago: rawMetodoPago,
+      metodoPago,
       servicios,
     } = body
 
-    // Validar metodoPago - no permitir strings vacíos
-    const metodoPago = rawMetodoPago && rawMetodoPago.trim() !== '' ? rawMetodoPago : undefined
+    console.log('Datos recibidos:', body)
+    console.log('metodoPago recibido:', metodoPago, 'tipo:', typeof metodoPago)
 
     // Verificar si la cita existe
     const citaExistente = await prisma.cita.findUnique({
@@ -62,7 +62,12 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     if (box) updateData.box = box
     if (estado) updateData.estado = estado
     if (observaciones !== undefined) updateData.observaciones = observaciones
-    if (metodoPago) updateData.metodoPago = metodoPago
+    
+    // Manejar metodoPago: si es undefined se envía como null a Prisma
+    if (metodoPago !== undefined) {
+      updateData.metodoPago = metodoPago || null
+    }
+    
     if (precioFinal !== undefined) updateData.total = precioFinal
 
     console.log('Update data:', updateData)

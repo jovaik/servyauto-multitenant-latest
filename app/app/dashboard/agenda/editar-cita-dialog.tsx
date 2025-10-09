@@ -101,12 +101,21 @@ export function EditarCitaDialog({
     
     setLoading(true)
     try {
+      // Limpiar datos: convertir strings vacíos a undefined
+      const dataToSend = {
+        ...formData,
+        metodoPago: formData.metodoPago && formData.metodoPago.trim() !== '' ? formData.metodoPago : undefined,
+        observaciones: formData.observaciones && formData.observaciones.trim() !== '' ? formData.observaciones : undefined,
+      }
+
+      console.log('Enviando datos:', dataToSend)
+
       const response = await fetch(`/api/citas/${cita.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(dataToSend),
       })
 
       if (response.ok) {
