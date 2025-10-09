@@ -65,6 +65,17 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     if (metodoPago) updateData.metodoPago = metodoPago
     if (precioFinal !== undefined) updateData.total = precioFinal
 
+    console.log('Update data:', updateData)
+    console.log('Cita ID:', params.id)
+
+    // Verificar que hay datos para actualizar
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json(
+        { error: 'No hay datos para actualizar' },
+        { status: 400 }
+      )
+    }
+
     // Actualizar la cita
     const cita = await prisma.cita.update({
       where: { id: params.id },
@@ -81,10 +92,19 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     })
 
     return NextResponse.json(cita)
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating appointment:', error)
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      meta: error.meta,
+      stack: error.stack
+    })
     return NextResponse.json(
-      { error: 'Error interno del servidor' },
+      { 
+        error: 'Error interno del servidor',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      },
       { status: 500 }
     )
   }
