@@ -32,6 +32,12 @@ interface Gasto {
   importe: number
   tipo: 'TICKET' | 'FACTURA'
   iva: number
+  numeroFactura?: string | null
+  proveedorCIF?: string | null
+  proveedorDireccion?: string | null
+  proveedorCodigoPostal?: string | null
+  proveedorCiudad?: string | null
+  proveedorProvincia?: string | null
 }
 
 interface EditarGastoDialogProps {
@@ -49,7 +55,13 @@ export function EditarGastoDialog({ gasto, onGastoActualizado }: EditarGastoDial
     tipoGasto: gasto.tipoGasto,
     importe: gasto.importe.toString(),
     tipo: gasto.tipo,
-    iva: gasto.iva.toString()
+    iva: gasto.iva.toString(),
+    numeroFactura: gasto.numeroFactura || '',
+    proveedorCIF: gasto.proveedorCIF || '',
+    proveedorDireccion: gasto.proveedorDireccion || '',
+    proveedorCodigoPostal: gasto.proveedorCodigoPostal || '',
+    proveedorCiudad: gasto.proveedorCiudad || '',
+    proveedorProvincia: gasto.proveedorProvincia || ''
   })
 
   useEffect(() => {
@@ -61,7 +73,13 @@ export function EditarGastoDialog({ gasto, onGastoActualizado }: EditarGastoDial
         tipoGasto: gasto.tipoGasto,
         importe: gasto.importe.toString(),
         tipo: gasto.tipo,
-        iva: gasto.iva.toString()
+        iva: gasto.iva.toString(),
+        numeroFactura: gasto.numeroFactura || '',
+        proveedorCIF: gasto.proveedorCIF || '',
+        proveedorDireccion: gasto.proveedorDireccion || '',
+        proveedorCodigoPostal: gasto.proveedorCodigoPostal || '',
+        proveedorCiudad: gasto.proveedorCiudad || '',
+        proveedorProvincia: gasto.proveedorProvincia || ''
       })
     }
   }, [open, gasto])
@@ -106,7 +124,7 @@ export function EditarGastoDialog({ gasto, onGastoActualizado }: EditarGastoDial
           Editar
         </DropdownMenuItem>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Editar Gasto</DialogTitle>
           <DialogDescription>
@@ -209,6 +227,101 @@ export function EditarGastoDialog({ gasto, onGastoActualizado }: EditarGastoDial
               </Select>
             </div>
           </div>
+
+          {/* Campos adicionales para FACTURA */}
+          {formData.tipo === 'FACTURA' && (
+            <div className="space-y-4 border-t pt-4">
+              <div className="mb-2">
+                <h4 className="text-sm font-medium text-muted-foreground">
+                  Datos Fiscales del Proveedor
+                </h4>
+                <p className="text-xs text-muted-foreground">
+                  Requeridos para el libro de IVA
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="numeroFactura">Número de Factura *</Label>
+                <Input
+                  id="numeroFactura"
+                  placeholder="Ej: 2025-0001"
+                  value={formData.numeroFactura}
+                  onChange={(e) => setFormData({ ...formData, numeroFactura: e.target.value })}
+                  required={formData.tipo === 'FACTURA'}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="proveedor-factura">Razón Social *</Label>
+                  <Input
+                    id="proveedor-factura"
+                    placeholder="Nombre del proveedor"
+                    value={formData.proveedor}
+                    onChange={(e) => setFormData({ ...formData, proveedor: e.target.value })}
+                    required={formData.tipo === 'FACTURA'}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="proveedorCIF">CIF/NIF *</Label>
+                  <Input
+                    id="proveedorCIF"
+                    placeholder="Ej: B12345678"
+                    value={formData.proveedorCIF}
+                    onChange={(e) => setFormData({ ...formData, proveedorCIF: e.target.value })}
+                    required={formData.tipo === 'FACTURA'}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="proveedorDireccion">Dirección *</Label>
+                <Input
+                  id="proveedorDireccion"
+                  placeholder="Calle, número, etc."
+                  value={formData.proveedorDireccion}
+                  onChange={(e) => setFormData({ ...formData, proveedorDireccion: e.target.value })}
+                  required={formData.tipo === 'FACTURA'}
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="proveedorCodigoPostal">C.P. *</Label>
+                  <Input
+                    id="proveedorCodigoPostal"
+                    placeholder="28001"
+                    value={formData.proveedorCodigoPostal}
+                    onChange={(e) => setFormData({ ...formData, proveedorCodigoPostal: e.target.value })}
+                    required={formData.tipo === 'FACTURA'}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="proveedorCiudad">Ciudad *</Label>
+                  <Input
+                    id="proveedorCiudad"
+                    placeholder="Madrid"
+                    value={formData.proveedorCiudad}
+                    onChange={(e) => setFormData({ ...formData, proveedorCiudad: e.target.value })}
+                    required={formData.tipo === 'FACTURA'}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="proveedorProvincia">Provincia *</Label>
+                  <Input
+                    id="proveedorProvincia"
+                    placeholder="Madrid"
+                    value={formData.proveedorProvincia}
+                    onChange={(e) => setFormData({ ...formData, proveedorProvincia: e.target.value })}
+                    required={formData.tipo === 'FACTURA'}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="flex justify-end space-x-2 pt-4">
             <Button

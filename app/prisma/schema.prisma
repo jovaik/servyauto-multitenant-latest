@@ -205,17 +205,24 @@ model reservas {
 }
 
 model Gasto {
-  id          String      @id @default(cuid())
-  concepto    String
-  fecha       DateTime
-  proveedor   String?
-  tipoGasto   String
-  importe     Float
-  tipo        TipoFactura @default(TICKET)
-  iva         Float       @default(21)
-  adjunto     Boolean     @default(false)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id                    String      @id @default(cuid())
+  concepto              String
+  fecha                 DateTime
+  proveedor             String?
+  tipoGasto             String
+  importe               Float
+  tipo                  TipoFactura @default(TICKET)
+  iva                   Float       @default(21)
+  adjunto               Boolean     @default(false)
+  // Campos fiscales para facturas
+  numeroFactura         String?
+  proveedorCIF          String?
+  proveedorDireccion    String?
+  proveedorCodigoPostal String?
+  proveedorCiudad       String?
+  proveedorProvincia    String?
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
 
   @@map("gastos")
 }
