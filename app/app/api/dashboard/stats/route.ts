@@ -20,9 +20,9 @@ export async function GET(req: NextRequest) {
     tomorrow.setDate(tomorrow.getDate() + 1)
 
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
-    const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+    const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59)
 
-    // Obtener estadísticas
+    // Obtener estadísticas básicas
     const [citasHoy, facturacionMensual, clientesTotal, citasPendientes] = await Promise.all([
       prisma.cita.count({
         where: {
@@ -52,11 +52,92 @@ export async function GET(req: NextRequest) {
       }),
     ])
 
+    // Gastos del mes
+    const gastosMensual = await prisma.gasto.aggregate({
+      where: {
+        fecha: {
+          gte: startOfMonth,
+          lte: endOfMonth,
+        },
+      },
+      _sum: {
+        importe: true,
+      },
+    })
+
+    const facturacionTotal = facturacionMensual._sum?.total || 0
+    const gastosTotal = gastosMensual._sum?.importe || 0
+    const balanceMensual = facturacionTotal - gastosTotal
+
+    // Ingresos vs Gastos por mes (año actual)
+    const currentYear = today.getFullYear()
+    const monthlyData = []
+
+    for (let month = 0; month < 12; month++) {
+      const startDate = new Date(currentYear, month, 1)
+      const endDate = new Date(currentYear, month + 1, 0, 23, 59, 59)
+
+      const [ingresos, gastos] = await Promise.all([
+        prisma.cita.aggregate({
+          where: {
+            fecha: {
+              gte: startDate,
+              lte: endDate,
+            },
+            estado: 'COMPLETADA',
+          },
+          _sum: {
+            total: true,
+          },
+        }),
+        prisma.gasto.aggregate({
+          where: {
+            fecha: {
+              gte: startDate,
+              lte: endDate,
+            },
+          },
+          _sum: {
+            importe: true,
+          },
+        }),
+      ])
+
+      monthlyData.push({
+        mes: new Date(currentYear, month, 1).toLocaleDateString('es-ES', { month: 'short' }).toUpperCase(),
+        ingresos: ingresos._sum.total || 0,
+        gastos: gastos._sum.importe || 0,
+      })
+    }
+
+    // Top conceptos de ingresos (por servicios más facturados)
+    const serviciosFacturados = await prisma.factura_items.groupBy({
+      by: ['descripcion'],
+      _sum: {
+        total: true,
+      },
+      orderBy: {
+        _sum: {
+          total: 'desc',
+        },
+      },
+      take: 5,
+    })
+
+    const topConceptos = serviciosFacturados.map(item => ({
+      concepto: item.descripcion,
+      total: item._sum.total || 0,
+    }))
+
     return NextResponse.json({
       citasHoy: citasHoy || 0,
-      facturacionMensual: facturacionMensual._sum?.total || 0,
+      facturacionMensual: facturacionTotal,
+      gastosMensual: gastosTotal,
+      balanceMensual,
       clientesTotal: clientesTotal || 0,
       citasPendientes: citasPendientes || 0,
+      monthlyData,
+      topConceptos,
     })
   } catch (error) {
     console.error('Error fetching dashboard stats:', error)

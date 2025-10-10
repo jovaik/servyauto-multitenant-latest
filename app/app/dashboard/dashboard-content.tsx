@@ -9,15 +9,18 @@ import {
   Users, 
   CreditCard, 
   TrendingUp,
+  TrendingDown,
   Plus,
   Clock,
   CheckCircle,
   AlertCircle,
-  DollarSign
+  DollarSign,
+  Wallet
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 interface DashboardContentProps {
   session: Session | null
@@ -45,6 +48,11 @@ export function DashboardContent({ session }: DashboardContentProps) {
     clientesTotal: 0,
     citasPendientes: 0,
   })
+
+  const [gastosMensual, setGastosMensual] = useState(0)
+  const [balanceMensual, setBalanceMensual] = useState(0)
+  const [monthlyData, setMonthlyData] = useState<any[]>([])
+  const [topConceptos, setTopConceptos] = useState<any[]>([])
   
   const [citasRecientes, setCitasRecientes] = useState<CitaReciente[]>([])
   const [loading, setLoading] = useState(true)
@@ -59,7 +67,16 @@ export function DashboardContent({ session }: DashboardContentProps) {
 
         if (statsResponse.ok) {
           const statsData = await statsResponse.json()
-          setStats(statsData)
+          setStats({
+            citasHoy: statsData.citasHoy,
+            facturacionMensual: statsData.facturacionMensual,
+            clientesTotal: statsData.clientesTotal,
+            citasPendientes: statsData.citasPendientes,
+          })
+          setGastosMensual(statsData.gastosMensual || 0)
+          setBalanceMensual(statsData.balanceMensual || 0)
+          setMonthlyData(statsData.monthlyData || [])
+          setTopConceptos(statsData.topConceptos || [])
         }
 
         if (citasResponse.ok) {
@@ -105,7 +122,7 @@ export function DashboardContent({ session }: DashboardContentProps) {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5">
         <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -122,10 +139,34 @@ export function DashboardContent({ session }: DashboardContentProps) {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-green-100 text-sm font-medium">Facturación Mensual</p>
+                <p className="text-green-100 text-sm font-medium">Ingresos (Mes)</p>
                 <p className="text-3xl font-bold">€{stats.facturacionMensual.toFixed(2)}</p>
               </div>
-              <DollarSign className="h-8 w-8 text-green-200" />
+              <TrendingUp className="h-8 w-8 text-green-200" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-r from-red-500 to-red-600 text-white">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-red-100 text-sm font-medium">Gastos (Mes)</p>
+                <p className="text-3xl font-bold">€{gastosMensual.toFixed(2)}</p>
+              </div>
+              <TrendingDown className="h-8 w-8 text-red-200" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className={`bg-gradient-to-r ${balanceMensual >= 0 ? 'from-teal-500 to-teal-600' : 'from-orange-500 to-orange-600'} text-white`}>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className={`${balanceMensual >= 0 ? 'text-teal-100' : 'text-orange-100'} text-sm font-medium`}>Balance (Mes)</p>
+                <p className="text-3xl font-bold">€{balanceMensual.toFixed(2)}</p>
+              </div>
+              <Wallet className={`h-8 w-8 ${balanceMensual >= 0 ? 'text-teal-200' : 'text-orange-200'}`} />
             </div>
           </CardContent>
         </Card>
@@ -134,23 +175,63 @@ export function DashboardContent({ session }: DashboardContentProps) {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-purple-100 text-sm font-medium">Clientes Total</p>
+                <p className="text-purple-100 text-sm font-medium">Clientes</p>
                 <p className="text-3xl font-bold">{stats.clientesTotal}</p>
               </div>
               <Users className="h-8 w-8 text-purple-200" />
             </div>
           </CardContent>
         </Card>
+      </div>
 
-        <Card className="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-orange-100 text-sm font-medium">Citas Pendientes</p>
-                <p className="text-3xl font-bold">{stats.citasPendientes}</p>
-              </div>
-              <Clock className="h-8 w-8 text-orange-200" />
-            </div>
+      {/* Charts Section */}
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Ingresos vs Gastos Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Ingresos vs Gastos (Año Actual)</CardTitle>
+            <CardDescription>Comparativa mensual de ingresos y gastos</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={monthlyData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="mes" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="ingresos" fill="#10b981" name="Ingresos" />
+                <Bar dataKey="gastos" fill="#ef4444" name="Gastos" />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        {/* Top Conceptos Pie Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Top Conceptos de Ingresos</CardTitle>
+            <CardDescription>Servicios más facturados</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={topConceptos}
+                  dataKey="total"
+                  nameKey="concepto"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={100}
+                  label={(entry: any) => `${entry.concepto}: €${Number(entry.total).toFixed(0)}`}
+                >
+                  {topConceptos.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'][index % 5]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
       </div>

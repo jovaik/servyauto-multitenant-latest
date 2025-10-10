@@ -19,7 +19,9 @@ import {
   Clock,
   UserCheck,
   CreditCard,
-  ChevronDown
+  ChevronDown,
+  TrendingDown,
+  Download
 } from 'lucide-react'
 import { RolUsuario } from '@/lib/types'
 import { Button } from '@/components/ui/button'
@@ -43,6 +45,8 @@ const navigation: NavItem[] = [
   { name: 'Clientes', href: '/dashboard/clientes', icon: Users },
   { name: 'Vehículos', href: '/dashboard/vehiculos', icon: Car },
   { name: 'Facturación', href: '/dashboard/facturacion', icon: CreditCard },
+  { name: 'Gastos', href: '/dashboard/gastos', icon: TrendingDown },
+  { name: 'Exportar IVA', href: '/dashboard/exportar-iva', icon: Download },
   { name: 'Usuarios', href: '/dashboard/usuarios', icon: UserCheck },
   { name: 'Configuración', href: '/dashboard/configuracion', icon: Settings },
 ]
