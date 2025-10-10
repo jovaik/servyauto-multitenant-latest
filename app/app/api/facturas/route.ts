@@ -43,21 +43,44 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
+    console.log('Datos recibidos para crear factura:', body)
+
     const {
       clienteId,
+      citaId,
+      items,
       metodoPago,
-      datosFacturacion,
-      subtotal,
-      iva,
-      total
+      solicitaFactura,
+      datosFacturacion
     } = body
 
-    // Generar número de factura
+    // Validar campos requeridos
+    if (!clienteId || !metodoPago || !items || items.length === 0) {
+      return NextResponse.json(
+        { error: 'Faltan campos requeridos: clienteId, metodoPago, items' },
+        { status: 400 }
+      )
+    }
+
+    // Calcular totales
+    const subtotal = items.reduce((sum: number, item: any) => {
+      return sum + (item.cantidad * item.precio)
+    }, 0)
+    const iva = subtotal * 0.21
+    const total = subtotal + iva
+
+    // Determinar tipo de documento
+    let tipo: 'TICKET' | 'FACTURA' = 'TICKET'
+    if (solicitaFactura || metodoPago === 'TPV_UNICAJA') {
+      tipo = 'FACTURA'
+    }
+
+    // Generar número de documento
     const año = new Date().getFullYear()
-    const prefijo = 'FAC'
+    const prefijo = tipo === 'FACTURA' ? 'FAC' : 'TKT'
     
-    // Buscar la última factura del año
-    const ultimaFactura = await prisma.factura.findFirst({
+    // Buscar el último documento del año con ese prefijo
+    const ultimoDocumento = await prisma.factura.findFirst({
       where: { 
         numero: {
           startsWith: `${prefijo}-${año}-`
@@ -67,8 +90,8 @@ export async function POST(request: NextRequest) {
     })
 
     let numeroSecuencia = 1
-    if (ultimaFactura) {
-      const partes = ultimaFactura.numero.split('-')
+    if (ultimoDocumento) {
+      const partes = ultimoDocumento.numero.split('-')
       if (partes.length === 3 && partes[0] === prefijo) {
         const ultimoNumero = parseInt(partes[2]) || 0
         numeroSecuencia = ultimoNumero + 1
@@ -77,27 +100,47 @@ export async function POST(request: NextRequest) {
 
     const numero = `${prefijo}-${año}-${numeroSecuencia.toString().padStart(4, '0')}`
 
-    // Crear factura
+    // Preparar datos de facturación
+    let datosFacturacionString = null
+    if (tipo === 'FACTURA' && datosFacturacion) {
+      datosFacturacionString = JSON.stringify(datosFacturacion)
+    }
+
+    // Crear factura con items
     const factura = await prisma.factura.create({
       data: {
         numero,
-        subtotal: subtotal || 0,
-        iva: iva || 0,
-        total: total || 0,
-        metodoPago: metodoPago || null,
-        datosFacturacion: datosFacturacion || null,
+        tipo,
+        subtotal,
+        iva,
+        total,
+        metodoPago: metodoPago as any,
+        datosFacturacion: datosFacturacionString,
         clienteId,
+        citaId: citaId || null,
+        estado: 'PAGADA', // Al crear se marca como pagada
+        factura_items: {
+          create: items.map((item: any, index: number) => ({
+            id: `${numero}-${index + 1}`,
+            descripcion: item.descripcion,
+            cantidad: item.cantidad,
+            precio: item.precio,
+            total: item.cantidad * item.precio
+          }))
+        }
       },
       include: {
         cliente: true,
+        factura_items: true
       }
     })
 
+    console.log('Factura creada:', factura)
     return NextResponse.json(factura, { status: 201 })
   } catch (error) {
     console.error('Error creating factura:', error)
     return NextResponse.json(
-      { error: 'Error al crear la factura' },
+      { error: 'Error al crear la factura', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     )
   }
