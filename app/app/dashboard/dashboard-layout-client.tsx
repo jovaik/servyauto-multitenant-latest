@@ -43,9 +43,9 @@ const navigation: NavItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: BarChart3, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN] },
   { name: 'Agenda', href: '/dashboard/agenda', icon: Calendar }, // Disponible para todos
   { name: 'Reservas', href: '/dashboard/reservas', icon: Clock }, // Disponible para todos
-  { name: 'Clientes', href: '/dashboard/clientes', icon: Users, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN] },
-  { name: 'Vehículos', href: '/dashboard/vehiculos', icon: Car, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN] },
-  { name: 'Facturación', href: '/dashboard/facturacion', icon: CreditCard, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN] },
+  { name: 'Clientes', href: '/dashboard/clientes', icon: Users, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
+  { name: 'Vehículos', href: '/dashboard/vehiculos', icon: Car, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
+  { name: 'Facturación', href: '/dashboard/facturacion', icon: CreditCard, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
   { name: 'Gastos', href: '/dashboard/gastos', icon: TrendingDown, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN] },
   { name: 'Exportar IVA', href: '/dashboard/exportar-iva', icon: Download, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN] },
   { name: 'Usuarios', href: '/dashboard/usuarios', icon: UserCheck, roles: [RolUsuario.SUPER_ADMIN] },
