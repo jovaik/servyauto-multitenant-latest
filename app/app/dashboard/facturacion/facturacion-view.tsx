@@ -269,65 +269,124 @@ export function FacturacionView() {
       {/* Resumen de Ventas por Método de Pago */}
       <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
         <CardHeader>
-          <CardTitle className="flex items-center text-blue-900">
-            <CreditCard className="mr-2 h-5 w-5" />
-            Resumen de Ventas por Método de Pago
+          <CardTitle className="flex items-center justify-between text-blue-900">
+            <div className="flex items-center">
+              <CreditCard className="mr-2 h-5 w-5" />
+              Resumen de Ventas - Arqueo de Caja
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => {
+                loadStats()
+                loadFacturas()
+              }}
+              className="bg-white hover:bg-blue-50"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Actualizar
+            </Button>
           </CardTitle>
-          <p className="text-sm text-blue-700">Desglose de todas las ventas cobradas</p>
+          <p className="text-sm text-blue-700">
+            Incluye facturas/tickets pagados + citas completadas de la agenda
+          </p>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {/* Total Ventas */}
-            <div className="bg-white rounded-lg p-4 shadow-sm border border-blue-100">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-gray-600">Total Ventas</span>
-                <TrendingUp className="h-4 w-4 text-blue-600" />
-              </div>
-              <div className="text-2xl font-bold text-gray-900">
-                €{stats.totalVentas.toFixed(2)}
-              </div>
-              <div className="text-xs text-gray-500 mt-1">Total cobrado</div>
-            </div>
+          <div className="space-y-4">
+            {/* Resumen principal - más destacado */}
+            <div className="bg-white rounded-lg p-6 shadow-md border-2 border-blue-300">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Total General */}
+                <div className="text-center md:text-left">
+                  <div className="flex items-center justify-center md:justify-start mb-2">
+                    <TrendingUp className="h-5 w-5 text-blue-600 mr-2" />
+                    <span className="text-lg font-semibold text-gray-700">TOTAL VENTAS COBRADAS</span>
+                  </div>
+                  <div className="text-4xl font-bold text-blue-600">
+                    €{stats.totalVentas.toFixed(2)}
+                  </div>
+                  <div className="text-sm text-gray-600 mt-1">
+                    Total de ingresos registrados
+                  </div>
+                </div>
 
-            {/* Efectivo */}
-            <div className="bg-white rounded-lg p-4 shadow-sm border border-green-100">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-gray-600">Efectivo</span>
-                <Euro className="h-4 w-4 text-green-600" />
-              </div>
-              <div className="text-2xl font-bold text-gray-900">
-                €{stats.ventasEfectivo.toFixed(2)}
-              </div>
-              <div className="text-xs text-gray-500 mt-1">
-                {stats.totalVentas > 0 ? ((stats.ventasEfectivo / stats.totalVentas) * 100).toFixed(1) : '0'}% del total
-              </div>
-            </div>
-
-            {/* TPV SUMUP */}
-            <div className="bg-white rounded-lg p-4 shadow-sm border border-purple-100">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-gray-600">TPV SUMUP</span>
-                <CreditCard className="h-4 w-4 text-purple-600" />
-              </div>
-              <div className="text-2xl font-bold text-gray-900">
-                €{stats.ventasTPVSumup.toFixed(2)}
-              </div>
-              <div className="text-xs text-gray-500 mt-1">
-                {stats.totalVentas > 0 ? ((stats.ventasTPVSumup / stats.totalVentas) * 100).toFixed(1) : '0'}% del total
+                {/* Efectivo en caja - destacado */}
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-4 border-2 border-green-300">
+                  <div className="flex items-center justify-center md:justify-start mb-2">
+                    <Euro className="h-5 w-5 text-green-700 mr-2" />
+                    <span className="text-lg font-semibold text-green-800">EFECTIVO EN CAJA</span>
+                  </div>
+                  <div className="text-4xl font-bold text-green-700">
+                    €{stats.ventasEfectivo.toFixed(2)}
+                  </div>
+                  <div className="text-sm text-green-700 mt-1 font-medium">
+                    👉 Debe haber esta cantidad en la caja
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* TPV UNICAJA */}
-            <div className="bg-white rounded-lg p-4 shadow-sm border border-orange-100">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-gray-600">TPV UNICAJA</span>
-                <CreditCard className="h-4 w-4 text-orange-600" />
+            {/* Desglose de TPVs */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* TPV SUMUP */}
+              <div className="bg-white rounded-lg p-5 shadow-sm border-2 border-purple-200">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center">
+                    <CreditCard className="h-5 w-5 text-purple-600 mr-2" />
+                    <span className="text-base font-semibold text-gray-700">TPV SUMUP</span>
+                  </div>
+                </div>
+                <div className="text-3xl font-bold text-purple-600">
+                  €{stats.ventasTPVSumup.toFixed(2)}
+                </div>
+                <div className="flex justify-between items-center mt-2">
+                  <span className="text-xs text-gray-500">
+                    {stats.totalVentas > 0 ? ((stats.ventasTPVSumup / stats.totalVentas) * 100).toFixed(1) : '0'}% del total
+                  </span>
+                  <span className="text-xs font-medium text-purple-600">
+                    Cobrado por tarjeta
+                  </span>
+                </div>
               </div>
-              <div className="text-2xl font-bold text-gray-900">
-                €{stats.ventasTPVUnicaja.toFixed(2)}
+
+              {/* TPV UNICAJA */}
+              <div className="bg-white rounded-lg p-5 shadow-sm border-2 border-orange-200">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center">
+                    <CreditCard className="h-5 w-5 text-orange-600 mr-2" />
+                    <span className="text-base font-semibold text-gray-700">TPV UNICAJA</span>
+                  </div>
+                </div>
+                <div className="text-3xl font-bold text-orange-600">
+                  €{stats.ventasTPVUnicaja.toFixed(2)}
+                </div>
+                <div className="flex justify-between items-center mt-2">
+                  <span className="text-xs text-gray-500">
+                    {stats.totalVentas > 0 ? ((stats.ventasTPVUnicaja / stats.totalVentas) * 100).toFixed(1) : '0'}% del total
+                  </span>
+                  <span className="text-xs font-medium text-orange-600">
+                    Cobrado por tarjeta
+                  </span>
+                </div>
               </div>
-              <div className="text-xs text-gray-500 mt-1">
-                {stats.totalVentas > 0 ? ((stats.ventasTPVUnicaja / stats.totalVentas) * 100).toFixed(1) : '0'}% del total
+            </div>
+
+            {/* Nota informativa */}
+            <div className="bg-blue-100 border-l-4 border-blue-500 p-3 rounded">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-blue-700" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3 text-sm text-blue-800">
+                  <p className="font-medium">
+                    Este resumen incluye todas las ventas cobradas: facturas/tickets pagados y citas completadas de la agenda.
+                  </p>
+                  <p className="mt-1">
+                    Los importes de TPV se ingresan automáticamente en cuenta bancaria. El efectivo debe estar físicamente en la caja.
+                  </p>
+                </div>
               </div>
             </div>
           </div>

@@ -30,34 +30,75 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Calcular estadísticas
+    // Obtener todas las citas COMPLETADAS (son ventas cobradas)
+    const citasCompletadas = await prisma.cita.findMany({
+      where: {
+        estado: 'COMPLETADA',
+        total: { not: null },
+        metodoPago: { not: null }
+      },
+      select: {
+        total: true,
+        metodoPago: true,
+        createdAt: true
+      }
+    })
+
+    // Calcular estadísticas de facturas
     const totalFacturas = todasFacturas.filter((f: any) => f.tipo === 'FACTURA').length
     const totalTickets = todasFacturas.filter((f: any) => f.tipo === 'TICKET').length
     
-    // Ingresos del mes actual
-    const ingresosMes = todasFacturas
+    // Ingresos del mes actual (facturas pagadas)
+    const ingresosMesFacturas = todasFacturas
       .filter((f: any) => f.createdAt >= inicioMes && f.estado === 'PAGADA')
       .reduce((sum: number, f: any) => sum + f.total, 0)
 
-    // Pendientes de cobro
+    // Ingresos del mes actual (citas completadas)
+    const ingresosMesCitas = citasCompletadas
+      .filter((c: any) => c.createdAt >= inicioMes)
+      .reduce((sum: number, c: any) => sum + (c.total || 0), 0)
+
+    const ingresosMes = ingresosMesFacturas + ingresosMesCitas
+
+    // Pendientes de cobro (solo facturas, las citas completadas ya están cobradas)
     const pendientesCobro = todasFacturas
       .filter((f: any) => f.estado === 'PENDIENTE' || f.estado === 'VENCIDA')
       .reduce((sum: number, f: any) => sum + f.total, 0)
 
-    // Desglose por método de pago (solo facturas pagadas)
+    // ====== DESGLOSE POR MÉTODO DE PAGO ======
+    // Incluye tanto facturas pagadas como citas completadas
+    
+    // FACTURAS pagadas
     const facturasPagadas = todasFacturas.filter((f: any) => f.estado === 'PAGADA')
-    const ventasEfectivo = facturasPagadas
+    const ventasEfectivoFacturas = facturasPagadas
       .filter((f: any) => f.metodoPago === 'EFECTIVO')
       .reduce((sum: number, f: any) => sum + f.total, 0)
     
-    const ventasTPVSumup = facturasPagadas
+    const ventasTPVSumupFacturas = facturasPagadas
       .filter((f: any) => f.metodoPago === 'TPV_SUMUP')
       .reduce((sum: number, f: any) => sum + f.total, 0)
     
-    const ventasTPVUnicaja = facturasPagadas
+    const ventasTPVUnicajaFacturas = facturasPagadas
       .filter((f: any) => f.metodoPago === 'TPV_UNICAJA')
       .reduce((sum: number, f: any) => sum + f.total, 0)
+
+    // CITAS completadas
+    const ventasEfectivoCitas = citasCompletadas
+      .filter((c: any) => c.metodoPago === 'EFECTIVO')
+      .reduce((sum: number, c: any) => sum + (c.total || 0), 0)
     
+    const ventasTPVSumupCitas = citasCompletadas
+      .filter((c: any) => c.metodoPago === 'TPV_SUMUP')
+      .reduce((sum: number, c: any) => sum + (c.total || 0), 0)
+    
+    const ventasTPVUnicajaCitas = citasCompletadas
+      .filter((c: any) => c.metodoPago === 'TPV_UNICAJA')
+      .reduce((sum: number, c: any) => sum + (c.total || 0), 0)
+
+    // TOTALES combinados (facturas + citas)
+    const ventasEfectivo = ventasEfectivoFacturas + ventasEfectivoCitas
+    const ventasTPVSumup = ventasTPVSumupFacturas + ventasTPVSumupCitas
+    const ventasTPVUnicaja = ventasTPVUnicajaFacturas + ventasTPVUnicajaCitas
     const totalVentas = ventasEfectivo + ventasTPVSumup + ventasTPVUnicaja
 
     const stats = {
@@ -65,11 +106,13 @@ export async function GET(request: NextRequest) {
       totalTickets,
       ingresosMes,
       pendientesCobro,
-      // Desglose por método de pago
+      // Desglose por método de pago (incluye facturas + citas completadas)
       totalVentas,
       ventasEfectivo,
       ventasTPVSumup,
-      ventasTPVUnicaja
+      ventasTPVUnicaja,
+      // Info adicional para verificación
+      totalCitasCompletadas: citasCompletadas.length
     }
 
     return NextResponse.json(stats)
