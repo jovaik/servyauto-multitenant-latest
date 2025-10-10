@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button'
 import { NuevaFacturaDialog } from '@/components/nueva-factura-dialog'
 import { ConvertirTicketDialog } from '@/components/convertir-ticket-dialog'
 import { EditarFacturaDialog } from '@/components/editar-factura-dialog'
+import { EnviarFacturaDialog } from '@/components/enviar-factura-dialog'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { 
@@ -56,6 +57,8 @@ interface Factura {
   cliente: {
     nombre: string
     apellido: string
+    email?: string
+    telefono: string
   }
   total: number
   estado: 'PENDIENTE' | 'PAGADA' | 'VENCIDA' | 'CANCELADA'
@@ -374,6 +377,16 @@ export function FacturacionView() {
                           <DropdownMenuItem onClick={() => descargarPDF(factura.id)}>
                             <Download className="mr-2 h-4 w-4" />
                             Descargar Documento
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <EnviarFacturaDialog 
+                              facturaId={factura.id}
+                              facturaNumero={factura.numero}
+                              clienteNombre={`${factura.cliente.nombre} ${factura.cliente.apellido}`}
+                              clienteEmail={factura.cliente.email}
+                              clienteTelefono={factura.cliente.telefono}
+                              tipo={factura.tipo}
+                            />
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => verDetalles(factura)}>
                             <Eye className="mr-2 h-4 w-4" />

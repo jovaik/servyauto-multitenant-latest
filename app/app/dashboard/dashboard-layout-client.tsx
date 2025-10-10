@@ -36,19 +36,20 @@ interface NavItem {
   name: string
   href: string
   icon: React.ComponentType<any>
+  roles?: RolUsuario[] // Si no se especifica, está disponible para todos
 }
 
 const navigation: NavItem[] = [
-  { name: 'Dashboard', href: '/dashboard', icon: BarChart3 },
-  { name: 'Agenda', href: '/dashboard/agenda', icon: Calendar },
-  { name: 'Reservas', href: '/dashboard/reservas', icon: Clock },
-  { name: 'Clientes', href: '/dashboard/clientes', icon: Users },
-  { name: 'Vehículos', href: '/dashboard/vehiculos', icon: Car },
-  { name: 'Facturación', href: '/dashboard/facturacion', icon: CreditCard },
-  { name: 'Gastos', href: '/dashboard/gastos', icon: TrendingDown },
-  { name: 'Exportar IVA', href: '/dashboard/exportar-iva', icon: Download },
-  { name: 'Usuarios', href: '/dashboard/usuarios', icon: UserCheck },
-  { name: 'Configuración', href: '/dashboard/configuracion', icon: Settings },
+  { name: 'Dashboard', href: '/dashboard', icon: BarChart3, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN] },
+  { name: 'Agenda', href: '/dashboard/agenda', icon: Calendar }, // Disponible para todos
+  { name: 'Reservas', href: '/dashboard/reservas', icon: Clock }, // Disponible para todos
+  { name: 'Clientes', href: '/dashboard/clientes', icon: Users, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN] },
+  { name: 'Vehículos', href: '/dashboard/vehiculos', icon: Car, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN] },
+  { name: 'Facturación', href: '/dashboard/facturacion', icon: CreditCard, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN] },
+  { name: 'Gastos', href: '/dashboard/gastos', icon: TrendingDown, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN] },
+  { name: 'Exportar IVA', href: '/dashboard/exportar-iva', icon: Download, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN] },
+  { name: 'Usuarios', href: '/dashboard/usuarios', icon: UserCheck, roles: [RolUsuario.SUPER_ADMIN] },
+  { name: 'Configuración', href: '/dashboard/configuracion', icon: Settings, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN] },
 ]
 
 const getRoleLabel = (role: string): string => {
@@ -66,6 +67,17 @@ export function DashboardLayoutClient({ children, session }: DashboardLayoutClie
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const pathname = usePathname()
   const userMenuRef = useRef<HTMLDivElement>(null)
+  
+  // Obtener rol del usuario
+  const userRole = (session?.user as any)?.role as RolUsuario || RolUsuario.OPERADOR
+  
+  // Filtrar navegación según rol
+  const filteredNavigation = navigation.filter(item => {
+    // Si no tiene roles especificados, está disponible para todos
+    if (!item.roles || item.roles.length === 0) return true
+    // Si tiene roles, verificar si el usuario tiene uno de esos roles
+    return item.roles.includes(userRole)
+  })
 
   const handleSignOut = () => {
     signOut({ callbackUrl: '/login' })
@@ -129,7 +141,7 @@ export function DashboardLayoutClient({ children, session }: DashboardLayoutClie
         </div>
 
         <nav className="flex-1 px-4 py-6 space-y-2">
-          {navigation.map((item) => {
+          {filteredNavigation.map((item) => {
             const Icon = item.icon
             const isActive = pathname === item.href
             
@@ -219,7 +231,7 @@ export function DashboardLayoutClient({ children, session }: DashboardLayoutClie
           
           <div className="hidden lg:block">
             <h2 className="text-lg font-medium text-gray-900">
-              {navigation.find(item => item.href === pathname)?.name || 'ServyAuto Manager'}
+              {filteredNavigation.find(item => item.href === pathname)?.name || 'ServyAuto Manager'}
             </h2>
           </div>
 

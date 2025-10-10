@@ -16,7 +16,9 @@ export async function GET(request: NextRequest) {
         cliente: {
           select: {
             nombre: true,
-            apellido: true
+            apellido: true,
+            email: true,
+            telefono: true
           }
         },
       },
