@@ -101,6 +101,22 @@ export async function GET(request: NextRequest) {
     const ventasTPVUnicaja = ventasTPVUnicajaFacturas + ventasTPVUnicajaCitas
     const totalVentas = ventasEfectivo + ventasTPVSumup + ventasTPVUnicaja
 
+    // ====== OBTENER GASTOS PARA RESTAR DEL EFECTIVO ======
+    const todosGastos = await prisma.gasto.findMany({
+      select: {
+        importe: true,
+        metodoPago: true
+      }
+    })
+
+    // Gastos pagados en efectivo
+    const gastosEfectivo = todosGastos
+      .filter((g: any) => g.metodoPago === 'EFECTIVO')
+      .reduce((sum: number, g: any) => sum + g.importe, 0)
+
+    // Efectivo real en caja = Ventas en efectivo - Gastos en efectivo
+    const efectivoEnCaja = ventasEfectivo - gastosEfectivo
+
     const stats = {
       totalFacturas,
       totalTickets,
@@ -111,6 +127,9 @@ export async function GET(request: NextRequest) {
       ventasEfectivo,
       ventasTPVSumup,
       ventasTPVUnicaja,
+      // Gastos
+      gastosEfectivo,
+      efectivoEnCaja, // Efectivo real que debe haber en caja
       // Info adicional para verificación
       totalCitasCompletadas: citasCompletadas.length
     }

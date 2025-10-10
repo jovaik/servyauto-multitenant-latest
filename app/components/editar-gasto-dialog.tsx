@@ -30,6 +30,7 @@ interface Gasto {
   proveedor: string | null
   tipoGasto: string
   importe: number
+  metodoPago?: 'EFECTIVO' | 'TPV_SUMUP' | 'TPV_UNICAJA' | null
   tipo: 'TICKET' | 'FACTURA'
   iva: number
   numeroFactura?: string | null
@@ -54,6 +55,7 @@ export function EditarGastoDialog({ gasto, onGastoActualizado }: EditarGastoDial
     proveedor: gasto.proveedor || '',
     tipoGasto: gasto.tipoGasto,
     importe: gasto.importe.toString(),
+    metodoPago: gasto.metodoPago || 'EFECTIVO',
     tipo: gasto.tipo,
     iva: gasto.iva.toString(),
     numeroFactura: gasto.numeroFactura || '',
@@ -72,6 +74,7 @@ export function EditarGastoDialog({ gasto, onGastoActualizado }: EditarGastoDial
         proveedor: gasto.proveedor || '',
         tipoGasto: gasto.tipoGasto,
         importe: gasto.importe.toString(),
+        metodoPago: gasto.metodoPago || 'EFECTIVO',
         tipo: gasto.tipo,
         iva: gasto.iva.toString(),
         numeroFactura: gasto.numeroFactura || '',
@@ -169,6 +172,23 @@ export function EditarGastoDialog({ gasto, onGastoActualizado }: EditarGastoDial
                 required
               />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="metodoPago">Método de Pago *</Label>
+            <Select
+              value={formData.metodoPago}
+              onValueChange={(value) => setFormData({ ...formData, metodoPago: value as any })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecciona método" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="EFECTIVO">Efectivo</SelectItem>
+                <SelectItem value="TPV_SUMUP">TPV SUMUP</SelectItem>
+                <SelectItem value="TPV_UNICAJA">TPV UNICAJA</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">

@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { concepto, fecha, proveedor, tipoGasto, importe, tipo, iva } = body
+    const { concepto, fecha, proveedor, tipoGasto, importe, metodoPago, tipo, iva } = body
 
     // Validar campos requeridos
     if (!concepto || !fecha || !tipoGasto || !importe) {
@@ -49,6 +49,7 @@ export async function POST(request: NextRequest) {
         proveedor: proveedor || null,
         tipoGasto,
         importe: parseFloat(importe),
+        metodoPago: metodoPago || 'EFECTIVO',
         tipo: tipo || 'TICKET',
         iva: parseFloat(iva) || 21,
         adjunto: false

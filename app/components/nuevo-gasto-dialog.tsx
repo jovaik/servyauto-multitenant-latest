@@ -35,6 +35,7 @@ export function NuevoGastoDialog({ onGastoCreado }: NuevoGastoDialogProps) {
     proveedor: '',
     tipoGasto: '',
     importe: '',
+    metodoPago: 'EFECTIVO',
     tipo: 'TICKET',
     iva: '21',
     numeroFactura: '',
@@ -67,6 +68,7 @@ export function NuevoGastoDialog({ onGastoCreado }: NuevoGastoDialogProps) {
           proveedor: '',
           tipoGasto: '',
           importe: '',
+          metodoPago: 'EFECTIVO',
           tipo: 'TICKET',
           iva: '21',
           numeroFactura: '',
@@ -142,6 +144,23 @@ export function NuevoGastoDialog({ onGastoCreado }: NuevoGastoDialogProps) {
                 required
               />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="metodoPago">Método de Pago *</Label>
+            <Select
+              value={formData.metodoPago}
+              onValueChange={(value) => setFormData({ ...formData, metodoPago: value })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecciona método" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="EFECTIVO">Efectivo</SelectItem>
+                <SelectItem value="TPV_SUMUP">TPV SUMUP</SelectItem>
+                <SelectItem value="TPV_UNICAJA">TPV UNICAJA</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">

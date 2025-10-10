@@ -81,7 +81,9 @@ export function FacturacionView() {
     totalVentas: 0,
     ventasEfectivo: 0,
     ventasTPVSumup: 0,
-    ventasTPVUnicaja: 0
+    ventasTPVUnicaja: 0,
+    gastosEfectivo: 0,
+    efectivoEnCaja: 0
   })
 
   useEffect(() => {
@@ -317,10 +319,21 @@ export function FacturacionView() {
                     <span className="text-lg font-semibold text-green-800">EFECTIVO EN CAJA</span>
                   </div>
                   <div className="text-4xl font-bold text-green-700">
-                    €{stats.ventasEfectivo.toFixed(2)}
+                    €{stats.efectivoEnCaja.toFixed(2)}
                   </div>
-                  <div className="text-sm text-green-700 mt-1 font-medium">
-                    👉 Debe haber esta cantidad en la caja
+                  <div className="text-xs text-green-700 mt-2 space-y-1">
+                    <div className="flex justify-between">
+                      <span>Ventas efectivo:</span>
+                      <span className="font-medium">€{stats.ventasEfectivo.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-red-700">
+                      <span>Gastos efectivo:</span>
+                      <span className="font-medium">-€{stats.gastosEfectivo.toFixed(2)}</span>
+                    </div>
+                    <div className="border-t border-green-300 pt-1 mt-1"></div>
+                    <div className="text-sm font-bold text-green-800">
+                      👉 Debe haber esta cantidad en la caja
+                    </div>
                   </div>
                 </div>
               </div>

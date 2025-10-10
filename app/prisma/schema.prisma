@@ -211,6 +211,7 @@ model Gasto {
   proveedor             String?
   tipoGasto             String
   importe               Float
+  metodoPago            MetodoPago? // Método de pago del gasto
   tipo                  TipoFactura @default(TICKET)
   iva                   Float       @default(21)
   adjunto               Boolean     @default(false)

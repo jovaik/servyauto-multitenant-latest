@@ -15,7 +15,7 @@ export async function PUT(
     }
 
     const body = await request.json()
-    const { concepto, fecha, proveedor, tipoGasto, importe, tipo, iva } = body
+    const { concepto, fecha, proveedor, tipoGasto, importe, metodoPago, tipo, iva } = body
 
     const gasto = await prisma.gasto.update({
       where: { id: params.id },
@@ -25,6 +25,7 @@ export async function PUT(
         proveedor: proveedor || null,
         tipoGasto,
         importe: parseFloat(importe),
+        metodoPago: metodoPago || 'EFECTIVO',
         tipo: tipo || 'TICKET',
         iva: parseFloat(iva) || 21
       }
