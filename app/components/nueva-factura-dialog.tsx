@@ -156,12 +156,14 @@ export function NuevaFacturaDialog({ onFacturaCreada }: NuevaFacturaDialogProps)
     try {
       const facturaData = {
         clienteId: clienteSeleccionado,
-        citaId: citaSeleccionada || null,
+        citaId: citaSeleccionada && citaSeleccionada !== 'sin-cita' ? citaSeleccionada : null,
         items: items.filter(item => item.descripcion && item.precio > 0),
         metodoPago,
         solicitaFactura,
         datosFacturacion: determinarTipoDocumento() === 'FACTURA' ? datosFacturacion : null
       }
+
+      console.log('Enviando datos de factura:', facturaData)
 
       const response = await fetch('/api/facturas', {
         method: 'POST',
@@ -179,7 +181,9 @@ export function NuevaFacturaDialog({ onFacturaCreada }: NuevaFacturaDialogProps)
         const tipoDoc = determinarTipoDocumento()
         alert(`${tipoDoc} creado correctamente: ${factura.numero}`)
       } else {
-        throw new Error('Error al crear la factura')
+        const errorData = await response.json()
+        console.error('Error del servidor:', errorData)
+        alert(`Error al crear la factura: ${errorData.error || 'Error desconocido'}`)
       }
     } catch (error) {
       console.error('Error:', error)
@@ -254,7 +258,7 @@ export function NuevaFacturaDialog({ onFacturaCreada }: NuevaFacturaDialogProps)
                   <SelectValue placeholder="Seleccionar cita" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Sin cita asociada</SelectItem>
+                  <SelectItem value="sin-cita">Sin cita asociada</SelectItem>
                   {citas.map((cita) => (
                     <SelectItem key={cita.id} value={cita.id}>
                       {cita.cliente.nombre} - {new Date(cita.fecha).toLocaleDateString()}

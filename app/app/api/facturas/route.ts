@@ -55,9 +55,32 @@ export async function POST(request: NextRequest) {
     } = body
 
     // Validar campos requeridos
-    if (!clienteId || !metodoPago || !items || items.length === 0) {
+    if (!clienteId) {
       return NextResponse.json(
-        { error: 'Faltan campos requeridos: clienteId, metodoPago, items' },
+        { error: 'Falta el campo requerido: clienteId' },
+        { status: 400 }
+      )
+    }
+
+    if (!metodoPago || metodoPago === '' || metodoPago === 'undefined') {
+      return NextResponse.json(
+        { error: 'Falta el campo requerido: metodoPago. Debe seleccionar un método de pago' },
+        { status: 400 }
+      )
+    }
+
+    if (!items || items.length === 0) {
+      return NextResponse.json(
+        { error: 'Debe incluir al menos un item en la factura' },
+        { status: 400 }
+      )
+    }
+
+    // Validar que los items tengan descripción y precio
+    const itemsInvalidos = items.filter((item: any) => !item.descripcion || item.precio <= 0)
+    if (itemsInvalidos.length > 0) {
+      return NextResponse.json(
+        { error: 'Todos los items deben tener descripción y precio mayor a 0' },
         { status: 400 }
       )
     }
@@ -135,12 +158,21 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    console.log('Factura creada:', factura)
+    console.log('Factura creada exitosamente:', factura.numero)
     return NextResponse.json(factura, { status: 201 })
   } catch (error) {
     console.error('Error creating factura:', error)
+    console.error('Error completo:', JSON.stringify(error, null, 2))
+    
+    // Mensaje de error más descriptivo
+    let errorMessage = 'Error al crear la factura'
+    if (error instanceof Error) {
+      errorMessage += `: ${error.message}`
+      console.error('Stack trace:', error.stack)
+    }
+    
     return NextResponse.json(
-      { error: 'Error al crear la factura', details: error instanceof Error ? error.message : 'Unknown error' },
+      { error: errorMessage, details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     )
   }
