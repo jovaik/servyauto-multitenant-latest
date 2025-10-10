@@ -61,7 +61,7 @@ model VerificationToken {
 model Cliente {
   id        String     @id @default(cuid())
   nombre    String
-  apellido  String
+  apellido  String?
   email     String?    @unique
   telefono  String
   direccion String?
@@ -191,7 +191,7 @@ model factura_items {
 model reservas {
   id        String        @id
   nombre    String
-  apellido  String
+  apellido  String?
   email     String
   telefono  String
   fecha     DateTime

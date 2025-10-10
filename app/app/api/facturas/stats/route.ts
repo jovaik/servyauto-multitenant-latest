@@ -25,7 +25,8 @@ export async function GET(request: NextRequest) {
         tipo: true,
         total: true,
         estado: true,
-        createdAt: true
+        createdAt: true,
+        metodoPago: true
       }
     })
 
@@ -43,11 +44,32 @@ export async function GET(request: NextRequest) {
       .filter((f: any) => f.estado === 'PENDIENTE' || f.estado === 'VENCIDA')
       .reduce((sum: number, f: any) => sum + f.total, 0)
 
+    // Desglose por método de pago (solo facturas pagadas)
+    const facturasPagadas = todasFacturas.filter((f: any) => f.estado === 'PAGADA')
+    const ventasEfectivo = facturasPagadas
+      .filter((f: any) => f.metodoPago === 'EFECTIVO')
+      .reduce((sum: number, f: any) => sum + f.total, 0)
+    
+    const ventasTPVSumup = facturasPagadas
+      .filter((f: any) => f.metodoPago === 'TPV_SUMUP')
+      .reduce((sum: number, f: any) => sum + f.total, 0)
+    
+    const ventasTPVUnicaja = facturasPagadas
+      .filter((f: any) => f.metodoPago === 'TPV_UNICAJA')
+      .reduce((sum: number, f: any) => sum + f.total, 0)
+    
+    const totalVentas = ventasEfectivo + ventasTPVSumup + ventasTPVUnicaja
+
     const stats = {
       totalFacturas,
       totalTickets,
       ingresosMes,
-      pendientesCobro
+      pendientesCobro,
+      // Desglose por método de pago
+      totalVentas,
+      ventasEfectivo,
+      ventasTPVSumup,
+      ventasTPVUnicaja
     }
 
     return NextResponse.json(stats)

@@ -14,7 +14,7 @@ import { toast } from 'react-hot-toast'
 interface Cliente {
   id: string
   nombre: string
-  apellido: string
+  apellido?: string
   email?: string
   telefono: string
   direccion?: string
@@ -74,7 +74,7 @@ export function ClientesView() {
       setEditingCliente(cliente)
       setFormData({
         nombre: cliente.nombre,
-        apellido: cliente.apellido,
+        apellido: cliente.apellido || '',
         email: cliente.email || '',
         telefono: cliente.telefono,
         direccion: cliente.direccion || '',
@@ -108,8 +108,8 @@ export function ClientesView() {
   }
 
   const handleSubmit = async () => {
-    if (!formData.nombre || !formData.apellido || !formData.telefono) {
-      toast.error('Nombre, apellido y teléfono son obligatorios')
+    if (!formData.nombre || !formData.telefono) {
+      toast.error('Nombre y teléfono son obligatorios')
       return
     }
 
@@ -144,7 +144,7 @@ export function ClientesView() {
   }
 
   const handleDelete = async (cliente: Cliente) => {
-    if (!confirm(`¿Estás seguro de eliminar el cliente ${cliente.nombre} ${cliente.apellido}?`)) {
+    if (!confirm(`¿Estás seguro de eliminar el cliente ${cliente.nombre} ${cliente.apellido || ''}?`)) {
       return
     }
 
@@ -262,7 +262,7 @@ export function ClientesView() {
                       </div>
                       <div>
                         <h3 className="font-semibold text-gray-900">
-                          {cliente.nombre} {cliente.apellido}
+                          {cliente.nombre} {cliente.apellido || ''}
                         </h3>
                         {cliente.documento && (
                           <p className="text-sm text-gray-500">Documento: {cliente.documento}</p>
@@ -376,12 +376,12 @@ export function ClientesView() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="apellido">Apellido *</Label>
+                <Label htmlFor="apellido">Apellido</Label>
                 <Input
                   id="apellido"
                   value={formData.apellido}
                   onChange={(e) => setFormData({ ...formData, apellido: e.target.value })}
-                  placeholder="Pérez"
+                  placeholder="Pérez (opcional)"
                 />
               </div>
             </div>
