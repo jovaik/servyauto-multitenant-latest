@@ -92,7 +92,7 @@ export function EnviarFacturaDialog({
     }
   }
 
-  const enviarPorWhatsApp = () => {
+  const enviarPorWhatsApp = async () => {
     if (!telefono) {
       toast({
         title: 'Error',
@@ -102,25 +102,70 @@ export function EnviarFacturaDialog({
       return
     }
 
-    // Limpiar el número de teléfono (eliminar espacios, guiones, etc.)
-    const numeroLimpio = telefono.replace(/\D/g, '')
-    
-    // Si el número no comienza con código de país, agregar +34 (España)
-    const numeroCompleto = numeroLimpio.startsWith('34') ? numeroLimpio : `34${numeroLimpio}`
-    
-    // Crear el mensaje para WhatsApp
-    const mensajeWhatsApp = encodeURIComponent(mensaje)
-    
-    // Abrir WhatsApp Web/App
-    const url = `https://wa.me/${numeroCompleto}?text=${mensajeWhatsApp}`
-    window.open(url, '_blank')
-    
-    toast({
-      title: '¡WhatsApp abierto!',
-      description: 'Se ha abierto WhatsApp. Puedes adjuntar el documento manualmente.',
-    })
-    
-    setOpen(false)
+    try {
+      setLoading(true)
+      
+      // 1. Primero descargar automáticamente el PDF
+      toast({
+        title: 'Preparando documento...',
+        description: 'Descargando el PDF para compartir',
+      })
+      
+      const response = await fetch(`/api/facturas/${facturaId}/pdf?download=true`)
+      if (response.ok) {
+        // Generar el blob del documento HTML
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        
+        // Crear un link temporal y hacer click para descargar
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `${tipo}_${facturaNumero}.html`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        window.URL.revokeObjectURL(url)
+        
+        toast({
+          title: '✅ Documento descargado',
+          description: 'El documento se ha descargado. Abriendo WhatsApp...',
+        })
+        
+        // 2. Esperar un momento para que el usuario vea la descarga
+        await new Promise(resolve => setTimeout(resolve, 1500))
+        
+        // 3. Ahora abrir WhatsApp
+        const numeroLimpio = telefono.replace(/\D/g, '')
+        const numeroCompleto = numeroLimpio.startsWith('34') ? numeroLimpio : `34${numeroLimpio}`
+        
+        // Mensaje mejorado con instrucciones
+        const mensajeWhatsApp = encodeURIComponent(
+          `${mensaje}\n\n📎 El documento ${tipo}_${facturaNumero}.html se ha descargado automáticamente. Solo tienes que adjuntarlo en este chat (puedes imprimirlo como PDF desde el navegador si lo prefieres).`
+        )
+        
+        const whatsappUrl = `https://wa.me/${numeroCompleto}?text=${mensajeWhatsApp}`
+        window.open(whatsappUrl, '_blank')
+        
+        toast({
+          title: '✅ ¡Todo listo!',
+          description: 'El documento está descargado y WhatsApp está abierto. Solo adjunta el archivo en el chat.',
+          duration: 6000
+        })
+      } else {
+        throw new Error('Error al generar el PDF')
+      }
+      
+      setOpen(false)
+    } catch (error) {
+      console.error('Error:', error)
+      toast({
+        title: 'Error',
+        description: 'Error al preparar el documento. Por favor intenta de nuevo.',
+        variant: 'destructive',
+      })
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -194,15 +239,19 @@ export function EnviarFacturaDialog({
             </div>
             <Button
               onClick={enviarPorWhatsApp}
-              disabled={!telefono}
+              disabled={!telefono || loading}
               className="w-full bg-green-600 hover:bg-green-700"
             >
               <MessageCircle className="mr-2 h-4 w-4" />
-              Abrir WhatsApp
+              {loading ? 'Preparando...' : 'Descargar y Abrir WhatsApp'}
             </Button>
-            <p className="text-xs text-gray-500">
-              Se abrirá WhatsApp con el mensaje. Deberás adjuntar el documento manualmente.
-            </p>
+            <div className="bg-green-50 border border-green-200 rounded p-3">
+              <p className="text-xs text-green-800">
+                ✓ El documento se descargará automáticamente<br/>
+                ✓ WhatsApp se abrirá con el mensaje<br/>
+                ✓ Solo tienes que adjuntar el archivo descargado
+              </p>
+            </div>
           </div>
         </div>
       </DialogContent>

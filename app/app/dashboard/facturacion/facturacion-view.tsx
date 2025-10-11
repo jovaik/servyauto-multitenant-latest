@@ -15,7 +15,8 @@ import {
   MoreHorizontal,
   ArrowUpDown,
   Eye,
-  Trash2
+  Trash2,
+  X
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -71,6 +72,8 @@ export function FacturacionView() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterType, setFilterType] = useState<'ALL' | 'TICKET' | 'FACTURA'>('ALL')
+  const [filterFechaDesde, setFilterFechaDesde] = useState('')
+  const [filterFechaHasta, setFilterFechaHasta] = useState('')
   const [selectedFactura, setSelectedFactura] = useState<Factura | null>(null)
   const [showDetalles, setShowDetalles] = useState(false)
   const [stats, setStats] = useState({
@@ -205,7 +208,25 @@ export function FacturacionView() {
     
     const matchesType = filterType === 'ALL' || factura.tipo === filterType
     
-    return matchesSearch && matchesType
+    // Filtrado por fecha
+    let matchesFecha = true
+    if (filterFechaDesde || filterFechaHasta) {
+      const facturaFecha = new Date(factura.fecha)
+      
+      if (filterFechaDesde) {
+        const fechaDesde = new Date(filterFechaDesde)
+        fechaDesde.setHours(0, 0, 0, 0)
+        matchesFecha = matchesFecha && facturaFecha >= fechaDesde
+      }
+      
+      if (filterFechaHasta) {
+        const fechaHasta = new Date(filterFechaHasta)
+        fechaHasta.setHours(23, 59, 59, 999)
+        matchesFecha = matchesFecha && facturaFecha <= fechaHasta
+      }
+    }
+    
+    return matchesSearch && matchesType && matchesFecha
   })
 
   return (
@@ -408,7 +429,8 @@ export function FacturacionView() {
 
       {/* Filters and Search */}
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="pt-6 space-y-4">
+          {/* Primera fila: Búsqueda y botones de tipo */}
           <div className="flex items-center space-x-4">
             <div className="flex-1">
               <div className="relative">
@@ -449,6 +471,84 @@ export function FacturacionView() {
             <Button variant="outline" size="sm" onClick={loadFacturas}>
               <RefreshCw className="h-4 w-4" />
             </Button>
+          </div>
+
+          {/* Segunda fila: Filtros por fecha */}
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 flex-1">
+              <Filter className="h-4 w-4 text-gray-500" />
+              <span className="text-sm font-medium text-gray-700">Filtrar por fecha:</span>
+              
+              <div className="flex items-center space-x-2">
+                <Input
+                  type="date"
+                  value={filterFechaDesde}
+                  onChange={(e) => setFilterFechaDesde(e.target.value)}
+                  className="w-40"
+                  placeholder="Desde"
+                />
+                <span className="text-gray-500">-</span>
+                <Input
+                  type="date"
+                  value={filterFechaHasta}
+                  onChange={(e) => setFilterFechaHasta(e.target.value)}
+                  className="w-40"
+                  placeholder="Hasta"
+                />
+              </div>
+            </div>
+
+            {/* Botones de acceso rápido */}
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const hoy = new Date().toISOString().split('T')[0]
+                  setFilterFechaDesde(hoy)
+                  setFilterFechaHasta(hoy)
+                }}
+              >
+                Hoy
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const hoy = new Date()
+                  const hace7dias = new Date(hoy.getTime() - 7 * 24 * 60 * 60 * 1000)
+                  setFilterFechaDesde(hace7dias.toISOString().split('T')[0])
+                  setFilterFechaHasta(hoy.toISOString().split('T')[0])
+                }}
+              >
+                Última semana
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const hoy = new Date()
+                  const primerDiaMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1)
+                  setFilterFechaDesde(primerDiaMes.toISOString().split('T')[0])
+                  setFilterFechaHasta(hoy.toISOString().split('T')[0])
+                }}
+              >
+                Este mes
+              </Button>
+              {(filterFechaDesde || filterFechaHasta) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setFilterFechaDesde('')
+                    setFilterFechaHasta('')
+                  }}
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Limpiar fechas
+                </Button>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>

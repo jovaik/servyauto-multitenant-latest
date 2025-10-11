@@ -177,11 +177,17 @@ export async function GET(
     const htmlContent = generateHTML(factura)
     const htmlBuffer = Buffer.from(htmlContent, 'utf-8')
 
-    // Retornar como HTML que se puede imprimir fácilmente
+    // Verificar si se solicita descarga
+    const { searchParams } = new URL(request.url)
+    const descargar = searchParams.get('download') === 'true'
+
+    // Retornar como HTML que se puede imprimir o descargar
     return new NextResponse(htmlBuffer, {
       headers: {
         'Content-Type': 'text/html; charset=utf-8',
-        'Content-Disposition': `inline; filename="${factura.numero}.html"`
+        'Content-Disposition': descargar 
+          ? `attachment; filename="${factura.tipo}_${factura.numero}.html"`
+          : `inline; filename="${factura.numero}.html"`
       }
     })
   } catch (error) {

@@ -105,6 +105,22 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     console.log('=== ACTUALIZACIÓN EXITOSA ===')
     console.log('Cita actualizada:', cita.id)
     
+    // Si la cita se marca como COMPLETADA y ya tiene una factura asociada, marcarla como PAGADA
+    if (estado === 'COMPLETADA' && cita.facturas && metodoPago) {
+      console.log('=== MARCANDO FACTURA COMO PAGADA ===')
+      console.log('Factura ID:', cita.facturas.id)
+      
+      await prisma.factura.update({
+        where: { id: cita.facturas.id },
+        data: { 
+          estado: 'PAGADA',
+          metodoPago: metodoPago // Actualizar también el método de pago
+        }
+      })
+      
+      console.log('=== FACTURA MARCADA COMO PAGADA ===')
+    }
+    
     // Si la cita se marca como COMPLETADA y no tiene factura, crear una automáticamente
     if (estado === 'COMPLETADA' && !cita.facturas) {
       console.log('=== CREANDO FACTURA/TICKET AUTOMÁTICA ===')
