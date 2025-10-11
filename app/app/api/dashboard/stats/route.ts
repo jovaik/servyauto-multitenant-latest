@@ -145,13 +145,62 @@ export async function GET(req: NextRequest) {
           total: 'desc',
         },
       },
-      take: 5,
+      take: 10, // Obtenemos más para tener margen
     })
 
-    const topConceptos = serviciosFacturados.map(item => ({
-      concepto: item.descripcion,
-      total: item._sum.total || 0,
-    }))
+    // Obtener todos los servicios actuales para hacer el match
+    const todosServicios = await prisma.servicio.findMany({
+      select: {
+        id: true,
+        nombre: true,
+      },
+    })
+
+    // Función helper para normalizar texto (quitar espacios extras, mayúsculas, etc.)
+    const normalizar = (texto: string): string => {
+      return texto.trim().toLowerCase().replace(/\s+/g, ' ')
+    }
+
+    // Crear un mapa de nombre normalizado -> nombre actual del servicio
+    const serviciosNormalizados = new Map(
+      todosServicios.map(s => [normalizar(s.nombre), s.nombre])
+    )
+
+    // Intentar hacer match entre descripciones antiguas y nombres actuales
+    const topConceptosConMatch = serviciosFacturados.map(item => {
+      const descripcionNormalizada = normalizar(item.descripcion)
+      
+      // Buscar match exacto
+      let nombreActual = serviciosNormalizados.get(descripcionNormalizada)
+      
+      // Si no hay match exacto, buscar por similitud (contiene)
+      if (!nombreActual) {
+        for (const [nombreNorm, nombreReal] of serviciosNormalizados.entries()) {
+          if (descripcionNormalizada.includes(nombreNorm) || nombreNorm.includes(descripcionNormalizada)) {
+            nombreActual = nombreReal
+            break
+          }
+        }
+      }
+      
+      return {
+        concepto: nombreActual || item.descripcion, // Si no hay match, usar descripción original
+        total: item._sum.total || 0,
+      }
+    })
+
+    // Agrupar por concepto (en caso de que varias descripciones apunten al mismo servicio)
+    const conceptosAgrupados = new Map<string, number>()
+    topConceptosConMatch.forEach(item => {
+      const totalActual = conceptosAgrupados.get(item.concepto) || 0
+      conceptosAgrupados.set(item.concepto, totalActual + item.total)
+    })
+
+    // Convertir a array y ordenar
+    const topConceptos = Array.from(conceptosAgrupados.entries())
+      .map(([concepto, total]) => ({ concepto, total }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 5) // Top 5
 
     return NextResponse.json({
       citasHoy: citasHoy || 0,

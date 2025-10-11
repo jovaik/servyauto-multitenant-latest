@@ -262,6 +262,39 @@ export function FacturacionView() {
         <NuevaFacturaDialog onFacturaCreada={loadFacturas} />
       </div>
 
+      {/* Indicador de filtro de fechas activo */}
+      {(filterFechaDesde || filterFechaHasta) && (
+        <Card className="border-2 border-blue-400 bg-blue-50">
+          <CardContent className="py-3 px-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Filter className="h-4 w-4 text-blue-600" />
+                <span className="text-sm font-semibold text-blue-900">
+                  📅 Filtro de fechas activo:
+                </span>
+                <span className="text-sm text-blue-700">
+                  {filterFechaDesde ? format(new Date(filterFechaDesde), 'dd/MM/yyyy', { locale: es }) : 'Inicio'} 
+                  {' → '}
+                  {filterFechaHasta ? format(new Date(filterFechaHasta), 'dd/MM/yyyy', { locale: es }) : 'Hoy'}
+                </span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setFilterFechaDesde('')
+                  setFilterFechaHasta('')
+                }}
+                className="text-blue-700 hover:text-blue-900 hover:bg-blue-100"
+              >
+                <X className="h-4 w-4 mr-1" />
+                Quitar filtro
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
@@ -271,7 +304,9 @@ export function FacturacionView() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalFacturas}</div>
-            <p className="text-xs text-muted-foreground">Documentos generados</p>
+            <p className="text-xs text-muted-foreground">
+              {(filterFechaDesde || filterFechaHasta) ? 'En período seleccionado' : 'Documentos generados'}
+            </p>
           </CardContent>
         </Card>
 
@@ -282,18 +317,24 @@ export function FacturacionView() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalTickets}</div>
-            <p className="text-xs text-muted-foreground">Tickets emitidos</p>
+            <p className="text-xs text-muted-foreground">
+              {(filterFechaDesde || filterFechaHasta) ? 'En período seleccionado' : 'Tickets emitidos'}
+            </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Ingresos del Mes</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              {(filterFechaDesde || filterFechaHasta) ? 'Ingresos (Período)' : 'Ingresos del Mes'}
+            </CardTitle>
             <Euro className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">€{stats.ingresosMes.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">Facturación mensual</p>
+            <p className="text-xs text-muted-foreground">
+              {(filterFechaDesde || filterFechaHasta) ? 'Facturas + citas cobradas' : 'Facturación mensual'}
+            </p>
           </CardContent>
         </Card>
 
@@ -304,7 +345,9 @@ export function FacturacionView() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">€{stats.pendientesCobro.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">Por cobrar</p>
+            <p className="text-xs text-muted-foreground">
+              {(filterFechaDesde || filterFechaHasta) ? 'En período seleccionado' : 'Por cobrar'}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -313,18 +356,9 @@ export function FacturacionView() {
       <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
         <CardHeader>
           <CardTitle className="flex items-center justify-between text-blue-900">
-            <div className="flex flex-col">
-              <div className="flex items-center">
-                <CreditCard className="mr-2 h-5 w-5" />
-                Resumen de Ventas - Arqueo de Caja
-              </div>
-              {(filterFechaDesde || filterFechaHasta) && (
-                <div className="text-sm font-normal text-blue-700 mt-1">
-                  📅 Período: {filterFechaDesde ? format(new Date(filterFechaDesde), 'dd/MM/yyyy', { locale: es }) : 'Inicio'} 
-                  {' → '}
-                  {filterFechaHasta ? format(new Date(filterFechaHasta), 'dd/MM/yyyy', { locale: es }) : 'Hoy'}
-                </div>
-              )}
+            <div className="flex items-center">
+              <CreditCard className="mr-2 h-5 w-5" />
+              Resumen de Ventas - Arqueo de Caja
             </div>
             <Button 
               variant="outline" 
