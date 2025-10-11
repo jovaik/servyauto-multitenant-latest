@@ -197,10 +197,10 @@ export function NuevaCitaDialog({
   }, [formData.clienteId, clientes])
 
   const addNewCliente = async () => {
-    if (!newCliente.nombre || !newCliente.apellido || !newCliente.telefono) {
+    if (!newCliente.nombre || !newCliente.telefono) {
       toast({
         title: "Error",
-        description: "Por favor completa al menos: nombre, apellido y teléfono",
+        description: "Por favor completa al menos: nombre y teléfono",
         variant: "destructive",
       })
       return
@@ -575,12 +575,11 @@ export function NuevaCitaDialog({
                         />
                       </div>
                       <div>
-                        <Label>Apellido *</Label>
+                        <Label>Apellido</Label>
                         <Input
                           value={newCliente.apellido}
                           onChange={(e) => setNewCliente(prev => ({ ...prev, apellido: e.target.value }))}
                           placeholder="Apellido"
-                          required
                         />
                       </div>
                     </div>
