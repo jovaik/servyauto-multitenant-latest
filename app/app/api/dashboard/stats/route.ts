@@ -111,7 +111,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Top conceptos de ingresos (por servicios más facturados del año actual)
-    // Solo mostrar servicios que ACTUALMENTE existen en la tabla servicio
+    // Mostrar TODOS los servicios facturados, independientemente de si existen en el sistema
     
     // Obtener IDs de facturas del año actual (no solo del mes)
     const startOfYear = new Date(currentYear, 0, 1)
@@ -135,25 +135,13 @@ export async function GET(req: NextRequest) {
 
     // Si hay facturas del año, obtener los servicios facturados
     if (facturasIds.length > 0) {
-      // Primero obtener todos los servicios que ACTUALMENTE existen en el sistema
-      const serviciosActuales = await prisma.servicio.findMany({
-        select: {
-          nombre: true,
-        },
-      })
-      
-      const nombresServiciosActuales = serviciosActuales.map(s => s.nombre)
-      
       // Obtener items de esas facturas agrupados por descripción
+      // SIN filtrar por servicios actuales - mostrar todo lo que se ha vendido
       const serviciosFacturados = await prisma.factura_items.groupBy({
         by: ['descripcion'],
         where: {
           facturaId: {
             in: facturasIds,
-          },
-          // Solo servicios que todavía existen en el sistema
-          descripcion: {
-            in: nombresServiciosActuales,
           },
         },
         _sum: {
