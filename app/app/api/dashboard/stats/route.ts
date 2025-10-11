@@ -110,9 +110,33 @@ export async function GET(req: NextRequest) {
       })
     }
 
-    // Top conceptos de ingresos (por servicios más facturados)
+    // Top conceptos de ingresos (por servicios más facturados del año actual)
+    const startOfYear = new Date(currentYear, 0, 1)
+    const endOfYear = new Date(currentYear, 11, 31, 23, 59, 59)
+
+    // Obtener IDs de facturas del año actual
+    const facturasDelAnio = await prisma.factura.findMany({
+      where: {
+        createdAt: {
+          gte: startOfYear,
+          lte: endOfYear,
+        },
+      },
+      select: {
+        id: true,
+      },
+    })
+
+    const facturasIds = facturasDelAnio.map(f => f.id)
+
+    // Obtener items de esas facturas agrupados por descripción
     const serviciosFacturados = await prisma.factura_items.groupBy({
       by: ['descripcion'],
+      where: {
+        facturaId: {
+          in: facturasIds,
+        },
+      },
       _sum: {
         total: true,
       },

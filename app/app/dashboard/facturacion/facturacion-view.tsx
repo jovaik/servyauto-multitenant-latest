@@ -94,6 +94,11 @@ export function FacturacionView() {
     loadStats()
   }, [])
 
+  // Recargar estadísticas cuando cambian los filtros de fecha
+  useEffect(() => {
+    loadStats()
+  }, [filterFechaDesde, filterFechaHasta])
+
   const loadFacturas = async () => {
     try {
       setLoading(true)
@@ -111,7 +116,22 @@ export function FacturacionView() {
 
   const loadStats = async () => {
     try {
-      const response = await fetch('/api/facturas/stats')
+      // Construir la URL con los parámetros de fecha si existen
+      let url = '/api/facturas/stats'
+      const params = new URLSearchParams()
+      
+      if (filterFechaDesde) {
+        params.append('fechaDesde', filterFechaDesde)
+      }
+      if (filterFechaHasta) {
+        params.append('fechaHasta', filterFechaHasta)
+      }
+      
+      if (params.toString()) {
+        url += '?' + params.toString()
+      }
+
+      const response = await fetch(url)
       if (response.ok) {
         const data = await response.json()
         setStats(data)
@@ -293,9 +313,18 @@ export function FacturacionView() {
       <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
         <CardHeader>
           <CardTitle className="flex items-center justify-between text-blue-900">
-            <div className="flex items-center">
-              <CreditCard className="mr-2 h-5 w-5" />
-              Resumen de Ventas - Arqueo de Caja
+            <div className="flex flex-col">
+              <div className="flex items-center">
+                <CreditCard className="mr-2 h-5 w-5" />
+                Resumen de Ventas - Arqueo de Caja
+              </div>
+              {(filterFechaDesde || filterFechaHasta) && (
+                <div className="text-sm font-normal text-blue-700 mt-1">
+                  📅 Período: {filterFechaDesde ? format(new Date(filterFechaDesde), 'dd/MM/yyyy', { locale: es }) : 'Inicio'} 
+                  {' → '}
+                  {filterFechaHasta ? format(new Date(filterFechaHasta), 'dd/MM/yyyy', { locale: es }) : 'Hoy'}
+                </div>
+              )}
             </div>
             <Button 
               variant="outline" 

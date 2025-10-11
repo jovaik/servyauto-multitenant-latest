@@ -14,13 +14,55 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
-    // Obtener fecha del inicio del mes actual
-    const inicioMes = new Date()
-    inicioMes.setDate(1)
-    inicioMes.setHours(0, 0, 0, 0)
+    // Obtener parámetros de fecha de la query string
+    const { searchParams } = new URL(request.url)
+    const fechaDesde = searchParams.get('fechaDesde')
+    const fechaHasta = searchParams.get('fechaHasta')
 
-    // Obtener todas las facturas (incluyendo tickets)
+    // Configurar filtros de fecha
+    let fechaDesdeDate: Date | undefined
+    let fechaHastaDate: Date | undefined
+
+    if (fechaDesde) {
+      fechaDesdeDate = new Date(fechaDesde)
+      fechaDesdeDate.setHours(0, 0, 0, 0)
+    }
+
+    if (fechaHasta) {
+      fechaHastaDate = new Date(fechaHasta)
+      fechaHastaDate.setHours(23, 59, 59, 999)
+    }
+
+    // Construir el filtro de fecha para las consultas
+    const buildDateFilter = () => {
+      if (fechaDesdeDate && fechaHastaDate) {
+        return {
+          createdAt: {
+            gte: fechaDesdeDate,
+            lte: fechaHastaDate
+          }
+        }
+      } else if (fechaDesdeDate) {
+        return {
+          createdAt: {
+            gte: fechaDesdeDate
+          }
+        }
+      } else if (fechaHastaDate) {
+        return {
+          createdAt: {
+            lte: fechaHastaDate
+          }
+        }
+      }
+      return {}
+    }
+
+    const dateFilter = buildDateFilter()
+
+    // Obtener todas las facturas (incluyendo tickets) con filtro de fecha
     const todasFacturas = await prisma.factura.findMany({
+      where: dateFilter,
       select: {
         tipo: true,
         total: true,
@@ -30,9 +72,10 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Obtener todas las citas COMPLETADAS (son ventas cobradas)
+    // Obtener todas las citas COMPLETADAS (son ventas cobradas) con filtro de fecha
     const citasCompletadas = await prisma.cita.findMany({
       where: {
+        ...dateFilter,
         estado: 'COMPLETADA',
         total: { not: null },
         metodoPago: { not: null }
@@ -48,14 +91,13 @@ export async function GET(request: NextRequest) {
     const totalFacturas = todasFacturas.filter((f: any) => f.tipo === 'FACTURA').length
     const totalTickets = todasFacturas.filter((f: any) => f.tipo === 'TICKET').length
     
-    // Ingresos del mes actual (facturas pagadas)
+    // Ingresos (facturas pagadas)
     const ingresosMesFacturas = todasFacturas
-      .filter((f: any) => f.createdAt >= inicioMes && f.estado === 'PAGADA')
+      .filter((f: any) => f.estado === 'PAGADA')
       .reduce((sum: number, f: any) => sum + f.total, 0)
 
-    // Ingresos del mes actual (citas completadas)
+    // Ingresos (citas completadas)
     const ingresosMesCitas = citasCompletadas
-      .filter((c: any) => c.createdAt >= inicioMes)
       .reduce((sum: number, c: any) => sum + (c.total || 0), 0)
 
     const ingresosMes = ingresosMesFacturas + ingresosMesCitas
@@ -103,6 +145,7 @@ export async function GET(request: NextRequest) {
 
     // ====== OBTENER GASTOS PARA RESTAR DEL EFECTIVO ======
     const todosGastos = await prisma.gasto.findMany({
+      where: dateFilter,
       select: {
         importe: true,
         metodoPago: true

@@ -15,7 +15,8 @@ import {
   CheckCircle,
   AlertCircle,
   DollarSign,
-  Wallet
+  Wallet,
+  FileText
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -210,28 +211,37 @@ export function DashboardContent({ session }: DashboardContentProps) {
         {/* Top Conceptos Pie Chart */}
         <Card>
           <CardHeader>
-            <CardTitle>Top Conceptos de Ingresos</CardTitle>
-            <CardDescription>Servicios más facturados</CardDescription>
+            <CardTitle>Top Servicios Facturados</CardTitle>
+            <CardDescription>
+              Servicios más vendidos (basado en facturas del año actual)
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={topConceptos}
-                  dataKey="total"
-                  nameKey="concepto"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={100}
-                  label={(entry: any) => `${entry.concepto}: €${Number(entry.total).toFixed(0)}`}
-                >
-                  {topConceptos.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'][index % 5]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+            {topConceptos.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={topConceptos}
+                    dataKey="total"
+                    nameKey="concepto"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={100}
+                    label={(entry: any) => `${entry.concepto.length > 15 ? entry.concepto.substring(0, 15) + '...' : entry.concepto}: €${Number(entry.total).toFixed(0)}`}
+                  >
+                    {topConceptos.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'][index % 5]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value: number) => `€${value.toFixed(2)}`} />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-[300px] text-gray-500">
+                <FileText className="h-12 w-12 mb-2 text-gray-300" />
+                <p className="text-sm">No hay datos de facturación aún</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
