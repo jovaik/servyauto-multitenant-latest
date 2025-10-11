@@ -32,14 +32,42 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { concepto, fecha, proveedor, tipoGasto, importe, metodoPago, tipo, iva } = body
+    console.log('Datos recibidos para crear gasto:', body)
+    
+    const { 
+      concepto, 
+      fecha, 
+      proveedor, 
+      tipoGasto, 
+      importe, 
+      metodoPago, 
+      tipo, 
+      iva,
+      numeroFactura,
+      proveedorCIF,
+      proveedorDireccion,
+      proveedorCodigoPostal,
+      proveedorCiudad,
+      proveedorProvincia
+    } = body
 
     // Validar campos requeridos
-    if (!concepto || !fecha || !tipoGasto || !importe) {
+    if (!concepto || !fecha || !tipoGasto || !importe || !metodoPago) {
       return NextResponse.json(
-        { error: 'Faltan campos requeridos' },
+        { error: 'Faltan campos requeridos: concepto, fecha, tipoGasto, importe, metodoPago' },
         { status: 400 }
       )
+    }
+
+    // Si es FACTURA, validar campos fiscales adicionales
+    if (tipo === 'FACTURA') {
+      if (!numeroFactura || !proveedor || !proveedorCIF || !proveedorDireccion || 
+          !proveedorCodigoPostal || !proveedorCiudad || !proveedorProvincia) {
+        return NextResponse.json(
+          { error: 'Para facturas se requieren todos los datos fiscales del proveedor' },
+          { status: 400 }
+        )
+      }
     }
 
     const gasto = await prisma.gasto.create({
@@ -49,16 +77,27 @@ export async function POST(request: NextRequest) {
         proveedor: proveedor || null,
         tipoGasto,
         importe: parseFloat(importe),
-        metodoPago: metodoPago || 'EFECTIVO',
+        metodoPago: metodoPago as any, // El enum se maneja correctamente
         tipo: tipo || 'TICKET',
         iva: parseFloat(iva) || 21,
-        adjunto: false
+        adjunto: false,
+        // Campos fiscales (solo para FACTURA)
+        numeroFactura: numeroFactura || null,
+        proveedorCIF: proveedorCIF || null,
+        proveedorDireccion: proveedorDireccion || null,
+        proveedorCodigoPostal: proveedorCodigoPostal || null,
+        proveedorCiudad: proveedorCiudad || null,
+        proveedorProvincia: proveedorProvincia || null
       }
     })
 
+    console.log('Gasto creado exitosamente:', gasto.id)
     return NextResponse.json(gasto, { status: 201 })
   } catch (error) {
     console.error('Error creating gasto:', error)
-    return NextResponse.json({ error: 'Error al crear gasto' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Error al crear gasto: ' + (error as Error).message },
+      { status: 500 }
+    )
   }
 }
