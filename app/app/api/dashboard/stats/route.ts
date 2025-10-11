@@ -110,37 +110,18 @@ export async function GET(req: NextRequest) {
       })
     }
 
-    // Top conceptos de ingresos (por servicios más facturados del mes actual)
-    // Solo mostrar servicios que existan actualmente en el sistema
+    // Top conceptos de ingresos (por servicios más facturados del año actual)
+    // Mostrar TODOS los servicios facturados, sin filtrar
     
-    // Obtener todos los servicios actuales (solo los activos)
-    const todosServicios = await prisma.servicio.findMany({
-      select: {
-        id: true,
-        nombre: true,
-      },
-    })
-
-    // Si no hay servicios actuales, retornar array vacío
-    if (todosServicios.length === 0) {
-      return NextResponse.json({
-        citasHoy: citasHoy || 0,
-        facturacionMensual: facturacionTotal,
-        gastosMensual: gastosTotal,
-        balanceMensual,
-        clientesTotal: clientesTotal || 0,
-        citasPendientes: citasPendientes || 0,
-        monthlyData,
-        topConceptos: [],
-      })
-    }
-
-    // Obtener IDs de facturas del mes actual
-    const facturasDelMes = await prisma.factura.findMany({
+    // Obtener IDs de facturas del año actual (no solo del mes)
+    const startOfYear = new Date(currentYear, 0, 1)
+    const endOfYear = new Date(currentYear, 11, 31, 23, 59, 59)
+    
+    const facturasDelAnio = await prisma.factura.findMany({
       where: {
         createdAt: {
-          gte: startOfMonth,
-          lte: endOfMonth,
+          gte: startOfYear,
+          lte: endOfYear,
         },
       },
       select: {
@@ -148,89 +129,37 @@ export async function GET(req: NextRequest) {
       },
     })
 
-    const facturasIds = facturasDelMes.map(f => f.id)
+    const facturasIds = facturasDelAnio.map(f => f.id)
 
-    // Si no hay facturas del mes, retornar array vacío
-    if (facturasIds.length === 0) {
-      return NextResponse.json({
-        citasHoy: citasHoy || 0,
-        facturacionMensual: facturacionTotal,
-        gastosMensual: gastosTotal,
-        balanceMensual,
-        clientesTotal: clientesTotal || 0,
-        citasPendientes: citasPendientes || 0,
-        monthlyData,
-        topConceptos: [],
-      })
-    }
+    let topConceptos: { concepto: string; total: number }[] = []
 
-    // Obtener items de esas facturas agrupados por descripción
-    const serviciosFacturados = await prisma.factura_items.groupBy({
-      by: ['descripcion'],
-      where: {
-        facturaId: {
-          in: facturasIds,
+    // Si hay facturas del año, obtener los servicios facturados
+    if (facturasIds.length > 0) {
+      // Obtener items de esas facturas agrupados por descripción
+      const serviciosFacturados = await prisma.factura_items.groupBy({
+        by: ['descripcion'],
+        where: {
+          facturaId: {
+            in: facturasIds,
+          },
         },
-      },
-      _sum: {
-        total: true,
-      },
-      orderBy: {
         _sum: {
-          total: 'desc',
+          total: true,
         },
-      },
-      take: 20, // Obtenemos más para filtrar después
-    })
-
-    // Función helper para normalizar texto
-    const normalizar = (texto: string): string => {
-      return texto.trim().toLowerCase().replace(/\s+/g, ' ')
-    }
-
-    // Crear un mapa de nombre normalizado -> nombre actual del servicio
-    const serviciosNormalizados = new Map(
-      todosServicios.map(s => [normalizar(s.nombre), s.nombre])
-    )
-
-    // Solo incluir servicios que existan actualmente en el sistema
-    const topConceptosConMatch = serviciosFacturados
-      .map(item => {
-        const descripcionNormalizada = normalizar(item.descripcion)
-        
-        // Buscar match exacto
-        let nombreActual = serviciosNormalizados.get(descripcionNormalizada)
-        
-        // Si no hay match exacto, buscar por similitud
-        if (!nombreActual) {
-          for (const [nombreNorm, nombreReal] of serviciosNormalizados.entries()) {
-            if (descripcionNormalizada.includes(nombreNorm) || nombreNorm.includes(descripcionNormalizada)) {
-              nombreActual = nombreReal
-              break
-            }
-          }
-        }
-        
-        // Solo retornar si hay match con un servicio actual
-        return nombreActual ? {
-          concepto: nombreActual,
-          total: item._sum.total || 0,
-        } : null
+        orderBy: {
+          _sum: {
+            total: 'desc',
+          },
+        },
+        take: 5, // Top 5 servicios más facturados
       })
-      .filter((item): item is { concepto: string; total: number } => item !== null) // Filtrar nulls
 
-    // Agrupar por concepto
-    const conceptosAgrupados = new Map<string, number>()
-    topConceptosConMatch.forEach(item => {
-      const totalActual = conceptosAgrupados.get(item.concepto) || 0
-      conceptosAgrupados.set(item.concepto, totalActual + item.total)
-    })
-
-    // Convertir a array y ordenar - Top 5 servicios actuales
-    const topConceptos = Array.from(conceptosAgrupados.entries())
-      .map(([concepto, total]) => ({ concepto, total }))
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 5)
+      // Convertir a formato del gráfico
+      topConceptos = serviciosFacturados.map(item => ({
+        concepto: item.descripcion,
+        total: item._sum.total || 0,
+      }))
+    }
 
     return NextResponse.json({
       citasHoy: citasHoy || 0,
