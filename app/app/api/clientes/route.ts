@@ -46,10 +46,10 @@ export async function POST(request: NextRequest) {
     
     const { nombre, apellido, email, telefono, direccion, documento } = body
 
-    // Validaciones básicas
-    if (!nombre || !apellido || !telefono) {
+    // Validaciones básicas (apellido ahora es opcional)
+    if (!nombre || !telefono) {
       return NextResponse.json(
-        { error: 'Campos requeridos: nombre, apellido, telefono' },
+        { error: 'Campos requeridos: nombre y telefono' },
         { status: 400 }
       )
     }
@@ -111,10 +111,10 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    // Validaciones básicas
-    if (!nombre || !apellido || !telefono) {
+    // Validaciones básicas (apellido ahora es opcional)
+    if (!nombre || !telefono) {
       return NextResponse.json(
-        { error: 'Campos requeridos: nombre, apellido, telefono' },
+        { error: 'Campos requeridos: nombre y telefono' },
         { status: 400 }
       )
     }
