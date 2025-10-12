@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    console.log('Datos recibidos para crear gasto:', body)
+    console.log('Datos recibidos para crear gasto:', JSON.stringify(body, null, 2))
     
     const { 
       concepto, 
@@ -53,8 +53,19 @@ export async function POST(request: NextRequest) {
 
     // Validar campos requeridos
     if (!concepto || !fecha || !tipoGasto || !importe || !metodoPago) {
+      console.error('Faltan campos requeridos', { concepto, fecha, tipoGasto, importe, metodoPago })
       return NextResponse.json(
         { error: 'Faltan campos requeridos: concepto, fecha, tipoGasto, importe, metodoPago' },
+        { status: 400 }
+      )
+    }
+
+    // Validar que metodoPago sea uno de los valores válidos del enum
+    const metodosValidos = ['EFECTIVO', 'TPV_SUMUP', 'TPV_UNICAJA']
+    if (!metodosValidos.includes(metodoPago)) {
+      console.error('Método de pago inválido:', metodoPago)
+      return NextResponse.json(
+        { error: `Método de pago inválido. Debe ser uno de: ${metodosValidos.join(', ')}` },
         { status: 400 }
       )
     }
@@ -70,33 +81,39 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Preparar datos para crear el gasto
+    const gastoData = {
+      concepto: concepto.trim(),
+      fecha: new Date(fecha),
+      proveedor: proveedor && proveedor.trim() ? proveedor.trim() : null,
+      tipoGasto: tipoGasto.trim(),
+      importe: parseFloat(importe),
+      metodoPago: metodoPago,
+      tipo: tipo || 'TICKET',
+      iva: parseFloat(iva) || 21,
+      adjunto: false,
+      numeroFactura: numeroFactura && numeroFactura.trim() ? numeroFactura.trim() : null,
+      proveedorCIF: proveedorCIF && proveedorCIF.trim() ? proveedorCIF.trim() : null,
+      proveedorDireccion: proveedorDireccion && proveedorDireccion.trim() ? proveedorDireccion.trim() : null,
+      proveedorCodigoPostal: proveedorCodigoPostal && proveedorCodigoPostal.trim() ? proveedorCodigoPostal.trim() : null,
+      proveedorCiudad: proveedorCiudad && proveedorCiudad.trim() ? proveedorCiudad.trim() : null,
+      proveedorProvincia: proveedorProvincia && proveedorProvincia.trim() ? proveedorProvincia.trim() : null
+    }
+
+    console.log('Datos preparados para Prisma:', JSON.stringify(gastoData, null, 2))
+
     const gasto = await prisma.gasto.create({
-      data: {
-        concepto,
-        fecha: new Date(fecha),
-        proveedor: proveedor || null,
-        tipoGasto,
-        importe: parseFloat(importe),
-        metodoPago: metodoPago as any, // El enum se maneja correctamente
-        tipo: tipo || 'TICKET',
-        iva: parseFloat(iva) || 21,
-        adjunto: false,
-        // Campos fiscales (solo para FACTURA)
-        numeroFactura: numeroFactura || null,
-        proveedorCIF: proveedorCIF || null,
-        proveedorDireccion: proveedorDireccion || null,
-        proveedorCodigoPostal: proveedorCodigoPostal || null,
-        proveedorCiudad: proveedorCiudad || null,
-        proveedorProvincia: proveedorProvincia || null
-      }
+      data: gastoData
     })
 
     console.log('Gasto creado exitosamente:', gasto.id)
     return NextResponse.json(gasto, { status: 201 })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating gasto:', error)
+    console.error('Error stack:', error.stack)
+    console.error('Error details:', JSON.stringify(error, null, 2))
     return NextResponse.json(
-      { error: 'Error al crear gasto: ' + (error as Error).message },
+      { error: 'Error al crear gasto: ' + (error.message || 'Error desconocido') },
       { status: 500 }
     )
   }

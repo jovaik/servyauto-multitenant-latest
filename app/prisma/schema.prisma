@@ -278,3 +278,21 @@ enum TipoFactura {
   TICKET
   FACTURA
 }
+
+model CierreCaja {
+  id                  String   @id @default(cuid())
+  fechaInicio         DateTime
+  fechaFin            DateTime
+  totalEfectivo       Float    // Total de ventas en efectivo
+  totalTPVSumup       Float    // Total de ventas con TPV SUMUP
+  totalTPVUnicaja     Float    // Total de ventas con TPV UNICAJA
+  gastosEfectivo      Float    // Total de gastos en efectivo
+  gastosTarjeta       Float    // Total de gastos con tarjeta
+  efectivoFinal       Float    // Efectivo final (total efectivo - gastos efectivo)
+  observaciones       String?
+  usuarioId           String   // Usuario que realizó el cierre
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@map("cierres_caja")
+}
