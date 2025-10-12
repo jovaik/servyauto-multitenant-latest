@@ -27,13 +27,22 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
+    console.log('=== CIERRE CAJA DEBUG ===')
+    console.log('Session completa:', JSON.stringify(session, null, 2))
+    
     if (!session?.user) {
+      console.log('ERROR: No hay sesión de usuario')
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
+    console.log('Usuario de sesión:', session.user)
     const userId = (session.user as any).id
+    console.log('User ID extraído:', userId)
+    
     if (!userId) {
-      return NextResponse.json({ error: 'Usuario inválido' }, { status: 401 })
+      console.log('ERROR: userId es undefined, null o vacío')
+      console.log('Objeto session.user completo:', JSON.stringify(session.user, null, 2))
+      return NextResponse.json({ error: 'Usuario inválido. Por favor, cierra sesión y vuelve a iniciar sesión.' }, { status: 401 })
     }
 
     const body = await request.json()
