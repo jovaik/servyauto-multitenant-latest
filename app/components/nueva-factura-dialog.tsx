@@ -130,9 +130,10 @@ export function NuevaFacturaDialog({ onFacturaCreada }: NuevaFacturaDialogProps)
   }
 
   const calcularTotales = () => {
-    const subtotal = items.reduce((sum, item) => sum + item.total, 0)
-    const iva = subtotal * 0.21
-    const total = subtotal + iva
+    // Los precios ya incluyen IVA, hay que desglosarlo
+    const total = items.reduce((sum, item) => sum + item.total, 0)
+    const subtotal = total / 1.21  // Base imponible (desglosando IVA 21%)
+    const iva = total - subtotal    // IVA desglosado
     return { subtotal, iva, total }
   }
 
@@ -306,13 +307,16 @@ export function NuevaFacturaDialog({ onFacturaCreada }: NuevaFacturaDialogProps)
 
           {/* Items de la Factura */}
           <div>
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-2">
               <Label>Items de Facturación *</Label>
               <Button type="button" variant="outline" size="sm" onClick={agregarItem}>
                 <Plus className="h-4 w-4 mr-1" />
                 Agregar Item
               </Button>
             </div>
+            <p className="text-xs text-gray-500 mb-4">
+              💡 Los precios deben ingresarse <strong>con IVA incluido</strong> (precio final). El sistema desglosará automáticamente el IVA.
+            </p>
             
             <div className="space-y-3">
               {items.map((item, index) => (
@@ -338,7 +342,7 @@ export function NuevaFacturaDialog({ onFacturaCreada }: NuevaFacturaDialogProps)
                       type="number"
                       min="0"
                       step="0.01"
-                      placeholder="Precio €"
+                      placeholder="€ (IVA incl.)"
                       value={item.precio}
                       onChange={(e) => actualizarItem(index, 'precio', parseFloat(e.target.value) || 0)}
                     />
@@ -413,18 +417,18 @@ export function NuevaFacturaDialog({ onFacturaCreada }: NuevaFacturaDialogProps)
           {/* Totales */}
           <div className="bg-gray-50 p-4 rounded-lg">
             <div className="space-y-2">
-              <div className="flex justify-between">
-                <span>Subtotal:</span>
-                <span>€{subtotal.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>IVA (21%):</span>
-                <span>€{iva.toFixed(2)}</span>
+              <div className="flex justify-between text-lg font-semibold">
+                <span>TOTAL (IVA incluido):</span>
+                <span>€{total.toFixed(2)}</span>
               </div>
               <Separator />
-              <div className="flex justify-between text-lg font-semibold">
-                <span>Total:</span>
-                <span>€{total.toFixed(2)}</span>
+              <div className="flex justify-between text-sm text-gray-600">
+                <span>Base imponible:</span>
+                <span>€{subtotal.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-sm text-gray-600">
+                <span>IVA (21%):</span>
+                <span>€{iva.toFixed(2)}</span>
               </div>
             </div>
           </div>

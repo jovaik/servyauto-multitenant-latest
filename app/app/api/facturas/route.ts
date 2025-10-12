@@ -88,11 +88,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Calcular totales
-    const subtotal = items.reduce((sum: number, item: any) => {
+    // Los precios ya incluyen IVA, hay que desglosarlo
+    const total = items.reduce((sum: number, item: any) => {
       return sum + (item.cantidad * item.precio)
     }, 0)
-    const iva = subtotal * 0.21
-    const total = subtotal + iva
+    const subtotal = total / 1.21  // Base imponible (desglosando IVA 21%)
+    const iva = total - subtotal    // IVA desglosado
 
     // Determinar tipo de documento
     let tipo: 'TICKET' | 'FACTURA' = 'TICKET'
