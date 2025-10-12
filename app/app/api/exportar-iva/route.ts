@@ -42,6 +42,9 @@ export async function GET(request: NextRequest) {
     const startDate = new Date(anio, startMonth, 1)
     const endDate = new Date(anio, endMonth + 1, 0, 23, 59, 59)
 
+    console.log(`Exportando IVA para ${trimestre} ${anio}`)
+    console.log(`Rango de fechas: ${startDate.toISOString()} - ${endDate.toISOString()}`)
+
     // Obtener SOLO FACTURAS de ventas (no tickets)
     const ventas = await prisma.factura.findMany({
       where: {
@@ -59,6 +62,8 @@ export async function GET(request: NextRequest) {
       }
     })
 
+    console.log(`Facturas encontradas: ${ventas.length}`)
+
     // Obtener SOLO FACTURAS de gastos (no tickets)
     const compras = await prisma.gasto.findMany({
       where: {
@@ -73,23 +78,32 @@ export async function GET(request: NextRequest) {
       }
     })
 
+    console.log(`Gastos (facturas) encontrados: ${compras.length}`)
+
     // Preparar datos para Excel - VENTAS
-    const ventasData = ventas.map((v: any) => {
-      const base = v.subtotal
-      const ivaAmount = v.iva
+    const ventasData = ventas.length > 0 ? ventas.map((v: any) => {
+      const base = v.subtotal || 0
+      const ivaAmount = v.iva || 0
       return {
         'Número': v.numero,
         'Fecha': new Date(v.fecha).toLocaleDateString('es-ES'),
-        'Cliente': `${v.cliente.nombre} ${v.cliente.apellido}`,
+        'Cliente': `${v.cliente?.nombre || ''} ${v.cliente?.apellido || ''}`.trim() || 'Sin cliente',
         'Base Imponible': base.toFixed(2),
         'IVA': ivaAmount.toFixed(2),
-        'Total': v.total.toFixed(2)
+        'Total': (v.total || 0).toFixed(2)
       }
-    })
+    }) : [{
+      'Número': '',
+      'Fecha': '',
+      'Cliente': 'No hay datos para el período seleccionado',
+      'Base Imponible': '0.00',
+      'IVA': '0.00',
+      'Total': '0.00'
+    }]
 
     // Preparar datos para Excel - COMPRAS
-    const comprasData = compras.map((c: any) => {
-      const ivaRate = c.iva / 100
+    const comprasData = compras.length > 0 ? compras.map((c: any) => {
+      const ivaRate = (c.iva || 0) / 100
       const base = c.importe / (1 + ivaRate)
       const ivaAmount = c.importe - base
       return {
@@ -98,44 +112,55 @@ export async function GET(request: NextRequest) {
         'Concepto': c.concepto,
         'Base Imponible': base.toFixed(2),
         'IVA': ivaAmount.toFixed(2),
-        'Total': c.importe.toFixed(2)
+        'Total': (c.importe || 0).toFixed(2)
       }
-    })
-
-    // Calcular totales
-    const totalVentasBase = ventas.reduce((sum: number, v: any) => sum + v.subtotal, 0)
-    const totalVentasIVA = ventas.reduce((sum: number, v: any) => sum + v.iva, 0)
-    const totalVentasTotal = ventas.reduce((sum: number, v: any) => sum + v.total, 0)
-
-    const totalComprasBase = compras.reduce((sum: number, c: any) => {
-      const ivaRate = c.iva / 100
-      return sum + (c.importe / (1 + ivaRate))
-    }, 0)
-    const totalComprasIVA = compras.reduce((sum: number, c: any) => {
-      const ivaRate = c.iva / 100
-      const base = c.importe / (1 + ivaRate)
-      return sum + (c.importe - base)
-    }, 0)
-    const totalComprasTotal = compras.reduce((sum: number, c: any) => sum + c.importe, 0)
-
-    // Agregar totales
-    ventasData.push({
-      'Número': '',
-      'Fecha': '',
-      'Cliente': 'TOTAL',
-      'Base Imponible': totalVentasBase.toFixed(2),
-      'IVA': totalVentasIVA.toFixed(2),
-      'Total': totalVentasTotal.toFixed(2)
-    })
-
-    comprasData.push({
+    }) : [{
       'Fecha': '',
       'Proveedor': '',
-      'Concepto': 'TOTAL',
-      'Base Imponible': totalComprasBase.toFixed(2),
-      'IVA': totalComprasIVA.toFixed(2),
-      'Total': totalComprasTotal.toFixed(2)
-    })
+      'Concepto': 'No hay datos para el período seleccionado',
+      'Base Imponible': '0.00',
+      'IVA': '0.00',
+      'Total': '0.00'
+    }]
+
+    // Calcular totales
+    const totalVentasBase = ventas.reduce((sum: number, v: any) => sum + (v.subtotal || 0), 0)
+    const totalVentasIVA = ventas.reduce((sum: number, v: any) => sum + (v.iva || 0), 0)
+    const totalVentasTotal = ventas.reduce((sum: number, v: any) => sum + (v.total || 0), 0)
+
+    const totalComprasBase = compras.reduce((sum: number, c: any) => {
+      const ivaRate = (c.iva || 0) / 100
+      return sum + ((c.importe || 0) / (1 + ivaRate))
+    }, 0)
+    const totalComprasIVA = compras.reduce((sum: number, c: any) => {
+      const ivaRate = (c.iva || 0) / 100
+      const base = (c.importe || 0) / (1 + ivaRate)
+      return sum + ((c.importe || 0) - base)
+    }, 0)
+    const totalComprasTotal = compras.reduce((sum: number, c: any) => sum + (c.importe || 0), 0)
+
+    // Agregar totales solo si hay datos reales
+    if (ventas.length > 0) {
+      ventasData.push({
+        'Número': '',
+        'Fecha': '',
+        'Cliente': 'TOTAL',
+        'Base Imponible': totalVentasBase.toFixed(2),
+        'IVA': totalVentasIVA.toFixed(2),
+        'Total': totalVentasTotal.toFixed(2)
+      })
+    }
+
+    if (compras.length > 0) {
+      comprasData.push({
+        'Fecha': '',
+        'Proveedor': '',
+        'Concepto': 'TOTAL',
+        'Base Imponible': totalComprasBase.toFixed(2),
+        'IVA': totalComprasIVA.toFixed(2),
+        'Total': totalComprasTotal.toFixed(2)
+      })
+    }
 
     // Crear libro de Excel
     const workbook = XLSX.utils.book_new()

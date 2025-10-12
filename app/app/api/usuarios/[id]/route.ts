@@ -23,6 +23,7 @@ export async function GET(
         name: true,
         email: true,
         role: true,
+        activo: true,
         createdAt: true,
         updatedAt: true,
       }
@@ -103,6 +104,7 @@ export async function PUT(
         name: true,
         email: true,
         role: true,
+        activo: true,
         createdAt: true,
         updatedAt: true,
       }
