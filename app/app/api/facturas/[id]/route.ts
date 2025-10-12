@@ -18,6 +18,7 @@ export async function GET(
       where: { id: params.id },
       include: {
         cliente: true,
+        factura_items: true,
       }
     })
 
@@ -28,7 +29,13 @@ export async function GET(
       )
     }
 
-    return NextResponse.json(factura)
+    // Transformar los datos para el frontend
+    const facturaConItems = {
+      ...factura,
+      items: factura.factura_items || []
+    }
+
+    return NextResponse.json(facturaConItems)
   } catch (error) {
     console.error('Error fetching factura:', error)
     return NextResponse.json(
@@ -49,11 +56,16 @@ export async function PUT(
     }
 
     const body = await request.json()
-    const { metodoPago, pagada, observaciones, subtotal, iva, total } = body
+    const { estado, metodoPago, pagada, observaciones, subtotal, iva, total, items } = body
+
+    console.log('=== ACTUALIZANDO FACTURA ===')
+    console.log('Factura ID:', params.id)
+    console.log('Body completo:', JSON.stringify(body, null, 2))
 
     // Preparar datos de actualización
     const updateData: any = {}
     
+    if (estado !== undefined) updateData.estado = estado
     if (metodoPago !== undefined) updateData.metodoPago = metodoPago
     if (pagada !== undefined) updateData.pagada = pagada
     if (observaciones !== undefined) updateData.observaciones = observaciones
@@ -61,16 +73,65 @@ export async function PUT(
     if (iva !== undefined) updateData.iva = iva
     if (total !== undefined) updateData.total = total
 
+    // Si hay items, actualizar los items de la factura
+    if (items && Array.isArray(items) && items.length > 0) {
+      console.log('=== ACTUALIZANDO ITEMS ===')
+      console.log('Cantidad de items:', items.length)
+
+      // Primero eliminar todos los items existentes
+      await prisma.factura_items.deleteMany({
+        where: { facturaId: params.id }
+      })
+
+      // Crear los nuevos items
+      const itemsData = items.map((item: any, index: number) => ({
+        id: `${params.id}_item_${index}`,
+        facturaId: params.id,
+        descripcion: item.descripcion,
+        cantidad: item.cantidad,
+        precio: item.precio,
+        total: item.cantidad * item.precio,
+      }))
+
+      await prisma.factura_items.createMany({
+        data: itemsData
+      })
+
+      // Recalcular totales basándose en los items
+      const nuevoSubtotal = itemsData.reduce((sum: number, item: any) => sum + item.total, 0)
+      const nuevoIva = nuevoSubtotal * 0.21
+      const nuevoTotal = nuevoSubtotal + nuevoIva
+
+      updateData.subtotal = Math.round(nuevoSubtotal * 100) / 100
+      updateData.iva = Math.round(nuevoIva * 100) / 100
+      updateData.total = Math.round(nuevoTotal * 100) / 100
+
+      console.log('Nuevos totales calculados:', {
+        subtotal: updateData.subtotal,
+        iva: updateData.iva,
+        total: updateData.total
+      })
+    }
+
     // Actualizar factura
     const factura = await prisma.factura.update({
       where: { id: params.id },
       data: updateData,
       include: {
         cliente: true,
+        factura_items: true,
       }
     })
 
-    return NextResponse.json(factura)
+    console.log('=== FACTURA ACTUALIZADA ===')
+
+    // Transformar los datos para el frontend
+    const facturaConItems = {
+      ...factura,
+      items: factura.factura_items || []
+    }
+
+    return NextResponse.json(facturaConItems)
   } catch (error) {
     console.error('Error updating factura:', error)
     return NextResponse.json(

@@ -106,16 +106,23 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     console.log('Cita actualizada:', cita.id)
     
     // Si la cita se marca como COMPLETADA y ya tiene una factura asociada, marcarla como PAGADA
-    if (estado === 'COMPLETADA' && cita.facturas && metodoPago) {
-      console.log('=== MARCANDO FACTURA COMO PAGADA ===')
+    // IMPORTANTE: Por defecto las facturas se marcan como pagadas cuando se entrega el vehículo
+    if (estado === 'COMPLETADA' && cita.facturas) {
+      console.log('=== MARCANDO FACTURA COMO PAGADA (por defecto al entregar vehículo) ===')
       console.log('Factura ID:', cita.facturas.id)
+      
+      const facturaUpdateData: any = { 
+        estado: 'PAGADA'
+      }
+      
+      // Actualizar también el método de pago si está especificado
+      if (metodoPago) {
+        facturaUpdateData.metodoPago = metodoPago
+      }
       
       await prisma.factura.update({
         where: { id: cita.facturas.id },
-        data: { 
-          estado: 'PAGADA',
-          metodoPago: metodoPago // Actualizar también el método de pago
-        }
+        data: facturaUpdateData
       })
       
       console.log('=== FACTURA MARCADA COMO PAGADA ===')
@@ -166,10 +173,12 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       const iva = total - subtotal
       
       // Crear el documento (factura o ticket)
+      // IMPORTANTE: Al crear la factura cuando se entrega el vehículo, se marca como PAGADA por defecto
       const factura = await prisma.factura.create({
         data: {
           numero: numeroDocumento,
           tipo: tipoDocumento,
+          estado: 'PAGADA', // Por defecto se marca como pagada al entregar el vehículo
           subtotal: Math.round(subtotal * 100) / 100,
           iva: Math.round(iva * 100) / 100,
           total: total,
