@@ -212,7 +212,7 @@ export function DashboardContent({ session }: DashboardContentProps) {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-purple-100 text-sm font-medium">Clientes</p>
+                <p className="text-purple-100 text-sm font-medium">Clientes Nuevos ({getPeriodLabel()})</p>
                 <p className="text-3xl font-bold">{stats.clientesTotal}</p>
               </div>
               <Users className="h-8 w-8 text-purple-200" />

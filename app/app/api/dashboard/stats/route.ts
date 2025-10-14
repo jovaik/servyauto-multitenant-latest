@@ -75,7 +75,7 @@ export async function GET(req: NextRequest) {
     const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59)
 
     // Obtener estadísticas básicas según el período seleccionado
-    const [citasPeriodo, facturacionPeriodo, clientesTotal, citasPendientes] = await Promise.all([
+    const [citasPeriodo, facturacionPeriodo, clientesPeriodo, citasPendientes] = await Promise.all([
       prisma.cita.count({
         where: {
           fecha: {
@@ -96,7 +96,14 @@ export async function GET(req: NextRequest) {
           total: true,
         },
       }),
-      prisma.cliente.count(),
+      prisma.cliente.count({
+        where: {
+          createdAt: {
+            gte: startDate,
+            lte: endDate,
+          },
+        },
+      }),
       prisma.cita.count({
         where: {
           estado: 'PENDIENTE',
@@ -231,7 +238,7 @@ export async function GET(req: NextRequest) {
       facturacionMensual: facturacionTotal,
       gastosMensual: gastosTotal,
       balanceMensual: balancePeriodo,
-      clientesTotal: clientesTotal || 0,
+      clientesTotal: clientesPeriodo || 0,
       citasPendientes: citasPendientes || 0,
       monthlyData,
       topConceptos,
