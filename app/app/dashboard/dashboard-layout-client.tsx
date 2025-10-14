@@ -5,6 +5,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { signOut } from 'next-auth/react'
 import { Session } from 'next-auth'
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { 
   Car, 
@@ -124,8 +125,14 @@ export function DashboardLayoutClient({ children, session }: DashboardLayoutClie
       `}>
         <div className="flex items-center justify-between h-16 px-6 border-b">
           <div className="flex items-center space-x-3">
-            <div className="bg-blue-600 p-2 rounded-lg">
-              <Car className="h-6 w-6 text-white" />
+            <div className="relative h-10 w-10 flex-shrink-0">
+              <Image
+                src="/servyauto-logo.png"
+                alt="ServyAuto Logo"
+                fill
+                className="object-contain"
+                priority
+              />
             </div>
             <div>
               <h1 className="text-lg font-semibold text-gray-900">ServyAuto</h1>
@@ -222,19 +229,30 @@ export function DashboardLayoutClient({ children, session }: DashboardLayoutClie
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top header */}
         <div className="bg-white shadow-sm border-b h-16 flex items-center justify-between px-6 flex-shrink-0">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="lg:hidden"
-            onClick={() => setSidebarOpen(true)}
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
-          
-          <div className="hidden lg:block">
-            <h2 className="text-lg font-medium text-gray-900">
-              {filteredNavigation.find(item => item.href === pathname)?.name || 'ServyAuto Manager'}
-            </h2>
+          <div className="flex items-center space-x-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="lg:hidden"
+              onClick={() => setSidebarOpen(true)}
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+            
+            <div className="flex items-center space-x-3">
+              <div className="relative h-8 w-8 flex-shrink-0">
+                <Image
+                  src="/servyauto-logo.png"
+                  alt="ServyAuto Logo"
+                  fill
+                  className="object-contain"
+                  priority
+                />
+              </div>
+              <h2 className="text-lg font-medium text-gray-900">
+                {filteredNavigation.find(item => item.href === pathname)?.name || 'ServyAuto Manager'}
+              </h2>
+            </div>
           </div>
 
           <div className="flex items-center space-x-4">
