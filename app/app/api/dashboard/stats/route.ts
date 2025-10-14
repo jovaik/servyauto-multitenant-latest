@@ -6,6 +6,25 @@ import { prisma } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
+// Función para obtener el lunes de la semana actual
+function getMonday(date: Date): Date {
+  const d = new Date(date)
+  const day = d.getDay()
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1) // Ajuste cuando es domingo
+  const monday = new Date(d.setDate(diff))
+  monday.setHours(0, 0, 0, 0)
+  return monday
+}
+
+// Función para obtener el domingo de la semana actual
+function getSunday(date: Date): Date {
+  const monday = getMonday(date)
+  const sunday = new Date(monday)
+  sunday.setDate(monday.getDate() + 6)
+  sunday.setHours(23, 59, 59, 999)
+  return sunday
+}
+
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -14,29 +33,62 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
+    const { searchParams } = new URL(req.url)
+    const period = searchParams.get('period') || 'hoy'
+
     const today = new Date()
     today.setHours(0, 0, 0, 0)
-    const tomorrow = new Date(today)
-    tomorrow.setDate(tomorrow.getDate() + 1)
+    
+    let startDate: Date
+    let endDate: Date
+
+    // Determinar el rango de fechas según el período
+    switch (period) {
+      case 'hoy':
+        startDate = new Date(today)
+        endDate = new Date(today)
+        endDate.setHours(23, 59, 59, 999)
+        break
+      
+      case 'semanal':
+        startDate = getMonday(today)
+        endDate = getSunday(today)
+        break
+      
+      case 'mensual':
+        startDate = new Date(today.getFullYear(), today.getMonth(), 1)
+        endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999)
+        break
+      
+      case 'anual':
+        startDate = new Date(today.getFullYear(), 0, 1)
+        endDate = new Date(today.getFullYear(), 11, 31, 23, 59, 59, 999)
+        break
+      
+      default:
+        startDate = new Date(today)
+        endDate = new Date(today)
+        endDate.setHours(23, 59, 59, 999)
+    }
 
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
     const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59)
 
-    // Obtener estadísticas básicas
-    const [citasHoy, facturacionMensual, clientesTotal, citasPendientes] = await Promise.all([
+    // Obtener estadísticas básicas según el período seleccionado
+    const [citasPeriodo, facturacionPeriodo, clientesTotal, citasPendientes] = await Promise.all([
       prisma.cita.count({
         where: {
           fecha: {
-            gte: today,
-            lt: tomorrow,
+            gte: startDate,
+            lte: endDate,
           },
         },
       }),
       prisma.cita.aggregate({
         where: {
           fecha: {
-            gte: startOfMonth,
-            lte: endOfMonth,
+            gte: startDate,
+            lte: endDate,
           },
           estado: 'COMPLETADA',
         },
@@ -52,12 +104,12 @@ export async function GET(req: NextRequest) {
       }),
     ])
 
-    // Gastos del mes
-    const gastosMensual = await prisma.gasto.aggregate({
+    // Gastos del período seleccionado
+    const gastosPeriodo = await prisma.gasto.aggregate({
       where: {
         fecha: {
-          gte: startOfMonth,
-          lte: endOfMonth,
+          gte: startDate,
+          lte: endDate,
         },
       },
       _sum: {
@@ -65,9 +117,9 @@ export async function GET(req: NextRequest) {
       },
     })
 
-    const facturacionTotal = facturacionMensual._sum?.total || 0
-    const gastosTotal = gastosMensual._sum?.importe || 0
-    const balanceMensual = facturacionTotal - gastosTotal
+    const facturacionTotal = facturacionPeriodo._sum?.total || 0
+    const gastosTotal = gastosPeriodo._sum?.importe || 0
+    const balancePeriodo = facturacionTotal - gastosTotal
 
     // Ingresos vs Gastos por mes (año actual)
     const currentYear = today.getFullYear()
@@ -175,10 +227,10 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.json({
-      citasHoy: citasHoy || 0,
+      citasHoy: citasPeriodo || 0,
       facturacionMensual: facturacionTotal,
       gastosMensual: gastosTotal,
-      balanceMensual,
+      balanceMensual: balancePeriodo,
       clientesTotal: clientesTotal || 0,
       citasPendientes: citasPendientes || 0,
       monthlyData,

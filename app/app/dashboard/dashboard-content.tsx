@@ -21,6 +21,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 interface DashboardContentProps {
@@ -42,7 +43,11 @@ interface CitaReciente {
   estado: string
 }
 
+type PeriodType = 'hoy' | 'semanal' | 'mensual' | 'anual'
+
 export function DashboardContent({ session }: DashboardContentProps) {
+  const [period, setPeriod] = useState<PeriodType>('hoy')
+  
   const [stats, setStats] = useState<DashboardStats>({
     citasHoy: 0,
     facturacionMensual: 0,
@@ -62,7 +67,7 @@ export function DashboardContent({ session }: DashboardContentProps) {
     const fetchDashboardData = async () => {
       try {
         const [statsResponse, citasResponse] = await Promise.all([
-          fetch('/api/dashboard/stats'),
+          fetch(`/api/dashboard/stats?period=${period}`),
           fetch('/api/dashboard/citas-recientes')
         ])
 
@@ -92,7 +97,7 @@ export function DashboardContent({ session }: DashboardContentProps) {
     }
 
     fetchDashboardData()
-  }, [])
+  }, [period])
 
   const getEstadoBadge = (estado: string) => {
     const variants = {
@@ -110,16 +115,47 @@ export function DashboardContent({ session }: DashboardContentProps) {
     )
   }
 
+  const getPeriodLabel = () => {
+    switch (period) {
+      case 'hoy':
+        return 'Hoy'
+      case 'semanal':
+        return 'Semana'
+      case 'mensual':
+        return 'Mes'
+      case 'anual':
+        return 'Año'
+      default:
+        return 'Período'
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-gray-900">
-          ¡Bienvenido, {session?.user?.name}!
-        </h1>
-        <p className="text-gray-600">
-          Aquí tienes el resumen de tu taller automotriz
-        </p>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+            ¡Bienvenido, {session?.user?.name}!
+          </h1>
+          <p className="text-gray-600">
+            Aquí tienes el resumen de tu centro
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-medium text-gray-700">Período:</span>
+          <Select value={period} onValueChange={(value) => setPeriod(value as PeriodType)}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="Seleccionar período" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="hoy">Hoy</SelectItem>
+              <SelectItem value="semanal">Semanal</SelectItem>
+              <SelectItem value="mensual">Mensual</SelectItem>
+              <SelectItem value="anual">Anual</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Stats Grid */}
@@ -128,7 +164,7 @@ export function DashboardContent({ session }: DashboardContentProps) {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-blue-100 text-sm font-medium">Citas Hoy</p>
+                <p className="text-blue-100 text-sm font-medium">Citas ({getPeriodLabel()})</p>
                 <p className="text-3xl font-bold">{stats.citasHoy}</p>
               </div>
               <Calendar className="h-8 w-8 text-blue-200" />
@@ -140,7 +176,7 @@ export function DashboardContent({ session }: DashboardContentProps) {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-green-100 text-sm font-medium">Ingresos (Mes)</p>
+                <p className="text-green-100 text-sm font-medium">Ingresos ({getPeriodLabel()})</p>
                 <p className="text-3xl font-bold">€{stats.facturacionMensual.toFixed(2)}</p>
               </div>
               <TrendingUp className="h-8 w-8 text-green-200" />
@@ -152,7 +188,7 @@ export function DashboardContent({ session }: DashboardContentProps) {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-red-100 text-sm font-medium">Gastos (Mes)</p>
+                <p className="text-red-100 text-sm font-medium">Gastos ({getPeriodLabel()})</p>
                 <p className="text-3xl font-bold">€{gastosMensual.toFixed(2)}</p>
               </div>
               <TrendingDown className="h-8 w-8 text-red-200" />
@@ -164,7 +200,7 @@ export function DashboardContent({ session }: DashboardContentProps) {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className={`${balanceMensual >= 0 ? 'text-teal-100' : 'text-orange-100'} text-sm font-medium`}>Balance (Mes)</p>
+                <p className={`${balanceMensual >= 0 ? 'text-teal-100' : 'text-orange-100'} text-sm font-medium`}>Balance ({getPeriodLabel()})</p>
                 <p className="text-3xl font-bold">€{balanceMensual.toFixed(2)}</p>
               </div>
               <Wallet className={`h-8 w-8 ${balanceMensual >= 0 ? 'text-teal-200' : 'text-orange-200'}`} />
