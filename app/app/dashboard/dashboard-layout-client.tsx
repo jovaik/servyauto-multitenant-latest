@@ -123,9 +123,9 @@ export function DashboardLayoutClient({ children, session }: DashboardLayoutClie
         fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 flex flex-col
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
-        <div className="flex items-center justify-between h-16 px-6 border-b">
-          <div className="flex items-center space-x-3">
-            <div className="relative h-10 w-10 flex-shrink-0">
+        <div className="flex items-center justify-between h-20 px-6 border-b">
+          <div className="flex items-center justify-center w-full">
+            <div className="relative h-16 w-48 flex-shrink-0">
               <Image
                 src="/servyauto-logo.png"
                 alt="ServyAuto Logo"
@@ -134,15 +134,11 @@ export function DashboardLayoutClient({ children, session }: DashboardLayoutClie
                 priority
               />
             </div>
-            <div>
-              <h1 className="text-lg font-semibold text-gray-900">ServyAuto</h1>
-              <p className="text-xs text-gray-500">Manager v8.9</p>
-            </div>
           </div>
           <Button
             variant="ghost"
             size="sm"
-            className="lg:hidden"
+            className="lg:hidden absolute right-4 top-6"
             onClick={() => setSidebarOpen(false)}
           >
             <X className="h-5 w-5" />
@@ -239,8 +235,8 @@ export function DashboardLayoutClient({ children, session }: DashboardLayoutClie
               <Menu className="h-5 w-5" />
             </Button>
             
-            <div className="flex items-center space-x-3">
-              <div className="relative h-8 w-8 flex-shrink-0">
+            <div className="flex items-center space-x-4">
+              <div className="relative h-12 w-32 flex-shrink-0">
                 <Image
                   src="/servyauto-logo.png"
                   alt="ServyAuto Logo"
@@ -249,7 +245,8 @@ export function DashboardLayoutClient({ children, session }: DashboardLayoutClie
                   priority
                 />
               </div>
-              <h2 className="text-lg font-medium text-gray-900">
+              <div className="h-8 w-px bg-gray-300"></div>
+              <h2 className="text-xl font-medium text-gray-900">
                 {filteredNavigation.find(item => item.href === pathname)?.name || 'ServyAuto Manager'}
               </h2>
             </div>
