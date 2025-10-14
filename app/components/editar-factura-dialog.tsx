@@ -107,9 +107,10 @@ export function EditarFacturaDialog({ facturaId, facturaNumero, onFacturaActuali
   }
 
   const calcularTotales = () => {
-    const subtotal = items.reduce((sum, item) => sum + item.total, 0)
-    const iva = subtotal * 0.21
-    const total = subtotal + iva
+    // Los precios ya incluyen IVA, hay que desglosarlo
+    const total = items.reduce((sum, item) => sum + item.total, 0)
+    const subtotal = total / 1.21  // Base imponible (desglosando IVA 21%)
+    const iva = total - subtotal    // IVA desglosado
     return { subtotal, iva, total }
   }
 

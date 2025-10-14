@@ -98,9 +98,10 @@ export async function PUT(
       })
 
       // Recalcular totales basándose en los items
-      const nuevoSubtotal = itemsData.reduce((sum: number, item: any) => sum + item.total, 0)
-      const nuevoIva = nuevoSubtotal * 0.21
-      const nuevoTotal = nuevoSubtotal + nuevoIva
+      // Los precios ya incluyen IVA, hay que desglosarlo
+      const nuevoTotal = itemsData.reduce((sum: number, item: any) => sum + item.total, 0)
+      const nuevoSubtotal = nuevoTotal / 1.21  // Base imponible (desglosando IVA 21%)
+      const nuevoIva = nuevoTotal - nuevoSubtotal  // IVA desglosado
 
       updateData.subtotal = Math.round(nuevoSubtotal * 100) / 100
       updateData.iva = Math.round(nuevoIva * 100) / 100
