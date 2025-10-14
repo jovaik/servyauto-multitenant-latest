@@ -235,8 +235,8 @@ export function DashboardLayoutClient({ children, session }: DashboardLayoutClie
               <Menu className="h-5 w-5" />
             </Button>
             
-            <div className="flex items-center space-x-4">
-              <div className="relative h-16 w-56 flex-shrink-0">
+            <div className="flex items-center space-x-6">
+              <div className="relative h-20 w-80 flex-shrink-0">
                 <Image
                   src="/servyauto-logo.jpg"
                   alt="ServyAuto Logo"
@@ -245,7 +245,7 @@ export function DashboardLayoutClient({ children, session }: DashboardLayoutClie
                   priority
                 />
               </div>
-              <div className="h-12 w-px bg-gray-300"></div>
+              <div className="h-14 w-px bg-gray-300"></div>
               <h2 className="text-xl font-semibold text-gray-900">
                 {filteredNavigation.find(item => item.href === pathname)?.name || 'ServyAuto Manager'}
               </h2>
