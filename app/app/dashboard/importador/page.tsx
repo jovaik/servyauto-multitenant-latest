@@ -1,202 +1,144 @@
 
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { Upload, AlertCircle, CheckCircle, FileSpreadsheet, ArrowLeft } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { useRouter } from 'next/navigation'
-import * as XLSX from 'xlsx'
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Upload, FileSpreadsheet, AlertCircle, CheckCircle2 } from 'lucide-react';
 
-type RegistroExcel = {
-  fecha: string
-  marca: string
-  matricula: string
-  nombre: string
-  telefono: string
-  lavado: number
-  detail: number
-  tarjeta: number
-  abonado: string
+interface AnalysisResult {
+  totalRecords: number;
+  februaryRecords: number;
+  columns: string[];
+  preview: any[];
+  warnings: string[];
 }
 
-type AnalisisResultado = {
-  total: number
-  registros: RegistroExcel[]
-  clientesUnicos: number
-  vehiculosUnicos: number
-}
+export default function ImportarPage() {
+  const [file, setFile] = useState<File | null>(null);
+  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
-export default function ImportadorPage() {
-  const router = useRouter()
-  const [archivo, setArchivo] = useState<File | null>(null)
-  const [cargando, setCargando] = useState(false)
-  const [analisis, setAnalisis] = useState<AnalisisResultado | null>(null)
-  const [error, setError] = useState<string | null>(null)
-
-  const handleArchivoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      setArchivo(file)
-      setAnalisis(null)
-      setError(null)
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      setFile(selectedFile);
+      setAnalysis(null);
+      setError(null);
+      setSuccess(null);
     }
-  }
+  };
 
-  const analizarArchivo = async () => {
-    if (!archivo) return
+  const analyzeFile = async () => {
+    if (!file) return;
 
-    setCargando(true)
-    setError(null)
+    setLoading(true);
+    setError(null);
+
+    const formData = new FormData();
+    formData.append('file', file);
 
     try {
-      const data = await archivo.arrayBuffer()
-      const workbook = XLSX.read(data, { type: 'array' })
-      const sheetName = workbook.SheetNames[0]
-      const worksheet = workbook.Sheets[sheetName]
-      
-      // Leer desde la fila 8 (índice 7) que es donde están los encabezados
-      const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
-        range: 7,
-        defval: null 
-      }) as any[]
+      const response = await fetch('/api/importar/analizar', {
+        method: 'POST',
+        body: formData,
+      });
 
-      console.log('Datos leídos del Excel:', jsonData.length, 'registros')
+      if (!response.ok) {
+        throw new Error('Error al analizar el archivo');
+      }
 
-      // Filtrar y procesar solo febrero 2025
-      const registrosFebrero: RegistroExcel[] = []
-      
-      jsonData.forEach((row, index) => {
-        const fechaStr = row['DIA / HORA']
-        if (!fechaStr) return
-
-        try {
-          // Parsear fecha en formato "dd/mm/yyyy hh H"
-          const fechaParte = String(fechaStr).split(' ')[0]
-          const [dia, mes, anio] = fechaParte.split('/')
-          
-          if (anio === '2025' && mes === '02') {
-            // Es febrero 2025
-            const registro: RegistroExcel = {
-              fecha: fechaStr,
-              marca: row['MARCA Y MODELO'] || '',
-              matricula: row['MATRÍCULA'] || '',
-              nombre: row['NOMBRE'] || '',
-              telefono: String(row['TELÉFONO'] || ''),
-              lavado: Number(row['LAVADO']) || 0,
-              detail: Number(row['DETAIL']) || 0,
-              tarjeta: Number(row['TARJETA ']) || 0,
-              abonado: row['ABONADO'] || ''
-            }
-            registrosFebrero.push(registro)
-          }
-        } catch (err) {
-          console.warn(`Error procesando fila ${index}:`, err)
-        }
-      })
-
-      console.log('Registros de febrero 2025:', registrosFebrero.length)
-
-      // Calcular estadísticas
-      const telefonosUnicos = new Set(
-        registrosFebrero
-          .filter(r => r.telefono)
-          .map(r => r.telefono)
-      ).size
-
-      const matriculasUnicas = new Set(
-        registrosFebrero
-          .filter(r => r.matricula)
-          .map(r => r.matricula)
-      ).size
-
-      setAnalisis({
-        total: registrosFebrero.length,
-        registros: registrosFebrero,
-        clientesUnicos: telefonosUnicos,
-        vehiculosUnicos: matriculasUnicas
-      })
-
-    } catch (err) {
-      console.error('Error al analizar archivo:', err)
-      setError('Error al leer el archivo Excel. Verifica que el formato sea correcto.')
+      const data = await response.json();
+      setAnalysis(data);
+    } catch (err: any) {
+      setError(err.message || 'Error al procesar el archivo');
     } finally {
-      setCargando(false)
+      setLoading(false);
     }
-  }
+  };
+
+  const executeImport = async () => {
+    if (!file) return;
+
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await fetch('/api/importar/ejecutar', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error al importar los datos');
+      }
+
+      const data = await response.json();
+      setSuccess(`✅ Importación exitosa: ${data.imported} clientes importados de ${data.total} registros de febrero 2025`);
+      setFile(null);
+      setAnalysis(null);
+    } catch (err: any) {
+      setError(err.message || 'Error al importar los datos');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="container mx-auto p-6 max-w-7xl">
+    <div className="p-6 max-w-6xl mx-auto">
       <div className="mb-6">
-        <Button
-          variant="ghost"
-          onClick={() => router.push('/dashboard')}
-          className="mb-4"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Volver al Dashboard
-        </Button>
-        
-        <h1 className="text-3xl font-bold">Importador de Datos Históricos</h1>
+        <h1 className="text-3xl font-bold">Importar Clientes desde Excel</h1>
         <p className="text-muted-foreground mt-2">
-          Importa registros de Febrero 2025 desde tu archivo Excel
+          Importa clientes desde un archivo Excel. Solo se importarán los registros de febrero 2025.
         </p>
       </div>
 
-      {/* Advertencia de seguridad */}
-      <Alert className="mb-6 border-yellow-500 bg-yellow-50 dark:bg-yellow-950">
-        <AlertCircle className="h-4 w-4 text-yellow-600" />
-        <AlertDescription className="text-yellow-800 dark:text-yellow-200">
-          <strong>MODO PRUEBA:</strong> Esta herramienta solo importará datos de Febrero 2025 (aproximadamente 33 registros).
-          Podrás revisar todo antes de confirmar la importación.
-        </AlertDescription>
-      </Alert>
-
-      {/* Paso 1: Subir archivo */}
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileSpreadsheet className="h-5 w-5" />
-            Paso 1: Seleccionar archivo Excel
-          </CardTitle>
+          <CardTitle>Paso 1: Seleccionar Archivo</CardTitle>
           <CardDescription>
-            Sube tu archivo Excel con los datos históricos
+            Selecciona el archivo Excel que contiene los datos de los clientes
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-4">
-            <div className="flex-1">
+            <label htmlFor="file-upload" className="cursor-pointer">
+              <div className="flex items-center gap-2 px-4 py-2 border rounded-lg hover:bg-accent">
+                <Upload className="h-5 w-5" />
+                <span>Seleccionar archivo Excel</span>
+              </div>
               <input
+                id="file-upload"
                 type="file"
                 accept=".xlsx,.xls"
-                onChange={handleArchivoChange}
-                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
+                onChange={handleFileChange}
+                className="hidden"
               />
-            </div>
-            {archivo && (
-              <Button 
-                onClick={analizarArchivo}
-                disabled={cargando}
-              >
-                {cargando ? (
-                  <>
-                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent" />
-                    Analizando...
-                  </>
-                ) : (
-                  <>
-                    <Upload className="mr-2 h-4 w-4" />
-                    Analizar Archivo
-                  </>
-                )}
-              </Button>
+            </label>
+            {file && (
+              <div className="flex items-center gap-2 text-sm">
+                <FileSpreadsheet className="h-5 w-5 text-green-600" />
+                <span className="font-medium">{file.name}</span>
+              </div>
             )}
           </div>
+
+          {file && !analysis && (
+            <Button onClick={analyzeFile} disabled={loading} className="mt-4">
+              {loading ? 'Analizando...' : 'Analizar Archivo'}
+            </Button>
+          )}
         </CardContent>
       </Card>
 
-      {/* Error */}
       {error && (
         <Alert variant="destructive" className="mb-6">
           <AlertCircle className="h-4 w-4" />
@@ -204,104 +146,102 @@ export default function ImportadorPage() {
         </Alert>
       )}
 
-      {/* Resultados del análisis */}
-      {analisis && (
-        <div className="space-y-6">
-          {/* Estadísticas */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-2xl font-bold">{analisis.total}</div>
-                <p className="text-sm text-muted-foreground">Registros encontrados</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-2xl font-bold">{analisis.clientesUnicos}</div>
-                <p className="text-sm text-muted-foreground">Clientes únicos</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-2xl font-bold">{analisis.vehiculosUnicos}</div>
-                <p className="text-sm text-muted-foreground">Vehículos únicos</p>
-              </CardContent>
-            </Card>
-          </div>
+      {success && (
+        <Alert className="mb-6 border-green-600 bg-green-50">
+          <CheckCircle2 className="h-4 w-4 text-green-600" />
+          <AlertDescription className="text-green-800">{success}</AlertDescription>
+        </Alert>
+      )}
 
-          {/* Vista previa de registros */}
-          <Card>
+      {analysis && (
+        <>
+          <Card className="mb-6">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CheckCircle className="h-5 w-5 text-green-600" />
-                Vista Previa de Registros - Febrero 2025
-              </CardTitle>
+              <CardTitle>Paso 2: Revisar Análisis</CardTitle>
               <CardDescription>
-                Estos son los primeros 10 registros que se importarán. Revisa que todo sea correcto.
+                Verifica la información antes de importar
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="border-b">
-                    <tr className="text-left">
-                      <th className="pb-2 font-semibold">Fecha</th>
-                      <th className="pb-2 font-semibold">Vehículo</th>
-                      <th className="pb-2 font-semibold">Matrícula</th>
-                      <th className="pb-2 font-semibold">Cliente</th>
-                      <th className="pb-2 font-semibold">Teléfono</th>
-                      <th className="pb-2 font-semibold text-right">Lavado</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {analisis.registros.slice(0, 10).map((reg, idx) => (
-                      <tr key={idx} className="border-b">
-                        <td className="py-2">{reg.fecha}</td>
-                        <td className="py-2">{reg.marca || '-'}</td>
-                        <td className="py-2 font-mono text-xs">{reg.matricula || '-'}</td>
-                        <td className="py-2">{reg.nombre || 'Sin nombre'}</td>
-                        <td className="py-2 font-mono text-xs">{reg.telefono || '-'}</td>
-                        <td className="py-2 text-right">{reg.lavado ? `€${reg.lavado}` : '-'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 border rounded-lg">
+                    <div className="text-sm text-muted-foreground">Total de registros en el archivo</div>
+                    <div className="text-2xl font-bold">{analysis.totalRecords}</div>
+                  </div>
+                  <div className="p-4 border rounded-lg bg-green-50">
+                    <div className="text-sm text-muted-foreground">Registros de febrero 2025</div>
+                    <div className="text-2xl font-bold text-green-600">{analysis.februaryRecords}</div>
+                  </div>
+                </div>
+
+                {analysis.warnings.length > 0 && (
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      <div className="font-semibold mb-2">Advertencias:</div>
+                      <ul className="list-disc list-inside space-y-1">
+                        {analysis.warnings.map((warning, idx) => (
+                          <li key={idx}>{warning}</li>
+                        ))}
+                      </ul>
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                <div>
+                  <h3 className="font-semibold mb-2">Vista previa de los primeros 5 registros de febrero 2025:</h3>
+                  <div className="border rounded-lg overflow-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted">
+                        <tr>
+                          <th className="p-2 text-left">Fecha</th>
+                          <th className="p-2 text-left">Nombre</th>
+                          <th className="p-2 text-left">Teléfono</th>
+                          <th className="p-2 text-left">Email</th>
+                          <th className="p-2 text-left">Vehículo</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {analysis.preview.map((record, idx) => (
+                          <tr key={idx} className="border-t">
+                            <td className="p-2">{record.FECHA}</td>
+                            <td className="p-2">{record.NOMBRE}</td>
+                            <td className="p-2">{record.TELEFONO || '-'}</td>
+                            <td className="p-2">{record.EMAIL || '-'}</td>
+                            <td className="p-2">{record.MARCA} {record.MODELO}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
-              {analisis.registros.length > 10 && (
-                <p className="text-sm text-muted-foreground mt-4 text-center">
-                  ... y {analisis.registros.length - 10} registros más
-                </p>
-              )}
             </CardContent>
           </Card>
 
-          {/* Botón de siguiente paso */}
-          <Card className="bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold text-green-900 dark:text-green-100">
-                    ¿Todo correcto?
-                  </h3>
-                  <p className="text-sm text-green-700 dark:text-green-300">
-                    El siguiente paso será verificar duplicados antes de importar
-                  </p>
-                </div>
-                <Button 
-                  size="lg"
-                  className="bg-green-600 hover:bg-green-700"
-                  onClick={() => {
-                    // Por ahora solo mostramos un mensaje
-                    alert('Próximamente: Verificación de duplicados')
-                  }}
-                >
-                  Continuar al Paso 2
-                </Button>
-              </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Paso 3: Ejecutar Importación</CardTitle>
+              <CardDescription>
+                Una vez que hayas revisado los datos, puedes proceder con la importación
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Alert className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Esta acción importará {analysis.februaryRecords} clientes de febrero 2025.
+                  Los clientes duplicados (mismo nombre, teléfono o matrícula) serán omitidos.
+                </AlertDescription>
+              </Alert>
+              <Button onClick={executeImport} disabled={loading} className="w-full">
+                {loading ? 'Importando...' : `Importar ${analysis.februaryRecords} Clientes`}
+              </Button>
             </CardContent>
           </Card>
-        </div>
+        </>
       )}
     </div>
-  )
+  );
 }
