@@ -11,63 +11,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No se proporcionó ningún archivo' }, { status: 400 });
     }
 
-    // Leer el archivo Excel
+    // Leer el archivo Excel desde la fila 8 (índice 7)
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
     const workbook = XLSX.read(buffer, { type: 'buffer' });
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
-    const data = XLSX.utils.sheet_to_json(worksheet);
-
-    console.log('📊 Total registros:', data.length);
-    console.log('📋 Columnas detectadas:', Object.keys(data[0] || {}));
-    console.log('🔍 Primeros 3 registros completos:', JSON.stringify(data.slice(0, 3), null, 2));
+    const data = XLSX.utils.sheet_to_json(worksheet, { range: 7 }); // Empezar desde fila 8
 
     // Filtrar registros de febrero 2025
-    const februaryRecords = data.filter((record: any, index: number) => {
-      const fecha = record.FECHA;
+    const februaryRecords = data.filter((record: any) => {
+      const fecha = record['DIA / HORA'];
       
-      if (index < 5) {
-        console.log(`\n📅 Registro ${index}:`, {
-          todasLasPropiedades: Object.keys(record),
-          FECHA: fecha,
-          tipoFECHA: typeof fecha,
-          registroCompleto: record
-        });
-      }
-      
-      if (!fecha) {
-        if (index < 5) console.log(`  ❌ No tiene campo FECHA`);
+      if (!fecha || typeof fecha !== 'string') {
         return false;
       }
       
-      // Intentar parsear la fecha en diferentes formatos
-      let date: Date | null = null;
-      
-      if (typeof fecha === 'number') {
-        // Excel serial date
-        date = XLSX.SSF.parse_date_code(fecha);
-        if (index < 5) console.log(`  🔢 Número Excel ${fecha} → ${date}`);
-      } else if (typeof fecha === 'string') {
-        // Intentar parsear string
-        date = new Date(fecha);
-        if (index < 5) console.log(`  📝 String "${fecha}" → ${date}`);
-      }
-      
-      if (!date || isNaN(date.getTime())) {
-        if (index < 5) console.log(`  ❌ Fecha inválida`);
+      // Parsear formato "DD/MM/YYYY HH H"
+      const match = fecha.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+      if (!match) {
         return false;
       }
       
-      const year = date.getFullYear();
-      const month = date.getMonth();
-      const isFeb2025 = year === 2025 && month === 1;
+      const day = parseInt(match[1]);
+      const month = parseInt(match[2]);
+      const year = parseInt(match[3]);
       
-      if (index < 5) {
-        console.log(`  ✓ Fecha válida: ${date.toISOString()} (año: ${year}, mes: ${month}, esFeb2025: ${isFeb2025})`);
-      }
-      
-      return isFeb2025; // Febrero = 1 (0-indexed)
+      return year === 2025 && month === 2; // Febrero 2025
     });
 
     const warnings: string[] = [];
@@ -76,8 +46,8 @@ export async function POST(request: NextRequest) {
       warnings.push('No se encontraron registros de febrero 2025');
     }
 
-    // Verificar columnas requeridas
-    const requiredColumns = ['FECHA', 'NOMBRE', 'MARCA', 'MODELO'];
+    // Verificar columnas requeridas (nombres reales del Excel)
+    const requiredColumns = ['DIA / HORA', 'MARCA Y MODELO'];
     const columns = Object.keys(data[0] || {});
     const missingColumns = requiredColumns.filter(col => !columns.includes(col));
     
@@ -85,11 +55,20 @@ export async function POST(request: NextRequest) {
       warnings.push(`Faltan columnas requeridas: ${missingColumns.join(', ')}`);
     }
 
+    // Preparar vista previa con los primeros 5 registros de febrero 2025
+    const preview = februaryRecords.slice(0, 5).map((r: any) => ({
+      fecha: r['DIA / HORA'],
+      nombre: r['NOMBRE'] || '-',
+      telefono: r['TELÉFONO'] ? r['TELÉFONO'].toString() : '-',
+      email: '-',
+      vehiculo: r['MARCA Y MODELO'] || '-',
+    }));
+
     return NextResponse.json({
       totalRecords: data.length,
       februaryRecords: februaryRecords.length,
       columns,
-      preview: februaryRecords.slice(0, 5),
+      preview,
       warnings,
     });
   } catch (error: any) {

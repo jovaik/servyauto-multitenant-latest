@@ -4,16 +4,11 @@ import * as XLSX from 'xlsx';
 import { prisma } from '@/lib/db';
 
 interface ExcelRecord {
-  FECHA?: string | number;
-  NOMBRE?: string;
-  TELEFONO?: string;
-  EMAIL?: string;
-  DIRECCION?: string;
-  MARCA?: string;
-  MODELO?: string;
-  MATRICULA?: string;
-  ANO?: string | number;
-  COLOR?: string;
+  'DIA / HORA'?: string;
+  'NOMBRE'?: string;
+  'TELÉFONO'?: string | number;
+  'MARCA Y MODELO'?: string;
+  'MATRÍCULA'?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -26,33 +21,34 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No se proporcionó ningún archivo' }, { status: 400 });
     }
 
-    // Leer el archivo Excel
+    // Leer el archivo Excel desde la fila 8 (índice 7)
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
     const workbook = XLSX.read(buffer, { type: 'buffer' });
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
-    const data = XLSX.utils.sheet_to_json(worksheet) as ExcelRecord[];
+    const data = XLSX.utils.sheet_to_json(worksheet, { range: 7 }) as ExcelRecord[];
 
     console.log(`📊 Total de registros en el archivo: ${data.length}`);
 
     // Filtrar registros de febrero 2025
     const februaryRecords = data.filter((record: ExcelRecord) => {
-      const fecha = record.FECHA;
-      if (!fecha) return false;
+      const fecha = record['DIA / HORA'];
       
-      let date: Date | null = null;
-      
-      if (typeof fecha === 'number') {
-        // Excel serial date
-        date = XLSX.SSF.parse_date_code(fecha);
-      } else if (typeof fecha === 'string') {
-        date = new Date(fecha);
+      if (!fecha || typeof fecha !== 'string') {
+        return false;
       }
       
-      if (!date || isNaN(date.getTime())) return false;
+      // Parsear formato "DD/MM/YYYY HH H"
+      const match = fecha.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+      if (!match) {
+        return false;
+      }
       
-      return date.getFullYear() === 2025 && date.getMonth() === 1;
+      const month = parseInt(match[2]);
+      const year = parseInt(match[3]);
+      
+      return year === 2025 && month === 2;
     });
 
     console.log(`📅 Registros de febrero 2025: ${februaryRecords.length}`);
@@ -64,34 +60,51 @@ export async function POST(request: NextRequest) {
     console.log('🔄 Comenzando importación de registros...');
 
     for (let i = 0; i < februaryRecords.length; i++) {
-      const record = februaryRecords[i] as ExcelRecord;
+      const record = februaryRecords[i];
       
       try {
-        console.log(`📝 Procesando registro ${i + 1}/${februaryRecords.length}: ${record.NOMBRE}`);
+        const nombre = record['NOMBRE'];
+        const marcaModelo = record['MARCA Y MODELO'];
+        const matricula = record['MATRÍCULA'];
+        const telefono = record['TELÉFONO']?.toString() || null;
+
+        console.log(`📝 Procesando registro ${i + 1}/${februaryRecords.length}: ${nombre || 'Sin nombre'}`);
         
-        // Verificar datos mínimos requeridos
-        if (!record.NOMBRE || !record.MARCA || !record.MODELO || !record.MATRICULA) {
-          console.log(`⚠️ Registro ${i + 1} omitido: faltan datos requeridos`);
+        // Verificar datos mínimos requeridos (solo matrícula y marca/modelo)
+        if (!marcaModelo || !matricula) {
+          console.log(`⚠️ Registro ${i + 1} omitido: faltan marca/modelo o matrícula`);
           skipped++;
           continue;
         }
+
+        // Limpiar matrícula (quitar espacios)
+        const matriculaLimpia = matricula.trim();
 
         // Verificar si el vehículo ya existe por matrícula
         const existingVehiculo = await prisma.vehiculo.findUnique({
-          where: { matricula: record.MATRICULA },
+          where: { matricula: matriculaLimpia },
         });
 
         if (existingVehiculo) {
-          console.log(`⚠️ Vehículo ${record.MATRICULA} ya existe - omitido`);
+          console.log(`⚠️ Vehículo ${matriculaLimpia} ya existe - omitido`);
           skipped++;
           continue;
         }
 
-        // Verificar si el cliente ya existe (solo por teléfono si está disponible)
+        // Separar marca y modelo (tomar la primera palabra como marca)
+        const partes = marcaModelo.trim().split(/\s+/);
+        const marca = partes[0] || 'Sin marca';
+        const modelo = partes.slice(1).join(' ') || 'Sin modelo';
+
+        // Verificar si el cliente ya existe (por teléfono o nombre)
         let existingCliente = null;
-        if (record.TELEFONO) {
+        if (telefono) {
           existingCliente = await prisma.cliente.findFirst({
-            where: { telefono: record.TELEFONO },
+            where: { telefono: telefono },
+          });
+        } else if (nombre) {
+          existingCliente = await prisma.cliente.findFirst({
+            where: { nombre: nombre.trim() },
           });
         }
 
@@ -102,35 +115,36 @@ export async function POST(request: NextRequest) {
           clienteId = existingCliente.id;
         } else {
           // Crear nuevo cliente
-          console.log(`➕ Creando nuevo cliente: ${record.NOMBRE}`);
+          const nombreCliente = nombre?.trim() || 'Cliente sin nombre';
+          console.log(`➕ Creando nuevo cliente: ${nombreCliente}`);
           const newCliente = await prisma.cliente.create({
             data: {
-              nombre: record.NOMBRE,
-              telefono: record.TELEFONO || 'Sin teléfono',
-              email: record.EMAIL || undefined,
-              direccion: record.DIRECCION || undefined,
+              nombre: nombreCliente,
+              telefono: telefono || 'Sin teléfono',
+              email: undefined,
+              direccion: undefined,
             },
           });
           clienteId = newCliente.id;
         }
 
         // Crear nuevo vehículo
-        console.log(`🚗 Creando vehículo: ${record.MARCA} ${record.MODELO}`);
+        console.log(`🚗 Creando vehículo: ${marca} ${modelo} (${matriculaLimpia})`);
         await prisma.vehiculo.create({
           data: {
             clienteId: clienteId,
-            marca: record.MARCA,
-            modelo: record.MODELO,
-            matricula: record.MATRICULA,
-            anio: record.ANO ? parseInt(record.ANO.toString()) : 2000,
-            color: record.COLOR || undefined,
+            marca: marca,
+            modelo: modelo,
+            matricula: matriculaLimpia,
+            anio: 2024, // Año por defecto
+            color: undefined,
           },
         });
         imported++;
         console.log(`✅ Registro ${i + 1} importado exitosamente`);
       } catch (error: any) {
         console.error(`❌ Error en registro ${i + 1}:`, error);
-        errors.push(`Error en registro ${record.NOMBRE || 'desconocido'}: ${error.message}`);
+        errors.push(`Error en registro ${i + 1}: ${error.message}`);
         skipped++;
       }
     }
