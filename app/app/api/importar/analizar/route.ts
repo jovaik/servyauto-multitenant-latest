@@ -19,10 +19,27 @@ export async function POST(request: NextRequest) {
     const worksheet = workbook.Sheets[sheetName];
     const data = XLSX.utils.sheet_to_json(worksheet);
 
+    console.log('📊 Total registros:', data.length);
+    console.log('📋 Columnas detectadas:', Object.keys(data[0] || {}));
+    console.log('🔍 Primeros 3 registros completos:', JSON.stringify(data.slice(0, 3), null, 2));
+
     // Filtrar registros de febrero 2025
-    const februaryRecords = data.filter((record: any) => {
+    const februaryRecords = data.filter((record: any, index: number) => {
       const fecha = record.FECHA;
-      if (!fecha) return false;
+      
+      if (index < 5) {
+        console.log(`\n📅 Registro ${index}:`, {
+          todasLasPropiedades: Object.keys(record),
+          FECHA: fecha,
+          tipoFECHA: typeof fecha,
+          registroCompleto: record
+        });
+      }
+      
+      if (!fecha) {
+        if (index < 5) console.log(`  ❌ No tiene campo FECHA`);
+        return false;
+      }
       
       // Intentar parsear la fecha en diferentes formatos
       let date: Date | null = null;
@@ -30,14 +47,27 @@ export async function POST(request: NextRequest) {
       if (typeof fecha === 'number') {
         // Excel serial date
         date = XLSX.SSF.parse_date_code(fecha);
+        if (index < 5) console.log(`  🔢 Número Excel ${fecha} → ${date}`);
       } else if (typeof fecha === 'string') {
         // Intentar parsear string
         date = new Date(fecha);
+        if (index < 5) console.log(`  📝 String "${fecha}" → ${date}`);
       }
       
-      if (!date || isNaN(date.getTime())) return false;
+      if (!date || isNaN(date.getTime())) {
+        if (index < 5) console.log(`  ❌ Fecha inválida`);
+        return false;
+      }
       
-      return date.getFullYear() === 2025 && date.getMonth() === 1; // Febrero = 1 (0-indexed)
+      const year = date.getFullYear();
+      const month = date.getMonth();
+      const isFeb2025 = year === 2025 && month === 1;
+      
+      if (index < 5) {
+        console.log(`  ✓ Fecha válida: ${date.toISOString()} (año: ${year}, mes: ${month}, esFeb2025: ${isFeb2025})`);
+      }
+      
+      return isFeb2025; // Febrero = 1 (0-indexed)
     });
 
     const warnings: string[] = [];
