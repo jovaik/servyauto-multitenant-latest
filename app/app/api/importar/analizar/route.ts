@@ -19,9 +19,6 @@ export async function POST(request: NextRequest) {
     const worksheet = workbook.Sheets[sheetName];
     const data = XLSX.utils.sheet_to_json(worksheet);
 
-    console.log('📊 Primeros 3 registros:', data.slice(0, 3));
-    console.log('🗓️ Tipos de fecha encontrados:');
-    
     // Filtrar registros de febrero 2025
     const februaryRecords = data.filter((record: any) => {
       const fecha = record.FECHA;
@@ -31,27 +28,16 @@ export async function POST(request: NextRequest) {
       let date: Date | null = null;
       
       if (typeof fecha === 'number') {
-        // Excel serial date - convertir a fecha
-        const excelEpoch = new Date(1899, 11, 30);
-        date = new Date(excelEpoch.getTime() + fecha * 86400000);
-        console.log(`  Número Excel ${fecha} → ${date.toISOString()} (año: ${date.getFullYear()}, mes: ${date.getMonth()})`);
+        // Excel serial date
+        date = XLSX.SSF.parse_date_code(fecha);
       } else if (typeof fecha === 'string') {
         // Intentar parsear string
         date = new Date(fecha);
-        console.log(`  String "${fecha}" → ${date.toISOString()} (año: ${date.getFullYear()}, mes: ${date.getMonth()})`);
       }
       
-      if (!date || isNaN(date.getTime())) {
-        console.log(`  ❌ Fecha inválida: ${fecha}`);
-        return false;
-      }
+      if (!date || isNaN(date.getTime())) return false;
       
-      const isFeb2025 = date.getFullYear() === 2025 && date.getMonth() === 1;
-      if (isFeb2025) {
-        console.log(`  ✅ FEBRERO 2025: ${fecha} → ${date.toISOString()}`);
-      }
-      
-      return isFeb2025; // Febrero = 1 (0-indexed)
+      return date.getFullYear() === 2025 && date.getMonth() === 1; // Febrero = 1 (0-indexed)
     });
 
     const warnings: string[] = [];

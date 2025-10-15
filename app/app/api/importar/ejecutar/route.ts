@@ -44,9 +44,8 @@ export async function POST(request: NextRequest) {
       let date: Date | null = null;
       
       if (typeof fecha === 'number') {
-        // Excel serial date - convertir a fecha
-        const excelEpoch = new Date(1899, 11, 30);
-        date = new Date(excelEpoch.getTime() + fecha * 86400000);
+        // Excel serial date
+        date = XLSX.SSF.parse_date_code(fecha);
       } else if (typeof fecha === 'string') {
         date = new Date(fecha);
       }
