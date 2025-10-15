@@ -18,6 +18,7 @@ interface ExcelRecord {
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('📥 Iniciando importación...');
     const formData = await request.formData();
     const file = formData.get('file') as File;
 
@@ -33,6 +34,8 @@ export async function POST(request: NextRequest) {
     const worksheet = workbook.Sheets[sheetName];
     const data = XLSX.utils.sheet_to_json(worksheet) as ExcelRecord[];
 
+    console.log(`📊 Total de registros en el archivo: ${data.length}`);
+
     // Filtrar registros de febrero 2025
     const februaryRecords = data.filter((record: ExcelRecord) => {
       const fecha = record.FECHA;
@@ -41,7 +44,9 @@ export async function POST(request: NextRequest) {
       let date: Date | null = null;
       
       if (typeof fecha === 'number') {
-        date = XLSX.SSF.parse_date_code(fecha);
+        // Excel serial date - convertir a fecha
+        const excelEpoch = new Date(1899, 11, 30);
+        date = new Date(excelEpoch.getTime() + fecha * 86400000);
       } else if (typeof fecha === 'string') {
         date = new Date(fecha);
       }
@@ -51,14 +56,23 @@ export async function POST(request: NextRequest) {
       return date.getFullYear() === 2025 && date.getMonth() === 1;
     });
 
+    console.log(`📅 Registros de febrero 2025: ${februaryRecords.length}`);
+
     let imported = 0;
     let skipped = 0;
     const errors: string[] = [];
 
-    for (const record of februaryRecords as ExcelRecord[]) {
+    console.log('🔄 Comenzando importación de registros...');
+
+    for (let i = 0; i < februaryRecords.length; i++) {
+      const record = februaryRecords[i] as ExcelRecord;
+      
       try {
+        console.log(`📝 Procesando registro ${i + 1}/${februaryRecords.length}: ${record.NOMBRE}`);
+        
         // Verificar datos mínimos requeridos
         if (!record.NOMBRE || !record.MARCA || !record.MODELO || !record.MATRICULA) {
+          console.log(`⚠️ Registro ${i + 1} omitido: faltan datos requeridos`);
           skipped++;
           continue;
         }
@@ -66,30 +80,30 @@ export async function POST(request: NextRequest) {
         // Verificar si el vehículo ya existe por matrícula
         const existingVehiculo = await prisma.vehiculo.findUnique({
           where: { matricula: record.MATRICULA },
-          include: { cliente: true },
         });
 
         if (existingVehiculo) {
+          console.log(`⚠️ Vehículo ${record.MATRICULA} ya existe - omitido`);
           skipped++;
           continue;
         }
 
-        // Verificar si el cliente ya existe (por nombre o teléfono)
-        const existingCliente = await prisma.cliente.findFirst({
-          where: {
-            OR: [
-              { nombre: record.NOMBRE },
-              ...(record.TELEFONO ? [{ telefono: record.TELEFONO }] : []),
-            ],
-          },
-        });
+        // Verificar si el cliente ya existe (solo por teléfono si está disponible)
+        let existingCliente = null;
+        if (record.TELEFONO) {
+          existingCliente = await prisma.cliente.findFirst({
+            where: { telefono: record.TELEFONO },
+          });
+        }
 
         let clienteId: string;
 
         if (existingCliente) {
+          console.log(`✅ Cliente encontrado: ${existingCliente.nombre}`);
           clienteId = existingCliente.id;
         } else {
           // Crear nuevo cliente
+          console.log(`➕ Creando nuevo cliente: ${record.NOMBRE}`);
           const newCliente = await prisma.cliente.create({
             data: {
               nombre: record.NOMBRE,
@@ -102,6 +116,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Crear nuevo vehículo
+        console.log(`🚗 Creando vehículo: ${record.MARCA} ${record.MODELO}`);
         await prisma.vehiculo.create({
           data: {
             clienteId: clienteId,
@@ -113,11 +128,15 @@ export async function POST(request: NextRequest) {
           },
         });
         imported++;
+        console.log(`✅ Registro ${i + 1} importado exitosamente`);
       } catch (error: any) {
-        errors.push(`Error en registro ${record.NOMBRE}: ${error.message}`);
+        console.error(`❌ Error en registro ${i + 1}:`, error);
+        errors.push(`Error en registro ${record.NOMBRE || 'desconocido'}: ${error.message}`);
         skipped++;
       }
     }
+
+    console.log(`🎉 Importación completada: ${imported} importados, ${skipped} omitidos`);
 
     return NextResponse.json({
       success: true,
