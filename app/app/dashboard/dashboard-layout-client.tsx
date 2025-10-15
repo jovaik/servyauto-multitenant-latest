@@ -23,7 +23,8 @@ import {
   ChevronDown,
   TrendingDown,
   Download,
-  Archive
+  Archive,
+  Upload
 } from 'lucide-react'
 import { RolUsuario } from '@/lib/types'
 import { Button } from '@/components/ui/button'
@@ -50,6 +51,7 @@ const navigation: NavItem[] = [
   { name: 'Facturación', href: '/dashboard/facturacion', icon: CreditCard, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
   { name: 'Gastos', href: '/dashboard/gastos', icon: TrendingDown, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN] },
   { name: 'Cierres de Caja', href: '/dashboard/cierres-caja', icon: Archive, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN] },
+  { name: 'Importador', href: '/dashboard/importador', icon: Upload, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN] },
   { name: 'Exportar IVA', href: '/dashboard/exportar-iva', icon: Download, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN] },
   { name: 'Usuarios', href: '/dashboard/usuarios', icon: UserCheck, roles: [RolUsuario.SUPER_ADMIN] },
   { name: 'Configuración', href: '/dashboard/configuracion', icon: Settings, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN] },
