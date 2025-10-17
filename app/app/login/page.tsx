@@ -35,6 +35,19 @@ export default async function LoginPage() {
           </p>
         </div>
         <LoginForm />
+        
+        {/* Powered by Host4yourweb */}
+        <div className="text-center pt-6">
+          <a 
+            href="https://host4yourweb.com" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-xs text-gray-500 hover:text-blue-600 transition-colors inline-flex items-center gap-1.5 group"
+          >
+            <span className="font-medium">Powered by</span>
+            <span className="font-bold text-blue-600 group-hover:text-blue-700">Host4yourweb</span>
+          </a>
+        </div>
       </div>
     </div>
   )
