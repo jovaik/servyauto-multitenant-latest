@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'react-hot-toast'
 
 interface Cliente {
@@ -19,6 +20,7 @@ interface Cliente {
   telefono: string
   direccion?: string
   documento?: string
+  clienteParking?: boolean
   vehiculos?: Vehiculo[]
   createdAt: Date
 }
@@ -44,7 +46,8 @@ export function ClientesView() {
     email: '',
     telefono: '',
     direccion: '',
-    documento: ''
+    documento: '',
+    clienteParking: false
   })
   const [submitting, setSubmitting] = useState(false)
 
@@ -78,7 +81,8 @@ export function ClientesView() {
         email: cliente.email || '',
         telefono: cliente.telefono,
         direccion: cliente.direccion || '',
-        documento: cliente.documento || ''
+        documento: cliente.documento || '',
+        clienteParking: cliente.clienteParking || false
       })
     } else {
       setEditingCliente(null)
@@ -88,7 +92,8 @@ export function ClientesView() {
         email: '',
         telefono: '',
         direccion: '',
-        documento: ''
+        documento: '',
+        clienteParking: false
       })
     }
     setShowModal(true)
@@ -103,7 +108,8 @@ export function ClientesView() {
       email: '',
       telefono: '',
       direccion: '',
-      documento: ''
+      documento: '',
+      clienteParking: false
     })
   }
 
@@ -421,6 +427,19 @@ export function ClientesView() {
                 onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
                 placeholder="Calle Principal 123"
               />
+            </div>
+            <div className="flex items-center space-x-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+              <Checkbox
+                id="clienteParking"
+                checked={formData.clienteParking}
+                onCheckedChange={(checked) => setFormData({ ...formData, clienteParking: checked === true })}
+              />
+              <Label 
+                htmlFor="clienteParking" 
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer text-green-700"
+              >
+                ✓ Cliente abonado al parking
+              </Label>
             </div>
           </div>
           <DialogFooter>
