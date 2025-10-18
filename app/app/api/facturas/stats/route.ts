@@ -123,15 +123,30 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Obtener todas las citas COMPLETADAS (son ventas cobradas) con filtro de fecha
-    const citasCompletadas = await prisma.cita.findMany({
+    // Obtener IDs de citas que ya tienen factura asociada (para evitar duplicados)
+    const citasConFactura = await prisma.factura.findMany({
+      where: {
+        citaId: { not: null }
+      },
+      select: {
+        citaId: true
+      }
+    })
+    const citasConFacturaIds = citasConFactura
+      .map(f => f.citaId)
+      .filter((id): id is string => id !== null && id !== undefined)
+
+    // Obtener todas las citas COMPLETADAS que NO tienen factura (para evitar duplicación)
+    const citasCompletadasSinFactura = await prisma.cita.findMany({
       where: {
         ...dateFilterCitas,
         estado: 'COMPLETADA',
         total: { not: null },
-        metodoPago: { not: null }
+        metodoPago: { not: null },
+        id: { notIn: citasConFacturaIds }
       },
       select: {
+        id: true,
         total: true,
         metodoPago: true,
         fecha: true
@@ -147,8 +162,8 @@ export async function GET(request: NextRequest) {
       .filter((f: any) => f.estado === 'PAGADA')
       .reduce((sum: number, f: any) => sum + f.total, 0)
 
-    // Ingresos (citas completadas)
-    const ingresosMesCitas = citasCompletadas
+    // Ingresos (citas completadas SIN factura - para evitar duplicados)
+    const ingresosMesCitas = citasCompletadasSinFactura
       .reduce((sum: number, c: any) => sum + (c.total || 0), 0)
 
     const ingresosMes = ingresosMesFacturas + ingresosMesCitas
@@ -159,7 +174,7 @@ export async function GET(request: NextRequest) {
       .reduce((sum: number, f: any) => sum + f.total, 0)
 
     // ====== DESGLOSE POR MÉTODO DE PAGO ======
-    // Incluye tanto facturas pagadas como citas completadas
+    // Incluye facturas pagadas + citas completadas SIN factura (evita duplicados)
     
     // FACTURAS pagadas
     const facturasPagadas = todasFacturas.filter((f: any) => f.estado === 'PAGADA')
@@ -175,20 +190,20 @@ export async function GET(request: NextRequest) {
       .filter((f: any) => f.metodoPago === 'TPV_UNICAJA')
       .reduce((sum: number, f: any) => sum + f.total, 0)
 
-    // CITAS completadas
-    const ventasEfectivoCitas = citasCompletadas
+    // CITAS completadas SIN factura (evita duplicados)
+    const ventasEfectivoCitas = citasCompletadasSinFactura
       .filter((c: any) => c.metodoPago === 'EFECTIVO')
       .reduce((sum: number, c: any) => sum + (c.total || 0), 0)
     
-    const ventasTPVSumupCitas = citasCompletadas
+    const ventasTPVSumupCitas = citasCompletadasSinFactura
       .filter((c: any) => c.metodoPago === 'TPV_SUMUP')
       .reduce((sum: number, c: any) => sum + (c.total || 0), 0)
     
-    const ventasTPVUnicajaCitas = citasCompletadas
+    const ventasTPVUnicajaCitas = citasCompletadasSinFactura
       .filter((c: any) => c.metodoPago === 'TPV_UNICAJA')
       .reduce((sum: number, c: any) => sum + (c.total || 0), 0)
 
-    // TOTALES combinados (facturas + citas)
+    // TOTALES combinados (facturas + citas sin factura - evita duplicados)
     const ventasEfectivo = ventasEfectivoFacturas + ventasEfectivoCitas
     const ventasTPVSumup = ventasTPVSumupFacturas + ventasTPVSumupCitas
     const ventasTPVUnicaja = ventasTPVUnicajaFacturas + ventasTPVUnicajaCitas
@@ -225,7 +240,7 @@ export async function GET(request: NextRequest) {
       gastosEfectivo,
       efectivoEnCaja, // Efectivo real que debe haber en caja
       // Info adicional para verificación
-      totalCitasCompletadas: citasCompletadas.length
+      totalCitasCompletadasSinFactura: citasCompletadasSinFactura.length
     }
 
     return NextResponse.json(stats)
