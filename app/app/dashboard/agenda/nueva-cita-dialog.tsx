@@ -263,7 +263,8 @@ export function NuevaCitaDialog({
           apellido: '',
           email: '',
           telefono: '',
-          documento: ''
+          documento: '',
+          clienteParking: false
         })
         toast({
           title: "¡Éxito!",
@@ -434,7 +435,8 @@ export function NuevaCitaDialog({
       apellido: '',
       email: '',
       telefono: '',
-      documento: ''
+      documento: '',
+      clienteParking: false
     })
     setNewVehiculo({
       marca: '',
