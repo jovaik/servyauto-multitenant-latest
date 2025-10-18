@@ -34,23 +34,24 @@ export async function GET(request: NextRequest) {
     }
 
     // Construir el filtro de fecha para las consultas
-    const buildDateFilter = () => {
+    // IMPORTANTE: Usamos 'fecha' (no 'createdAt') para que coincida con la fecha visible del documento
+    const buildDateFilterFacturas = () => {
       if (fechaDesdeDate && fechaHastaDate) {
         return {
-          createdAt: {
+          fecha: {
             gte: fechaDesdeDate,
             lte: fechaHastaDate
           }
         }
       } else if (fechaDesdeDate) {
         return {
-          createdAt: {
+          fecha: {
             gte: fechaDesdeDate
           }
         }
       } else if (fechaHastaDate) {
         return {
-          createdAt: {
+          fecha: {
             lte: fechaHastaDate
           }
         }
@@ -58,16 +59,66 @@ export async function GET(request: NextRequest) {
       return {}
     }
 
-    const dateFilter = buildDateFilter()
+    const buildDateFilterCitas = () => {
+      if (fechaDesdeDate && fechaHastaDate) {
+        return {
+          fecha: {
+            gte: fechaDesdeDate,
+            lte: fechaHastaDate
+          }
+        }
+      } else if (fechaDesdeDate) {
+        return {
+          fecha: {
+            gte: fechaDesdeDate
+          }
+        }
+      } else if (fechaHastaDate) {
+        return {
+          fecha: {
+            lte: fechaHastaDate
+          }
+        }
+      }
+      return {}
+    }
+
+    const buildDateFilterGastos = () => {
+      if (fechaDesdeDate && fechaHastaDate) {
+        return {
+          fecha: {
+            gte: fechaDesdeDate,
+            lte: fechaHastaDate
+          }
+        }
+      } else if (fechaDesdeDate) {
+        return {
+          fecha: {
+            gte: fechaDesdeDate
+          }
+        }
+      } else if (fechaHastaDate) {
+        return {
+          fecha: {
+            lte: fechaHastaDate
+          }
+        }
+      }
+      return {}
+    }
+
+    const dateFilterFacturas = buildDateFilterFacturas()
+    const dateFilterCitas = buildDateFilterCitas()
+    const dateFilterGastos = buildDateFilterGastos()
 
     // Obtener todas las facturas (incluyendo tickets) con filtro de fecha
     const todasFacturas = await prisma.factura.findMany({
-      where: dateFilter,
+      where: dateFilterFacturas,
       select: {
         tipo: true,
         total: true,
         estado: true,
-        createdAt: true,
+        fecha: true,
         metodoPago: true
       }
     })
@@ -75,7 +126,7 @@ export async function GET(request: NextRequest) {
     // Obtener todas las citas COMPLETADAS (son ventas cobradas) con filtro de fecha
     const citasCompletadas = await prisma.cita.findMany({
       where: {
-        ...dateFilter,
+        ...dateFilterCitas,
         estado: 'COMPLETADA',
         total: { not: null },
         metodoPago: { not: null }
@@ -83,7 +134,7 @@ export async function GET(request: NextRequest) {
       select: {
         total: true,
         metodoPago: true,
-        createdAt: true
+        fecha: true
       }
     })
 
@@ -145,7 +196,7 @@ export async function GET(request: NextRequest) {
 
     // ====== OBTENER GASTOS PARA RESTAR DEL EFECTIVO ======
     const todosGastos = await prisma.gasto.findMany({
-      where: dateFilter,
+      where: dateFilterGastos,
       select: {
         importe: true,
         metodoPago: true
