@@ -59,18 +59,19 @@ model VerificationToken {
 }
 
 model Cliente {
-  id        String     @id @default(cuid())
-  nombre    String
-  apellido  String?
-  email     String?    @unique
-  telefono  String
-  direccion String?
-  documento String?    @map("dni")
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  citas     Cita[]
-  facturas  Factura[]
-  vehiculos Vehiculo[]
+  id             String     @id @default(cuid())
+  nombre         String
+  apellido       String?
+  email          String?    @unique
+  telefono       String
+  direccion      String?
+  documento      String?    @map("dni")
+  clienteParking Boolean    @default(false) // Indica si el cliente es abonado del parking
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  citas          Cita[]
+  facturas       Factura[]
+  vehiculos      Vehiculo[]
 
   @@map("clientes")
 }

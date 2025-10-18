@@ -33,6 +33,7 @@ interface Cliente {
   apellido: string
   email?: string
   telefono: string
+  clienteParking: boolean
   vehiculos: Vehiculo[]
 }
 
@@ -74,6 +75,8 @@ export function NuevaCitaDialog({
   const [showNewVehiculo, setShowNewVehiculo] = useState(false)
   const [showNewCliente, setShowNewCliente] = useState(false)
   const [boxes, setBoxes] = useState(['Box 1', 'Box 2', 'Box 3'])
+  const [descuentoParking, setDescuentoParking] = useState<{ valor: number, tipo: string }>({ valor: 0, tipo: 'FIJO' })
+  const [ticketsDisponibles, setTicketsDisponibles] = useState(0)
   
   const [formData, setFormData] = useState({
     fecha: format(selectedDate, 'yyyy-MM-dd'),
@@ -94,7 +97,8 @@ export function NuevaCitaDialog({
     apellido: '',
     email: '',
     telefono: '',
-    documento: ''
+    documento: '',
+    clienteParking: false
   })
 
   // Nuevo vehículo para cliente existente
@@ -119,6 +123,8 @@ export function NuevaCitaDialog({
       loadClientes()
       loadServicios()
       loadBoxes()
+      loadDescuentoParking()
+      loadTicketsDisponibles()
       setFormData(prev => ({ 
         ...prev, 
         fecha: format(selectedDate, 'yyyy-MM-dd'),
@@ -141,6 +147,38 @@ export function NuevaCitaDialog({
       }
     } catch (error) {
       console.error('Error loading boxes:', error)
+    }
+  }
+
+  const loadDescuentoParking = async () => {
+    try {
+      const response = await fetch('/api/configuracion')
+      if (response.ok) {
+        const configs = await response.json()
+        const descuentoConfig = configs?.find((c: any) => c.clave === 'precios.descuentoParking')
+        const tipoConfig = configs?.find((c: any) => c.clave === 'precios.descuentoParkingTipo')
+        
+        if (descuentoConfig) {
+          setDescuentoParking({
+            valor: parseFloat(descuentoConfig.valor) || 0,
+            tipo: tipoConfig?.valor || 'FIJO'
+          })
+        }
+      }
+    } catch (error) {
+      console.error('Error loading descuento parking:', error)
+    }
+  }
+
+  const loadTicketsDisponibles = async () => {
+    try {
+      const response = await fetch('/api/tickets')
+      if (response.ok) {
+        const data = await response.json()
+        setTicketsDisponibles(data.saldoActual || 0)
+      }
+    } catch (error) {
+      console.error('Error loading tickets:', error)
     }
   }
 
@@ -613,12 +651,65 @@ export function NuevaCitaDialog({
                         placeholder="cliente@email.com"
                       />
                     </div>
+                    <div className="flex items-center space-x-2 p-3 bg-green-50 border border-green-200 rounded">
+                      <input
+                        type="checkbox"
+                        id="clienteParking"
+                        checked={newCliente.clienteParking}
+                        onChange={(e) => setNewCliente(prev => ({ ...prev, clienteParking: e.target.checked }))}
+                        className="w-4 h-4 text-green-600 rounded focus:ring-green-500"
+                      />
+                      <Label htmlFor="clienteParking" className="cursor-pointer text-green-900 font-medium">
+                        Cliente abonado al parking (aplica descuento especial)
+                      </Label>
+                    </div>
                     <Button type="button" onClick={addNewCliente} size="sm" className="w-full">
                       Agregar Cliente y Continuar
                     </Button>
                   </div>
                 )}
               </div>
+
+              {/* Información de descuento y tickets */}
+              {formData.clienteId && (() => {
+                const clienteSeleccionado = clientes?.find(c => c.id === formData.clienteId)
+                return (
+                  <div className="space-y-2">
+                    <div className="border rounded-lg p-3 bg-blue-50 border-blue-200">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="text-sm font-semibold text-blue-900">Información del cliente</h4>
+                      </div>
+                      <div className="space-y-1 text-sm">
+                        {clienteSeleccionado?.clienteParking ? (
+                          <div className="flex items-center justify-between p-2 bg-green-50 border border-green-200 rounded">
+                            <span className="flex items-center text-green-800">
+                              <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                              </svg>
+                              <strong>Cliente de parking</strong>
+                            </span>
+                            <span className="text-green-700 font-medium">
+                              Descuento: {descuentoParking.tipo === 'FIJO' ? `${descuentoParking.valor}€` : `${descuentoParking.valor}%`}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center p-2 bg-gray-50 border border-gray-200 rounded">
+                            <span className="text-gray-600">Cliente regular (sin descuento parking)</span>
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between p-2 bg-amber-50 border border-amber-200 rounded mt-2">
+                          <span className="text-amber-900">
+                            <strong>Tickets disponibles:</strong>
+                          </span>
+                          <span className="text-amber-700 font-bold text-lg">
+                            {ticketsDisponibles}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })()}
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
