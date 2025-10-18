@@ -73,6 +73,7 @@ export async function POST(req: NextRequest) {
       vehiculoId,
       servicios,
       box,
+      ticketsUsados,
       observaciones,
       metodoPago,
     } = body
@@ -83,6 +84,25 @@ export async function POST(req: NextRequest) {
         { error: 'Faltan campos requeridos' },
         { status: 400 }
       )
+    }
+
+    // Validar disponibilidad de tickets si se solicitan
+    const ticketsASolicitar = parseInt(ticketsUsados) || 0
+    if (ticketsASolicitar > 0) {
+      const ultimoMovimiento = await prisma.inventarioTickets.findFirst({
+        orderBy: {
+          createdAt: 'desc'
+        }
+      })
+
+      const saldoActual = ultimoMovimiento?.saldoActual || 0
+      
+      if (saldoActual < ticketsASolicitar) {
+        return NextResponse.json(
+          { error: `No hay suficientes tickets disponibles. Saldo actual: ${saldoActual}` },
+          { status: 400 }
+        )
+      }
     }
 
     // Verificar disponibilidad del slot
@@ -142,6 +162,7 @@ export async function POST(req: NextRequest) {
         vehiculoId,
         box,
         estado: 'PENDIENTE',
+        ticketsUsados: ticketsASolicitar,
         observaciones,
         metodoPago,
         total: precioTotal,
@@ -159,6 +180,30 @@ export async function POST(req: NextRequest) {
         }
       },
     })
+
+    // Registrar el consumo de tickets en el inventario
+    if (ticketsASolicitar > 0) {
+      const ultimoMovimiento = await prisma.inventarioTickets.findFirst({
+        orderBy: {
+          createdAt: 'desc'
+        }
+      })
+
+      const saldoAnterior = ultimoMovimiento?.saldoActual || 0
+      const saldoNuevo = saldoAnterior - ticketsASolicitar
+
+      await prisma.inventarioTickets.create({
+        data: {
+          tipo: 'CONSUMO',
+          cantidad: -ticketsASolicitar,
+          saldoAnterior,
+          saldoActual: saldoNuevo,
+          concepto: `Tickets entregados en cita #${cita.id.substring(0, 8)}`,
+          usuarioId: (session.user as any).id || null,
+          citaId: cita.id
+        }
+      })
+    }
 
     return NextResponse.json(cita, { status: 201 })
   } catch (error) {

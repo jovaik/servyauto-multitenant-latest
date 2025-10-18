@@ -119,6 +119,7 @@ model Cita {
   observaciones  String?
   metodoPago     MetodoPago?
   total          Float?
+  ticketsUsados  Int              @default(0) // Número de tickets de parking utilizados
   clienteId      String
   vehiculoId     String
   createdAt      DateTime         @default(now())
@@ -295,4 +296,26 @@ model CierreCaja {
   updatedAt           DateTime @updatedAt
 
   @@map("cierres_caja")
+}
+
+model InventarioTickets {
+  id            String                  @id @default(cuid())
+  fecha         DateTime                @default(now())
+  tipo          TipoMovimientoTicket    @default(COMPRA)
+  cantidad      Int                     // Cantidad de tickets (positivo para compra, negativo para uso)
+  saldoAnterior Int                     // Saldo antes del movimiento
+  saldoActual   Int                     // Saldo después del movimiento
+  concepto      String?                 // Descripción del movimiento
+  usuarioId     String?                 // Usuario que realizó el movimiento
+  citaId        String?                 // ID de la cita si es un consumo
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+
+  @@map("inventario_tickets")
+}
+
+enum TipoMovimientoTicket {
+  COMPRA      // Compra de tickets
+  CONSUMO     // Uso de tickets en una cita
+  AJUSTE      // Ajuste manual del inventario
 }

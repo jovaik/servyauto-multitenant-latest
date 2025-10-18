@@ -58,9 +58,15 @@ interface ConfiguracionState {
     ivaGeneral: string
     descuentoMaximo: string
     tarifaHora: string
-    descuentoRegular?: string
+    // Descuento Cliente Parking (fijo en euros)
+    descuentoParking?: string
+    descuentoParkingTipo?: 'FIJO' | 'PORCENTAJE'
+    // Descuento Cliente VIP (puede ser fijo o porcentaje)
     descuentoVIP?: string
+    descuentoVIPTipo?: 'FIJO' | 'PORCENTAJE'
+    // Descuento Cliente Empresa (puede ser fijo o porcentaje)
     descuentoEmpresa?: string
+    descuentoEmpresaTipo?: 'FIJO' | 'PORCENTAJE'
   }
   boxes: {
     cantidad: string
@@ -178,9 +184,15 @@ export function ConfiguracionView() {
         { clave: 'precios.ivaGeneral', valor: config.precios.ivaGeneral, tipo: 'NUMERO', categoria: 'precios', descripcion: 'IVA general (%)' },
         { clave: 'precios.descuentoMaximo', valor: config.precios.descuentoMaximo, tipo: 'NUMERO', categoria: 'precios', descripcion: 'Descuento máximo (%)' },
         { clave: 'precios.tarifaHora', valor: config.precios.tarifaHora, tipo: 'NUMERO', categoria: 'precios', descripcion: 'Tarifa por hora (€)' },
-        { clave: 'precios.descuentoRegular', valor: config.precios.descuentoRegular || '0', tipo: 'NUMERO', categoria: 'precios', descripcion: 'Descuento cliente regular (%)' },
-        { clave: 'precios.descuentoVIP', valor: config.precios.descuentoVIP || '5', tipo: 'NUMERO', categoria: 'precios', descripcion: 'Descuento cliente VIP (%)' },
-        { clave: 'precios.descuentoEmpresa', valor: config.precios.descuentoEmpresa || '10', tipo: 'NUMERO', categoria: 'precios', descripcion: 'Descuento cliente empresa (%)' },
+        // Descuento Cliente Parking
+        { clave: 'precios.descuentoParking', valor: config.precios.descuentoParking || '5', tipo: 'NUMERO', categoria: 'precios', descripcion: 'Descuento cliente parking' },
+        { clave: 'precios.descuentoParkingTipo', valor: config.precios.descuentoParkingTipo || 'FIJO', tipo: 'TEXTO', categoria: 'precios', descripcion: 'Tipo descuento parking (FIJO/PORCENTAJE)' },
+        // Descuento Cliente VIP
+        { clave: 'precios.descuentoVIP', valor: config.precios.descuentoVIP || '5', tipo: 'NUMERO', categoria: 'precios', descripcion: 'Descuento cliente VIP' },
+        { clave: 'precios.descuentoVIPTipo', valor: config.precios.descuentoVIPTipo || 'PORCENTAJE', tipo: 'TEXTO', categoria: 'precios', descripcion: 'Tipo descuento VIP (FIJO/PORCENTAJE)' },
+        // Descuento Cliente Empresa
+        { clave: 'precios.descuentoEmpresa', valor: config.precios.descuentoEmpresa || '10', tipo: 'NUMERO', categoria: 'precios', descripcion: 'Descuento cliente empresa' },
+        { clave: 'precios.descuentoEmpresaTipo', valor: config.precios.descuentoEmpresaTipo || 'PORCENTAJE', tipo: 'TEXTO', categoria: 'precios', descripcion: 'Tipo descuento empresa (FIJO/PORCENTAJE)' },
         
         // Boxes
         { clave: 'boxes.cantidad', valor: config.boxes.cantidad, tipo: 'NUMERO', categoria: 'boxes', descripcion: 'Cantidad de boxes' },
@@ -668,56 +680,116 @@ export function ConfiguracionView() {
                   Descuentos por Tipo de Cliente
                 </CardTitle>
                 <CardDescription>
-                  Configura descuentos fijos según el tipo de cliente
+                  Configura descuentos fijos (en euros) o porcentajes según el tipo de cliente
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <Label>Cliente Regular</Label>
-                    <div className="flex items-center space-x-2">
-                      <Input
-                        type="number"
-                        min="0"
-                        max="100"
-                        value={config.precios.descuentoRegular || '0'}
-                        onChange={(e) => handleInputChange('precios', 'descuentoRegular', e.target.value)}
-                        placeholder="0"
-                      />
-                      <span className="text-sm text-gray-500">%</span>
+              <CardContent className="space-y-6">
+                {/* Cliente Parking */}
+                <div className="border rounded-lg p-4 bg-blue-50">
+                  <Label className="text-base font-medium">Cliente del Parking</Label>
+                  <p className="text-xs text-gray-600 mb-3">Clientes abonados al parking donde está el negocio</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm">Tipo de descuento</Label>
+                      <select
+                        className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md"
+                        value={config.precios.descuentoParkingTipo || 'FIJO'}
+                        onChange={(e) => handleInputChange('precios', 'descuentoParkingTipo', e.target.value as 'FIJO' | 'PORCENTAJE')}
+                      >
+                        <option value="FIJO">Cantidad Fija (€)</option>
+                        <option value="PORCENTAJE">Porcentaje (%)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <Label className="text-sm">Valor del descuento</Label>
+                      <div className="flex items-center space-x-2 mt-1">
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={config.precios.descuentoParking || '5'}
+                          onChange={(e) => handleInputChange('precios', 'descuentoParking', e.target.value)}
+                          placeholder="5"
+                        />
+                        <span className="text-sm text-gray-500 w-6">
+                          {config.precios.descuentoParkingTipo === 'FIJO' ? '€' : '%'}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                  <div>
-                    <Label>Cliente VIP</Label>
-                    <div className="flex items-center space-x-2">
-                      <Input
-                        type="number"
-                        min="0"
-                        max="100"
-                        value={config.precios.descuentoVIP || '5'}
-                        onChange={(e) => handleInputChange('precios', 'descuentoVIP', e.target.value)}
-                        placeholder="5"
-                      />
-                      <span className="text-sm text-gray-500">%</span>
+                </div>
+
+                {/* Cliente VIP */}
+                <div className="border rounded-lg p-4">
+                  <Label className="text-base font-medium">Cliente VIP</Label>
+                  <p className="text-xs text-gray-600 mb-3">Clientes especiales con descuento preferencial</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm">Tipo de descuento</Label>
+                      <select
+                        className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md"
+                        value={config.precios.descuentoVIPTipo || 'PORCENTAJE'}
+                        onChange={(e) => handleInputChange('precios', 'descuentoVIPTipo', e.target.value as 'FIJO' | 'PORCENTAJE')}
+                      >
+                        <option value="FIJO">Cantidad Fija (€)</option>
+                        <option value="PORCENTAJE">Porcentaje (%)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <Label className="text-sm">Valor del descuento</Label>
+                      <div className="flex items-center space-x-2 mt-1">
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={config.precios.descuentoVIP || '5'}
+                          onChange={(e) => handleInputChange('precios', 'descuentoVIP', e.target.value)}
+                          placeholder="5"
+                        />
+                        <span className="text-sm text-gray-500 w-6">
+                          {config.precios.descuentoVIPTipo === 'FIJO' ? '€' : '%'}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                  <div>
-                    <Label>Cliente Empresa</Label>
-                    <div className="flex items-center space-x-2">
-                      <Input
-                        type="number"
-                        min="0"
-                        max="100"
-                        value={config.precios.descuentoEmpresa || '10'}
-                        onChange={(e) => handleInputChange('precios', 'descuentoEmpresa', e.target.value)}
-                        placeholder="10"
-                      />
-                      <span className="text-sm text-gray-500">%</span>
+                </div>
+
+                {/* Cliente Empresa */}
+                <div className="border rounded-lg p-4">
+                  <Label className="text-base font-medium">Cliente Empresa</Label>
+                  <p className="text-xs text-gray-600 mb-3">Descuento corporativo para empresas</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm">Tipo de descuento</Label>
+                      <select
+                        className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md"
+                        value={config.precios.descuentoEmpresaTipo || 'PORCENTAJE'}
+                        onChange={(e) => handleInputChange('precios', 'descuentoEmpresaTipo', e.target.value as 'FIJO' | 'PORCENTAJE')}
+                      >
+                        <option value="FIJO">Cantidad Fija (€)</option>
+                        <option value="PORCENTAJE">Porcentaje (%)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <Label className="text-sm">Valor del descuento</Label>
+                      <div className="flex items-center space-x-2 mt-1">
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={config.precios.descuentoEmpresa || '10'}
+                          onChange={(e) => handleInputChange('precios', 'descuentoEmpresa', e.target.value)}
+                          placeholder="10"
+                        />
+                        <span className="text-sm text-gray-500 w-6">
+                          {config.precios.descuentoEmpresaTipo === 'FIJO' ? '€' : '%'}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
                 
-                <div>
+                <div className="pt-4 border-t">
                   <Label>Descuento Máximo Permitido (%)</Label>
                   <Input
                     type="number"
@@ -725,7 +797,7 @@ export function ConfiguracionView() {
                     max="100"
                     value={config.precios.descuentoMaximo}
                     onChange={(e) => handleInputChange('precios', 'descuentoMaximo', e.target.value)}
-                    className="w-32"
+                    className="w-32 mt-1"
                   />
                   <p className="text-xs text-gray-500 mt-1">Límite máximo para cualquier descuento manual</p>
                 </div>
