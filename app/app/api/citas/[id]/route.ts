@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { enviarNotificacionVehiculoListo } from '@/lib/notifications'
 
 export const dynamic = 'force-dynamic'
 
@@ -208,6 +209,37 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       console.log('Tipo:', tipoDocumento)
       console.log('Número:', numeroDocumento)
       console.log('Total:', total)
+    }
+    
+    // Enviar notificación automática cuando se marca como COMPLETADA
+    if (estado === 'COMPLETADA') {
+      try {
+        console.log('=== ENVIANDO NOTIFICACIÓN AUTOMÁTICA ===')
+        console.log('Cliente:', cita.cliente.nombre)
+        console.log('Teléfono:', cita.cliente.telefono)
+        console.log('Vehículo:', `${cita.vehiculo.marca} ${cita.vehiculo.modelo} - ${cita.vehiculo.matricula}`)
+        console.log('Total:', cita.total)
+        
+        const notificationResult = await enviarNotificacionVehiculoListo({
+          clienteName: cita.cliente.nombre,
+          vehiculo: `${cita.vehiculo.marca} ${cita.vehiculo.modelo} - ${cita.vehiculo.matricula}`,
+          total: cita.total || 0,
+          telefono: cita.cliente.telefono
+        })
+        
+        if (notificationResult.success) {
+          if (notificationResult.whatsappSent) {
+            console.log('✅ Notificación enviada por WhatsApp exitosamente')
+          } else if (notificationResult.smsSent) {
+            console.log('✅ Notificación enviada por SMS exitosamente')
+          }
+        } else {
+          console.warn('⚠️ No se pudo enviar la notificación:', notificationResult.error)
+        }
+      } catch (notificationError) {
+        // No fallar la actualización si falla la notificación
+        console.error('❌ Error enviando notificación:', notificationError)
+      }
     }
     
     return NextResponse.json(cita)

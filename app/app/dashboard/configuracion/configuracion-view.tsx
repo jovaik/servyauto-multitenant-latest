@@ -15,7 +15,8 @@ import {
   Car,
   FileText,
   Database,
-  Calendar
+  Calendar,
+  Bell
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -25,6 +26,7 @@ import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
+import { TwilioConfig } from '@/components/twilio-config'
 
 interface ConfigValue {
   clave: string
@@ -350,7 +352,7 @@ export function ConfiguracionView() {
 
       {/* Configuration Tabs */}
       <Tabs defaultValue="empresa" className="space-y-6">
-        <TabsList className="grid grid-cols-5 w-fit">
+        <TabsList className="grid grid-cols-6 w-fit">
           <TabsTrigger value="empresa" className="flex items-center">
             <Building className="mr-2 h-4 w-4" />
             Empresa
@@ -366,6 +368,10 @@ export function ConfiguracionView() {
           <TabsTrigger value="boxes" className="flex items-center">
             <Car className="mr-2 h-4 w-4" />
             Boxes
+          </TabsTrigger>
+          <TabsTrigger value="notificaciones" className="flex items-center">
+            <Bell className="mr-2 h-4 w-4" />
+            Notificaciones
           </TabsTrigger>
           <TabsTrigger value="sistema" className="flex items-center">
             <Cog className="mr-2 h-4 w-4" />
@@ -898,6 +904,11 @@ export function ConfiguracionView() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Notificaciones Tab */}
+        <TabsContent value="notificaciones">
+          <TwilioConfig />
         </TabsContent>
 
         {/* Sistema Tab */}
