@@ -20,18 +20,55 @@ interface NuevoCierreDialogProps {
   onCierreCreado: () => void
 }
 
+// Función para obtener el lunes de la semana actual o anterior
+function getMonday(date: Date): Date {
+  const d = new Date(date)
+  const day = d.getDay()
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1) // Ajuste cuando es domingo
+  const monday = new Date(d.setDate(diff))
+  monday.setHours(0, 0, 0, 0)
+  return monday
+}
+
+// Función para obtener el domingo de la semana
+function getSunday(monday: Date): Date {
+  const sunday = new Date(monday)
+  sunday.setDate(monday.getDate() + 6)
+  sunday.setHours(23, 59, 59, 999)
+  return sunday
+}
+
 export function NuevoCierreDialog({ onCierreCreado }: NuevoCierreDialogProps) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   
-  // Calcular fechas por defecto (última semana)
+  // Calcular fechas por defecto (semana laboral: lunes a domingo)
   const hoy = new Date()
-  const haceSieteDias = new Date()
-  haceSieteDias.setDate(hoy.getDate() - 7)
+  const lunesActual = getMonday(hoy)
+  
+  // Si hoy es lunes, usar la semana anterior completa (lunes a domingo)
+  // Si no, usar desde el lunes de esta semana hasta ayer
+  let fechaInicioPorDefecto: Date
+  let fechaFinPorDefecto: Date
+  
+  if (hoy.getDay() === 1) {
+    // Es lunes, usar la semana anterior completa
+    const lunesAnterior = new Date(lunesActual)
+    lunesAnterior.setDate(lunesActual.getDate() - 7)
+    fechaInicioPorDefecto = lunesAnterior
+    fechaFinPorDefecto = getSunday(lunesAnterior)
+  } else {
+    // No es lunes, usar desde el lunes de esta semana hasta ayer
+    fechaInicioPorDefecto = lunesActual
+    const ayer = new Date(hoy)
+    ayer.setDate(hoy.getDate() - 1)
+    ayer.setHours(23, 59, 59, 999)
+    fechaFinPorDefecto = ayer
+  }
   
   const [formData, setFormData] = useState({
-    fechaInicio: haceSieteDias.toISOString().split('T')[0],
-    fechaFin: hoy.toISOString().split('T')[0],
+    fechaInicio: fechaInicioPorDefecto.toISOString().split('T')[0],
+    fechaFin: fechaFinPorDefecto.toISOString().split('T')[0],
     observaciones: ''
   })
 
@@ -51,9 +88,30 @@ export function NuevoCierreDialog({ onCierreCreado }: NuevoCierreDialogProps) {
       if (response.ok) {
         alert('Cierre de caja creado correctamente')
         setOpen(false)
+        
+        // Recalcular fechas para el siguiente cierre
+        const nuevaFechaHoy = new Date()
+        const nuevoLunesActual = getMonday(nuevaFechaHoy)
+        
+        let nuevaFechaInicio: Date
+        let nuevaFechaFin: Date
+        
+        if (nuevaFechaHoy.getDay() === 1) {
+          const nuevoLunesAnterior = new Date(nuevoLunesActual)
+          nuevoLunesAnterior.setDate(nuevoLunesActual.getDate() - 7)
+          nuevaFechaInicio = nuevoLunesAnterior
+          nuevaFechaFin = getSunday(nuevoLunesAnterior)
+        } else {
+          nuevaFechaInicio = nuevoLunesActual
+          const ayer = new Date(nuevaFechaHoy)
+          ayer.setDate(nuevaFechaHoy.getDate() - 1)
+          ayer.setHours(23, 59, 59, 999)
+          nuevaFechaFin = ayer
+        }
+        
         setFormData({
-          fechaInicio: haceSieteDias.toISOString().split('T')[0],
-          fechaFin: hoy.toISOString().split('T')[0],
+          fechaInicio: nuevaFechaInicio.toISOString().split('T')[0],
+          fechaFin: nuevaFechaFin.toISOString().split('T')[0],
           observaciones: ''
         })
         onCierreCreado()
@@ -81,8 +139,8 @@ export function NuevoCierreDialog({ onCierreCreado }: NuevoCierreDialogProps) {
         <DialogHeader>
           <DialogTitle>Nuevo Cierre de Caja</DialogTitle>
           <DialogDescription>
-            Realiza el cierre de caja para el período seleccionado. El sistema calculará
-            automáticamente los totales de ventas y gastos.
+            Realiza el cierre de caja semanal (lunes a domingo). El sistema calculará
+            automáticamente los totales de ventas (facturas + citas completadas) y gastos.
           </DialogDescription>
         </DialogHeader>
 
@@ -123,9 +181,10 @@ export function NuevoCierreDialog({ onCierreCreado }: NuevoCierreDialogProps) {
           <div className="bg-muted p-4 rounded-lg space-y-2">
             <p className="text-sm font-medium">Información:</p>
             <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
-              <li>Se calcularán las ventas de facturas pagadas en este período</li>
+              <li>Se calcularán las ventas de facturas pagadas + citas completadas en este período</li>
               <li>Se calcularán los gastos registrados en este período</li>
               <li>El efectivo final será: Efectivo ventas - Gastos efectivo</li>
+              <li>La semana laboral va de lunes a domingo</li>
             </ul>
           </div>
 

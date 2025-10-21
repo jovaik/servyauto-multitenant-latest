@@ -634,6 +634,7 @@ export function FacturacionView() {
               ))}
             </div>
           ) : (
+            <div className="max-h-[600px] overflow-y-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -727,11 +728,12 @@ export function FacturacionView() {
                 ))}
               </TableBody>
             </Table>
-          )}
-          
-          {!loading && filteredFacturas.length === 0 && (
-            <div className="text-center py-8 text-gray-500">
-              No se encontraron facturas que coincidan con los criterios de búsqueda.
+            
+            {!loading && filteredFacturas.length === 0 && (
+              <div className="text-center py-8 text-gray-500">
+                No se encontraron facturas que coincidan con los criterios de búsqueda.
+              </div>
+            )}
             </div>
           )}
         </CardContent>

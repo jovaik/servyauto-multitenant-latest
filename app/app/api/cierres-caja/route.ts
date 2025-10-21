@@ -48,35 +48,81 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const startDate = new Date(fechaInicio)
+    startDate.setHours(0, 0, 0, 0)
+    
+    const endDate = new Date(fechaFin)
+    endDate.setHours(23, 59, 59, 999)
+
+    // Obtener IDs de citas que ya tienen factura asociada (para evitar duplicados)
+    const citasConFactura = await prisma.factura.findMany({
+      where: {
+        citaId: { not: null }
+      },
+      select: {
+        citaId: true
+      }
+    })
+    const citasConFacturaIds = citasConFactura
+      .map(f => f.citaId)
+      .filter((id): id is string => id !== null && id !== undefined)
+
     // Calcular totales de ventas (facturas pagadas)
     const facturas = await prisma.factura.findMany({
       where: {
         fecha: {
-          gte: new Date(fechaInicio),
-          lte: new Date(fechaFin)
+          gte: startDate,
+          lte: endDate
         },
         estado: 'PAGADA'
       }
     })
 
-    const totalEfectivo = facturas
+    // Obtener citas completadas SIN factura (para incluirlas en el total)
+    const citasCompletadas = await prisma.cita.findMany({
+      where: {
+        fecha: {
+          gte: startDate,
+          lte: endDate
+        },
+        estado: 'COMPLETADA',
+        id: { notIn: citasConFacturaIds }
+      }
+    })
+
+    // Sumar ventas de facturas
+    let totalEfectivo = facturas
       .filter(f => f.metodoPago === 'EFECTIVO')
       .reduce((sum, f) => sum + f.total, 0)
 
-    const totalTPVSumup = facturas
+    let totalTPVSumup = facturas
       .filter(f => f.metodoPago === 'TPV_SUMUP')
       .reduce((sum, f) => sum + f.total, 0)
 
-    const totalTPVUnicaja = facturas
+    let totalTPVUnicaja = facturas
       .filter(f => f.metodoPago === 'TPV_UNICAJA')
       .reduce((sum, f) => sum + f.total, 0)
+
+    // Sumar ventas de citas completadas sin factura
+    for (const cita of citasCompletadas) {
+      const metodoPago = cita.metodoPago || 'EFECTIVO'
+      const totalCita = cita.total || 0
+      
+      if (metodoPago === 'EFECTIVO') {
+        totalEfectivo += totalCita
+      } else if (metodoPago === 'TPV_SUMUP') {
+        totalTPVSumup += totalCita
+      } else if (metodoPago === 'TPV_UNICAJA') {
+        totalTPVUnicaja += totalCita
+      }
+    }
 
     // Calcular totales de gastos
     const gastos = await prisma.gasto.findMany({
       where: {
         fecha: {
-          gte: new Date(fechaInicio),
-          lte: new Date(fechaFin)
+          gte: startDate,
+          lte: endDate
         }
       }
     })
@@ -94,8 +140,8 @@ export async function POST(request: NextRequest) {
     // Crear el cierre de caja
     const cierre = await prisma.cierreCaja.create({
       data: {
-        fechaInicio: new Date(fechaInicio),
-        fechaFin: new Date(fechaFin),
+        fechaInicio: startDate,
+        fechaFin: endDate,
         totalEfectivo,
         totalTPVSumup,
         totalTPVUnicaja,
