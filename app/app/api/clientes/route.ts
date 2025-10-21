@@ -17,13 +17,28 @@ export async function GET(req: NextRequest) {
     const clientes = await prisma.cliente.findMany({
       include: {
         vehiculos: true,
+        _count: {
+          select: {
+            citas: {
+              where: {
+                estado: 'COMPLETADA'
+              }
+            }
+          }
+        }
       },
       orderBy: {
         nombre: 'asc',
       },
     })
 
-    return NextResponse.json(clientes || [])
+    // Mapear para agregar el conteo de visitas
+    const clientesConVisitas = clientes.map(cliente => ({
+      ...cliente,
+      totalVisitas: cliente._count.citas
+    }))
+
+    return NextResponse.json(clientesConVisitas || [])
   } catch (error) {
     console.error('Error fetching clients:', error)
     return NextResponse.json(

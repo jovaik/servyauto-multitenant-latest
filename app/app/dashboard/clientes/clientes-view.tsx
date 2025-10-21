@@ -22,6 +22,7 @@ interface Cliente {
   documento?: string
   clienteParking?: boolean
   vehiculos?: Vehiculo[]
+  totalVisitas?: number
   createdAt: Date
 }
 
@@ -279,6 +280,14 @@ export function ClientesView() {
                       <Badge variant="secondary">
                         {cliente?.vehiculos?.length || 0} vehículo{(cliente?.vehiculos?.length || 0) !== 1 ? 's' : ''}
                       </Badge>
+                      <Badge variant="default" className="bg-green-600 hover:bg-green-700">
+                        {cliente?.totalVisitas || 0} visita{(cliente?.totalVisitas || 0) !== 1 ? 's' : ''}
+                      </Badge>
+                      {cliente.clienteParking && (
+                        <Badge variant="default" className="bg-blue-600 hover:bg-blue-700">
+                          Parking
+                        </Badge>
+                      )}
                       <Button
                         size="sm"
                         variant="outline"
