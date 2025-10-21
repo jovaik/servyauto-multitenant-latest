@@ -95,6 +95,14 @@ export function DashboardLayoutClient({ children, session }: DashboardLayoutClie
     setUserMenuOpen(false)
   }
 
+  // Cerrar sidebar solo en móvil al hacer clic en un link
+  const handleNavClick = () => {
+    // Solo cerrar en móvil (< 1024px)
+    if (window.innerWidth < 1024) {
+      setSidebarOpen(false)
+    }
+  }
+
   // Close user menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -124,7 +132,7 @@ export function DashboardLayoutClient({ children, session }: DashboardLayoutClie
       {/* Sidebar */}
       <div className={`
         fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 flex flex-col
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
         <div className="flex items-center justify-between h-28 px-2 border-b bg-white">
           <div className="flex items-center justify-center w-full">
@@ -164,7 +172,7 @@ export function DashboardLayoutClient({ children, session }: DashboardLayoutClie
                     : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
                   }
                 `}
-                onClick={() => setSidebarOpen(false)}
+                onClick={handleNavClick}
               >
                 <Icon className={`mr-3 h-5 w-5 ${isActive ? 'text-blue-700' : 'text-gray-400'}`} />
                 {item.name}
