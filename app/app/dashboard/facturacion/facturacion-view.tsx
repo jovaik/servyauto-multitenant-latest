@@ -579,12 +579,22 @@ export function FacturacionView() {
                 size="sm"
                 onClick={() => {
                   const hoy = new Date()
-                  const hace7dias = new Date(hoy.getTime() - 7 * 24 * 60 * 60 * 1000)
-                  setFilterFechaDesde(hace7dias.toISOString().split('T')[0])
+                  // Obtener el día de la semana (0 = domingo, 1 = lunes, ..., 6 = sábado)
+                  const diaSemana = hoy.getDay()
+                  // Calcular cuántos días hay que restar para llegar al lunes
+                  // Si es domingo (0), restar 6 días; si es lunes (1), restar 0; etc.
+                  const diasDesdeElLunes = diaSemana === 0 ? 6 : diaSemana - 1
+                  
+                  // Calcular la fecha del lunes de esta semana
+                  const lunes = new Date(hoy)
+                  lunes.setDate(hoy.getDate() - diasDesdeElLunes)
+                  lunes.setHours(0, 0, 0, 0)
+                  
+                  setFilterFechaDesde(lunes.toISOString().split('T')[0])
                   setFilterFechaHasta(hoy.toISOString().split('T')[0])
                 }}
               >
-                Última semana
+                Esta semana (L-D)
               </Button>
               <Button
                 variant="outline"

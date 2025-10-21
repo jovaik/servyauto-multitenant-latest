@@ -4,10 +4,11 @@
 import React, { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Plus, Calendar, DollarSign, TrendingUp, FileText } from 'lucide-react'
+import { Plus, Calendar, DollarSign, TrendingUp, FileText, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { NuevoCierreDialog } from '@/components/nuevo-cierre-dialog'
+import { EditarCierreDialog } from '@/components/editar-cierre-dialog'
 
 interface Cierre {
   id: string
@@ -52,6 +53,28 @@ export default function CierresCajaView() {
     }).format(value)
   }
 
+  const eliminarCierre = async (cierreId: string, fechaInicio: string, fechaFin: string) => {
+    if (!confirm(`¿Está seguro que desea eliminar el cierre del ${format(new Date(fechaInicio), 'dd/MM/yyyy', { locale: es })} al ${format(new Date(fechaFin), 'dd/MM/yyyy', { locale: es })}? Esta acción no se puede deshacer.`)) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/cierres-caja/${cierreId}`, {
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        alert('Cierre eliminado correctamente')
+        fetchCierres()
+      } else {
+        throw new Error('Error en la respuesta del servidor')
+      }
+    } catch (error) {
+      console.error('Error deleting cierre:', error)
+      alert('Error al eliminar el cierre. Por favor intenta de nuevo.')
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -81,19 +104,38 @@ export default function CierresCajaView() {
           {cierres.map((cierre) => (
             <Card key={cierre.id}>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5" />
-                  Cierre del{' '}
-                  {format(new Date(cierre.fechaInicio), 'dd/MM/yyyy', { locale: es })}
-                  {' al '}
-                  {format(new Date(cierre.fechaFin), 'dd/MM/yyyy', { locale: es })}
-                </CardTitle>
-                <CardDescription>
-                  Registrado el{' '}
-                  {format(new Date(cierre.createdAt), "dd/MM/yyyy 'a las' HH:mm", {
-                    locale: es,
-                  })}
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Calendar className="h-5 w-5" />
+                      Cierre del{' '}
+                      {format(new Date(cierre.fechaInicio), 'dd/MM/yyyy', { locale: es })}
+                      {' al '}
+                      {format(new Date(cierre.fechaFin), 'dd/MM/yyyy', { locale: es })}
+                    </CardTitle>
+                    <CardDescription>
+                      Registrado el{' '}
+                      {format(new Date(cierre.createdAt), "dd/MM/yyyy 'a las' HH:mm", {
+                        locale: es,
+                      })}
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <EditarCierreDialog 
+                      cierreId={cierre.id} 
+                      onCierreActualizado={fetchCierres}
+                    />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => eliminarCierre(cierre.id, cierre.fechaInicio, cierre.fechaFin)}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Eliminar
+                    </Button>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
