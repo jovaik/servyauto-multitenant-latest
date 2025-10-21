@@ -854,6 +854,66 @@ export function NuevaCitaDialog({
             </div>
           </div>
 
+          {/* Resumen de precios */}
+          {formData.servicios.length > 0 && (() => {
+            const clienteSeleccionado = clientes?.find(c => c.id === formData.clienteId)
+            const subtotal = formData.servicios.reduce((sum, servicioId) => {
+              const servicio = servicios?.find(s => s.id === servicioId)
+              return sum + (servicio?.precio || 0)
+            }, 0)
+            
+            let descuentoAplicado = 0
+            if (clienteSeleccionado?.clienteParking) {
+              if (descuentoParking.tipo === 'FIJO') {
+                descuentoAplicado = descuentoParking.valor
+              } else {
+                descuentoAplicado = (subtotal * descuentoParking.valor) / 100
+              }
+            }
+            
+            const total = Math.max(0, subtotal - descuentoAplicado)
+            
+            return (
+              <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm flex items-center text-blue-900">
+                    <CreditCard className="mr-2 h-4 w-4" />
+                    Resumen de Precios
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Subtotal servicios:</span>
+                    <span className="font-medium">€{subtotal.toFixed(2)}</span>
+                  </div>
+                  
+                  {clienteSeleccionado?.clienteParking && descuentoAplicado > 0 && (
+                    <div className="flex justify-between text-sm border-t pt-2">
+                      <span className="text-green-600 flex items-center">
+                        <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                        Descuento abonado:
+                      </span>
+                      <span className="font-medium text-green-600">-€{descuentoAplicado.toFixed(2)}</span>
+                    </div>
+                  )}
+                  
+                  <div className="flex justify-between text-base font-bold border-t-2 pt-2 border-blue-300">
+                    <span className="text-blue-900">TOTAL A COBRAR:</span>
+                    <span className="text-blue-900 text-lg">€{total.toFixed(2)}</span>
+                  </div>
+                  
+                  {clienteSeleccionado?.clienteParking && (
+                    <div className="text-xs text-green-700 bg-green-100 p-2 rounded mt-2 border border-green-200">
+                      ✓ Descuento de parking aplicado automáticamente
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )
+          })()}
+
           {/* Método de Pago */}
           <div className="space-y-2">
             <Label>Método de pago</Label>

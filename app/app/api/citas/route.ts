@@ -152,6 +152,39 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Aplicar descuento de parking si el cliente es abonado
+    const cliente = await prisma.cliente.findUnique({
+      where: { id: clienteId },
+      select: { clienteParking: true }
+    })
+
+    if (cliente?.clienteParking) {
+      // Obtener el descuento configurado
+      const descuentoConfig = await prisma.configuracion.findUnique({
+        where: { clave: 'precios.descuentoParking' }
+      })
+      
+      const tipoDescuentoConfig = await prisma.configuracion.findUnique({
+        where: { clave: 'precios.descuentoParkingTipo' }
+      })
+
+      if (descuentoConfig) {
+        const valorDescuento = parseFloat(descuentoConfig.valor) || 0
+        const tipoDescuento = tipoDescuentoConfig?.valor || 'FIJO'
+
+        if (tipoDescuento === 'FIJO') {
+          // Descuento fijo en euros
+          precioTotal = Math.max(0, precioTotal - valorDescuento)
+        } else {
+          // Descuento porcentual
+          const descuento = (precioTotal * valorDescuento) / 100
+          precioTotal = Math.max(0, precioTotal - descuento)
+        }
+        
+        console.log(`Descuento de parking aplicado: ${tipoDescuento === 'FIJO' ? valorDescuento + '€' : valorDescuento + '%'} - Total final: €${precioTotal}`)
+      }
+    }
+
     // Crear la cita con sus servicios asociados
     const cita = await prisma.cita.create({
       data: {

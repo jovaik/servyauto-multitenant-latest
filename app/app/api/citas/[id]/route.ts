@@ -54,6 +54,39 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       })
       
       precioFinal = serviciosData.reduce((sum, servicio) => sum + servicio.precio, 0)
+      
+      // Aplicar descuento de parking si el cliente es abonado
+      const cliente = await prisma.cliente.findUnique({
+        where: { id: citaExistente.clienteId },
+        select: { clienteParking: true }
+      })
+
+      if (cliente?.clienteParking) {
+        // Obtener el descuento configurado
+        const descuentoConfig = await prisma.configuracion.findUnique({
+          where: { clave: 'precios.descuentoParking' }
+        })
+        
+        const tipoDescuentoConfig = await prisma.configuracion.findUnique({
+          where: { clave: 'precios.descuentoParkingTipo' }
+        })
+
+        if (descuentoConfig) {
+          const valorDescuento = parseFloat(descuentoConfig.valor) || 0
+          const tipoDescuento = tipoDescuentoConfig?.valor || 'FIJO'
+
+          if (tipoDescuento === 'FIJO') {
+            // Descuento fijo en euros
+            precioFinal = Math.max(0, precioFinal - valorDescuento)
+          } else {
+            // Descuento porcentual
+            const descuento = (precioFinal * valorDescuento) / 100
+            precioFinal = Math.max(0, precioFinal - descuento)
+          }
+          
+          console.log(`Descuento de parking aplicado en actualización: ${tipoDescuento === 'FIJO' ? valorDescuento + '€' : valorDescuento + '%'} - Total final: €${precioFinal}`)
+        }
+      }
     }
 
     // Preparar datos de actualización
