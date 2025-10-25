@@ -90,6 +90,9 @@ export function NuevaCitaDialog({
     observaciones: '',
     metodoPago: '',
   })
+  
+  // Guardar info del cliente seleccionado para evitar problemas de sincronización
+  const [clienteSeleccionadoInfo, setClienteSeleccionadoInfo] = useState<{ clienteParking: boolean } | null>(null)
 
   // Nuevo cliente
   const [newCliente, setNewCliente] = useState({
@@ -232,6 +235,14 @@ export function NuevaCitaDialog({
         // Si el vehículo seleccionado no pertenece al nuevo cliente, limpiar selección
         setFormData(prev => ({ ...prev, vehiculoId: '' }))
       }
+      
+      // Actualizar info del cliente seleccionado para el cálculo de descuento
+      const clienteActual = clientes?.find(c => c.id === formData.clienteId)
+      if (clienteActual) {
+        setClienteSeleccionadoInfo({ clienteParking: clienteActual.clienteParking })
+      }
+    } else {
+      setClienteSeleccionadoInfo(null)
     }
   }, [formData.clienteId, clientes])
 
@@ -255,6 +266,8 @@ export function NuevaCitaDialog({
       const data = await response.json()
 
       if (response.ok) {
+        // Guardar info del cliente inmediatamente para aplicar descuento
+        setClienteSeleccionadoInfo({ clienteParking: newCliente.clienteParking })
         await loadClientes()
         setFormData(prev => ({ ...prev, clienteId: data.id, vehiculoId: '' }))
         setShowNewCliente(false)
@@ -430,6 +443,7 @@ export function NuevaCitaDialog({
       observaciones: '',
       metodoPago: '',
     })
+    setClienteSeleccionadoInfo(null)
     setNewCliente({
       nombre: '',
       apellido: '',
@@ -673,16 +687,14 @@ export function NuevaCitaDialog({
               </div>
 
               {/* Información de descuento y tickets */}
-              {formData.clienteId && (() => {
-                const clienteSeleccionado = clientes?.find(c => c.id === formData.clienteId)
-                return (
+              {formData.clienteId && (
                   <div className="space-y-2">
                     <div className="border rounded-lg p-3 bg-blue-50 border-blue-200">
                       <div className="flex items-center justify-between mb-2">
                         <h4 className="text-sm font-semibold text-blue-900">Información del cliente</h4>
                       </div>
                       <div className="space-y-1 text-sm">
-                        {clienteSeleccionado?.clienteParking ? (
+                        {clienteSeleccionadoInfo?.clienteParking ? (
                           <div className="flex items-center justify-between p-2 bg-green-50 border border-green-200 rounded">
                             <span className="flex items-center text-green-800">
                               <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
@@ -710,8 +722,7 @@ export function NuevaCitaDialog({
                       </div>
                     </div>
                   </div>
-                )
-              })()}
+              )}
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -856,14 +867,13 @@ export function NuevaCitaDialog({
 
           {/* Resumen de precios */}
           {formData.servicios.length > 0 && (() => {
-            const clienteSeleccionado = clientes?.find(c => c.id === formData.clienteId)
             const subtotal = formData.servicios.reduce((sum, servicioId) => {
               const servicio = servicios?.find(s => s.id === servicioId)
               return sum + (servicio?.precio || 0)
             }, 0)
             
             let descuentoAplicado = 0
-            if (clienteSeleccionado?.clienteParking) {
+            if (clienteSeleccionadoInfo?.clienteParking) {
               if (descuentoParking.tipo === 'FIJO') {
                 descuentoAplicado = descuentoParking.valor
               } else {
@@ -887,7 +897,7 @@ export function NuevaCitaDialog({
                     <span className="font-medium">€{subtotal.toFixed(2)}</span>
                   </div>
                   
-                  {clienteSeleccionado?.clienteParking && descuentoAplicado > 0 && (
+                  {clienteSeleccionadoInfo?.clienteParking && descuentoAplicado > 0 && (
                     <div className="flex justify-between text-sm border-t pt-2">
                       <span className="text-green-600 flex items-center">
                         <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
@@ -904,7 +914,7 @@ export function NuevaCitaDialog({
                     <span className="text-blue-900 text-lg">€{total.toFixed(2)}</span>
                   </div>
                   
-                  {clienteSeleccionado?.clienteParking && (
+                  {clienteSeleccionadoInfo?.clienteParking && (
                     <div className="text-xs text-green-700 bg-green-100 p-2 rounded mt-2 border border-green-200">
                       ✓ Descuento de parking aplicado automáticamente
                     </div>
