@@ -92,9 +92,8 @@
     position: relative;
   }
   
-  /* Forzar MAYÚSCULAS en todos los campos de entrada */
+  /* Forzar MAYÚSCULAS en todos los campos de entrada EXCEPTO email y password */
   input[type="text"],
-  input[type="email"],
   input[type="search"],
   input[type="tel"],
   textarea,
@@ -102,7 +101,8 @@
     text-transform: uppercase !important;
   }
   
-  /* Excluir campos de contraseña */
+  /* Excluir campos de email y contraseña (para login) */
+  input[type="email"],
   input[type="password"] {
     text-transform: none !important;
   }
