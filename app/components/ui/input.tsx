@@ -7,15 +7,25 @@ export interface InputProps
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, type, onChange, ...props }, ref) => {
-    // Convertir a mayúsculas automáticamente (excepto para passwords, email y otros tipos especiales)
+    // Tipos de input que NO deben convertirse a mayúsculas
+    const skipUppercase = ['password', 'email', 'number', 'date', 'time', 'datetime-local', 'file', 'checkbox', 'radio']
+    
+    // Solo usar handler personalizado para campos que necesitan conversión a mayúsculas
+    const shouldConvertToUppercase = !skipUppercase.includes(type || 'text')
+    
+    // Handler para convertir a mayúsculas
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (type !== 'password' && type !== 'email' && type !== 'number' && type !== 'date' && type !== 'time' && type !== 'datetime-local') {
+      if (shouldConvertToUppercase) {
         const start = e.target.selectionStart
         const end = e.target.selectionEnd
         e.target.value = e.target.value.toUpperCase()
         // Solo usar setSelectionRange si el tipo de input lo soporta
         if (start !== null && end !== null) {
-          e.target.setSelectionRange(start, end)
+          try {
+            e.target.setSelectionRange(start, end)
+          } catch (error) {
+            // Ignorar errores de setSelectionRange en tipos que no lo soportan
+          }
         }
       }
       if (onChange) {
@@ -31,7 +41,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           className
         )}
         ref={ref}
-        onChange={handleChange}
+        onChange={shouldConvertToUppercase ? handleChange : onChange}
         {...props}
       />
     )
