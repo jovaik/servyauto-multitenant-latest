@@ -91,4 +91,19 @@
   body {
     position: relative;
   }
+  
+  /* Forzar MAYÚSCULAS en todos los campos de entrada */
+  input[type="text"],
+  input[type="email"],
+  input[type="search"],
+  input[type="tel"],
+  textarea,
+  select {
+    text-transform: uppercase !important;
+  }
+  
+  /* Excluir campos de contraseña */
+  input[type="password"] {
+    text-transform: none !important;
+  }
 }

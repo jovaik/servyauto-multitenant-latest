@@ -6,7 +6,20 @@ export interface InputProps
   extends React.InputHTMLAttributes<HTMLInputElement> {}
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className, type, ...props }, ref) => {
+  ({ className, type, onChange, ...props }, ref) => {
+    // Convertir a mayúsculas automáticamente (excepto para passwords)
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (type !== 'password' && type !== 'number' && type !== 'date' && type !== 'time' && type !== 'datetime-local') {
+        const start = e.target.selectionStart
+        const end = e.target.selectionEnd
+        e.target.value = e.target.value.toUpperCase()
+        e.target.setSelectionRange(start, end)
+      }
+      if (onChange) {
+        onChange(e)
+      }
+    }
+
     return (
       <input
         type={type}
@@ -15,6 +28,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           className
         )}
         ref={ref}
+        onChange={handleChange}
         {...props}
       />
     )

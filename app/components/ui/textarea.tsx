@@ -6,7 +6,18 @@ export interface TextareaProps
   extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {}
 
 const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
-  ({ className, ...props }, ref) => {
+  ({ className, onChange, ...props }, ref) => {
+    // Convertir a mayúsculas automáticamente
+    const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const start = e.target.selectionStart
+      const end = e.target.selectionEnd
+      e.target.value = e.target.value.toUpperCase()
+      e.target.setSelectionRange(start, end)
+      if (onChange) {
+        onChange(e)
+      }
+    }
+
     return (
       <textarea
         className={cn(
@@ -14,6 +25,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
           className
         )}
         ref={ref}
+        onChange={handleChange}
         {...props}
       />
     )
