@@ -23,13 +23,15 @@ export default async function LoginPage() {
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
           <div className="flex justify-center mb-6">
-            <Image
-              src="/servyauto-logo.png"
-              alt="ServyAuto Logo"
-              width={200}
-              height={60}
-              priority
-            />
+            <div className="relative h-24 w-[250px]">
+              <Image
+                src="/servyauto-logo.jpg"
+                alt="ServyAuto Logo"
+                fill
+                className="object-contain"
+                priority
+              />
+            </div>
           </div>
           <h2 className="text-3xl font-bold tracking-tight text-gray-900">
             ServyAuto Manager
