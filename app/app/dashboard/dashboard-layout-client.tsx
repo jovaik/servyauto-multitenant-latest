@@ -166,15 +166,15 @@ export function DashboardLayoutClient({ children, session }: DashboardLayoutClie
                 key={item.name}
                 href={item.href}
                 className={`
-                  flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200
+                  flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 group
                   ${isActive 
                     ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700' 
-                    : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                    : 'text-gray-700 hover:bg-red-50 hover:text-red-600'
                   }
                 `}
                 onClick={handleNavClick}
               >
-                <Icon className={`mr-3 h-5 w-5 ${isActive ? 'text-blue-700' : 'text-gray-400'}`} />
+                <Icon className={`mr-3 h-5 w-5 transition-colors duration-200 ${isActive ? 'text-blue-700' : 'text-gray-400 group-hover:text-red-600'}`} />
                 {item.name}
               </Link>
             )
