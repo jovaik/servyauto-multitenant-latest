@@ -181,19 +181,15 @@ export function DashboardLayoutClient({ children, session }: DashboardLayoutClie
           })}
         </nav>
 
-        {/* Powered by Host4yourweb - Comentado temporalmente
         <div className="px-4 py-3 text-center border-t">
-          <a 
-            href="https://host4yourweb.com" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="text-xs text-gray-500 hover:text-blue-600 transition-colors flex items-center justify-center gap-1.5 group"
-          >
+          <div className="text-xs text-gray-500 flex items-center justify-center gap-1.5">
             <span className="font-medium">Powered by</span>
-            <span className="font-bold text-blue-600 group-hover:text-blue-700">Host4yourweb</span>
-          </a>
+            <span className="font-bold text-blue-600">D&D4U</span>
+          </div>
+          <div className="text-[10px] text-gray-400 mt-0.5">
+            (Development and designed for you)
+          </div>
         </div>
-        */}
 
         <div className="border-t px-4 py-4 relative" ref={userMenuRef}>
           <Button 
