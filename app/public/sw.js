@@ -1,6 +1,6 @@
 
 // Service Worker para PWA de ServyAuto Manager
-const CACHE_NAME = 'servyauto-v1';
+const CACHE_NAME = 'servyauto-v2';
 const OFFLINE_URL = '/offline.html';
 
 // Recursos para cachear

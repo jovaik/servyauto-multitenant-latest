@@ -36,7 +36,7 @@ export default async function LoginPage() {
         </div>
         <LoginForm />
         
-        {/* Powered by Host4yourweb */}
+        {/* Powered by Host4yourweb - Comentado temporalmente
         <div className="text-center pt-6">
           <a 
             href="https://host4yourweb.com" 
@@ -48,6 +48,7 @@ export default async function LoginPage() {
             <span className="font-bold text-blue-600 group-hover:text-blue-700">Host4yourweb</span>
           </a>
         </div>
+        */}
       </div>
     </div>
   )

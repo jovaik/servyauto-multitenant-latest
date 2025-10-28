@@ -181,7 +181,7 @@ export function DashboardLayoutClient({ children, session }: DashboardLayoutClie
           })}
         </nav>
 
-        {/* Powered by Host4yourweb */}
+        {/* Powered by Host4yourweb - Comentado temporalmente
         <div className="px-4 py-3 text-center border-t">
           <a 
             href="https://host4yourweb.com" 
@@ -193,6 +193,7 @@ export function DashboardLayoutClient({ children, session }: DashboardLayoutClie
             <span className="font-bold text-blue-600 group-hover:text-blue-700">Host4yourweb</span>
           </a>
         </div>
+        */}
 
         <div className="border-t px-4 py-4 relative" ref={userMenuRef}>
           <Button 
