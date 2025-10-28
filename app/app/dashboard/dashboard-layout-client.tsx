@@ -168,13 +168,13 @@ export function DashboardLayoutClient({ children, session }: DashboardLayoutClie
                 className={`
                   flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 group
                   ${isActive 
-                    ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700' 
+                    ? 'bg-red-50 text-red-600 border-r-2 border-red-600' 
                     : 'text-gray-700 hover:bg-red-50 hover:text-red-600'
                   }
                 `}
                 onClick={handleNavClick}
               >
-                <Icon className={`mr-3 h-5 w-5 transition-colors duration-200 ${isActive ? 'text-blue-700' : 'text-gray-400 group-hover:text-red-600'}`} />
+                <Icon className={`mr-3 h-5 w-5 transition-colors duration-200 ${isActive ? 'text-red-600' : 'text-gray-400 group-hover:text-red-600'}`} />
                 {item.name}
               </Link>
             )
@@ -184,7 +184,7 @@ export function DashboardLayoutClient({ children, session }: DashboardLayoutClie
         <div className="px-4 py-3 text-center border-t">
           <div className="text-xs text-gray-500 flex items-center justify-center gap-1.5">
             <span className="font-medium">Powered by</span>
-            <span className="font-bold text-blue-600">D&D4U</span>
+            <span className="font-bold text-red-600">D&D4U</span>
           </div>
           <div className="text-[10px] text-gray-400 mt-0.5">
             (Development and designed for you)

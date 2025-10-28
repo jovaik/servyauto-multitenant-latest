@@ -40,7 +40,7 @@ export default async function LoginPage() {
           <div className="text-xs text-gray-500 inline-flex flex-col items-center gap-1">
             <div className="flex items-center gap-1.5">
               <span className="font-medium">Powered by</span>
-              <span className="font-bold text-blue-600">D&D4U</span>
+              <span className="font-bold text-red-600">D&D4U</span>
             </div>
             <div className="text-[10px] text-gray-400">
               (Development and designed for you)
