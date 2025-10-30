@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { updateInGSControl, deleteFromGSControl, getExternalIdFromDate } from '@/lib/gscontrol-sync'
 
 export async function GET(
   request: NextRequest,
@@ -126,6 +127,33 @@ export async function PUT(
 
     console.log('=== FACTURA ACTUALIZADA ===')
 
+    // 🔄 SINCRONIZAR ACTUALIZACIÓN CON GSCONTROL
+    try {
+      const esTicket = factura.tipo === 'TICKET';
+      const externalId = getExternalIdFromDate(
+        esTicket ? 'TICK' : 'FAC',
+        factura.id,
+        factura.createdAt
+      );
+
+      // Preparar actualización para GSControl (solo campos modificados)
+      const updateForGSControl: any = { externalId };
+
+      if (total !== undefined) updateForGSControl.amount = factura.total;
+      if (estado === 'PAGADA' || estado === 'COBRADO') {
+        // Si cambió a estado pagado, asegurarse de que esté sincronizado
+        updateForGSControl.type = 'INGRESO';
+        updateForGSControl.amount = factura.total;
+        updateForGSControl.description = factura.factura_items?.map((i: any) => i.descripcion).join(', ') || 'Servicio de taller';
+      }
+
+      await updateInGSControl([updateForGSControl]);
+      console.log('✅ Factura actualizada en GSControl');
+    } catch (syncError) {
+      console.error('⚠️ Error al sincronizar actualización con GSControl (no crítico):', syncError);
+      // No fallar la operación si GSControl falla
+    }
+
     // Transformar los datos para el frontend
     const facturaConItems = {
       ...factura,
@@ -162,6 +190,22 @@ export async function DELETE(
         { error: 'Factura no encontrada' },
         { status: 404 }
       )
+    }
+
+    // 🔄 SINCRONIZAR ELIMINACIÓN CON GSCONTROL (antes de borrar)
+    try {
+      const esTicket = factura.tipo === 'TICKET';
+      const externalId = getExternalIdFromDate(
+        esTicket ? 'TICK' : 'FAC',
+        factura.id,
+        factura.createdAt
+      );
+
+      await deleteFromGSControl([externalId]);
+      console.log('✅ Factura eliminada de GSControl');
+    } catch (syncError) {
+      console.error('⚠️ Error al sincronizar eliminación con GSControl (no crítico):', syncError);
+      // No fallar la operación si GSControl falla
     }
 
     // Eliminar factura (los items se eliminan automáticamente por CASCADE)

@@ -346,3 +346,186 @@ export async function syncCierreCaja(cierre: {
 
   return syncToGSControl(transactions);
 }
+
+/**
+ * ========================================
+ * ACTUALIZAR TRANSACCIONES EN GSCONTROL
+ * ========================================
+ */
+
+interface UpdateResponse {
+  message: string;
+  updated: number;
+  errors: number;
+  results: {
+    updated: string[];
+    errors: Array<{
+      externalId?: string;
+      error: string;
+    }>;
+  };
+}
+
+/**
+ * Actualiza transacciones en GSControl (método PUT)
+ */
+export async function updateInGSControl(
+  transactions: Partial<Transaction> & { externalId: string }[]
+): Promise<SyncResult> {
+  const apiKey = process.env.GSCONTROL_API_KEY;
+
+  if (!apiKey) {
+    console.warn('⚠️ GSCONTROL_API_KEY no configurada - actualización deshabilitada');
+    return {
+      success: false,
+      message: 'API Key no configurada',
+      error: 'GSCONTROL_API_KEY no está definida',
+    };
+  }
+
+  try {
+    console.log(`📝 Actualizando ${transactions.length} transacción(es) en GSControl...`);
+
+    const response = await fetch(GSCONTROL_ENDPOINT, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ transactions }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error('❌ Error al actualizar en GSControl:', data);
+      return {
+        success: false,
+        message: data.error || 'Error al actualizar',
+        error: data.error,
+      };
+    }
+
+    const updateResponse = data as UpdateResponse;
+
+    if (updateResponse.errors > 0) {
+      console.warn(`⚠️ Actualización parcial: ${updateResponse.updated} exitosas, ${updateResponse.errors} con errores`);
+      updateResponse.results.errors.forEach(err => {
+        console.warn(`  - ${err.externalId}: ${err.error}`);
+      });
+    } else {
+      console.log(`✅ Actualización exitosa: ${updateResponse.updated} transacciones actualizadas`);
+    }
+
+    return {
+      success: true,
+      message: updateResponse.message,
+      response: updateResponse as any,
+    };
+  } catch (error) {
+    console.error('❌ Error al actualizar en GSControl:', error);
+    return {
+      success: false,
+      message: 'Error de actualización',
+      error: (error as Error).message,
+    };
+  }
+}
+
+/**
+ * ========================================
+ * ELIMINAR TRANSACCIONES EN GSCONTROL
+ * ========================================
+ */
+
+interface DeleteResponse {
+  message: string;
+  deleted: number;
+  errors: number;
+  results: {
+    deleted: string[];
+    errors: Array<{
+      externalId: string;
+      error: string;
+    }>;
+  };
+}
+
+/**
+ * Elimina transacciones en GSControl (método DELETE)
+ */
+export async function deleteFromGSControl(
+  externalIds: string[]
+): Promise<SyncResult> {
+  const apiKey = process.env.GSCONTROL_API_KEY;
+
+  if (!apiKey) {
+    console.warn('⚠️ GSCONTROL_API_KEY no configurada - eliminación deshabilitada');
+    return {
+      success: false,
+      message: 'API Key no configurada',
+      error: 'GSCONTROL_API_KEY no está definida',
+    };
+  }
+
+  try {
+    console.log(`🗑️ Eliminando ${externalIds.length} transacción(es) en GSControl...`);
+
+    const response = await fetch(GSCONTROL_ENDPOINT, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ externalIds }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error('❌ Error al eliminar en GSControl:', data);
+      return {
+        success: false,
+        message: data.error || 'Error al eliminar',
+        error: data.error,
+      };
+    }
+
+    const deleteResponse = data as DeleteResponse;
+
+    if (deleteResponse.errors > 0) {
+      console.warn(`⚠️ Eliminación parcial: ${deleteResponse.deleted} exitosas, ${deleteResponse.errors} con errores`);
+      deleteResponse.results.errors.forEach(err => {
+        console.warn(`  - ${err.externalId}: ${err.error}`);
+      });
+    } else {
+      console.log(`✅ Eliminación exitosa: ${deleteResponse.deleted} transacciones eliminadas`);
+    }
+
+    return {
+      success: true,
+      message: deleteResponse.message,
+      response: deleteResponse as any,
+    };
+  } catch (error) {
+    console.error('❌ Error al eliminar en GSControl:', error);
+    return {
+      success: false,
+      message: 'Error de eliminación',
+      error: (error as Error).message,
+    };
+  }
+}
+
+/**
+ * Función auxiliar: Genera el externalId para un registro existente
+ * (para actualizar/eliminar registros que ya existen en GSControl)
+ * 
+ * IMPORTANTE: Usa la fecha de creación del registro, NO la fecha actual
+ */
+export function getExternalIdFromDate(type: 'FAC' | 'TICK' | 'GAS' | 'CIE', id: string, createdDate: Date, suffix?: string): string {
+  const date = createdDate.toISOString().split('T')[0].replace(/-/g, '');
+  const shortId = String(id).slice(-8);
+  const fullId = suffix ? `${shortId}-${suffix}` : shortId;
+  return `SERVYAUTO-${type}-${date}-${fullId}`;
+}
