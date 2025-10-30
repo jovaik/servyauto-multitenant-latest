@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { enviarNotificacionVehiculoListo } from '@/lib/notifications'
+import { syncFactura, syncTicket } from '@/lib/gscontrol-sync'
 
 export const dynamic = 'force-dynamic'
 
@@ -154,12 +155,31 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         facturaUpdateData.metodoPago = metodoPago
       }
       
-      await prisma.factura.update({
+      const facturaActualizada = await prisma.factura.update({
         where: { id: cita.facturas.id },
-        data: facturaUpdateData
+        data: facturaUpdateData,
+        include: {
+          cliente: true
+        }
       })
       
       console.log('=== FACTURA MARCADA COMO PAGADA ===')
+      
+      // Sincronizar con GSControl cuando se paga la factura
+      syncFactura({
+        id: facturaActualizada.id,
+        numeroFactura: facturaActualizada.numero,
+        fecha: facturaActualizada.createdAt || new Date(),
+        total: facturaActualizada.total,
+        iva: 21,
+        cliente: facturaActualizada.cliente,
+        servicios: cita.cita_servicios?.map((cs: any) => ({
+          nombre: cs.servicios.nombre,
+          precio: cs.servicios.precio
+        }))
+      }).catch(err => {
+        console.error('Error sincronizando factura pagada:', err)
+      })
     }
     
     // Si la cita se marca como COMPLETADA y no tiene factura, crear una automáticamente
@@ -242,6 +262,37 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       console.log('Tipo:', tipoDocumento)
       console.log('Número:', numeroDocumento)
       console.log('Total:', total)
+      
+      // Sincronizar con GSControl en segundo plano
+      if (tipoDocumento === 'FACTURA') {
+        syncFactura({
+          id: factura.id,
+          numeroFactura: numeroDocumento,
+          fecha: factura.createdAt || new Date(),
+          total: total,
+          iva: 21,
+          cliente: cita.cliente,
+          servicios: cita.cita_servicios?.map((cs: any) => ({
+            nombre: cs.servicios.nombre,
+            precio: cs.servicios.precio
+          }))
+        }).catch(err => {
+          console.error('Error sincronizando factura:', err)
+        })
+      } else {
+        syncTicket({
+          id: factura.id,
+          fecha: factura.createdAt || new Date(),
+          total: total,
+          estado: 'COBRADO',
+          servicios: cita.cita_servicios?.map((cs: any) => ({
+            nombre: cs.servicios.nombre,
+            precio: cs.servicios.precio
+          }))
+        }).catch(err => {
+          console.error('Error sincronizando ticket:', err)
+        })
+      }
     }
     
     // Enviar notificación automática cuando se marca como COMPLETADA
