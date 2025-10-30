@@ -136,6 +136,7 @@ export function SignupForm() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               autoCapitalize="none"
+              className="no-uppercase"
               required
               disabled={isLoading || success}
             />
@@ -151,6 +152,7 @@ export function SignupForm() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoCapitalize="none"
+                className="no-uppercase"
                 required
                 disabled={isLoading || success}
               />
@@ -180,6 +182,7 @@ export function SignupForm() {
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               autoCapitalize="none"
+              className="no-uppercase"
               required
               disabled={isLoading || success}
             />

@@ -92,18 +92,19 @@
     position: relative;
   }
   
-  /* Forzar MAYÚSCULAS en todos los campos de entrada EXCEPTO email y password */
-  input[type="text"],
-  input[type="search"],
-  input[type="tel"],
-  textarea,
-  select {
+  /* Forzar MAYÚSCULAS en todos los campos de entrada EXCEPTO email, password y campos de autenticación */
+  input[type="text"]:not(.no-uppercase),
+  input[type="search"]:not(.no-uppercase),
+  input[type="tel"]:not(.no-uppercase),
+  textarea:not(.no-uppercase),
+  select:not(.no-uppercase) {
     text-transform: uppercase !important;
   }
   
-  /* Excluir campos de email y contraseña (para login) */
+  /* Excluir campos de email, contraseña y autenticación */
   input[type="email"],
-  input[type="password"] {
+  input[type="password"],
+  input.no-uppercase {
     text-transform: none !important;
   }
 }

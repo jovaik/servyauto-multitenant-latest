@@ -98,6 +98,7 @@ export function LoginForm() {
               autoCorrect="off"
               spellCheck="false"
               inputMode="email"
+              className="no-uppercase"
               required
             />
           </div>
@@ -115,6 +116,7 @@ export function LoginForm() {
                 autoCapitalize="none"
                 autoCorrect="off"
                 spellCheck="false"
+                className="no-uppercase"
                 required
               />
               <Button
