@@ -323,22 +323,22 @@ async function main() {
   console.log('\n═══════════════════════════════════════════════════');
   console.log('🔄 SINCRONIZACIÓN MASIVA DE DATOS HISTÓRICOS');
   console.log('   ServyAuto → GSControl');
+  console.log('   (SOLO INGRESOS Y GASTOS - SIN CIERRES DE CAJA)');
   console.log('═══════════════════════════════════════════════════');
 
   try {
     const facturasResult = await syncFacturas();
     const gastosResult = await syncGastos();
-    const cierresResult = await syncCierres();
+    // NO sincronizamos cierres de caja - GSControl solo necesita ingresos y gastos
 
     console.log('\n═══════════════════════════════════════════════════');
     console.log('📊 RESUMEN FINAL DE SINCRONIZACIÓN');
     console.log('═══════════════════════════════════════════════════');
     console.log(`✅ Facturas sincronizadas: ${facturasResult.success}`);
     console.log(`✅ Gastos sincronizados: ${gastosResult.success}`);
-    console.log(`✅ Cierres sincronizados: ${cierresResult.success}`);
     
-    const totalSuccess = facturasResult.success + gastosResult.success + cierresResult.success;
-    const totalErrors = facturasResult.errors + gastosResult.errors + cierresResult.errors;
+    const totalSuccess = facturasResult.success + gastosResult.success;
+    const totalErrors = facturasResult.errors + gastosResult.errors;
     
     console.log(`\n🎯 TOTAL: ${totalSuccess} transacciones sincronizadas`);
     
