@@ -165,7 +165,10 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       
       console.log('=== FACTURA MARCADA COMO PAGADA ===')
       
-      // Sincronizar con GSControl cuando se paga la factura
+      // 🔄 SINCRONIZAR CON GSCONTROL cuando se paga la factura
+      console.log('📤 Iniciando sincronización de factura pagada con GSControl...')
+      console.log(`Factura: ${facturaActualizada.numero}, Total: ${facturaActualizada.total}`)
+      
       syncFactura({
         id: facturaActualizada.id,
         numeroFactura: facturaActualizada.numero,
@@ -177,6 +180,12 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
           nombre: cs.servicios.nombre,
           precio: cs.servicios.precio
         }))
+      }).then(result => {
+        if (result.success) {
+          console.log('✅ Factura pagada sincronizada con GSControl exitosamente');
+        } else {
+          console.error('⚠️ Error en sincronización de factura pagada:', result.message, result.error);
+        }
       }).catch(err => {
         console.error('Error sincronizando factura pagada:', err)
       })
@@ -263,7 +272,10 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       console.log('Número:', numeroDocumento)
       console.log('Total:', total)
       
-      // Sincronizar con GSControl en segundo plano
+      // 🔄 SINCRONIZAR CON GSCONTROL (factura o ticket desde cita completada)
+      console.log('📤 Iniciando sincronización con GSControl...')
+      console.log(`Tipo: ${tipoDocumento}, Total: ${total}`)
+      
       if (tipoDocumento === 'FACTURA') {
         syncFactura({
           id: factura.id,
@@ -276,8 +288,14 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
             nombre: cs.servicios.nombre,
             precio: cs.servicios.precio
           }))
+        }).then(result => {
+          if (result.success) {
+            console.log('✅ Factura de cita sincronizada con GSControl exitosamente');
+          } else {
+            console.error('⚠️ Error en sincronización de factura:', result.message, result.error);
+          }
         }).catch(err => {
-          console.error('Error sincronizando factura:', err)
+          console.error('❌ Error crítico sincronizando factura:', err)
         })
       } else {
         syncTicket({
@@ -289,8 +307,14 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
             nombre: cs.servicios.nombre,
             precio: cs.servicios.precio
           }))
+        }).then(result => {
+          if (result.success) {
+            console.log('✅ Ticket de cita sincronizado con GSControl exitosamente');
+          } else {
+            console.error('⚠️ Error en sincronización de ticket:', result.message, result.error);
+          }
         }).catch(err => {
-          console.error('Error sincronizando ticket:', err)
+          console.error('❌ Error crítico sincronizando ticket:', err)
         })
       }
     }

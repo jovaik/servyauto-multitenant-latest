@@ -109,7 +109,10 @@ export async function POST(request: NextRequest) {
 
     console.log('Gasto creado exitosamente:', gasto.id)
 
-    // Sincronizar con GSControl (no bloqueante)
+    // 🔄 SINCRONIZAR CON GSCONTROL
+    console.log('📤 Iniciando sincronización de gasto con GSControl...')
+    console.log(`Concepto: ${gasto.concepto}, Monto: -${gasto.importe}`)
+    
     syncGasto({
       id: gasto.id,
       fecha: gasto.fecha,
@@ -119,8 +122,14 @@ export async function POST(request: NextRequest) {
       numeroFactura: gasto.numeroFactura,
       proveedor: gasto.proveedor,
       tipoImpuesto: gasto.iva === 21 ? 'IVA_21' : gasto.iva === 10 ? 'IVA_10' : gasto.iva === 4 ? 'IVA_4' : 'SIN_IVA'
+    }).then(result => {
+      if (result.success) {
+        console.log('✅ Gasto sincronizado con GSControl exitosamente');
+      } else {
+        console.error('⚠️ Error en sincronización con GSControl:', result.message, result.error);
+      }
     }).catch(error => {
-      console.error('❌ Error sincronizando gasto con GSControl:', error);
+      console.error('❌ Error crítico sincronizando gasto con GSControl:', error);
     });
 
     return NextResponse.json(gasto, { status: 201 })
