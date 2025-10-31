@@ -164,11 +164,11 @@ export async function POST(request: NextRequest) {
 
     console.log('Factura creada exitosamente:', factura.numero)
 
-    // 🔄 SINCRONIZAR CON GSCONTROL (tanto FACTURAS como TICKETS)
-    console.log('📤 Iniciando sincronización con GSControl...')
+    // 🔄 SINCRONIZAR CON GSCONTROL INMEDIATAMENTE (webhook/push)
+    console.log('📤 Sincronizando con GSControl...')
     console.log(`Tipo: ${factura.tipo}, Total: ${factura.total}`)
     
-    syncFactura({
+    await syncFactura({
       id: factura.id,
       numeroFactura: factura.numero,
       fecha: factura.createdAt,
@@ -179,15 +179,7 @@ export async function POST(request: NextRequest) {
         nombre: item.descripcion,
         precio: item.total
       }))
-    }).then(result => {
-      if (result.success) {
-        console.log('✅ Factura/Ticket sincronizado con GSControl exitosamente');
-      } else {
-        console.error('⚠️ Error en sincronización con GSControl:', result.message, result.error);
-      }
-    }).catch(error => {
-      console.error('❌ Error crítico sincronizando con GSControl:', error);
-    });
+    })
 
     return NextResponse.json(factura, { status: 201 })
   } catch (error) {

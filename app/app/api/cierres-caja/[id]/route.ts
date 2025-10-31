@@ -109,7 +109,7 @@ export async function PUT(
       if (totalGastos > 0) {
         transactionsToUpdate.push({
           externalId: getExternalIdFromDate('CIE', `${cierre.id}-GAS`, cierre.createdAt),
-          amount: totalGastos,
+          amount: -Math.abs(totalGastos), // GASTOS SIEMPRE NEGATIVOS
           date: cierre.fechaFin.toISOString(),
           description: `Gastos del día - ${observaciones || 'Sin detalles'} (actualizado)`,
         });

@@ -82,9 +82,10 @@ export async function PUT(
       const externalId = getExternalIdFromDate('GAS', gasto.id, gasto.createdAt);
 
       // Preparar actualización para GSControl
+      // IMPORTANTE: Los gastos SIEMPRE deben ser negativos
       const updateForGSControl: any = { 
         externalId,
-        amount: gasto.importe,
+        amount: -Math.abs(gasto.importe), // GASTOS SIEMPRE NEGATIVOS
         description: gasto.concepto,
         date: gasto.fecha.toISOString(),
         ivaRate: gasto.iva,
