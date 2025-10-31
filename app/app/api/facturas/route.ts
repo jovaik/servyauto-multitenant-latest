@@ -164,11 +164,11 @@ export async function POST(request: NextRequest) {
 
     console.log('Factura creada exitosamente:', factura.numero)
 
-    // 🔄 SINCRONIZAR CON GSCONTROL INMEDIATAMENTE (webhook/push)
+    // 🔄 SINCRONIZAR CON GSCONTROL (fire and forget)
     console.log('📤 Sincronizando con GSControl...')
     console.log(`Tipo: ${factura.tipo}, Total: ${factura.total}`)
     
-    await syncFactura({
+    syncFactura({
       id: factura.id,
       numeroFactura: factura.numero,
       fecha: factura.createdAt,
@@ -179,7 +179,7 @@ export async function POST(request: NextRequest) {
         nombre: item.descripcion,
         precio: item.total
       }))
-    })
+    }).catch(err => console.error('[GSControl] Error al crear factura:', err))
 
     return NextResponse.json(factura, { status: 201 })
   } catch (error) {

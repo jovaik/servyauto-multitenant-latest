@@ -77,34 +77,29 @@ export async function PUT(
 
     console.log('Gasto actualizado exitosamente:', gasto.id)
 
-    // 🔄 SINCRONIZAR ACTUALIZACIÓN CON GSCONTROL
-    try {
-      const externalId = getExternalIdFromDate('GAS', gasto.id, gasto.createdAt);
+    // 🔄 SINCRONIZAR ACTUALIZACIÓN CON GSCONTROL (fire and forget)
+    const externalId = getExternalIdFromDate('GAS', gasto.id, gasto.createdAt);
 
-      // Preparar actualización para GSControl
-      // IMPORTANTE: Los gastos SIEMPRE deben ser negativos
-      const updateForGSControl: any = { 
-        externalId,
-        amount: -Math.abs(gasto.importe), // GASTOS SIEMPRE NEGATIVOS
-        description: gasto.concepto,
-        date: gasto.fecha.toISOString(),
-        ivaRate: gasto.iva,
-        costCategory: gasto.tipoGasto || 'OTROS'
-      };
+    // Preparar actualización para GSControl
+    // IMPORTANTE: Los gastos SIEMPRE deben ser negativos
+    const updateForGSControl: any = { 
+      externalId,
+      amount: -Math.abs(gasto.importe), // GASTOS SIEMPRE NEGATIVOS
+      description: gasto.concepto,
+      date: gasto.fecha.toISOString(),
+      ivaRate: gasto.iva,
+      costCategory: gasto.tipoGasto || 'OTROS'
+    };
 
-      if (gasto.numeroFactura) {
-        updateForGSControl.documentType = 'FACTURA';
-        updateForGSControl.invoiceNumber = gasto.numeroFactura;
-      } else {
-        updateForGSControl.documentType = 'NO APLICA';
-      }
-
-      await updateInGSControl([updateForGSControl]);
-      console.log('✅ Gasto actualizado en GSControl');
-    } catch (syncError) {
-      console.error('⚠️ Error al sincronizar actualización con GSControl (no crítico):', syncError);
-      // No fallar la operación si GSControl falla
+    if (gasto.numeroFactura) {
+      updateForGSControl.documentType = 'FACTURA';
+      updateForGSControl.invoiceNumber = gasto.numeroFactura;
+    } else {
+      updateForGSControl.documentType = 'NO APLICA';
     }
+
+    updateInGSControl([updateForGSControl])
+      .catch(err => console.error('[GSControl] Error al actualizar gasto:', err));
 
     return NextResponse.json(gasto)
   } catch (error) {
@@ -135,15 +130,10 @@ export async function DELETE(
       return NextResponse.json({ error: 'Gasto no encontrado' }, { status: 404 })
     }
 
-    // 🔄 SINCRONIZAR ELIMINACIÓN CON GSCONTROL (antes de borrar)
-    try {
-      const externalId = getExternalIdFromDate('GAS', gasto.id, gasto.createdAt);
-      await deleteFromGSControl([externalId]);
-      console.log('✅ Gasto eliminado de GSControl');
-    } catch (syncError) {
-      console.error('⚠️ Error al sincronizar eliminación con GSControl (no crítico):', syncError);
-      // No fallar la operación si GSControl falla
-    }
+    // 🔄 SINCRONIZAR ELIMINACIÓN CON GSCONTROL (fire and forget)
+    const externalId = getExternalIdFromDate('GAS', gasto.id, gasto.createdAt);
+    deleteFromGSControl([externalId])
+      .catch(err => console.error('[GSControl] Error al eliminar gasto:', err));
 
     await prisma.gasto.delete({
       where: { id: params.id }

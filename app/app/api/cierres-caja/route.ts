@@ -154,10 +154,10 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // 🔄 SINCRONIZAR CON GSCONTROL INMEDIATAMENTE (webhook/push)
+    // 🔄 SINCRONIZAR CON GSCONTROL (fire and forget)
     console.log('📤 Sincronizando cierre de caja con GSControl...')
     
-    await syncCierreCaja({
+    syncCierreCaja({
       id: cierre.id,
       fecha: cierre.fechaFin,
       efectivo: cierre.totalEfectivo,
@@ -165,7 +165,7 @@ export async function POST(request: NextRequest) {
       transferencia: 0, // No se usa en este sistema
       gastos: cierre.gastosEfectivo + cierre.gastosTarjeta,
       notas: cierre.observaciones,
-    })
+    }).catch(err => console.error('[GSControl] Error al crear cierre de caja:', err))
 
     return NextResponse.json(cierre, { status: 201 })
   } catch (error) {

@@ -109,11 +109,11 @@ export async function POST(request: NextRequest) {
 
     console.log('Gasto creado exitosamente:', gasto.id)
 
-    // 🔄 SINCRONIZAR CON GSCONTROL INMEDIATAMENTE (webhook/push)
+    // 🔄 SINCRONIZAR CON GSCONTROL (fire and forget)
     console.log('📤 Sincronizando con GSControl...')
     console.log(`Concepto: ${gasto.concepto}, Monto: -${gasto.importe}`)
     
-    await syncGasto({
+    syncGasto({
       id: gasto.id,
       fecha: gasto.fecha,
       monto: gasto.importe,
@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
       numeroFactura: gasto.numeroFactura,
       proveedor: gasto.proveedor,
       tipoImpuesto: gasto.iva === 21 ? 'IVA_21' : gasto.iva === 10 ? 'IVA_10' : gasto.iva === 4 ? 'IVA_4' : 'SIN_IVA'
-    })
+    }).catch(err => console.error('[GSControl] Error al crear gasto:', err))
 
     return NextResponse.json(gasto, { status: 201 })
   } catch (error: any) {

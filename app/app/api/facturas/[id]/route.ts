@@ -127,32 +127,27 @@ export async function PUT(
 
     console.log('=== FACTURA ACTUALIZADA ===')
 
-    // 🔄 SINCRONIZAR ACTUALIZACIÓN CON GSCONTROL
-    try {
-      const esTicket = factura.tipo === 'TICKET';
-      const externalId = getExternalIdFromDate(
-        esTicket ? 'TICK' : 'FAC',
-        factura.id,
-        factura.createdAt
-      );
+    // 🔄 SINCRONIZAR ACTUALIZACIÓN CON GSCONTROL (fire and forget)
+    const esTicket = factura.tipo === 'TICKET';
+    const externalId = getExternalIdFromDate(
+      esTicket ? 'TICK' : 'FAC',
+      factura.id,
+      factura.createdAt
+    );
 
-      // Preparar actualización para GSControl (solo campos modificados)
-      const updateForGSControl: any = { externalId };
+    // Preparar actualización para GSControl (solo campos modificados)
+    const updateForGSControl: any = { externalId };
 
-      if (total !== undefined) updateForGSControl.amount = factura.total;
-      if (estado === 'PAGADA' || estado === 'COBRADO') {
-        // Si cambió a estado pagado, asegurarse de que esté sincronizado
-        updateForGSControl.type = 'INGRESO';
-        updateForGSControl.amount = factura.total;
-        updateForGSControl.description = factura.factura_items?.map((i: any) => i.descripcion).join(', ') || 'Servicio de taller';
-      }
-
-      await updateInGSControl([updateForGSControl]);
-      console.log('✅ Factura actualizada en GSControl');
-    } catch (syncError) {
-      console.error('⚠️ Error al sincronizar actualización con GSControl (no crítico):', syncError);
-      // No fallar la operación si GSControl falla
+    if (total !== undefined) updateForGSControl.amount = factura.total;
+    if (estado === 'PAGADA' || estado === 'COBRADO') {
+      // Si cambió a estado pagado, asegurarse de que esté sincronizado
+      updateForGSControl.type = 'INGRESO';
+      updateForGSControl.amount = factura.total;
+      updateForGSControl.description = factura.factura_items?.map((i: any) => i.descripcion).join(', ') || 'Servicio de taller';
     }
+
+    updateInGSControl([updateForGSControl])
+      .catch(err => console.error('[GSControl] Error al actualizar factura:', err));
 
     // Transformar los datos para el frontend
     const facturaConItems = {
@@ -192,21 +187,16 @@ export async function DELETE(
       )
     }
 
-    // 🔄 SINCRONIZAR ELIMINACIÓN CON GSCONTROL (antes de borrar)
-    try {
-      const esTicket = factura.tipo === 'TICKET';
-      const externalId = getExternalIdFromDate(
-        esTicket ? 'TICK' : 'FAC',
-        factura.id,
-        factura.createdAt
-      );
+    // 🔄 SINCRONIZAR ELIMINACIÓN CON GSCONTROL (fire and forget)
+    const esTicket = factura.tipo === 'TICKET';
+    const externalId = getExternalIdFromDate(
+      esTicket ? 'TICK' : 'FAC',
+      factura.id,
+      factura.createdAt
+    );
 
-      await deleteFromGSControl([externalId]);
-      console.log('✅ Factura eliminada de GSControl');
-    } catch (syncError) {
-      console.error('⚠️ Error al sincronizar eliminación con GSControl (no crítico):', syncError);
-      // No fallar la operación si GSControl falla
-    }
+    deleteFromGSControl([externalId])
+      .catch(err => console.error('[GSControl] Error al eliminar factura:', err));
 
     // Eliminar factura (los items se eliminan automáticamente por CASCADE)
     await prisma.factura.delete({

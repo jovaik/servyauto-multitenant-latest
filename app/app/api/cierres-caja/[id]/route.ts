@@ -116,8 +116,8 @@ export async function PUT(
       }
 
       if (transactionsToUpdate.length > 0) {
-        await updateInGSControl(transactionsToUpdate);
-        console.log(`✅ Cierre de caja actualizado en GSControl (${transactionsToUpdate.length} transacciones)`);
+        updateInGSControl(transactionsToUpdate)
+          .catch(err => console.error('[GSControl] Error al actualizar cierre de caja:', err));
       }
     } catch (syncError) {
       console.error('⚠️ Error al sincronizar actualización con GSControl (no crítico):', syncError);
@@ -172,8 +172,8 @@ export async function DELETE(
       }
 
       if (externalIdsToDelete.length > 0) {
-        await deleteFromGSControl(externalIdsToDelete);
-        console.log(`✅ Cierre de caja eliminado de GSControl (${externalIdsToDelete.length} transacciones)`);
+        deleteFromGSControl(externalIdsToDelete)
+          .catch(err => console.error('[GSControl] Error al eliminar cierre de caja:', err));
       }
     } catch (syncError) {
       console.error('⚠️ Error al sincronizar eliminación con GSControl (no crítico):', syncError);

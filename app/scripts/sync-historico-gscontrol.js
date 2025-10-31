@@ -36,10 +36,11 @@ async function syncToGSControl(transactions) {
 }
 
 /**
- * Genera ID externo único
+ * Genera ID externo único usando la fecha de creación del registro
+ * IMPORTANTE: Usar la fecha REAL del registro, NO la fecha actual
  */
-function generateExternalId(type, id) {
-  const date = new Date().toISOString().split('T')[0].replace(/-/g, '');
+function generateExternalId(type, id, createdDate) {
+  const date = createdDate.toISOString().split('T')[0].replace(/-/g, '');
   const shortId = String(id).slice(-8);
   return `SERVYAUTO-${type}-${date}-${shortId}`;
 }
@@ -72,7 +73,7 @@ async function syncFacturas() {
     const esTicket = factura.tipo === 'TICKET';
     
     transactions.push({
-      externalId: generateExternalId(esTicket ? 'TICK' : 'FAC', factura.id),
+      externalId: generateExternalId(esTicket ? 'TICK' : 'FAC', factura.id, factura.createdAt),
       type: 'INGRESO',
       date: factura.createdAt.toISOString(),
       amount: factura.total,
@@ -148,7 +149,7 @@ async function syncGastos() {
     const tieneFactura = !!gasto.numeroFactura;
 
     return {
-      externalId: generateExternalId('GAS', gasto.id),
+      externalId: generateExternalId('GAS', gasto.id, gasto.createdAt),
       type: 'GASTO',
       date: gasto.fecha.toISOString(),
       amount: -Math.abs(gasto.importe), // GASTOS SIEMPRE NEGATIVOS
@@ -223,7 +224,7 @@ async function syncCierres() {
     // Ingresos por método de pago
     if (cierre.totalEfectivo > 0) {
       transactions.push({
-        externalId: generateExternalId('CIE-EFE', `${cierre.id}-EFE`),
+        externalId: generateExternalId('CIE-EFE', `${cierre.id}-EFE`, cierre.createdAt),
         type: 'INGRESO',
         date: cierre.fechaFin.toISOString(),
         amount: cierre.totalEfectivo,
@@ -239,7 +240,7 @@ async function syncCierres() {
 
     if (cierre.totalTPVSumup > 0) {
       transactions.push({
-        externalId: generateExternalId('CIE-SUM', `${cierre.id}-SUM`),
+        externalId: generateExternalId('CIE-SUM', `${cierre.id}-SUM`, cierre.createdAt),
         type: 'INGRESO',
         date: cierre.fechaFin.toISOString(),
         amount: cierre.totalTPVSumup,
@@ -255,7 +256,7 @@ async function syncCierres() {
 
     if (cierre.totalTPVUnicaja > 0) {
       transactions.push({
-        externalId: generateExternalId('CIE-UNI', `${cierre.id}-UNI`),
+        externalId: generateExternalId('CIE-UNI', `${cierre.id}-UNI`, cierre.createdAt),
         type: 'INGRESO',
         date: cierre.fechaFin.toISOString(),
         amount: cierre.totalTPVUnicaja,
@@ -273,7 +274,7 @@ async function syncCierres() {
     const totalGastos = cierre.gastosEfectivo + cierre.gastosTarjeta;
     if (totalGastos > 0) {
       transactions.push({
-        externalId: generateExternalId('CIE-GAS', `${cierre.id}-GAS`),
+        externalId: generateExternalId('CIE-GAS', `${cierre.id}-GAS`, cierre.createdAt),
         type: 'GASTO',
         date: cierre.fechaFin.toISOString(),
         amount: totalGastos,
