@@ -164,14 +164,21 @@ export async function POST(request: NextRequest) {
 
     console.log('Factura creada exitosamente:', factura.numero)
 
-    // 🔄 SINCRONIZAR CON GSCONTROL - CÓDIGO EXACTO DEL PDF
+    // 🔄 SINCRONIZAR CON GSCONTROL - CÓDIGO ACTUALIZADO 31/10/2025
     const descripcionFactura = `${factura.tipo}: ${factura.numero} - ${factura.cliente.nombre} ${factura.cliente.apellido || ''}`
+    const clienteNombreCompleto = `${factura.cliente.nombre} ${factura.cliente.apellido || ''}`.trim()
+    
     await notificarCreacionGSControl({
       id: factura.id,
       esIngreso: true,
       fecha: factura.createdAt,
       importe: factura.total,
-      descripcion: descripcionFactura
+      descripcion: descripcionFactura,
+      // Nuevos campos según PDF
+      documentType: factura.tipo, // "FACTURA" o "TICKET"
+      invoiceNumber: factura.tipo === 'FACTURA' ? factura.numero : undefined,
+      clientName: clienteNombreCompleto || undefined,
+      clientDni: factura.cliente.documento || undefined
     })
 
     return NextResponse.json(factura, { status: 201 })

@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { notificarModificacionGSControl, notificarEliminacionGSControl } from '@/lib/gscontrol-sync'
+import { notificarModificacionGSControl, notificarEliminacionGSControl, mapearCategoriaGasto } from '@/lib/gscontrol-sync'
 
 export async function PUT(
   request: NextRequest,
@@ -77,14 +77,18 @@ export async function PUT(
 
     console.log('Gasto actualizado exitosamente:', gasto.id)
 
-    // 🔄 SINCRONIZAR MODIFICACIÓN CON GSCONTROL - CÓDIGO EXACTO DEL PDF
+    // 🔄 SINCRONIZAR MODIFICACIÓN CON GSCONTROL - CÓDIGO ACTUALIZADO 31/10/2025
     const descripcionGasto = `${gasto.concepto}${gasto.proveedor ? ` - ${gasto.proveedor}` : ''}`
+    const categoriaGSControl = mapearCategoriaGasto(gasto.tipoGasto)
+    
     await notificarModificacionGSControl({
       id: gasto.id,
       esIngreso: false,
       fecha: gasto.fecha,
       importe: gasto.importe,
-      descripcion: descripcionGasto
+      descripcion: descripcionGasto,
+      // Nuevo campo según PDF
+      costCategory: categoriaGSControl
     })
 
     return NextResponse.json(gasto)

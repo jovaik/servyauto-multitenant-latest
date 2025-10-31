@@ -4,7 +4,6 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { enviarNotificacionVehiculoListo } from '@/lib/notifications'
-import { syncFactura, syncTicket } from '@/lib/gscontrol-sync'
 
 export const dynamic = 'force-dynamic'
 
@@ -166,29 +165,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       console.log('=== FACTURA MARCADA COMO PAGADA ===')
       
       // 🔄 SINCRONIZAR CON GSCONTROL cuando se paga la factura
-      console.log('📤 Iniciando sincronización de factura pagada con GSControl...')
-      console.log(`Factura: ${facturaActualizada.numero}, Total: ${facturaActualizada.total}`)
-      
-      syncFactura({
-        id: facturaActualizada.id,
-        numeroFactura: facturaActualizada.numero,
-        fecha: facturaActualizada.createdAt || new Date(),
-        total: facturaActualizada.total,
-        iva: 21,
-        cliente: facturaActualizada.cliente,
-        servicios: cita.cita_servicios?.map((cs: any) => ({
-          nombre: cs.servicios.nombre,
-          precio: cs.servicios.precio
-        }))
-      }).then(result => {
-        if (result.success) {
-          console.log('✅ Factura pagada sincronizada con GSControl exitosamente');
-        } else {
-          console.error('⚠️ Error en sincronización de factura pagada:', result.message, result.error);
-        }
-      }).catch((_err: any) => {
-        console.error('Error sincronizando factura pagada:', err)
-      })
+      // NOTA: La sincronización se hace automáticamente desde el endpoint de facturas
+      console.log('✅ Factura actualizada. Sincronización con GSControl se hace automáticamente.')
     }
     
     // Si la cita se marca como COMPLETADA y no tiene factura, crear una automáticamente
@@ -277,45 +255,9 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       console.log(`Tipo: ${tipoDocumento}, Total: ${total}`)
       
       if (tipoDocumento === 'FACTURA') {
-        syncFactura({
-          id: factura.id,
-          numeroFactura: numeroDocumento,
-          fecha: factura.createdAt || new Date(),
-          total: total,
-          iva: 21,
-          cliente: cita.cliente,
-          servicios: cita.cita_servicios?.map((cs: any) => ({
-            nombre: cs.servicios.nombre,
-            precio: cs.servicios.precio
-          }))
-        }).then(result => {
-          if (result.success) {
-            console.log('✅ Factura de cita sincronizada con GSControl exitosamente');
-          } else {
-            console.error('⚠️ Error en sincronización de factura:', result.message, result.error);
-          }
-        }).catch((_err: any) => {
-          console.error('❌ Error crítico sincronizando factura:', err)
-        })
+        // NOTA: La sincronización se hace automáticamente desde el endpoint de facturas
       } else {
-        syncTicket({
-          id: factura.id,
-          fecha: factura.createdAt || new Date(),
-          total: total,
-          estado: 'COBRADO',
-          servicios: cita.cita_servicios?.map((cs: any) => ({
-            nombre: cs.servicios.nombre,
-            precio: cs.servicios.precio
-          }))
-        }).then(result => {
-          if (result.success) {
-            console.log('✅ Ticket de cita sincronizado con GSControl exitosamente');
-          } else {
-            console.error('⚠️ Error en sincronización de ticket:', result.message, result.error);
-          }
-        }).catch((_err: any) => {
-          console.error('❌ Error crítico sincronizando ticket:', err)
-        })
+        // NOTA: La sincronización se hace automáticamente desde el endpoint de facturas
       }
     }
     

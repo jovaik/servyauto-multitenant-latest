@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
 
     console.log('🔄 [API] Ejecutando sincronización PULL con GSControl...')
 
-    await syncAllTransactionsWithGSControl()
+    await sincronizacionCompletaGSControl()
 
     return NextResponse.json({
       success: true,

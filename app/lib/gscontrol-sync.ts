@@ -8,12 +8,62 @@ const GSCONTROL_API_KEY = 'gs_dff763d23624a595fe081d0359066facc50968fe407ef23923
 const GSCONTROL_INGEST_ENDPOINT = 'https://gscontrol.abacusai.app/api/integrations/ingest'
 
 // ============================================
+// MAPEO DE CATEGORÍAS DE GASTO
+// ============================================
+
+/**
+ * Mapea las categorías de gasto de ServyAuto a las categorías válidas de GSControl
+ */
+export function mapearCategoriaGasto(tipoGasto: string): string {
+  const categoria = tipoGasto.toUpperCase().trim()
+  
+  // Mapeo directo
+  const mapeo: { [key: string]: string } = {
+    'ALQUILER': 'ALQUILER',
+    'AUTONOMO': 'AUTONOMOS',
+    'AUTONOMOS': 'AUTONOMOS',
+    'GESTORIA': 'GESTORIA',
+    'GESTORÍA': 'GESTORIA',
+    'COMBUSTIBLE': 'COMBUSTIBLE',
+    'GASOLINA': 'COMBUSTIBLE',
+    'DIESEL': 'COMBUSTIBLE',
+    'GASTOS FIJOS': 'GASTOS_FIJOS',
+    'GASTOS_FIJOS': 'GASTOS_FIJOS',
+    'TALLER': 'TALLERES',
+    'TALLERES': 'TALLERES',
+    'REPARACION': 'TALLERES',
+    'REPARACIÓN': 'TALLERES',
+    'REPUESTO': 'REPUESTOS',
+    'REPUESTOS': 'REPUESTOS',
+    'PIEZAS': 'REPUESTOS',
+    'MATERIALES': 'REPUESTOS',
+    'SEGURO': 'SEGUROS',
+    'SEGUROS': 'SEGUROS'
+  }
+  
+  // Buscar coincidencia exacta
+  if (mapeo[categoria]) {
+    return mapeo[categoria]
+  }
+  
+  // Buscar coincidencia parcial
+  for (const [clave, valor] of Object.entries(mapeo)) {
+    if (categoria.includes(clave) || clave.includes(categoria)) {
+      return valor
+    }
+  }
+  
+  // Si no se encuentra coincidencia, usar OTROS_GASTOS
+  return 'OTROS_GASTOS'
+}
+
+// ============================================
 // TAREA 1: WEBHOOKS EN TIEMPO REAL
 // ============================================
 
 /**
  * 1.1 CUANDO CREEN UNA TRANSACCIÓN
- * Código EXACTO del PDF
+ * Código ACTUALIZADO con nuevos campos según PDF 31/10/2025
  */
 export async function notificarCreacionGSControl(transaccion: {
   id: string
@@ -21,22 +71,52 @@ export async function notificarCreacionGSControl(transaccion: {
   fecha: string | Date
   importe: number
   descripcion: string
+  // Nuevos campos opcionales para INGRESOS
+  documentType?: 'FACTURA' | 'TICKET'
+  invoiceNumber?: string
+  clientName?: string
+  clientDni?: string
+  // Nuevos campos opcionales para GASTOS
+  costCategory?: string
 }) {
   try {
+    const payload: any = {
+      externalId: transaccion.id.toString(),
+      type: transaccion.esIngreso ? "INGRESO" : "GASTO",
+      date: typeof transaccion.fecha === 'string' ? transaccion.fecha : transaccion.fecha.toISOString(),
+      amount: transaccion.importe,
+      description: transaccion.descripcion,
+      ivaRate: 21
+    }
+
+    // Agregar campos específicos para INGRESOS
+    if (transaccion.esIngreso) {
+      if (transaccion.documentType) {
+        payload.documentType = transaccion.documentType
+      }
+      if (transaccion.invoiceNumber) {
+        payload.invoiceNumber = transaccion.invoiceNumber
+      }
+      if (transaccion.clientName) {
+        payload.clientName = transaccion.clientName
+      }
+      if (transaccion.clientDni) {
+        payload.clientDni = transaccion.clientDni
+      }
+    }
+
+    // Agregar campos específicos para GASTOS
+    if (!transaccion.esIngreso && transaccion.costCategory) {
+      payload.costCategory = transaccion.costCategory
+    }
+
     const response = await fetch(GSCONTROL_INGEST_ENDPOINT, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${GSCONTROL_API_KEY}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        externalId: transaccion.id.toString(),
-        type: transaccion.esIngreso ? "INGRESO" : "GASTO",
-        date: typeof transaccion.fecha === 'string' ? transaccion.fecha : transaccion.fecha.toISOString(),
-        amount: transaccion.importe,
-        description: transaccion.descripcion,
-        ivaRate: 21
-      })
+      body: JSON.stringify(payload)
     })
 
     if (!response.ok) {
@@ -51,7 +131,7 @@ export async function notificarCreacionGSControl(transaccion: {
 
 /**
  * 1.2 CUANDO MODIFIQUEN UNA TRANSACCIÓN
- * Código EXACTO del PDF
+ * Código ACTUALIZADO con nuevos campos según PDF 31/10/2025
  */
 export async function notificarModificacionGSControl(transaccion: {
   id: string
@@ -59,22 +139,52 @@ export async function notificarModificacionGSControl(transaccion: {
   fecha: string | Date
   importe: number
   descripcion: string
+  // Nuevos campos opcionales para INGRESOS
+  documentType?: 'FACTURA' | 'TICKET'
+  invoiceNumber?: string
+  clientName?: string
+  clientDni?: string
+  // Nuevos campos opcionales para GASTOS
+  costCategory?: string
 }) {
   try {
+    const payload: any = {
+      externalId: transaccion.id.toString(),
+      type: transaccion.esIngreso ? "INGRESO" : "GASTO",
+      date: typeof transaccion.fecha === 'string' ? transaccion.fecha : transaccion.fecha.toISOString(),
+      amount: transaccion.importe,
+      description: transaccion.descripcion,
+      ivaRate: 21
+    }
+
+    // Agregar campos específicos para INGRESOS
+    if (transaccion.esIngreso) {
+      if (transaccion.documentType) {
+        payload.documentType = transaccion.documentType
+      }
+      if (transaccion.invoiceNumber) {
+        payload.invoiceNumber = transaccion.invoiceNumber
+      }
+      if (transaccion.clientName) {
+        payload.clientName = transaccion.clientName
+      }
+      if (transaccion.clientDni) {
+        payload.clientDni = transaccion.clientDni
+      }
+    }
+
+    // Agregar campos específicos para GASTOS
+    if (!transaccion.esIngreso && transaccion.costCategory) {
+      payload.costCategory = transaccion.costCategory
+    }
+
     const response = await fetch(GSCONTROL_INGEST_ENDPOINT, {
       method: 'PUT',
       headers: {
         'Authorization': `Bearer ${GSCONTROL_API_KEY}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        externalId: transaccion.id.toString(),
-        type: transaccion.esIngreso ? "INGRESO" : "GASTO",
-        date: typeof transaccion.fecha === 'string' ? transaccion.fecha : transaccion.fecha.toISOString(),
-        amount: transaccion.importe,
-        description: transaccion.descripcion,
-        ivaRate: 21
-      })
+      body: JSON.stringify(payload)
     })
 
     if (!response.ok) {

@@ -127,14 +127,21 @@ export async function PUT(
 
     console.log('=== FACTURA ACTUALIZADA ===')
 
-    // 🔄 SINCRONIZAR MODIFICACIÓN CON GSCONTROL - CÓDIGO EXACTO DEL PDF
+    // 🔄 SINCRONIZAR MODIFICACIÓN CON GSCONTROL - CÓDIGO ACTUALIZADO 31/10/2025
     const descripcionFactura = `${factura.tipo}: ${factura.numero} - ${factura.cliente.nombre} ${factura.cliente.apellido || ''}`
+    const clienteNombreCompleto = `${factura.cliente.nombre} ${factura.cliente.apellido || ''}`.trim()
+    
     await notificarModificacionGSControl({
       id: factura.id,
       esIngreso: true,
       fecha: factura.createdAt,
       importe: factura.total,
-      descripcion: descripcionFactura
+      descripcion: descripcionFactura,
+      // Nuevos campos según PDF
+      documentType: factura.tipo, // "FACTURA" o "TICKET"
+      invoiceNumber: factura.tipo === 'FACTURA' ? factura.numero : undefined,
+      clientName: clienteNombreCompleto || undefined,
+      clientDni: factura.cliente.documento || undefined
     })
 
     // Transformar los datos para el frontend
