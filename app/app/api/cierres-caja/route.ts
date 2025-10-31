@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { syncCierreCaja } from '@/lib/gscontrol-sync'
 
 export async function GET(request: NextRequest) {
   try {
@@ -154,18 +153,8 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // 🔄 SINCRONIZAR CON GSCONTROL (fire and forget)
-    console.log('📤 Sincronizando cierre de caja con GSControl...')
-    
-    syncCierreCaja({
-      id: cierre.id,
-      fecha: cierre.fechaFin,
-      efectivo: cierre.totalEfectivo,
-      tarjeta: cierre.totalTPVSumup + cierre.totalTPVUnicaja,
-      transferencia: 0, // No se usa en este sistema
-      gastos: cierre.gastosEfectivo + cierre.gastosTarjeta,
-      notas: cierre.observaciones,
-    }).catch(err => console.error('[GSControl] Error al crear cierre de caja:', err))
+    // ⚠️ Los cierres de caja NO se sincronizan con GSControl según instrucciones
+    // Solo se sincronizan facturas y gastos individuales
 
     return NextResponse.json(cierre, { status: 201 })
   } catch (error) {

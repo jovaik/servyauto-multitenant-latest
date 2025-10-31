@@ -7,7 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { syncAllTransactionsWithGSControl } from '@/lib/gscontrol-pull-sync'
+import { sincronizacionCompletaGSControl } from '@/lib/gscontrol-pull-sync'
 
 export async function POST(request: NextRequest) {
   try {

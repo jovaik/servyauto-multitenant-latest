@@ -1,172 +1,96 @@
 
 /**
- * Sistema de sincronización PULL bidireccional con GSControl
- * GSControl consultará periódicamente a ServyAuto para mantener datos sincronizados
+ * ⚠️ TAREA 2: SINCRONIZACIÓN PERIÓDICA COMPLETA - CÓDIGO EXACTO DEL PDF
+ * Este código debe ejecutarse EN EL SERVIDOR BACKEND
+ * NO en el navegador del usuario
  */
 
 import { prisma } from './db'
 
-const GSCONTROL_API_KEY = process.env.GSCONTROL_API_KEY || ''
+const GSCONTROL_API_KEY = 'gs_dff763d23624a595fe081d0359066facc50968fe407ef239236c8f3ee5750f0a'
 const GSCONTROL_PULL_ENDPOINT = 'https://gscontrol.abacusai.app/api/integrations/pull'
 
-interface TransactionFormatted {
-  externalId: string
-  type: 'INGRESO' | 'GASTO'
-  date: string
-  amount: number
-  description: string
-  ivaRate: number
-  metadata?: {
-    numeroFactura?: string
-    cliente?: string
-    metodoPago?: string
-    tipo?: string
-    categoria?: string
-    proveedor?: string
-  }
-}
-
 /**
- * Obtiene todas las transacciones del año actual y las envía a GSControl
+ * Función EXACTA del PDF
  */
-export async function syncAllTransactionsWithGSControl(): Promise<void> {
+export async function sincronizacionCompletaGSControl() {
   try {
-    console.log('🔄 [PULL SYNC] Iniciando sincronización con GSControl...')
+    console.log('🔄 Iniciando sincronización completa con GS Control...')
     
-    const currentYear = new Date().getFullYear()
-    const startOfYear = new Date(currentYear, 0, 1, 0, 0, 0, 0)
-    const endOfYear = new Date(currentYear, 11, 31, 23, 59, 59, 999)
-
-    // 1. OBTENER TODAS LAS FACTURAS DEL AÑO
-    const facturas = await prisma.factura.findMany({
+    // 1. OBTENER TODAS las transacciones de ServyAuto
+    // Facturas (INGRESOS)
+    const todasLasFacturas = await prisma.factura.findMany({
       where: {
         createdAt: {
-          gte: startOfYear,
-          lte: endOfYear
+          gte: new Date('2025-01-01')
         }
       },
       include: {
-        cliente: {
-          select: {
-            nombre: true,
-            apellido: true
-          }
-        }
-      },
-      orderBy: {
-        createdAt: 'asc'
+        cliente: true
       }
     })
 
-    // 2. OBTENER TODOS LOS GASTOS DEL AÑO
-    const gastos = await prisma.gasto.findMany({
+    // Gastos (GASTOS)
+    const todosLosGastos = await prisma.gasto.findMany({
       where: {
         fecha: {
-          gte: startOfYear,
-          lte: endOfYear
+          gte: new Date('2025-01-01')
         }
-      },
-      orderBy: {
-        fecha: 'asc'
       }
     })
 
-    // 3. FORMATEAR TRANSACCIONES SEGÚN ESQUEMA DE GSCONTROL
-    const transactions: TransactionFormatted[] = []
+    // 2. FORMATEAR al formato de GS Control
+    const transaccionesFormateadas = []
 
-    // Formatear FACTURAS como INGRESOS
-    for (const factura of facturas) {
-      const clienteNombre = factura.cliente 
-        ? `${factura.cliente.nombre} ${factura.cliente.apellido || ''}`.trim()
-        : 'Cliente sin nombre'
-
-      transactions.push({
-        externalId: factura.id,
-        type: 'INGRESO',
+    // Formatear facturas como INGRESOS
+    for (const factura of todasLasFacturas) {
+      const descripcionFactura = `${factura.tipo}: ${factura.numero} - ${factura.cliente.nombre} ${factura.cliente.apellido || ''}`
+      transaccionesFormateadas.push({
+        externalId: factura.id.toString(),
+        type: "INGRESO",
         date: factura.createdAt.toISOString(),
         amount: factura.total,
-        description: `${factura.tipo}: ${factura.numero} - ${clienteNombre}`,
-        ivaRate: 21, // IVA estándar en España
-        metadata: {
-          numeroFactura: factura.numero,
-          cliente: clienteNombre,
-          metodoPago: factura.metodoPago || undefined,
-          tipo: factura.tipo
-        }
+        description: descripcionFactura,
+        ivaRate: 21
       })
     }
 
-    // Formatear GASTOS como GASTOS
-    for (const gasto of gastos) {
-      transactions.push({
-        externalId: gasto.id,
-        type: 'GASTO',
+    // Formatear gastos como GASTOS
+    for (const gasto of todosLosGastos) {
+      const descripcionGasto = `${gasto.concepto}${gasto.proveedor ? ` - ${gasto.proveedor}` : ''}`
+      transaccionesFormateadas.push({
+        externalId: gasto.id.toString(),
+        type: "GASTO",
         date: gasto.fecha.toISOString(),
         amount: gasto.importe,
-        description: `${gasto.concepto}${gasto.proveedor ? ` - ${gasto.proveedor}` : ''}`,
-        ivaRate: gasto.iva || 21,
-        metadata: {
-          numeroFactura: gasto.numeroFactura || undefined,
-          categoria: gasto.tipoGasto,
-          proveedor: gasto.proveedor || undefined,
-          metodoPago: gasto.metodoPago || undefined,
-          tipo: gasto.tipo
-        }
+        description: descripcionGasto,
+        ivaRate: 21
       })
     }
 
-    console.log(`📊 [PULL SYNC] Total transacciones a sincronizar: ${transactions.length}`)
-    console.log(`   💰 Facturas/Tickets: ${facturas.length}`)
-    console.log(`   💸 Gastos: ${gastos.length}`)
+    console.log(`📊 Total transacciones a sincronizar: ${transaccionesFormateadas.length}`)
+    console.log(`   💰 Facturas: ${todasLasFacturas.length}`)
+    console.log(`   💸 Gastos: ${todosLosGastos.length}`)
 
-    // 4. ENVIAR A GSCONTROL
-    if (!GSCONTROL_API_KEY) {
-      console.warn('⚠️  [PULL SYNC] No se encontró GSCONTROL_API_KEY, saltando sincronización')
-      return
-    }
-
+    // 3. ENVIAR TODO a GS Control
     const response = await fetch(GSCONTROL_PULL_ENDPOINT, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${GSCONTROL_API_KEY}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ 
-        transactions,
-        source: 'ServyAuto',
-        syncTimestamp: new Date().toISOString()
+      body: JSON.stringify({
+        transactions: transaccionesFormateadas
       })
     })
 
     if (!response.ok) {
-      const errorText = await response.text()
-      throw new Error(`GSControl respondió con error: ${response.status} - ${errorText}`)
-    }
-
-    const result = await response.json()
-    console.log('✅ [PULL SYNC] Sincronización completada exitosamente')
-    console.log(`   📥 Resultado:`, result)
-
-  } catch (error) {
-    console.error('❌ [PULL SYNC] Error en sincronización:', error)
-    throw error
-  }
-}
-
-/**
- * Función para ejecutar la sincronización manualmente
- */
-export async function manualPullSync(): Promise<{ success: boolean; message: string; stats?: any }> {
-  try {
-    await syncAllTransactionsWithGSControl()
-    return {
-      success: true,
-      message: 'Sincronización PULL completada exitosamente'
+      console.error('❌ Error en sincronización completa:', await response.text())
+    } else {
+      const resultado = await response.json()
+      console.log('✅ Sincronización completa exitosa:', resultado)
     }
   } catch (error) {
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : 'Error desconocido'
-    }
+    console.error('❌ Error fatal en sincronización:', error)
   }
 }

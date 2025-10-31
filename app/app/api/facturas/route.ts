@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { syncFactura } from '@/lib/gscontrol-sync'
+import { notificarCreacionGSControl } from '@/lib/gscontrol-sync'
 
 export async function GET(request: NextRequest) {
   try {
@@ -164,22 +164,15 @@ export async function POST(request: NextRequest) {
 
     console.log('Factura creada exitosamente:', factura.numero)
 
-    // 🔄 SINCRONIZAR CON GSCONTROL (fire and forget)
-    console.log('📤 Sincronizando con GSControl...')
-    console.log(`Tipo: ${factura.tipo}, Total: ${factura.total}`)
-    
-    syncFactura({
+    // 🔄 SINCRONIZAR CON GSCONTROL - CÓDIGO EXACTO DEL PDF
+    const descripcionFactura = `${factura.tipo}: ${factura.numero} - ${factura.cliente.nombre} ${factura.cliente.apellido || ''}`
+    await notificarCreacionGSControl({
       id: factura.id,
-      numeroFactura: factura.numero,
+      esIngreso: true,
       fecha: factura.createdAt,
-      total: factura.total,
-      iva: 21, // Asumimos IVA 21%
-      cliente: factura.cliente,
-      servicios: factura.factura_items.map(item => ({
-        nombre: item.descripcion,
-        precio: item.total
-      }))
-    }).catch(err => console.error('[GSControl] Error al crear factura:', err))
+      importe: factura.total,
+      descripcion: descripcionFactura
+    })
 
     return NextResponse.json(factura, { status: 201 })
   } catch (error) {

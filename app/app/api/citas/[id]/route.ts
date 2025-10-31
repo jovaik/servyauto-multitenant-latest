@@ -186,7 +186,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         } else {
           console.error('⚠️ Error en sincronización de factura pagada:', result.message, result.error);
         }
-      }).catch(err => {
+      }).catch((_err: any) => {
         console.error('Error sincronizando factura pagada:', err)
       })
     }
@@ -294,7 +294,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
           } else {
             console.error('⚠️ Error en sincronización de factura:', result.message, result.error);
           }
-        }).catch(err => {
+        }).catch((_err: any) => {
           console.error('❌ Error crítico sincronizando factura:', err)
         })
       } else {
@@ -313,7 +313,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
           } else {
             console.error('⚠️ Error en sincronización de ticket:', result.message, result.error);
           }
-        }).catch(err => {
+        }).catch((_err: any) => {
           console.error('❌ Error crítico sincronizando ticket:', err)
         })
       }

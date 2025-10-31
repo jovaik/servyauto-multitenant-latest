@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { updateInGSControl, deleteFromGSControl, getExternalIdFromDate } from '@/lib/gscontrol-sync'
+import { notificarModificacionGSControl, notificarEliminacionGSControl } from '@/lib/gscontrol-sync'
 
 export async function GET(
   request: NextRequest,
@@ -127,27 +127,15 @@ export async function PUT(
 
     console.log('=== FACTURA ACTUALIZADA ===')
 
-    // 🔄 SINCRONIZAR ACTUALIZACIÓN CON GSCONTROL (fire and forget)
-    const esTicket = factura.tipo === 'TICKET';
-    const externalId = getExternalIdFromDate(
-      esTicket ? 'TICK' : 'FAC',
-      factura.id,
-      factura.createdAt
-    );
-
-    // Preparar actualización para GSControl (solo campos modificados)
-    const updateForGSControl: any = { externalId };
-
-    if (total !== undefined) updateForGSControl.amount = factura.total;
-    if (estado === 'PAGADA' || estado === 'COBRADO') {
-      // Si cambió a estado pagado, asegurarse de que esté sincronizado
-      updateForGSControl.type = 'INGRESO';
-      updateForGSControl.amount = factura.total;
-      updateForGSControl.description = factura.factura_items?.map((i: any) => i.descripcion).join(', ') || 'Servicio de taller';
-    }
-
-    updateInGSControl([updateForGSControl])
-      .catch(err => console.error('[GSControl] Error al actualizar factura:', err));
+    // 🔄 SINCRONIZAR MODIFICACIÓN CON GSCONTROL - CÓDIGO EXACTO DEL PDF
+    const descripcionFactura = `${factura.tipo}: ${factura.numero} - ${factura.cliente.nombre} ${factura.cliente.apellido || ''}`
+    await notificarModificacionGSControl({
+      id: factura.id,
+      esIngreso: true,
+      fecha: factura.createdAt,
+      importe: factura.total,
+      descripcion: descripcionFactura
+    })
 
     // Transformar los datos para el frontend
     const facturaConItems = {
@@ -187,16 +175,8 @@ export async function DELETE(
       )
     }
 
-    // 🔄 SINCRONIZAR ELIMINACIÓN CON GSCONTROL (fire and forget)
-    const esTicket = factura.tipo === 'TICKET';
-    const externalId = getExternalIdFromDate(
-      esTicket ? 'TICK' : 'FAC',
-      factura.id,
-      factura.createdAt
-    );
-
-    deleteFromGSControl([externalId])
-      .catch(err => console.error('[GSControl] Error al eliminar factura:', err));
+    // 🔄 SINCRONIZAR ELIMINACIÓN CON GSCONTROL - CÓDIGO EXACTO DEL PDF
+    await notificarEliminacionGSControl(factura.id)
 
     // Eliminar factura (los items se eliminan automáticamente por CASCADE)
     await prisma.factura.delete({

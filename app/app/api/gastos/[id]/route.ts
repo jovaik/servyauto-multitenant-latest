@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { updateInGSControl, deleteFromGSControl, getExternalIdFromDate } from '@/lib/gscontrol-sync'
+import { notificarModificacionGSControl, notificarEliminacionGSControl } from '@/lib/gscontrol-sync'
 
 export async function PUT(
   request: NextRequest,
@@ -77,29 +77,15 @@ export async function PUT(
 
     console.log('Gasto actualizado exitosamente:', gasto.id)
 
-    // 🔄 SINCRONIZAR ACTUALIZACIÓN CON GSCONTROL (fire and forget)
-    const externalId = getExternalIdFromDate('GAS', gasto.id, gasto.createdAt);
-
-    // Preparar actualización para GSControl
-    // IMPORTANTE: Los gastos SIEMPRE deben ser negativos
-    const updateForGSControl: any = { 
-      externalId,
-      amount: -Math.abs(gasto.importe), // GASTOS SIEMPRE NEGATIVOS
-      description: gasto.concepto,
-      date: gasto.fecha.toISOString(),
-      ivaRate: gasto.iva,
-      costCategory: gasto.tipoGasto || 'OTROS'
-    };
-
-    if (gasto.numeroFactura) {
-      updateForGSControl.documentType = 'FACTURA';
-      updateForGSControl.invoiceNumber = gasto.numeroFactura;
-    } else {
-      updateForGSControl.documentType = 'NO APLICA';
-    }
-
-    updateInGSControl([updateForGSControl])
-      .catch(err => console.error('[GSControl] Error al actualizar gasto:', err));
+    // 🔄 SINCRONIZAR MODIFICACIÓN CON GSCONTROL - CÓDIGO EXACTO DEL PDF
+    const descripcionGasto = `${gasto.concepto}${gasto.proveedor ? ` - ${gasto.proveedor}` : ''}`
+    await notificarModificacionGSControl({
+      id: gasto.id,
+      esIngreso: false,
+      fecha: gasto.fecha,
+      importe: gasto.importe,
+      descripcion: descripcionGasto
+    })
 
     return NextResponse.json(gasto)
   } catch (error) {
@@ -130,10 +116,8 @@ export async function DELETE(
       return NextResponse.json({ error: 'Gasto no encontrado' }, { status: 404 })
     }
 
-    // 🔄 SINCRONIZAR ELIMINACIÓN CON GSCONTROL (fire and forget)
-    const externalId = getExternalIdFromDate('GAS', gasto.id, gasto.createdAt);
-    deleteFromGSControl([externalId])
-      .catch(err => console.error('[GSControl] Error al eliminar gasto:', err));
+    // 🔄 SINCRONIZAR ELIMINACIÓN CON GSCONTROL - CÓDIGO EXACTO DEL PDF
+    await notificarEliminacionGSControl(gasto.id)
 
     await prisma.gasto.delete({
       where: { id: params.id }

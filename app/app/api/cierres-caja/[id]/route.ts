@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { updateInGSControl, deleteFromGSControl, getExternalIdFromDate } from '@/lib/gscontrol-sync'
 
 // GET - Obtener un cierre específico
 export async function GET(
@@ -77,7 +76,7 @@ export async function PUT(
       // Actualizar transacción de efectivo
       if (totalEfectivo > 0) {
         transactionsToUpdate.push({
-          externalId: getExternalIdFromDate('CIE', `${cierre.id}-EFE`, cierre.createdAt),
+          externalId: // getExternalIdFromDate('CIE', `${cierre.id}-EFE`, cierre.createdAt),
           amount: totalEfectivo,
           date: cierre.fechaFin.toISOString(),
           description: `Cierre de caja - Efectivo (actualizado)`,
@@ -87,7 +86,7 @@ export async function PUT(
       // Actualizar transacción de TPV SumUp
       if (totalTPVSumup > 0) {
         transactionsToUpdate.push({
-          externalId: getExternalIdFromDate('CIE', `${cierre.id}-SUM`, cierre.createdAt),
+          externalId: // getExternalIdFromDate('CIE', `${cierre.id}-SUM`, cierre.createdAt),
           amount: totalTPVSumup,
           date: cierre.fechaFin.toISOString(),
           description: `Cierre de caja - TPV SumUp (actualizado)`,
@@ -97,7 +96,7 @@ export async function PUT(
       // Actualizar transacción de TPV Unicaja
       if (totalTPVUnicaja > 0) {
         transactionsToUpdate.push({
-          externalId: getExternalIdFromDate('CIE', `${cierre.id}-UNI`, cierre.createdAt),
+          externalId: // getExternalIdFromDate('CIE', `${cierre.id}-UNI`, cierre.createdAt),
           amount: totalTPVUnicaja,
           date: cierre.fechaFin.toISOString(),
           description: `Cierre de caja - TPV Unicaja (actualizado)`,
@@ -108,7 +107,7 @@ export async function PUT(
       const totalGastos = gastosEfectivo + gastosTarjeta;
       if (totalGastos > 0) {
         transactionsToUpdate.push({
-          externalId: getExternalIdFromDate('CIE', `${cierre.id}-GAS`, cierre.createdAt),
+          externalId: // getExternalIdFromDate('CIE', `${cierre.id}-GAS`, cierre.createdAt),
           amount: -Math.abs(totalGastos), // GASTOS SIEMPRE NEGATIVOS
           date: cierre.fechaFin.toISOString(),
           description: `Gastos del día - ${observaciones || 'Sin detalles'} (actualizado)`,
@@ -116,7 +115,7 @@ export async function PUT(
       }
 
       if (transactionsToUpdate.length > 0) {
-        updateInGSControl(transactionsToUpdate)
+        // updateInGSControl(transactionsToUpdate)
           .catch(err => console.error('[GSControl] Error al actualizar cierre de caja:', err));
       }
     } catch (syncError) {
@@ -158,21 +157,21 @@ export async function DELETE(
 
       // IDs de todas las transacciones del cierre
       if (cierre.totalEfectivo > 0) {
-        externalIdsToDelete.push(getExternalIdFromDate('CIE', `${cierre.id}-EFE`, cierre.createdAt));
+        externalIdsToDelete.push(// getExternalIdFromDate('CIE', `${cierre.id}-EFE`, cierre.createdAt));
       }
       if (cierre.totalTPVSumup > 0) {
-        externalIdsToDelete.push(getExternalIdFromDate('CIE', `${cierre.id}-SUM`, cierre.createdAt));
+        externalIdsToDelete.push(// getExternalIdFromDate('CIE', `${cierre.id}-SUM`, cierre.createdAt));
       }
       if (cierre.totalTPVUnicaja > 0) {
-        externalIdsToDelete.push(getExternalIdFromDate('CIE', `${cierre.id}-UNI`, cierre.createdAt));
+        externalIdsToDelete.push(// getExternalIdFromDate('CIE', `${cierre.id}-UNI`, cierre.createdAt));
       }
       const totalGastos = cierre.gastosEfectivo + cierre.gastosTarjeta;
       if (totalGastos > 0) {
-        externalIdsToDelete.push(getExternalIdFromDate('CIE', `${cierre.id}-GAS`, cierre.createdAt));
+        externalIdsToDelete.push(// getExternalIdFromDate('CIE', `${cierre.id}-GAS`, cierre.createdAt));
       }
 
       if (externalIdsToDelete.length > 0) {
-        deleteFromGSControl(externalIdsToDelete)
+        // deleteFromGSControl(externalIdsToDelete)
           .catch(err => console.error('[GSControl] Error al eliminar cierre de caja:', err));
       }
     } catch (syncError) {

@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { syncGasto } from '@/lib/gscontrol-sync'
+import { notificarCreacionGSControl } from '@/lib/gscontrol-sync'
 
 export async function GET(request: NextRequest) {
   try {
@@ -109,20 +109,15 @@ export async function POST(request: NextRequest) {
 
     console.log('Gasto creado exitosamente:', gasto.id)
 
-    // 🔄 SINCRONIZAR CON GSCONTROL (fire and forget)
-    console.log('📤 Sincronizando con GSControl...')
-    console.log(`Concepto: ${gasto.concepto}, Monto: -${gasto.importe}`)
-    
-    syncGasto({
+    // 🔄 SINCRONIZAR CON GSCONTROL - CÓDIGO EXACTO DEL PDF
+    const descripcionGasto = `${gasto.concepto}${gasto.proveedor ? ` - ${gasto.proveedor}` : ''}`
+    await notificarCreacionGSControl({
       id: gasto.id,
+      esIngreso: false,
       fecha: gasto.fecha,
-      monto: gasto.importe,
-      concepto: gasto.concepto,
-      categoria: gasto.tipoGasto,
-      numeroFactura: gasto.numeroFactura,
-      proveedor: gasto.proveedor,
-      tipoImpuesto: gasto.iva === 21 ? 'IVA_21' : gasto.iva === 10 ? 'IVA_10' : gasto.iva === 4 ? 'IVA_4' : 'SIN_IVA'
-    }).catch(err => console.error('[GSControl] Error al crear gasto:', err))
+      importe: gasto.importe,
+      descripcion: descripcionGasto
+    })
 
     return NextResponse.json(gasto, { status: 201 })
   } catch (error: any) {

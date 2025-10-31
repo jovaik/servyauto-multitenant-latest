@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { syncFactura } from '@/lib/gscontrol-sync'
+import { notificarCreacionGSControl } from '@/lib/gscontrol-sync'
 
 export async function PUT(
   request: NextRequest,
@@ -92,21 +92,15 @@ export async function PUT(
     console.log('=== CONVERSIÓN EXITOSA ===')
     console.log('De:', documentoActual.numero, '→ A:', numeroFactura)
 
-    // Sincronizar con GSControl (no bloqueante)
-    syncFactura({
+    // 🔄 SINCRONIZAR CON GSCONTROL - CÓDIGO EXACTO DEL PDF
+    const descripcionFactura = `${facturaConvertida.tipo}: ${facturaConvertida.numero} - ${facturaConvertida.cliente.nombre} ${facturaConvertida.cliente.apellido || ''}`
+    await notificarCreacionGSControl({
       id: facturaConvertida.id,
-      numeroFactura: facturaConvertida.numero,
+      esIngreso: true,
       fecha: facturaConvertida.createdAt,
-      total: facturaConvertida.total,
-      iva: 21,
-      cliente: facturaConvertida.cliente,
-      servicios: facturaConvertida.factura_items.map(item => ({
-        nombre: item.descripcion,
-        precio: item.total
-      }))
-    }).catch(error => {
-      console.error('❌ Error sincronizando factura convertida con GSControl:', error);
-    });
+      importe: facturaConvertida.total,
+      descripcion: descripcionFactura
+    })
 
     return NextResponse.json(facturaConvertida)
   } catch (error: any) {
