@@ -246,7 +246,7 @@ export async function syncGasto(gasto: {
     externalId: generateExternalId('GAS', gasto.id),
     type: 'GASTO',
     date: gasto.fecha.toISOString(),
-    amount: gasto.monto,
+    amount: -Math.abs(gasto.monto), // GASTOS SIEMPRE NEGATIVOS
     ivaRate: ivaRate,
     description: gasto.concepto,
     documentType: tieneFactura ? 'FACTURA' : 'NO APLICA',
@@ -327,7 +327,7 @@ export async function syncCierreCaja(cierre: {
       externalId: generateExternalId('GAS', `CC${cierre.id}`),
       type: 'GASTO',
       date: cierre.fecha.toISOString(),
-      amount: cierre.gastos,
+      amount: -Math.abs(cierre.gastos), // GASTOS SIEMPRE NEGATIVOS
       description: `Gastos del día - ${cierre.notas || 'Sin detalles'}`,
       documentType: 'NO APLICA',
       costCategory: 'CAJA',

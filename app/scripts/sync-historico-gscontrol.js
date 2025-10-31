@@ -151,7 +151,7 @@ async function syncGastos() {
       externalId: generateExternalId('GAS', gasto.id),
       type: 'GASTO',
       date: gasto.fecha.toISOString(),
-      amount: gasto.importe,
+      amount: -Math.abs(gasto.importe), // GASTOS SIEMPRE NEGATIVOS
       ivaRate: ivaRate,
       description: gasto.concepto,
       documentType: tieneFactura ? 'FACTURA' : 'NO APLICA',
