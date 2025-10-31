@@ -13,11 +13,15 @@ const GSCONTROL_INGEST_ENDPOINT = 'https://gscontrol.abacusai.app/api/integratio
 
 /**
  * Mapea las categorías de gasto de ServyAuto a las categorías válidas de GSControl
+ * 
+ * CATEGORÍAS VÁLIDAS SEGÚN PDF 31/10/2025:
+ * ALQUILER, AUTONOMOS, GESTORIA, COMBUSTIBLE, 
+ * GASTOS FIJOS, TALLERES, REPUESTOS, SEGUROS, OTROS GASTOS
  */
 export function mapearCategoriaGasto(tipoGasto: string): string {
   const categoria = tipoGasto.toUpperCase().trim()
   
-  // Mapeo directo
+  // Mapeo directo - CORREGIDO: "GASTOS FIJOS" con espacio, no guion bajo
   const mapeo: { [key: string]: string } = {
     'ALQUILER': 'ALQUILER',
     'AUTONOMO': 'AUTONOMOS',
@@ -27,8 +31,8 @@ export function mapearCategoriaGasto(tipoGasto: string): string {
     'COMBUSTIBLE': 'COMBUSTIBLE',
     'GASOLINA': 'COMBUSTIBLE',
     'DIESEL': 'COMBUSTIBLE',
-    'GASTOS FIJOS': 'GASTOS_FIJOS',
-    'GASTOS_FIJOS': 'GASTOS_FIJOS',
+    'GASTOS FIJOS': 'GASTOS FIJOS',        // ✅ CORREGIDO: con espacio
+    'GASTOS_FIJOS': 'GASTOS FIJOS',       // ✅ CORREGIDO: con espacio
     'TALLER': 'TALLERES',
     'TALLERES': 'TALLERES',
     'REPARACION': 'TALLERES',
@@ -53,8 +57,8 @@ export function mapearCategoriaGasto(tipoGasto: string): string {
     }
   }
   
-  // Si no se encuentra coincidencia, usar OTROS_GASTOS
-  return 'OTROS_GASTOS'
+  // Si no se encuentra coincidencia, usar OTROS GASTOS (con espacio)
+  return 'OTROS GASTOS'  // ✅ CORREGIDO: con espacio
 }
 
 // ============================================

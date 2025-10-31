@@ -1,17 +1,19 @@
 
 /**
- * ⚠️ TAREA 2: SINCRONIZACIÓN PERIÓDICA COMPLETA - CÓDIGO EXACTO DEL PDF
+ * ⚠️ TAREA 2: SINCRONIZACIÓN PERIÓDICA COMPLETA
+ * ACTUALIZADO: 31 de octubre de 2025
  * Este código debe ejecutarse EN EL SERVIDOR BACKEND
  * NO en el navegador del usuario
  */
 
 import { prisma } from './db'
+import { mapearCategoriaGasto } from './gscontrol-sync'
 
 const GSCONTROL_API_KEY = 'gs_dff763d23624a595fe081d0359066facc50968fe407ef239236c8f3ee5750f0a'
 const GSCONTROL_PULL_ENDPOINT = 'https://gscontrol.abacusai.app/api/integrations/pull'
 
 /**
- * Función EXACTA del PDF
+ * Función actualizada con nuevos campos según PDF 31/10/2025
  */
 export async function sincronizacionCompletaGSControl() {
   try {
@@ -42,29 +44,50 @@ export async function sincronizacionCompletaGSControl() {
     // 2. FORMATEAR al formato de GS Control
     const transaccionesFormateadas = []
 
-    // Formatear facturas como INGRESOS
+    // Formatear facturas como INGRESOS - CON NUEVOS CAMPOS
     for (const factura of todasLasFacturas) {
       const descripcionFactura = `${factura.tipo}: ${factura.numero} - ${factura.cliente.nombre} ${factura.cliente.apellido || ''}`
-      transaccionesFormateadas.push({
+      const clienteNombreCompleto = `${factura.cliente.nombre} ${factura.cliente.apellido || ''}`.trim()
+      
+      const payload: any = {
         externalId: factura.id.toString(),
         type: "INGRESO",
         date: factura.createdAt.toISOString(),
         amount: factura.total,
         description: descripcionFactura,
-        ivaRate: 21
-      })
+        ivaRate: 21,
+        // ✅ NUEVOS CAMPOS SEGÚN PDF 31/10/2025
+        documentType: factura.tipo // "FACTURA" o "TICKET"
+      }
+
+      // Si es FACTURA, agregar número de factura y datos de cliente
+      if (factura.tipo === 'FACTURA') {
+        payload.invoiceNumber = factura.numero
+        if (clienteNombreCompleto) {
+          payload.clientName = clienteNombreCompleto
+        }
+        if (factura.cliente.documento) {
+          payload.clientDni = factura.cliente.documento
+        }
+      }
+
+      transaccionesFormateadas.push(payload)
     }
 
-    // Formatear gastos como GASTOS
+    // Formatear gastos como GASTOS - CON NUEVO CAMPO costCategory
     for (const gasto of todosLosGastos) {
       const descripcionGasto = `${gasto.concepto}${gasto.proveedor ? ` - ${gasto.proveedor}` : ''}`
+      const categoriaGSControl = mapearCategoriaGasto(gasto.tipoGasto)
+      
       transaccionesFormateadas.push({
         externalId: gasto.id.toString(),
         type: "GASTO",
         date: gasto.fecha.toISOString(),
         amount: gasto.importe,
         description: descripcionGasto,
-        ivaRate: 21
+        ivaRate: 21,
+        // ✅ NUEVO CAMPO SEGÚN PDF 31/10/2025
+        costCategory: categoriaGSControl
       })
     }
 
