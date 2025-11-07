@@ -47,6 +47,21 @@ export function ReservasPublicPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('MEDIO')
   const [galeriaAntesDespues, setGaleriaAntesDespues] = useState<any[]>([])
   const [portfolioTrabajos, setPortfolioTrabajos] = useState<any[]>([])
+  const [publicConfig, setPublicConfig] = useState<Record<string, string>>({
+    'publica.nombre': 'ServyAuto',
+    'publica.subtitulo': 'Lavado & Detailing',
+    'publica.telefono': '600-123-456',
+    'publica.email': '',
+    'publica.titulo_servicios': 'Nuestros Servicios',
+    'publica.descripcion_servicios': 'Desde lavados básicos hasta tratamientos premium de protección. Elige el tamaño de tu vehículo y descubre nuestros servicios especializados.',
+    'publica.cta_texto': '¿Listo para transformar tu vehículo?',
+    'publica.cta_subtexto': 'Únete a más de 1.000 clientes satisfechos que han confiado en nosotros para el cuidado de sus vehículos.',
+    'publica.sabado_apertura': '10:00',
+    'publica.sabado_cierre': '19:00',
+    'publica.domingo_cerrado': 'true',
+    'publica.domingo_apertura': '10:00',
+    'publica.domingo_cierre': '14:00',
+  })
   
   // Imágenes por categoría de vehículo
   const imagenesCategoria = {
@@ -75,11 +90,25 @@ export function ReservasPublicPage() {
   })
 
   useEffect(() => {
+    loadPublicConfiguration()
     loadConfiguration()
     loadServicios()
     loadGaleriaAntesDespues()
     loadPortfolioTrabajos()
   }, [])
+
+  const loadPublicConfiguration = async () => {
+    try {
+      const response = await fetch('/api/configuracion/publica')
+      if (response.ok) {
+        const data = await response.json()
+        setPublicConfig(prev => ({ ...prev, ...data }))
+      }
+    } catch (error) {
+      console.error('Error loading public configuration:', error)
+      // Usar valores por defecto ya establecidos en el estado
+    }
+  }
 
   const generateTimeSlots = (apertura: string, cierre: string): string[] => {
     const slots: string[] = []
@@ -344,13 +373,17 @@ export function ReservasPublicPage() {
                 <Car className="h-6 w-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">ServyAuto</h1>
-                <p className="text-sm text-gray-500">Lavado & Detailing</p>
+                <h1 className="text-xl font-bold text-gray-900">
+                  {publicConfig['publica.nombre'] || 'ServyAuto'}
+                </h1>
+                <p className="text-sm text-gray-500">
+                  {publicConfig['publica.subtitulo'] || 'Lavado & Detailing'}
+                </p>
               </div>
             </div>
             <div className="flex items-center space-x-4">
               <div className="text-sm text-gray-600">
-                📞 600-123-456
+                📞 {publicConfig['publica.telefono'] || '600-123-456'}
               </div>
             </div>
           </div>
@@ -400,10 +433,10 @@ export function ReservasPublicPage() {
           <div>
             <div className="text-center mb-12">
               <h2 className="text-4xl font-bold text-gray-900 mb-4">
-                Nuestros Servicios
+                {publicConfig['publica.titulo_servicios'] || 'Nuestros Servicios'}
               </h2>
               <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-                Desde lavados básicos hasta tratamientos premium de protección. Elige el tamaño de tu vehículo y descubre nuestros servicios especializados.
+                {publicConfig['publica.descripcion_servicios'] || 'Desde lavados básicos hasta tratamientos premium de protección. Elige el tamaño de tu vehículo y descubre nuestros servicios especializados.'}
               </p>
             </div>
 
@@ -619,9 +652,11 @@ export function ReservasPublicPage() {
             <div className="text-center mb-16">
               <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl p-8 text-white">
                 <Camera className="h-12 w-12 mx-auto mb-4 text-blue-200" />
-                <h3 className="text-2xl font-bold mb-4">¿Listo para transformar tu vehículo?</h3>
+                <h3 className="text-2xl font-bold mb-4">
+                  {publicConfig['publica.cta_texto'] || '¿Listo para transformar tu vehículo?'}
+                </h3>
                 <p className="text-blue-100 mb-6 max-w-2xl mx-auto">
-                  Únete a más de 1.000 clientes satisfechos que han confiado en nosotros para el cuidado de sus vehículos.
+                  {publicConfig['publica.cta_subtexto'] || 'Únete a más de 1.000 clientes satisfechos que han confiado en nosotros para el cuidado de sus vehículos.'}
                 </p>
                 <div className="flex justify-center space-x-6 text-sm">
                   <div className="flex items-center">
@@ -653,11 +688,18 @@ export function ReservasPublicPage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Sábados:</span>
-                    <span className="font-medium">10:00 - 19:00</span>
+                    <span className="font-medium">
+                      {publicConfig['publica.sabado_apertura'] || '10:00'} - {publicConfig['publica.sabado_cierre'] || '19:00'}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Domingos:</span>
-                    <span className="font-medium">Cerrado</span>
+                    <span className="font-medium">
+                      {publicConfig['publica.domingo_cerrado'] === 'true' || !publicConfig['publica.domingo_cerrado']
+                        ? 'Cerrado'
+                        : `${publicConfig['publica.domingo_apertura'] || '10:00'} - ${publicConfig['publica.domingo_cierre'] || '14:00'}`
+                      }
+                    </span>
                   </div>
                 </div>
               </CardContent>
