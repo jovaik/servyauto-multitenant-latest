@@ -31,7 +31,8 @@ import {
   Settings,
   Shield,
   Star,
-  CheckCircle
+  CheckCircle,
+  Palette
 } from 'lucide-react'
 
 interface GaleriaItem {
@@ -66,6 +67,7 @@ export default function ConfiguracionPublicaPage() {
     'publica.subtitulo': '',
     'publica.telefono': '',
     'publica.email': '',
+    'publica.color_fondo': '#f0f7ff',
     // Imágenes
     'publica.logo': '',
     'publica.imagen_banner': '',
@@ -491,6 +493,32 @@ export default function ConfiguracionPublicaPage() {
                   onChange={(e) => setConfig(prev => ({ ...prev, 'publica.email': e.target.value }))}
                   placeholder="Ej: info@servyauto.com"
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="color_fondo">
+                  <Palette className="inline mr-2 h-4 w-4" />
+                  Color de Fondo de la Página
+                </Label>
+                <div className="flex items-center space-x-3">
+                  <Input
+                    id="color_fondo"
+                    type="color"
+                    value={config['publica.color_fondo'] || '#f0f7ff'}
+                    onChange={(e) => setConfig(prev => ({ ...prev, 'publica.color_fondo': e.target.value }))}
+                    className="w-20 h-10 cursor-pointer"
+                  />
+                  <Input
+                    type="text"
+                    value={config['publica.color_fondo'] || '#f0f7ff'}
+                    onChange={(e) => setConfig(prev => ({ ...prev, 'publica.color_fondo': e.target.value }))}
+                    placeholder="#f0f7ff"
+                    className="flex-1"
+                  />
+                </div>
+                <p className="text-xs text-gray-500">
+                  Elige el color de fondo que mejor represente tu marca. Por defecto: azul claro (#f0f7ff)
+                </p>
               </div>
             </CardContent>
           </Card>

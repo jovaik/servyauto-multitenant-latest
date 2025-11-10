@@ -1,10 +1,12 @@
 
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import Image from 'next/image'
+import useEmblaCarousel from 'embla-carousel-react'
+import Autoplay from 'embla-carousel-autoplay'
 import { 
   Car, 
   Calendar, 
@@ -20,7 +22,9 @@ import {
   Star,
   Sparkles,
   Camera,
-  Award
+  Award,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -61,7 +65,22 @@ export function ReservasPublicPage() {
     'publica.domingo_cerrado': 'true',
     'publica.domingo_apertura': '10:00',
     'publica.domingo_cierre': '14:00',
+    'publica.color_fondo': '#f0f7ff', // Color de fondo configurable
   })
+  
+  // Configuración del carrusel con autoplay
+  const [emblaRef, emblaApi] = useEmblaCarousel(
+    { loop: true, align: 'center' },
+    [Autoplay({ delay: 3000, stopOnInteraction: false })]
+  )
+  
+  const scrollPrev = useCallback(() => {
+    if (emblaApi) emblaApi.scrollPrev()
+  }, [emblaApi])
+
+  const scrollNext = useCallback(() => {
+    if (emblaApi) emblaApi.scrollNext()
+  }, [emblaApi])
   
   // Imágenes por categoría de vehículo (con fallback a las por defecto)
   const imagenesCategoria = {
@@ -363,7 +382,14 @@ export function ReservasPublicPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div 
+      className="min-h-screen overflow-y-auto"
+      style={{ 
+        background: publicConfig['publica.color_fondo'] 
+          ? `linear-gradient(135deg, ${publicConfig['publica.color_fondo']} 0%, ${publicConfig['publica.color_fondo']}dd 100%)`
+          : 'linear-gradient(135deg, #f0f7ff 0%, #e0efff 100%)'
+      }}
+    >
       {/* Header */}
       <div className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -558,53 +584,89 @@ export function ReservasPublicPage() {
               })}
             </div>
 
-            {/* Galería Antes/Después */}
+            {/* Carrusel de Coches Lavados (Antes/Después) */}
             {galeriaAntesDespues.length > 0 && (
               <div className="mb-16">
                 <div className="text-center mb-12">
                   <h3 className="text-3xl font-bold text-gray-900 mb-4">
-                    Antes y Después
+                    Galería de Transformaciones
                   </h3>
                   <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-                    Descubre la transformación que experimentan nuestros clientes. Cada vehículo recibe el cuidado y la atención que merece.
+                    Descubre cómo transformamos cada vehículo. Desliza para ver más resultados increíbles.
                   </p>
                 </div>
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                  {galeriaAntesDespues.map((item) => (
-                    <Card key={item.id} className="overflow-hidden">
-                      <div className="grid grid-cols-2 gap-0">
-                        <div className="aspect-square relative bg-gray-100">
-                          <Image
-                            src={item.imagenAntes}
-                            alt={`Antes - ${item.titulo}`}
-                            fill
-                            className="object-cover"
-                            sizes="(max-width: 768px) 50vw, 33vw"
-                          />
-                          <div className="absolute bottom-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded">
-                            Antes
-                          </div>
+                
+                {/* Carrusel con Embla */}
+                <div className="relative max-w-5xl mx-auto">
+                  <div className="overflow-hidden" ref={emblaRef}>
+                    <div className="flex">
+                      {galeriaAntesDespues.map((item) => (
+                        <div key={item.id} className="flex-[0_0_100%] md:flex-[0_0_50%] lg:flex-[0_0_33.333%] px-3">
+                          <Card className="overflow-hidden h-full">
+                            <div className="grid grid-cols-2 gap-0">
+                              <div className="aspect-square relative bg-gray-100">
+                                <Image
+                                  src={item.imagenAntes}
+                                  alt={`Antes - ${item.titulo}`}
+                                  fill
+                                  className="object-cover"
+                                  sizes="(max-width: 768px) 50vw, 33vw"
+                                />
+                                <div className="absolute bottom-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded font-semibold">
+                                  ANTES
+                                </div>
+                              </div>
+                              <div className="aspect-square relative bg-gray-100">
+                                <Image
+                                  src={item.imagenDespues}
+                                  alt={`Después - ${item.titulo}`}
+                                  fill
+                                  className="object-cover"
+                                  sizes="(max-width: 768px) 50vw, 33vw"
+                                />
+                                <div className="absolute bottom-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded font-semibold">
+                                  DESPUÉS
+                                </div>
+                              </div>
+                            </div>
+                            <CardContent className="p-4">
+                              <h4 className="font-semibold text-gray-800 mb-1">{item.titulo}</h4>
+                              <p className="text-sm text-gray-600 mb-2">{item.servicio}</p>
+                              <p className="text-xs text-gray-500">{item.vehiculo}</p>
+                            </CardContent>
+                          </Card>
                         </div>
-                        <div className="aspect-square relative bg-gray-100">
-                          <Image
-                            src={item.imagenDespues}
-                            alt={`Después - ${item.titulo}`}
-                            fill
-                            className="object-cover"
-                            sizes="(max-width: 768px) 50vw, 33vw"
-                          />
-                          <div className="absolute bottom-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded">
-                            Después
-                          </div>
-                        </div>
-                      </div>
-                      <CardContent className="p-4">
-                        <h4 className="font-semibold text-gray-800 mb-1">{item.titulo}</h4>
-                        <p className="text-sm text-gray-600 mb-2">{item.servicio}</p>
-                        <p className="text-xs text-gray-500">{item.vehiculo}</p>
-                      </CardContent>
-                    </Card>
-                  ))}
+                      ))}
+                    </div>
+                  </div>
+                  
+                  {/* Botones de navegación */}
+                  {galeriaAntesDespues.length > 3 && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white shadow-lg"
+                        onClick={scrollPrev}
+                      >
+                        <ChevronLeft className="h-6 w-6" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white shadow-lg"
+                        onClick={scrollNext}
+                      >
+                        <ChevronRight className="h-6 w-6" />
+                      </Button>
+                    </>
+                  )}
+                </div>
+                
+                <div className="text-center mt-6">
+                  <p className="text-sm text-gray-500 italic">
+                    ⚡ El carrusel se desliza automáticamente cada 3 segundos
+                  </p>
                 </div>
               </div>
             )}
