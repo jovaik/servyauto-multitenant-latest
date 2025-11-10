@@ -63,12 +63,12 @@ export function ReservasPublicPage() {
     'publica.domingo_cierre': '14:00',
   })
   
-  // Imágenes por categoría de vehículo
+  // Imágenes por categoría de vehículo (con fallback a las por defecto)
   const imagenesCategoria = {
-    PEQUENO: 'https://cdn.abacus.ai/images/e3c871fe-3d41-4c52-bea8-632d322c97cd.png',
-    MEDIO: 'https://cdn.abacus.ai/images/3d506b73-86f0-4c4b-8d00-558f22976f10.png', 
-    GRANDE: 'https://cdn.abacus.ai/images/bda60174-594f-4da3-aebd-dab09f66fd2f.png',
-    SUPER_GRANDE: 'https://cdn.abacus.ai/images/56ae8007-9c89-4133-8ccf-5de0034e918b.png'
+    PEQUENO: publicConfig['publica.imagen_pequeno'] || 'https://cdn.abacus.ai/images/e3c871fe-3d41-4c52-bea8-632d322c97cd.png',
+    MEDIO: publicConfig['publica.imagen_medio'] || 'https://cdn.abacus.ai/images/3d506b73-86f0-4c4b-8d00-558f22976f10.png', 
+    GRANDE: publicConfig['publica.imagen_grande'] || 'https://cdn.abacus.ai/images/bda60174-594f-4da3-aebd-dab09f66fd2f.png',
+    SUPER_GRANDE: publicConfig['publica.imagen_super_grande'] || 'https://cdn.abacus.ai/images/56ae8007-9c89-4133-8ccf-5de0034e918b.png'
   }
   
   const categoriasLabels = {
@@ -526,37 +526,36 @@ export function ReservasPublicPage() {
               ))}
             </div>
 
-            {/* Info adicional */}
+            {/* Info adicional - Bloques personalizables */}
             <div className="grid md:grid-cols-3 gap-6 mb-12">
-              <div className="text-center">
-                <div className="bg-blue-100 p-4 rounded-full inline-block mb-4">
-                  <Settings className="h-8 w-8 text-blue-600" />
-                </div>
-                <h3 className="font-semibold text-gray-900 mb-2">Equipos Profesionales</h3>
-                <p className="text-gray-600 text-sm">
-                  Utilizamos los mejores productos y herramientas del mercado para garantizar resultados excepcionales.
-                </p>
-              </div>
-              
-              <div className="text-center">
-                <div className="bg-green-100 p-4 rounded-full inline-block mb-4">
-                  <Shield className="h-8 w-8 text-green-600" />
-                </div>
-                <h3 className="font-semibold text-gray-900 mb-2">Garantía de Calidad</h3>
-                <p className="text-gray-600 text-sm">
-                  Todos nuestros servicios incluyen garantía y la tranquilidad de un trabajo bien hecho.
-                </p>
-              </div>
-              
-              <div className="text-center">
-                <div className="bg-yellow-100 p-4 rounded-full inline-block mb-4">
-                  <Star className="h-8 w-8 text-yellow-600" />
-                </div>
-                <h3 className="font-semibold text-gray-900 mb-2">Atención Personalizada</h3>
-                <p className="text-gray-600 text-sm">
-                  Cada vehículo recibe un tratamiento único según su estado y necesidades específicas.
-                </p>
-              </div>
+              {[1, 2, 3].map((num) => {
+                const icono = publicConfig[`publica.bloque${num}_icono`] || 'settings'
+                const colores = {
+                  1: { bg: 'bg-blue-100', text: 'text-blue-600' },
+                  2: { bg: 'bg-green-100', text: 'text-green-600' },
+                  3: { bg: 'bg-yellow-100', text: 'text-yellow-600' }
+                }
+                const IconComponent = 
+                  icono === 'shield' ? Shield :
+                  icono === 'star' ? Star :
+                  icono === 'sparkles' ? Sparkles :
+                  icono === 'camera' ? Camera :
+                  Settings
+                
+                return (
+                  <div key={num} className="text-center">
+                    <div className={`${colores[num as keyof typeof colores].bg} p-4 rounded-full inline-block mb-4`}>
+                      <IconComponent className={`h-8 w-8 ${colores[num as keyof typeof colores].text}`} />
+                    </div>
+                    <h3 className="font-semibold text-gray-900 mb-2">
+                      {publicConfig[`publica.bloque${num}_titulo`] || `Bloque ${num}`}
+                    </h3>
+                    <p className="text-gray-600 text-sm">
+                      {publicConfig[`publica.bloque${num}_texto`] || ''}
+                    </p>
+                  </div>
+                )
+              })}
             </div>
 
             {/* Galería Antes/Después */}

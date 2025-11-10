@@ -320,3 +320,31 @@ enum TipoMovimientoTicket {
   CONSUMO     // Uso de tickets en una cita
   AJUSTE      // Ajuste manual del inventario
 }
+
+model GaleriaAntesDespues {
+  id             Int      @id @default(autoincrement())
+  titulo         String
+  servicio       String
+  vehiculo       String
+  imagenAntes    String   // URL de la imagen "antes"
+  imagenDespues  String   // URL de la imagen "después"
+  descripcion    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("galeria_antes_despues")
+}
+
+model Portfolio {
+  id          Int      @id @default(autoincrement())
+  titulo      String
+  servicio    String
+  vehiculo    String?
+  categoria   String   @default("MEDIO") // PEQUENO, MEDIO, GRANDE, SUPER_GRANDE
+  imagenes    String[] // Array de URLs de imágenes
+  descripcion String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("portfolio")
+}
