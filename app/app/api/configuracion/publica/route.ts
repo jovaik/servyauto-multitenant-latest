@@ -1,6 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { getServerSession } from 'next-auth'
 
 /**
  * Endpoint PÚBLICO para obtener configuración de la página pública
@@ -50,6 +51,76 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching public configuration:', error)
     return NextResponse.json(
       { error: 'Error al cargar configuración' },
+      { status: 500 }
+    )
+  }
+}
+
+/**
+ * Endpoint para GUARDAR configuración de la página pública
+ * Requiere autenticación de administrador
+ */
+export async function PUT(request: NextRequest) {
+  try {
+    // Verificar autenticación
+    const session = await getServerSession()
+    if (!session) {
+      return NextResponse.json(
+        { error: 'No autenticado' },
+        { status: 401 }
+      )
+    }
+
+    const body = await request.json()
+    
+    // Validar que sea un objeto
+    if (typeof body !== 'object' || body === null) {
+      return NextResponse.json(
+        { error: 'Datos inválidos' },
+        { status: 400 }
+      )
+    }
+
+    console.log('📝 Guardando configuración pública:', Object.keys(body).length, 'claves')
+
+    // Guardar cada configuración
+    const saved = []
+    for (const [clave, valor] of Object.entries(body)) {
+      if (typeof valor === 'string') {
+        const result = await prisma.configuracion.upsert({
+          where: { clave },
+          update: { 
+            valor,
+            categoria: 'publica'
+          },
+          create: {
+            clave,
+            valor,
+            tipo: 'TEXTO',
+            categoria: 'publica',
+            descripcion: `Configuración pública: ${clave}`
+          }
+        })
+        saved.push(clave)
+        
+        // Log especial para el color
+        if (clave === 'publica.color_fondo') {
+          console.log(`🎨 Color guardado: ${valor}`)
+        }
+      }
+    }
+
+    console.log(`✅ Guardadas ${saved.length} configuraciones públicas`)
+
+    return NextResponse.json({ 
+      success: true, 
+      saved: saved.length,
+      message: 'Configuración guardada correctamente'
+    })
+  } catch (error) {
+    console.error('❌ Error saving public configuration:', error)
+    return NextResponse.json(
+      { error: 'Error al guardar configuración' },
       { status: 500 }
     )
   }
