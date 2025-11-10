@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { enviarNotificacionVehiculoListo } from '@/lib/notifications'
+import { enviarNotificacionVehiculoListo, enviarSolicitudResena } from '@/lib/notifications'
 
 export const dynamic = 'force-dynamic'
 
@@ -285,6 +285,26 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
           }
         } else {
           console.warn('⚠️ No se pudo enviar la notificación:', notificationResult.error)
+        }
+
+        // ⭐ ENVIAR SOLICITUD DE RESEÑA AUTOMÁTICAMENTE
+        // Se envía INMEDIATAMENTE después de marcar como completado
+        console.log('=== ENVIANDO SOLICITUD DE RESEÑA AUTOMÁTICA ===')
+        
+        const reviewResult = await enviarSolicitudResena({
+          clienteName: cita.cliente.nombre,
+          telefono: cita.cliente.telefono,
+          servicioNombre: cita.cita_servicios?.[0]?.servicios?.nombre
+        })
+        
+        if (reviewResult.success) {
+          if (reviewResult.whatsappSent) {
+            console.log('✅ Solicitud de reseña enviada por WhatsApp exitosamente')
+          } else if (reviewResult.smsSent) {
+            console.log('✅ Solicitud de reseña enviada por SMS exitosamente')
+          }
+        } else {
+          console.warn('⚠️ No se pudo enviar la solicitud de reseña:', reviewResult.error)
         }
       } catch (notificationError) {
         // No fallar la actualización si falla la notificación

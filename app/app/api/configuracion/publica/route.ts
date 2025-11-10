@@ -1,78 +1,55 @@
 
-import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 
-// GET - Obtener configuración pública
-export async function GET() {
+/**
+ * Endpoint PÚBLICO para obtener configuración de la página pública
+ * No requiere autenticación - accesible para todos
+ */
+export async function GET(request: NextRequest) {
   try {
-    const configs = await prisma.configuracion.findMany({
+    // Obtener todas las configuraciones con categoría 'publica'
+    const configuraciones = await prisma.configuracion.findMany({
       where: {
-        OR: [
-          { clave: { startsWith: 'publica.' } },
-          { clave: { startsWith: 'empresa.' } },
-          { clave: { startsWith: 'horarios.' } }
-        ]
+        categoria: 'publica'
       }
     })
 
-    const configMap: Record<string, any> = {}
-    configs.forEach((config: any) => {
-      configMap[config.clave] = config.valor
+    // Convertir array a objeto { clave: valor }
+    const config: Record<string, string> = {}
+    configuraciones.forEach(item => {
+      config[item.clave] = item.valor
     })
 
-    return NextResponse.json(configMap)
-  } catch (error) {
-    console.error('Error fetching public config:', error)
-    return NextResponse.json(
-      { error: 'Error al cargar configuración' },
-      { status: 500 }
-    )
-  }
-}
-
-// PUT - Actualizar configuración pública
-export async function PUT(request: Request) {
-  try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'No autorizado' },
-        { status: 401 }
-      )
-    }
-
-    const data = await request.json()
-
-    // Actualizar o crear cada configuración
-    for (const [clave, valor] of Object.entries(data)) {
-      if (valor === undefined || valor === null) continue
-
-      const categoria = clave.split('.')[0]
-      
-      await prisma.configuracion.upsert({
-        where: { clave },
-        update: { 
-          valor: String(valor),
-          updatedAt: new Date()
-        },
-        create: {
-          clave,
-          valor: String(valor),
-          tipo: 'TEXTO',
-          categoria: categoria.toUpperCase(),
-          descripcion: `Configuración de página pública: ${clave}`
-        }
+    // Si no hay configuración, retornar valores por defecto
+    if (Object.keys(config).length === 0) {
+      return NextResponse.json({
+        'publica.nombre': 'ServyAuto',
+        'publica.subtitulo': 'Lavado & Detailing',
+        'publica.telefono': '600-123-456',
+        'publica.email': '',
+        'publica.titulo_servicios': 'Nuestros Servicios',
+        'publica.descripcion_servicios': 'Desde lavados básicos hasta tratamientos premium de protección.',
+        'publica.cta_texto': '¿Listo para transformar tu vehículo?',
+        'publica.cta_subtexto': 'Únete a más de 1.000 clientes satisfechos.',
+        'publica.sabado_apertura': '10:00',
+        'publica.sabado_cierre': '19:00',
+        'publica.domingo_cerrado': 'true',
+        'publica.domingo_apertura': '10:00',
+        'publica.domingo_cierre': '14:00',
+        'publica.color_fondo': '#f0f7ff'
       })
     }
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json(config, {
+      headers: {
+        'Cache-Control': 'public, max-age=60, s-maxage=60'
+      }
+    })
   } catch (error) {
-    console.error('Error updating public config:', error)
+    console.error('Error fetching public configuration:', error)
     return NextResponse.json(
-      { error: 'Error al actualizar configuración' },
+      { error: 'Error al cargar configuración' },
       { status: 500 }
     )
   }

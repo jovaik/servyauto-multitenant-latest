@@ -117,6 +117,102 @@ Gracias por confiar en ServyAuto 🚗`;
 }
 
 /**
+ * Envía solicitud de reseña al cliente cuando termina el servicio
+ * Se envía automáticamente al marcar una cita como COMPLETADO
+ */
+export async function enviarSolicitudResena(data: {
+  clienteName: string;
+  telefono: string;
+  servicioNombre?: string;
+}) {
+  const client = getTwilioClient();
+  
+  if (!client) {
+    console.log('❌ Notificaciones deshabilitadas - Credenciales de Twilio no configuradas');
+    return {
+      success: false,
+      error: 'Twilio not configured',
+      whatsappSent: false,
+      smsSent: false
+    };
+  }
+
+  // Limpiar el número de teléfono
+  let phoneNumber = data.telefono.replace(/\s+/g, '');
+  
+  // Asegurar formato internacional
+  if (!phoneNumber.startsWith('+')) {
+    // Asumir España si no tiene código de país
+    phoneNumber = '+34' + phoneNumber;
+  }
+
+  const mensaje = `¡Hola ${data.clienteName}! 👋
+
+Esperamos que estés disfrutando de tu vehículo recién lavado ✨
+
+Tu opinión es muy importante para nosotros. ¿Podrías dedicar un minuto para dejarnos una reseña?
+
+⭐⭐⭐⭐⭐
+
+Responde a este mensaje con tu valoración o déjanos tu comentario en Google.
+
+¡Gracias por confiar en ServyAuto! 🚗💙`;
+
+  const result = {
+    success: false,
+    whatsappSent: false,
+    smsSent: false,
+    error: null as string | null
+  };
+
+  // Intentar WhatsApp primero
+  if (whatsappNumber) {
+    try {
+      console.log(`📱 Enviando solicitud de reseña por WhatsApp a ${phoneNumber}...`);
+      
+      const whatsappMessage = await client.messages.create({
+        from: whatsappNumber,
+        to: `whatsapp:${phoneNumber}`,
+        body: mensaje
+      });
+
+      console.log(`✅ Solicitud de reseña enviada por WhatsApp (SID: ${whatsappMessage.sid})`);
+      result.success = true;
+      result.whatsappSent = true;
+      return result;
+      
+    } catch (whatsappError: any) {
+      console.warn(`⚠️ WhatsApp falló: ${whatsappError.message}`);
+      console.log('🔄 Intentando enviar por SMS...');
+    }
+  }
+
+  // Si WhatsApp falló, intentar SMS
+  if (process.env.TWILIO_PHONE_NUMBER) {
+    try {
+      const smsMessage = await client.messages.create({
+        from: process.env.TWILIO_PHONE_NUMBER,
+        to: phoneNumber,
+        body: mensaje
+      });
+
+      console.log(`✅ Solicitud de reseña enviada por SMS (SID: ${smsMessage.sid})`);
+      result.success = true;
+      result.smsSent = true;
+      return result;
+      
+    } catch (smsError: any) {
+      console.error(`❌ SMS también falló: ${smsError.message}`);
+      result.error = smsError.message;
+      return result;
+    }
+  }
+
+  result.error = 'Ni WhatsApp ni SMS configurados';
+  return result;
+}
+
+/**
  * Valida que las credenciales de Twilio estén configuradas
  */
 export function isTwilioConfigured(): boolean {
