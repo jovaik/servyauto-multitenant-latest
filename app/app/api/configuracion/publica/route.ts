@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 
 /**
  * Endpoint PÚBLICO para obtener configuración de la página pública
@@ -82,13 +83,16 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     // Verificar autenticación
-    const session = await getServerSession()
+    const session = await getServerSession(authOptions)
     if (!session) {
+      console.log('❌ PUT /api/configuracion/publica - No hay sesión válida')
       return NextResponse.json(
         { error: 'No autenticado' },
         { status: 401 }
       )
     }
+    
+    console.log('✅ PUT /api/configuracion/publica - Usuario autenticado:', session.user?.email)
 
     const body = await request.json()
     
