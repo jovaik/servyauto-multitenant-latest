@@ -105,6 +105,23 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // Obtener el primer box de la configuración
+    const boxesConfig = await prisma.configuracion.findUnique({
+      where: { clave: 'boxes.nombres' }
+    })
+    
+    let primerBox = 'Box 1' // Valor por defecto
+    if (boxesConfig) {
+      try {
+        const boxNames = JSON.parse(boxesConfig.valor)
+        if (boxNames && Array.isArray(boxNames) && boxNames.length > 0) {
+          primerBox = boxNames[0]
+        }
+      } catch (e) {
+        console.error('Error parsing boxes config:', e)
+      }
+    }
+
     // Calcular hora fin (añadir 1 hora por defecto)
     const [horaInicio, minutos] = hora.split(':').map(Number)
     let horaFin = `${(horaInicio + 1).toString().padStart(2, '0')}:${minutos.toString().padStart(2, '0')}`
@@ -117,7 +134,7 @@ export async function POST(req: NextRequest) {
         horaFin,
         clienteId: cliente.id,
         vehiculoId: vehiculo.id,
-        box: 'BOX1', // Por defecto para reservas públicas
+        box: primerBox, // Usa el primer box de la configuración
         estado: 'PENDIENTE',
         observaciones: mensaje || `Reserva online - ${servicio}`,
         cita_servicios: {
