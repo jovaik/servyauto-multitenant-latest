@@ -141,12 +141,20 @@ export function ReservasPublicPage() {
 
   const loadConfiguracionPublica = async () => {
     try {
-      const response = await fetch('/api/configuracion/publica', {
-        cache: 'no-store'  // No usar caché para ver cambios inmediatamente
+      // Agregar timestamp para evitar cache del navegador
+      const timestamp = new Date().getTime()
+      const response = await fetch(`/api/configuracion/publica?_t=${timestamp}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
       })
       if (response.ok) {
         const config = await response.json()
         console.log('✅ Configuración pública cargada:', config)
+        console.log('📞 Teléfono:', config['publica.telefono'])
+        console.log('🎨 Color:', config['publica.color_fondo'])
         setConfigPublica(config)
       }
     } catch (error) {

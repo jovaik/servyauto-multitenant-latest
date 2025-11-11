@@ -7,14 +7,22 @@ import { getServerSession } from 'next-auth'
  * Endpoint PÚBLICO para obtener configuración de la página pública
  * No requiere autenticación - accesible para todos
  */
+// Deshabilitar el cache de Next.js para este endpoint
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export async function GET(request: NextRequest) {
   try {
+    console.log('📖 GET /api/configuracion/publica - Solicitado')
+    
     // Obtener todas las configuraciones con categoría 'publica'
     const configuraciones = await prisma.configuracion.findMany({
       where: {
         categoria: 'publica'
       }
     })
+
+    console.log(`✅ Encontradas ${configuraciones.length} configuraciones públicas en la BD`)
 
     // Convertir array a objeto { clave: valor }
     const config: Record<string, string> = {}
@@ -24,6 +32,7 @@ export async function GET(request: NextRequest) {
 
     // Si no hay configuración, retornar valores por defecto
     if (Object.keys(config).length === 0) {
+      console.log('⚠️ No hay configuraciones, retornando valores por defecto')
       return NextResponse.json({
         'publica.nombre': 'ServyAuto',
         'publica.subtitulo': 'Lavado & Detailing',
@@ -39,16 +48,26 @@ export async function GET(request: NextRequest) {
         'publica.domingo_apertura': '10:00',
         'publica.domingo_cierre': '14:00',
         'publica.color_fondo': '#f0f7ff'
+      }, {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
       })
     }
 
+    console.log('📤 Retornando configuración:', Object.keys(config).length, 'claves')
+
     return NextResponse.json(config, {
       headers: {
-        'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0'
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+        'Pragma': 'no-cache',
+        'Expires': '0'
       }
     })
   } catch (error) {
-    console.error('Error fetching public configuration:', error)
+    console.error('❌ Error fetching public configuration:', error)
     return NextResponse.json(
       { error: 'Error al cargar configuración' },
       { status: 500 }
