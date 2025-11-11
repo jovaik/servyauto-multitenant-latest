@@ -76,6 +76,11 @@ export default function ConfiguracionPublicaPage() {
     'publica.imagen_medio': '',
     'publica.imagen_grande': '',
     'publica.imagen_super_grande': '',
+    // Labels de categorías de vehículos
+    'publica.label_pequeno': 'Pequeño',
+    'publica.label_medio': 'Medio',
+    'publica.label_grande': 'Grande',
+    'publica.label_super_grande': 'SUV/Furgoneta',
     // Bloques informativos
     'publica.bloque1_titulo': 'Equipos Profesionales',
     'publica.bloque1_texto': 'Utilizamos los mejores productos y herramientas del mercado para garantizar resultados excepcionales.',
@@ -673,44 +678,58 @@ export default function ConfiguracionPublicaPage() {
               </CardHeader>
               <CardContent className="space-y-6">
                 {[
-                  { key: 'publica.imagen_pequeno', label: 'Vehículo Pequeño', desc: 'Fiat 500, C1, Up!' },
-                  { key: 'publica.imagen_medio', label: 'Vehículo Medio', desc: 'Golf, Corolla, León' },
-                  { key: 'publica.imagen_grande', label: 'Vehículo Grande', desc: 'Serie 5, Classe E' },
-                  { key: 'publica.imagen_super_grande', label: 'SUV/Furgoneta', desc: 'X5, Sprinter, Transit' }
-                ].map(({ key, label, desc }) => (
+                  { key: 'publica.imagen_pequeno', labelKey: 'publica.label_pequeno', defaultLabel: 'Vehículo Pequeño', desc: 'Fiat 500, C1, Up!' },
+                  { key: 'publica.imagen_medio', labelKey: 'publica.label_medio', defaultLabel: 'Vehículo Medio', desc: 'Golf, Corolla, León' },
+                  { key: 'publica.imagen_grande', labelKey: 'publica.label_grande', defaultLabel: 'Vehículo Grande', desc: 'Serie 5, Classe E' },
+                  { key: 'publica.imagen_super_grande', labelKey: 'publica.label_super_grande', defaultLabel: 'SUV/Furgoneta', desc: 'X5, Sprinter, Transit' }
+                ].map(({ key, labelKey, defaultLabel, desc }) => (
                   <div key={key} className="border rounded-lg p-4">
-                    <h4 className="font-semibold mb-2">{label}</h4>
-                    <p className="text-sm text-gray-500 mb-3">{desc}</p>
-                    <div className="flex items-center space-x-4">
-                      {config[key] && (
-                        <div className="relative w-32 h-24 bg-gray-100 rounded-lg overflow-hidden">
-                          <Image
-                            src={config[key]}
-                            alt={label}
-                            fill
-                            className="object-cover"
-                          />
-                        </div>
-                      )}
-                      <div className="flex-1">
-                        <Label htmlFor={`${key}-upload`} className="cursor-pointer">
-                          <div className="border-2 border-dashed border-gray-300 rounded-lg p-3 hover:border-blue-500 transition-colors">
-                            <div className="flex items-center justify-center">
-                              <Upload className="h-5 w-5 text-gray-400 mr-2" />
-                              <span className="text-sm text-gray-600">
-                                {config[key] ? 'Cambiar imagen' : 'Subir imagen'}
-                              </span>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Texto que aparece en la página pública</Label>
+                        <Input
+                          value={config[labelKey] || ''}
+                          onChange={(e) => setConfig(prev => ({ ...prev, [labelKey]: e.target.value }))}
+                          placeholder={defaultLabel}
+                          className="font-medium"
+                        />
+                        <p className="text-xs text-gray-500">{desc}</p>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label>Imagen</Label>
+                        <div className="flex items-center space-x-4">
+                          {config[key] && (
+                            <div className="relative w-32 h-24 bg-gray-100 rounded-lg overflow-hidden">
+                              <Image
+                                src={config[key]}
+                                alt={config[labelKey] || defaultLabel}
+                                fill
+                                className="object-cover"
+                              />
                             </div>
+                          )}
+                          <div className="flex-1">
+                            <Label htmlFor={`${key}-upload`} className="cursor-pointer">
+                              <div className="border-2 border-dashed border-gray-300 rounded-lg p-3 hover:border-blue-500 transition-colors">
+                                <div className="flex items-center justify-center">
+                                  <Upload className="h-5 w-5 text-gray-400 mr-2" />
+                                  <span className="text-sm text-gray-600">
+                                    {config[key] ? 'Cambiar imagen' : 'Subir imagen'}
+                                  </span>
+                                </div>
+                              </div>
+                              <input
+                                id={`${key}-upload`}
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => handleFileChange(e, key)}
+                                disabled={uploadingImage}
+                              />
+                            </Label>
                           </div>
-                          <input
-                            id={`${key}-upload`}
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={(e) => handleFileChange(e, key)}
-                            disabled={uploadingImage}
-                          />
-                        </Label>
+                        </div>
                       </div>
                     </div>
                   </div>

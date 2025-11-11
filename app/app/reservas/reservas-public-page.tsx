@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import Image from 'next/image'
@@ -59,20 +59,20 @@ export function ReservasPublicPage() {
     mensaje: ''
   })
 
-  // Imágenes fijas de los 4 tipos de vehículos
-  const imagenesCategoria = {
-    PEQUENO: 'https://cdn.abacus.ai/images/e3c871fe-3d41-4c52-bea8-632d322c97cd.png',
-    MEDIO: 'https://cdn.abacus.ai/images/3d506b73-86f0-4c4b-8d00-558f22976f10.png', 
-    GRANDE: 'https://cdn.abacus.ai/images/bda60174-594f-4da3-aebd-dab09f66fd2f.png',
-    SUPER_GRANDE: 'https://cdn.abacus.ai/images/56ae8007-9c89-4133-8ccf-5de0034e918b.png'
-  }
+  // Imágenes y textos de categorías (con fallbacks por defecto) - se recalculan cuando cambia la configuración
+  const imagenesCategoria = useMemo(() => ({
+    PEQUENO: configPublica['publica.imagen_pequeno'] || 'https://cdn.abacus.ai/images/e3c871fe-3d41-4c52-bea8-632d322c97cd.png',
+    MEDIO: configPublica['publica.imagen_medio'] || 'https://cdn.abacus.ai/images/3d506b73-86f0-4c4b-8d00-558f22976f10.png', 
+    GRANDE: configPublica['publica.imagen_grande'] || 'https://cdn.abacus.ai/images/bda60174-594f-4da3-aebd-dab09f66fd2f.png',
+    SUPER_GRANDE: configPublica['publica.imagen_super_grande'] || 'https://cdn.abacus.ai/images/56ae8007-9c89-4133-8ccf-5de0034e918b.png'
+  }), [configPublica])
   
-  const categoriasLabels = {
-    PEQUENO: 'Pequeño',
-    MEDIO: 'Medio',
-    GRANDE: 'Grande', 
-    SUPER_GRANDE: 'SUV/Furgoneta'
-  }
+  const categoriasLabels = useMemo(() => ({
+    PEQUENO: configPublica['publica.label_pequeno'] || 'Pequeño',
+    MEDIO: configPublica['publica.label_medio'] || 'Medio',
+    GRANDE: configPublica['publica.label_grande'] || 'Grande', 
+    SUPER_GRANDE: configPublica['publica.label_super_grande'] || 'SUV/Furgoneta'
+  }), [configPublica])
 
   useEffect(() => {
     loadConfiguration()
