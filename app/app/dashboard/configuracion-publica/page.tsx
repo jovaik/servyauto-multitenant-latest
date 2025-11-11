@@ -56,7 +56,7 @@ interface PortfolioItem {
 }
 
 export default function ConfiguracionPublicaPage() {
-  const { data: session } = useSession()
+  const { data: session, status } = useSession() || {}
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
@@ -890,26 +890,42 @@ export default function ConfiguracionPublicaPage() {
                           <CardContent className="p-4">
                             <div className="grid grid-cols-2 gap-2 mb-3">
                               <div className="relative aspect-square bg-gray-100 rounded">
-                                <Image
-                                  src={item.imagenAntes}
-                                  alt="Antes"
-                                  fill
-                                  className="object-cover rounded"
-                                />
-                                <div className="absolute bottom-1 left-1 bg-red-500 text-white text-xs px-2 py-0.5 rounded">
-                                  Antes
-                                </div>
+                                {item.imagenAntes ? (
+                                  <>
+                                    <Image
+                                      src={item.imagenAntes}
+                                      alt="Antes"
+                                      fill
+                                      className="object-cover rounded"
+                                    />
+                                    <div className="absolute bottom-1 left-1 bg-red-500 text-white text-xs px-2 py-0.5 rounded">
+                                      Antes
+                                    </div>
+                                  </>
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                    <ImageIcon className="h-8 w-8" />
+                                  </div>
+                                )}
                               </div>
                               <div className="relative aspect-square bg-gray-100 rounded">
-                                <Image
-                                  src={item.imagenDespues}
-                                  alt="Después"
-                                  fill
-                                  className="object-cover rounded"
-                                />
-                                <div className="absolute bottom-1 left-1 bg-green-500 text-white text-xs px-2 py-0.5 rounded">
-                                  Después
-                                </div>
+                                {item.imagenDespues ? (
+                                  <>
+                                    <Image
+                                      src={item.imagenDespues}
+                                      alt="Después"
+                                      fill
+                                      className="object-cover rounded"
+                                    />
+                                    <div className="absolute bottom-1 left-1 bg-green-500 text-white text-xs px-2 py-0.5 rounded">
+                                      Después
+                                    </div>
+                                  </>
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                    <ImageIcon className="h-8 w-8" />
+                                  </div>
+                                )}
                               </div>
                             </div>
                             <h5 className="font-semibold text-sm">{item.titulo}</h5>
@@ -1003,20 +1019,22 @@ export default function ConfiguracionPublicaPage() {
                       <Label>Imágenes * (puedes subir varias)</Label>
                       <div className="grid grid-cols-4 gap-2">
                         {newPortfolio.imagenes.map((img, idx) => (
-                          <div key={idx} className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden group">
-                            <Image
-                              src={img}
-                              alt={`Imagen ${idx + 1}`}
-                              fill
-                              className="object-cover"
-                            />
-                            <button
-                              onClick={() => handleRemovePortfolioImage(idx)}
-                              className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          </div>
+                          img && (
+                            <div key={idx} className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden group">
+                              <Image
+                                src={img}
+                                alt={`Imagen ${idx + 1}`}
+                                fill
+                                className="object-cover"
+                              />
+                              <button
+                                onClick={() => handleRemovePortfolioImage(idx)}
+                                className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          )
                         ))}
                         <Label htmlFor="portfolio-image-upload" className="cursor-pointer">
                           <div className="aspect-square border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 transition-colors flex items-center justify-center">
@@ -1055,15 +1073,23 @@ export default function ConfiguracionPublicaPage() {
                         <Card key={item.id}>
                           <CardContent className="p-4">
                             <div className="relative aspect-square bg-gray-100 rounded mb-3">
-                              <Image
-                                src={item.imagenes[0] || ''}
-                                alt={item.titulo}
-                                fill
-                                className="object-cover rounded"
-                              />
-                              {item.imagenes.length > 1 && (
-                                <div className="absolute top-2 right-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
-                                  +{item.imagenes.length - 1}
+                              {item.imagenes && item.imagenes.length > 0 && item.imagenes[0] ? (
+                                <>
+                                  <Image
+                                    src={item.imagenes[0]}
+                                    alt={item.titulo}
+                                    fill
+                                    className="object-cover rounded"
+                                  />
+                                  {item.imagenes.length > 1 && (
+                                    <div className="absolute top-2 right-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
+                                      +{item.imagenes.length - 1}
+                                    </div>
+                                  )}
+                                </>
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                  <ImageIcon className="h-12 w-12" />
                                 </div>
                               )}
                             </div>
