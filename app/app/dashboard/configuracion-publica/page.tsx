@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import Image from 'next/image'
 import { 
@@ -119,6 +120,12 @@ export default function ConfiguracionPublicaPage() {
     imagenes: [] as string[],
     descripcion: ''
   })
+
+  // Estados para edición
+  const [editingGaleria, setEditingGaleria] = useState<GaleriaItem | null>(null)
+  const [editingPortfolio, setEditingPortfolio] = useState<PortfolioItem | null>(null)
+  const [isEditGaleriaOpen, setIsEditGaleriaOpen] = useState(false)
+  const [isEditPortfolioOpen, setIsEditPortfolioOpen] = useState(false)
 
   useEffect(() => {
     loadAllData()
@@ -335,6 +342,93 @@ export default function ConfiguracionPublicaPage() {
       console.error('Error deleting portfolio:', error)
       toast.error('Error al eliminar trabajo')
     }
+  }
+
+  // Funciones de edición
+  const handleEditGaleria = (item: GaleriaItem) => {
+    setEditingGaleria(item)
+    setIsEditGaleriaOpen(true)
+  }
+
+  const handleUpdateGaleria = async () => {
+    if (!editingGaleria || !editingGaleria.titulo || !editingGaleria.imagenAntes || !editingGaleria.imagenDespues) {
+      toast.error('Por favor completa los campos requeridos')
+      return
+    }
+
+    try {
+      const response = await fetch('/api/galeria-antes-despues', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editingGaleria)
+      })
+
+      if (response.ok) {
+        toast.success('Entrada de galería actualizada')
+        setIsEditGaleriaOpen(false)
+        setEditingGaleria(null)
+        await loadGaleria()
+      } else {
+        throw new Error('Error al actualizar')
+      }
+    } catch (error) {
+      console.error('Error updating galeria:', error)
+      toast.error('Error al actualizar entrada de galería')
+    }
+  }
+
+  const handleEditPortfolio = (item: PortfolioItem) => {
+    setEditingPortfolio(item)
+    setIsEditPortfolioOpen(true)
+  }
+
+  const handleUpdatePortfolio = async () => {
+    if (!editingPortfolio || !editingPortfolio.titulo || editingPortfolio.imagenes.length === 0) {
+      toast.error('Por favor completa los campos requeridos y asegúrate de tener al menos una imagen')
+      return
+    }
+
+    try {
+      const response = await fetch('/api/portfolio', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editingPortfolio)
+      })
+
+      if (response.ok) {
+        toast.success('Trabajo actualizado en portfolio')
+        setIsEditPortfolioOpen(false)
+        setEditingPortfolio(null)
+        await loadPortfolio()
+      } else {
+        throw new Error('Error al actualizar')
+      }
+    } catch (error) {
+      console.error('Error updating portfolio:', error)
+      toast.error('Error al actualizar trabajo en portfolio')
+    }
+  }
+
+  const handleEditPortfolioAddImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file && editingPortfolio) {
+      try {
+        const url = await handleImageUpload(file)
+        setEditingPortfolio(prev => prev ? ({
+          ...prev,
+          imagenes: [...prev.imagenes, url]
+        }) : null)
+      } catch (error) {
+        // Error ya manejado en handleImageUpload
+      }
+    }
+  }
+
+  const handleEditPortfolioRemoveImage = (index: number) => {
+    setEditingPortfolio(prev => prev ? ({
+      ...prev,
+      imagenes: prev.imagenes.filter((_, i) => i !== index)
+    }) : null)
   }
 
   const handleAddPortfolioImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -930,15 +1024,29 @@ export default function ConfiguracionPublicaPage() {
                             </div>
                             <h5 className="font-semibold text-sm">{item.titulo}</h5>
                             <p className="text-xs text-gray-600">{item.servicio} • {item.vehiculo}</p>
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => handleDeleteGaleria(item.id)}
-                              className="mt-2 w-full"
-                            >
-                              <Trash2 className="mr-2 h-3 w-3" />
-                              Eliminar
-                            </Button>
+                            {item.descripcion && (
+                              <p className="text-xs text-gray-500 mt-1 line-clamp-2">{item.descripcion}</p>
+                            )}
+                            <div className="flex gap-2 mt-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleEditGaleria(item)}
+                                className="flex-1"
+                              >
+                                <Settings className="mr-2 h-3 w-3" />
+                                Editar
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => handleDeleteGaleria(item.id)}
+                                className="flex-1"
+                              >
+                                <Trash2 className="mr-2 h-3 w-3" />
+                                Eliminar
+                              </Button>
+                            </div>
                           </CardContent>
                         </Card>
                       ))}
@@ -1095,15 +1203,29 @@ export default function ConfiguracionPublicaPage() {
                             </div>
                             <h5 className="font-semibold text-sm">{item.titulo}</h5>
                             <p className="text-xs text-gray-600">{item.servicio}</p>
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => handleDeletePortfolio(item.id)}
-                              className="mt-2 w-full"
-                            >
-                              <Trash2 className="mr-2 h-3 w-3" />
-                              Eliminar
-                            </Button>
+                            {item.descripcion && (
+                              <p className="text-xs text-gray-500 mt-1 line-clamp-2">{item.descripcion}</p>
+                            )}
+                            <div className="flex gap-2 mt-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleEditPortfolio(item)}
+                                className="flex-1"
+                              >
+                                <Settings className="mr-2 h-3 w-3" />
+                                Editar
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => handleDeletePortfolio(item.id)}
+                                className="flex-1"
+                              >
+                                <Trash2 className="mr-2 h-3 w-3" />
+                                Eliminar
+                              </Button>
+                            </div>
                           </CardContent>
                         </Card>
                       ))}
@@ -1192,6 +1314,236 @@ export default function ConfiguracionPublicaPage() {
           {saving ? 'Guardando...' : 'Guardar Todos los Cambios'}
         </Button>
       </div>
+
+      {/* Dialog para editar galería */}
+      <Dialog open={isEditGaleriaOpen} onOpenChange={setIsEditGaleriaOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar Entrada de Galería</DialogTitle>
+            <DialogDescription>
+              Modifica los textos e imágenes de esta entrada
+            </DialogDescription>
+          </DialogHeader>
+          
+          {editingGaleria && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Título *</Label>
+                  <Input
+                    value={editingGaleria.titulo}
+                    onChange={(e) => setEditingGaleria(prev => prev ? ({ ...prev, titulo: e.target.value }) : null)}
+                    placeholder="Ej: Pulido Profundo BMW"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Servicio</Label>
+                  <Input
+                    value={editingGaleria.servicio}
+                    onChange={(e) => setEditingGaleria(prev => prev ? ({ ...prev, servicio: e.target.value }) : null)}
+                    placeholder="Ej: Pulido Premium"
+                  />
+                </div>
+
+                <div className="col-span-2 space-y-2">
+                  <Label>Vehículo</Label>
+                  <Input
+                    value={editingGaleria.vehiculo}
+                    onChange={(e) => setEditingGaleria(prev => prev ? ({ ...prev, vehiculo: e.target.value }) : null)}
+                    placeholder="Ej: BMW Serie 3"
+                  />
+                </div>
+
+                <div className="col-span-2 space-y-2">
+                  <Label>Descripción</Label>
+                  <Textarea
+                    value={editingGaleria.descripcion || ''}
+                    onChange={(e) => setEditingGaleria(prev => prev ? ({ ...prev, descripcion: e.target.value }) : null)}
+                    placeholder="Descripción del trabajo..."
+                    rows={3}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Imagen Antes</Label>
+                  <div className="relative aspect-square bg-gray-100 rounded">
+                    {editingGaleria.imagenAntes ? (
+                      <Image
+                        src={editingGaleria.imagenAntes}
+                        alt="Antes"
+                        fill
+                        className="object-cover rounded"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-400">
+                        <ImageIcon className="h-8 w-8" />
+                      </div>
+                    )}
+                  </div>
+                  <Input
+                    value={editingGaleria.imagenAntes}
+                    onChange={(e) => setEditingGaleria(prev => prev ? ({ ...prev, imagenAntes: e.target.value }) : null)}
+                    placeholder="URL de la imagen"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Imagen Después</Label>
+                  <div className="relative aspect-square bg-gray-100 rounded">
+                    {editingGaleria.imagenDespues ? (
+                      <Image
+                        src={editingGaleria.imagenDespues}
+                        alt="Después"
+                        fill
+                        className="object-cover rounded"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-400">
+                        <ImageIcon className="h-8 w-8" />
+                      </div>
+                    )}
+                  </div>
+                  <Input
+                    value={editingGaleria.imagenDespues}
+                    onChange={(e) => setEditingGaleria(prev => prev ? ({ ...prev, imagenDespues: e.target.value }) : null)}
+                    placeholder="URL de la imagen"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditGaleriaOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleUpdateGaleria}>
+              <Save className="mr-2 h-4 w-4" />
+              Guardar Cambios
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para editar portfolio */}
+      <Dialog open={isEditPortfolioOpen} onOpenChange={setIsEditPortfolioOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar Trabajo de Portfolio</DialogTitle>
+            <DialogDescription>
+              Modifica los textos e imágenes de este trabajo
+            </DialogDescription>
+          </DialogHeader>
+          
+          {editingPortfolio && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Título *</Label>
+                  <Input
+                    value={editingPortfolio.titulo}
+                    onChange={(e) => setEditingPortfolio(prev => prev ? ({ ...prev, titulo: e.target.value }) : null)}
+                    placeholder="Ej: Pulido y Encerado Mercedes"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Servicio</Label>
+                  <Input
+                    value={editingPortfolio.servicio}
+                    onChange={(e) => setEditingPortfolio(prev => prev ? ({ ...prev, servicio: e.target.value }) : null)}
+                    placeholder="Ej: Pulido Premium"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Vehículo</Label>
+                  <Input
+                    value={editingPortfolio.vehiculo || ''}
+                    onChange={(e) => setEditingPortfolio(prev => prev ? ({ ...prev, vehiculo: e.target.value }) : null)}
+                    placeholder="Ej: Mercedes Clase E"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Categoría</Label>
+                  <select
+                    value={editingPortfolio.categoria}
+                    onChange={(e) => setEditingPortfolio(prev => prev ? ({ ...prev, categoria: e.target.value }) : null)}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2"
+                  >
+                    <option value="PEQUENO">Pequeño</option>
+                    <option value="MEDIO">Medio</option>
+                    <option value="GRANDE">Grande</option>
+                    <option value="SUPER_GRANDE">SUV/Furgoneta</option>
+                  </select>
+                </div>
+
+                <div className="col-span-2 space-y-2">
+                  <Label>Descripción</Label>
+                  <Textarea
+                    value={editingPortfolio.descripcion || ''}
+                    onChange={(e) => setEditingPortfolio(prev => prev ? ({ ...prev, descripcion: e.target.value }) : null)}
+                    placeholder="Descripción del trabajo..."
+                    rows={3}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Imágenes *</Label>
+                <div className="grid grid-cols-4 gap-2">
+                  {editingPortfolio.imagenes.map((url, idx) => (
+                    <div key={idx} className="relative aspect-square group">
+                      <Image
+                        src={url}
+                        alt={`Imagen ${idx + 1}`}
+                        fill
+                        className="object-cover rounded"
+                      />
+                      <button
+                        onClick={() => handleEditPortfolioRemoveImage(idx)}
+                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                  <Label htmlFor="edit-portfolio-image-upload" className="cursor-pointer">
+                    <div className="aspect-square border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 transition-colors flex items-center justify-center">
+                      <Upload className="h-8 w-8 text-gray-400" />
+                    </div>
+                    <input
+                      id="edit-portfolio-image-upload"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleEditPortfolioAddImage}
+                      disabled={uploadingImage}
+                    />
+                  </Label>
+                </div>
+                <p className="text-xs text-gray-500">
+                  Haz clic en + para añadir imágenes. Pasa el cursor sobre una imagen para eliminarla.
+                </p>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditPortfolioOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleUpdatePortfolio}>
+              <Save className="mr-2 h-4 w-4" />
+              Guardar Cambios
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

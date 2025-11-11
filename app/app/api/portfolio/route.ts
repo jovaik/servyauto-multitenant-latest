@@ -56,6 +56,49 @@ export async function POST(request: Request) {
   }
 }
 
+// PUT - Actualizar trabajo de portfolio
+export async function PUT(request: Request) {
+  try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user) {
+      return NextResponse.json(
+        { error: 'No autorizado' },
+        { status: 401 }
+      )
+    }
+
+    const data = await request.json()
+    
+    if (!data.id) {
+      return NextResponse.json(
+        { error: 'ID requerido' },
+        { status: 400 }
+      )
+    }
+
+    const portfolio = await prisma.portfolio.update({
+      where: { id: data.id },
+      data: {
+        titulo: data.titulo,
+        servicio: data.servicio,
+        vehiculo: data.vehiculo || '',
+        categoria: data.categoria || 'MEDIO',
+        imagenes: data.imagenes || [],
+        descripcion: data.descripcion || ''
+      }
+    })
+
+    return NextResponse.json(portfolio)
+  } catch (error) {
+    console.error('Error updating portfolio:', error)
+    return NextResponse.json(
+      { error: 'Error al actualizar entrada de portfolio' },
+      { status: 500 }
+    )
+  }
+}
+
 // DELETE - Eliminar trabajo de portfolio
 export async function DELETE(request: Request) {
   try {

@@ -56,6 +56,49 @@ export async function POST(request: Request) {
   }
 }
 
+// PUT - Actualizar imagen de galería
+export async function PUT(request: Request) {
+  try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user) {
+      return NextResponse.json(
+        { error: 'No autorizado' },
+        { status: 401 }
+      )
+    }
+
+    const data = await request.json()
+    
+    if (!data.id) {
+      return NextResponse.json(
+        { error: 'ID requerido' },
+        { status: 400 }
+      )
+    }
+
+    const galeria = await prisma.galeriaAntesDespues.update({
+      where: { id: data.id },
+      data: {
+        titulo: data.titulo,
+        servicio: data.servicio,
+        vehiculo: data.vehiculo,
+        imagenAntes: data.imagenAntes,
+        imagenDespues: data.imagenDespues,
+        descripcion: data.descripcion || ''
+      }
+    })
+
+    return NextResponse.json(galeria)
+  } catch (error) {
+    console.error('Error updating galeria:', error)
+    return NextResponse.json(
+      { error: 'Error al actualizar entrada de galería' },
+      { status: 500 }
+    )
+  }
+}
+
 // DELETE - Eliminar imagen de galería
 export async function DELETE(request: Request) {
   try {
