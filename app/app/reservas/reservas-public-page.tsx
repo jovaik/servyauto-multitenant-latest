@@ -73,6 +73,13 @@ export function ReservasPublicPage() {
     GRANDE: configPublica['publica.label_grande'] || 'Grande', 
     SUPER_GRANDE: configPublica['publica.label_super_grande'] || 'SUV/Furgoneta'
   }), [configPublica])
+  
+  const categoriasDescripciones = useMemo(() => ({
+    PEQUENO: configPublica['publica.desc_pequeno'] || 'Fiat 500, C1, Up!',
+    MEDIO: configPublica['publica.desc_medio'] || 'Golf, Corolla, León',
+    GRANDE: configPublica['publica.desc_grande'] || 'Serie 5, Classe E',
+    SUPER_GRANDE: configPublica['publica.desc_super_grande'] || 'X5, Sprinter, Transit'
+  }), [configPublica])
 
   useEffect(() => {
     loadConfiguration()
@@ -395,10 +402,7 @@ export function ReservasPublicPage() {
                   <div className="p-4 text-center">
                     <h4 className="font-bold text-lg text-gray-800">{label}</h4>
                     <p className="text-xs text-gray-500 mt-1">
-                      {categoria === 'PEQUENO' && 'Fiat 500, C1, Up!'}
-                      {categoria === 'MEDIO' && 'Golf, Corolla, León'}
-                      {categoria === 'GRANDE' && 'Serie 5, Classe E'}
-                      {categoria === 'SUPER_GRANDE' && 'X5, Sprinter, Transit'}
+                      {categoriasDescripciones[categoria as keyof typeof categoriasDescripciones]}
                     </p>
                   </div>
                 </CardContent>

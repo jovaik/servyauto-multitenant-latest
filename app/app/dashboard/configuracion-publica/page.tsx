@@ -81,6 +81,11 @@ export default function ConfiguracionPublicaPage() {
     'publica.label_medio': 'Medio',
     'publica.label_grande': 'Grande',
     'publica.label_super_grande': 'SUV/Furgoneta',
+    // Descripciones de categorías de vehículos
+    'publica.desc_pequeno': 'Fiat 500, C1, Up!',
+    'publica.desc_medio': 'Golf, Corolla, León',
+    'publica.desc_grande': 'Serie 5, Classe E',
+    'publica.desc_super_grande': 'X5, Sprinter, Transit',
     // Bloques informativos
     'publica.bloque1_titulo': 'Equipos Profesionales',
     'publica.bloque1_texto': 'Utilizamos los mejores productos y herramientas del mercado para garantizar resultados excepcionales.',
@@ -678,29 +683,39 @@ export default function ConfiguracionPublicaPage() {
               </CardHeader>
               <CardContent className="space-y-6">
                 {[
-                  { key: 'publica.imagen_pequeno', labelKey: 'publica.label_pequeno', defaultLabel: 'Vehículo Pequeño', desc: 'Fiat 500, C1, Up!' },
-                  { key: 'publica.imagen_medio', labelKey: 'publica.label_medio', defaultLabel: 'Vehículo Medio', desc: 'Golf, Corolla, León' },
-                  { key: 'publica.imagen_grande', labelKey: 'publica.label_grande', defaultLabel: 'Vehículo Grande', desc: 'Serie 5, Classe E' },
-                  { key: 'publica.imagen_super_grande', labelKey: 'publica.label_super_grande', defaultLabel: 'SUV/Furgoneta', desc: 'X5, Sprinter, Transit' }
-                ].map(({ key, labelKey, defaultLabel, desc }) => (
-                  <div key={key} className="border rounded-lg p-4">
+                  { key: 'publica.imagen_pequeno', labelKey: 'publica.label_pequeno', descKey: 'publica.desc_pequeno', defaultLabel: 'Vehículo Pequeño', defaultDesc: 'Fiat 500, C1, Up!' },
+                  { key: 'publica.imagen_medio', labelKey: 'publica.label_medio', descKey: 'publica.desc_medio', defaultLabel: 'Vehículo Medio', defaultDesc: 'Golf, Corolla, León' },
+                  { key: 'publica.imagen_grande', labelKey: 'publica.label_grande', descKey: 'publica.desc_grande', defaultLabel: 'Vehículo Grande', defaultDesc: 'Serie 5, Classe E' },
+                  { key: 'publica.imagen_super_grande', labelKey: 'publica.label_super_grande', descKey: 'publica.desc_super_grande', defaultLabel: 'SUV/Furgoneta', defaultDesc: 'X5, Sprinter, Transit' }
+                ].map(({ key, labelKey, descKey, defaultLabel, defaultDesc }) => (
+                  <div key={key} className="border rounded-lg p-4 bg-gray-50">
                     <div className="space-y-4">
                       <div className="space-y-2">
-                        <Label>Texto que aparece en la página pública</Label>
+                        <Label className="text-sm font-semibold text-gray-700">Título (aparece en grande)</Label>
                         <Input
                           value={config[labelKey] || ''}
                           onChange={(e) => setConfig(prev => ({ ...prev, [labelKey]: e.target.value }))}
                           placeholder={defaultLabel}
                           className="font-medium"
                         />
-                        <p className="text-xs text-gray-500">{desc}</p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm font-semibold text-gray-700">Descripción / Ejemplos (aparece debajo del título)</Label>
+                        <Input
+                          value={config[descKey] || ''}
+                          onChange={(e) => setConfig(prev => ({ ...prev, [descKey]: e.target.value }))}
+                          placeholder={defaultDesc}
+                          className="text-sm"
+                        />
+                        <p className="text-xs text-gray-500 italic">Ejemplo: modelos de vehículos que entran en esta categoría</p>
                       </div>
                       
                       <div className="space-y-2">
-                        <Label>Imagen</Label>
+                        <Label className="text-sm font-semibold text-gray-700">Imagen</Label>
                         <div className="flex items-center space-x-4">
                           {config[key] && (
-                            <div className="relative w-32 h-24 bg-gray-100 rounded-lg overflow-hidden">
+                            <div className="relative w-32 h-24 bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200">
                               <Image
                                 src={config[key]}
                                 alt={config[labelKey] || defaultLabel}
@@ -711,7 +726,7 @@ export default function ConfiguracionPublicaPage() {
                           )}
                           <div className="flex-1">
                             <Label htmlFor={`${key}-upload`} className="cursor-pointer">
-                              <div className="border-2 border-dashed border-gray-300 rounded-lg p-3 hover:border-blue-500 transition-colors">
+                              <div className="border-2 border-dashed border-gray-300 rounded-lg p-3 hover:border-blue-500 transition-colors bg-white">
                                 <div className="flex items-center justify-center">
                                   <Upload className="h-5 w-5 text-gray-400 mr-2" />
                                   <span className="text-sm text-gray-600">
