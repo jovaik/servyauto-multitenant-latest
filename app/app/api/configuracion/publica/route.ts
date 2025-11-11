@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(config, {
       headers: {
-        'Cache-Control': 'public, max-age=60, s-maxage=60'
+        'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0'
       }
     })
   } catch (error) {

@@ -37,6 +37,12 @@ export function ReservasPublicPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('')
   const [galeria, setGaleria] = useState<any[]>([])
   const [currentSlide, setCurrentSlide] = useState(0)
+  const [configPublica, setConfigPublica] = useState<Record<string, string>>({
+    'publica.nombre': 'ServyAuto',
+    'publica.subtitulo': 'Lavado & Detailing',
+    'publica.telefono': '600-123-456',
+    'publica.color_fondo': '#f0f7ff'
+  })
   
   const [formData, setFormData] = useState({
     nombre: '',
@@ -68,6 +74,7 @@ export function ReservasPublicPage() {
 
   useEffect(() => {
     loadConfiguration()
+    loadConfiguracionPublica()
     loadServicios()
     loadGaleria()
   }, [])
@@ -129,6 +136,21 @@ export function ReservasPublicPage() {
     } catch (error) {
       console.error('Error loading configuration:', error)
       setTimeSlots(generateTimeSlots('09:00', '19:00'))
+    }
+  }
+
+  const loadConfiguracionPublica = async () => {
+    try {
+      const response = await fetch('/api/configuracion/publica', {
+        cache: 'no-store'  // No usar caché para ver cambios inmediatamente
+      })
+      if (response.ok) {
+        const config = await response.json()
+        console.log('✅ Configuración pública cargada:', config)
+        setConfigPublica(config)
+      }
+    } catch (error) {
+      console.error('Error loading public configuration:', error)
     }
   }
 
@@ -219,7 +241,12 @@ export function ReservasPublicPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+      <div 
+        className="min-h-screen flex items-center justify-center p-4"
+        style={{ 
+          background: `linear-gradient(to bottom right, ${configPublica['publica.color_fondo'] || '#f0f7ff'}, ${configPublica['publica.color_fondo'] || '#f0f7ff'})` 
+        }}
+      >
         <Card className="w-full max-w-md">
           <CardContent className="p-8 text-center">
             <div className="mb-6">
@@ -246,7 +273,12 @@ export function ReservasPublicPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div 
+      className="min-h-screen"
+      style={{ 
+        background: `linear-gradient(to bottom right, ${configPublica['publica.color_fondo'] || '#f0f7ff'}, ${configPublica['publica.color_fondo'] || '#f0f7ff'})` 
+      }}
+    >
       {/* Header Simple */}
       <div className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -256,13 +288,17 @@ export function ReservasPublicPage() {
                 <Car className="h-6 w-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">ServyAuto</h1>
-                <p className="text-sm text-gray-500">Lavado & Detailing</p>
+                <h1 className="text-xl font-bold text-gray-900">
+                  {configPublica['publica.nombre'] || 'ServyAuto'}
+                </h1>
+                <p className="text-sm text-gray-500">
+                  {configPublica['publica.subtitulo'] || 'Lavado & Detailing'}
+                </p>
               </div>
             </div>
             <div className="flex items-center space-x-4">
               <div className="text-sm text-gray-600">
-                📞 600-123-456
+                📞 {configPublica['publica.telefono'] || '600-123-456'}
               </div>
             </div>
           </div>
