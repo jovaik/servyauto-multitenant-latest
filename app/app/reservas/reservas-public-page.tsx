@@ -11,7 +11,10 @@ import {
   User, 
   Mail, 
   Phone,
-  CheckCircle
+  CheckCircle,
+  CreditCard,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -32,6 +35,8 @@ export function ReservasPublicPage() {
   const [timeSlots, setTimeSlots] = useState<string[]>([])
   const [servicios, setServicios] = useState<any[]>([])
   const [selectedCategory, setSelectedCategory] = useState<string>('')
+  const [galeria, setGaleria] = useState<any[]>([])
+  const [currentSlide, setCurrentSlide] = useState(0)
   
   const [formData, setFormData] = useState({
     nombre: '',
@@ -40,7 +45,8 @@ export function ReservasPublicPage() {
     telefono: '',
     fecha: '',
     hora: '',
-    vehiculo: '',
+    marcaModelo: '',
+    matricula: '',
     servicio: '',
     mensaje: ''
   })
@@ -63,7 +69,19 @@ export function ReservasPublicPage() {
   useEffect(() => {
     loadConfiguration()
     loadServicios()
+    loadGaleria()
   }, [])
+
+  // Auto-avanzar el carrusel cada 5 segundos
+  useEffect(() => {
+    if (galeria.length === 0) return
+    
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % galeria.length)
+    }, 5000)
+    
+    return () => clearInterval(timer)
+  }, [galeria.length])
 
   const generateTimeSlots = (apertura: string, cierre: string): string[] => {
     const slots: string[] = []
@@ -119,17 +137,38 @@ export function ReservasPublicPage() {
       const response = await fetch('/api/servicios')
       if (response.ok) {
         const data = await response.json()
-        setServicios(data || [])
+        // Invertir el orden para mostrar los más importantes primero
+        setServicios((data || []).reverse())
       }
     } catch (error) {
       console.error('Error loading servicios:', error)
       setServicios([
-        { id: 1, nombre: 'Lavado Exterior Básico', precio: 15, descripcion: 'Lavado exterior completo' },
-        { id: 2, nombre: 'Lavado Completo + Interior', precio: 25, descripcion: 'Lavado exterior e interior' },
+        { id: 4, nombre: 'Pulido y Encerado', precio: 45, descripcion: 'Corrección de arañazos y encerado' },
         { id: 3, nombre: 'Detailing Completo', precio: 65, descripcion: 'Servicio premium completo' },
-        { id: 4, nombre: 'Pulido y Encerado', precio: 45, descripcion: 'Corrección de arañazos y encerado' }
+        { id: 2, nombre: 'Lavado Completo + Interior', precio: 25, descripcion: 'Lavado exterior e interior' },
+        { id: 1, nombre: 'Lavado Exterior Básico', precio: 15, descripcion: 'Lavado exterior completo' }
       ])
     }
+  }
+
+  const loadGaleria = async () => {
+    try {
+      const response = await fetch('/api/galeria-antes-despues')
+      if (response.ok) {
+        const data = await response.json()
+        setGaleria(data || [])
+      }
+    } catch (error) {
+      console.error('Error loading galeria:', error)
+    }
+  }
+
+  const nextSlide = () => {
+    setCurrentSlide((prev) => (prev + 1) % galeria.length)
+  }
+
+  const prevSlide = () => {
+    setCurrentSlide((prev) => (prev - 1 + galeria.length) % galeria.length)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -145,6 +184,8 @@ export function ReservasPublicPage() {
         body: JSON.stringify(formData),
       })
 
+      const data = await response.json()
+
       if (response.ok) {
         setSuccess(true)
         setFormData({
@@ -154,12 +195,15 @@ export function ReservasPublicPage() {
           telefono: '',
           fecha: '',
           hora: '',
-          vehiculo: '',
+          marcaModelo: '',
+          matricula: '',
           servicio: '',
           mensaje: ''
         })
+        setSelectedCategory('')
       } else {
-        throw new Error('Error al enviar reserva')
+        // Mostrar error específico (ej: conflicto de horario)
+        alert(data.error || 'Error al enviar la reserva. Por favor intenta nuevamente.')
       }
     } catch (error) {
       console.error('Error:', error)
@@ -276,6 +320,102 @@ export function ReservasPublicPage() {
           </div>
         </div>
 
+        {/* Carrusel de Trabajos Realizados (Galería Antes/Después) */}
+        {galeria.length > 0 && (
+          <div className="mb-12">
+            <h3 className="text-2xl font-semibold text-center text-gray-800 mb-8">
+              Nuestros Trabajos Realizados
+            </h3>
+            <Card className="max-w-4xl mx-auto overflow-hidden">
+              <CardContent className="p-0 relative">
+                {/* Slides */}
+                <div className="relative aspect-video bg-gray-100">
+                  {galeria.map((item, index) => (
+                    <div
+                      key={item.id}
+                      className={`absolute inset-0 transition-opacity duration-500 ${
+                        index === currentSlide ? 'opacity-100' : 'opacity-0'
+                      }`}
+                    >
+                      <div className="grid grid-cols-2 gap-2 h-full p-4">
+                        {/* Imagen Antes */}
+                        <div className="relative">
+                          <div className="absolute top-2 left-2 bg-red-600 text-white px-3 py-1 rounded-lg text-sm font-bold z-10">
+                            ANTES
+                          </div>
+                          <Image
+                            src={item.imagenAntes || '/placeholder.png'}
+                            alt="Antes"
+                            fill
+                            className="object-cover rounded-lg"
+                            sizes="(max-width: 1024px) 50vw, 40vw"
+                          />
+                        </div>
+
+                        {/* Imagen Después */}
+                        <div className="relative">
+                          <div className="absolute top-2 left-2 bg-green-600 text-white px-3 py-1 rounded-lg text-sm font-bold z-10">
+                            DESPUÉS
+                          </div>
+                          <Image
+                            src={item.imagenDespues || '/placeholder.png'}
+                            alt="Después"
+                            fill
+                            className="object-cover rounded-lg"
+                            sizes="(max-width: 1024px) 50vw, 40vw"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Información del trabajo */}
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
+                        <h4 className="text-white text-xl font-bold mb-1">
+                          {item.titulo}
+                        </h4>
+                        <p className="text-white/90 text-sm">
+                          {item.servicio} • {item.vehiculo}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Botones de navegación */}
+                  <button
+                    onClick={prevSlide}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white p-2 rounded-full shadow-lg transition-all z-20"
+                    aria-label="Anterior"
+                  >
+                    <ChevronLeft className="h-6 w-6 text-gray-800" />
+                  </button>
+                  <button
+                    onClick={nextSlide}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white p-2 rounded-full shadow-lg transition-all z-20"
+                    aria-label="Siguiente"
+                  >
+                    <ChevronRight className="h-6 w-6 text-gray-800" />
+                  </button>
+                </div>
+
+                {/* Indicadores */}
+                <div className="flex justify-center gap-2 py-4 bg-white">
+                  {galeria.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setCurrentSlide(index)}
+                      className={`h-2 rounded-full transition-all ${
+                        index === currentSlide 
+                          ? 'bg-blue-600 w-8' 
+                          : 'bg-gray-300 w-2 hover:bg-gray-400'
+                      }`}
+                      aria-label={`Ir a slide ${index + 1}`}
+                    />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         {/* Formulario Simple con Desplegables */}
         <Card className="max-w-2xl mx-auto">
           <CardContent className="p-8">
@@ -371,21 +511,6 @@ export function ReservasPublicPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email">
-                  <Mail className="inline mr-1 h-4 w-4" />
-                  Email *
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  required
-                  value={formData.email}
-                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                  placeholder="tu@email.com"
-                />
-              </div>
-
-              <div className="space-y-2">
                 <Label htmlFor="telefono">
                   <Phone className="inline mr-1 h-4 w-4" />
                   Teléfono *
@@ -401,16 +526,44 @@ export function ReservasPublicPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="vehiculo">
+                <Label htmlFor="marcaModelo">
                   <Car className="inline mr-1 h-4 w-4" />
-                  Vehículo *
+                  Marca y Modelo *
                 </Label>
                 <Input
-                  id="vehiculo"
+                  id="marcaModelo"
                   required
-                  value={formData.vehiculo}
-                  onChange={(e) => setFormData(prev => ({ ...prev, vehiculo: e.target.value }))}
-                  placeholder="Ej: Toyota Corolla 2018 - ABC123"
+                  value={formData.marcaModelo}
+                  onChange={(e) => setFormData(prev => ({ ...prev, marcaModelo: e.target.value }))}
+                  placeholder="Ej: Toyota Corolla"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="matricula">
+                  <CreditCard className="inline mr-1 h-4 w-4" />
+                  Matrícula *
+                </Label>
+                <Input
+                  id="matricula"
+                  required
+                  value={formData.matricula}
+                  onChange={(e) => setFormData(prev => ({ ...prev, matricula: e.target.value.toUpperCase() }))}
+                  placeholder="1234ABC"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="email">
+                  <Mail className="inline mr-1 h-4 w-4" />
+                  Email (opcional)
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                  placeholder="tu@email.com"
                 />
               </div>
 
