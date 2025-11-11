@@ -37,6 +37,8 @@ export function ReservasPublicPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('')
   const [galeria, setGaleria] = useState<any[]>([])
   const [currentSlide, setCurrentSlide] = useState(0)
+  const [disponibilidad, setDisponibilidad] = useState<{mensaje: string, disponible: boolean} | null>(null)
+  const [checkingAvailability, setCheckingAvailability] = useState(false)
   const [configPublica, setConfigPublica] = useState<Record<string, string>>({
     'publica.nombre': 'ServyAuto',
     'publica.subtitulo': 'Lavado & Detailing',
@@ -89,6 +91,33 @@ export function ReservasPublicPage() {
     
     return () => clearInterval(timer)
   }, [galeria.length])
+
+  // Verificar disponibilidad cuando cambian fecha y hora
+  useEffect(() => {
+    const checkAvailability = async () => {
+      if (!formData.fecha || !formData.hora) {
+        setDisponibilidad(null)
+        return
+      }
+
+      setCheckingAvailability(true)
+      try {
+        const response = await fetch(`/api/reservas?fecha=${formData.fecha}&hora=${formData.hora}`)
+        if (response.ok) {
+          const data = await response.json()
+          setDisponibilidad(data)
+        }
+      } catch (error) {
+        console.error('Error checking availability:', error)
+      } finally {
+        setCheckingAvailability(false)
+      }
+    }
+
+    // Delay de 500ms para evitar múltiples llamadas mientras el usuario escribe
+    const timeoutId = setTimeout(checkAvailability, 500)
+    return () => clearTimeout(timeoutId)
+  }, [formData.fecha, formData.hora])
 
   const generateTimeSlots = (apertura: string, cierre: string): string[] => {
     const slots: string[] = []
@@ -204,6 +233,19 @@ export function ReservasPublicPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
+    // Validar campos obligatorios
+    if (!formData.nombre || !formData.apellido || !formData.telefono || !formData.fecha || 
+        !formData.hora || !formData.marcaModelo || !formData.matricula || !formData.servicio) {
+      alert('Por favor completa todos los campos obligatorios marcados con *')
+      return
+    }
+
+    // Validar disponibilidad
+    if (disponibilidad && !disponibilidad.disponible) {
+      alert('El horario seleccionado no está disponible. Por favor elige otra hora.')
+      return
+    }
+    
     setLoading(true)
     try {
       const response = await fetch('/api/reservas', {
@@ -231,6 +273,7 @@ export function ReservasPublicPage() {
           mensaje: ''
         })
         setSelectedCategory('')
+        setDisponibilidad(null)
       } else {
         // Mostrar error específico (ej: conflicto de horario)
         alert(data.error || 'Error al enviar la reserva. Por favor intenta nuevamente.')
@@ -526,6 +569,24 @@ export function ReservasPublicPage() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Mensaje de disponibilidad */}
+              {checkingAvailability && (
+                <div className="text-sm text-gray-500 flex items-center gap-2">
+                  <div className="animate-spin h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full"></div>
+                  Verificando disponibilidad...
+                </div>
+              )}
+              {disponibilidad && !checkingAvailability && (
+                <div className={`p-3 rounded-lg text-sm ${
+                  disponibilidad.disponible 
+                    ? 'bg-green-50 text-green-800 border border-green-200' 
+                    : 'bg-red-50 text-red-800 border border-red-200'
+                }`}>
+                  {disponibilidad.disponible ? '✓ ' : '⚠ '}
+                  {disponibilidad.mensaje}
+                </div>
+              )}
 
               {/* Datos personales */}
               <div className="grid grid-cols-2 gap-4">

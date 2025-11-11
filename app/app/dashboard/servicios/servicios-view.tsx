@@ -48,6 +48,7 @@ interface Servicio {
   precio: number
   duracion: number
   activo: boolean
+  ordenPreferencia: number
   createdAt: string
   updatedAt: string
 }
@@ -66,7 +67,8 @@ export function ServiciosView() {
     descripcion: '',
     precio: 0,
     duracion: 60,
-    activo: true
+    activo: true,
+    ordenPreferencia: 999
   })
 
   useEffect(() => {
@@ -94,7 +96,8 @@ export function ServiciosView() {
       descripcion: '',
       precio: 0,
       duracion: 60,
-      activo: true
+      activo: true,
+      ordenPreferencia: 999
     })
     setEditingServicio(null)
   }
@@ -110,7 +113,8 @@ export function ServiciosView() {
       descripcion: servicio.descripcion || '',
       precio: servicio.precio,
       duracion: servicio.duracion,
-      activo: servicio.activo
+      activo: servicio.activo,
+      ordenPreferencia: servicio.ordenPreferencia || 999
     })
     setEditingServicio(servicio)
     setShowDialog(true)
@@ -286,6 +290,22 @@ export function ServiciosView() {
                     onChange={(e) => setFormData({...formData, duracion: parseInt(e.target.value) || 60})}
                   />
                 </div>
+              </div>
+
+              <div>
+                <Label htmlFor="ordenPreferencia">Orden de Preferencia</Label>
+                <Input
+                  id="ordenPreferencia"
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={formData.ordenPreferencia}
+                  onChange={(e) => setFormData({...formData, ordenPreferencia: parseInt(e.target.value) || 999})}
+                  placeholder="1 = primero, 999 = último"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Los servicios con menor número se mostrarán primero en la página pública
+                </p>
               </div>
 
               <div className="flex items-center space-x-2">

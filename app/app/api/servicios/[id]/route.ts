@@ -20,7 +20,7 @@ export async function PUT(
 
     const servicioId = params.id
     const body = await req.json()
-    const { nombre, descripcion, precio, duracion, activo } = body
+    const { nombre, descripcion, precio, duracion, activo, ordenPreferencia } = body
 
     // Validar campos requeridos
     if (!nombre || precio === undefined || precio < 0) {
@@ -67,7 +67,8 @@ export async function PUT(
         descripcion: descripcion?.trim() || null,
         precio: parseFloat(precio),
         duracion: parseInt(duracion) || 60,
-        activo: Boolean(activo)
+        activo: Boolean(activo),
+        ordenPreferencia: ordenPreferencia !== undefined ? parseInt(ordenPreferencia) : servicioExistente.ordenPreferencia
       }
     })
 

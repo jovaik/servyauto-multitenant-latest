@@ -4,6 +4,50 @@ import { prisma } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
+/**
+ * GET /api/reservas?fecha=YYYY-MM-DD&hora=HH:MM
+ * Verifica disponibilidad de un horario específico
+ */
+export async function GET(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url)
+    const fecha = searchParams.get('fecha')
+    const hora = searchParams.get('hora')
+
+    if (!fecha || !hora) {
+      return NextResponse.json(
+        { error: 'Fecha y hora son requeridas' },
+        { status: 400 }
+      )
+    }
+
+    // Verificar si existe alguna cita en la misma fecha y hora
+    const fechaCita = new Date(fecha)
+    const citaExistente = await prisma.cita.findFirst({
+      where: {
+        fecha: {
+          gte: new Date(fechaCita.getFullYear(), fechaCita.getMonth(), fechaCita.getDate()),
+          lt: new Date(fechaCita.getFullYear(), fechaCita.getMonth(), fechaCita.getDate() + 1),
+        },
+        horaInicio: hora,
+      },
+    })
+
+    return NextResponse.json({
+      disponible: !citaExistente,
+      mensaje: citaExistente 
+        ? 'Este horario ya está ocupado. Por favor elige otra hora.' 
+        : 'Horario disponible'
+    })
+  } catch (error) {
+    console.error('Error checking availability:', error)
+    return NextResponse.json(
+      { error: 'Error al verificar disponibilidad' },
+      { status: 500 }
+    )
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()

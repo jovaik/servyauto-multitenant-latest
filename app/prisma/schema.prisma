@@ -97,15 +97,16 @@ model Vehiculo {
 }
 
 model Servicio {
-  id             String           @id @default(cuid())
-  nombre         String
-  descripcion    String?
-  precio         Float
-  duracion       Int
-  activo         Boolean          @default(true)
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  cita_servicios cita_servicios[]
+  id               String           @id @default(cuid())
+  nombre           String
+  descripcion      String?
+  precio           Float
+  duracion         Int
+  activo           Boolean          @default(true)
+  ordenPreferencia Int              @default(999)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  cita_servicios   cita_servicios[]
 
   @@map("servicios")
 }

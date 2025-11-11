@@ -21,9 +21,14 @@ export async function GET(req: NextRequest) {
       where: showAll ? {} : {
         activo: true,
       },
-      orderBy: {
-        nombre: 'asc',
-      },
+      orderBy: [
+        {
+          ordenPreferencia: 'asc',
+        },
+        {
+          nombre: 'asc',
+        }
+      ],
     })
 
     return NextResponse.json(servicios || [])
@@ -45,7 +50,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { nombre, descripcion, precio, duracion, activo = true } = body
+    const { nombre, descripcion, precio, duracion, activo = true, ordenPreferencia } = body
 
     // Validar campos requeridos
     if (!nombre || precio === undefined || precio < 0) {
@@ -78,7 +83,8 @@ export async function POST(req: NextRequest) {
         descripcion: descripcion?.trim() || null,
         precio: parseFloat(precio),
         duracion: parseInt(duracion) || 60,
-        activo: Boolean(activo)
+        activo: Boolean(activo),
+        ordenPreferencia: ordenPreferencia !== undefined ? parseInt(ordenPreferencia) : 999
       }
     })
 
