@@ -378,7 +378,7 @@ export function ReservasPublicPage() {
           <h3 className="text-2xl font-semibold text-center text-gray-800 mb-8">
             Selecciona tu tipo de vehículo
           </h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {Object.entries(categoriasLabels).map(([categoria, label]) => (
               <Card 
                 key={categoria}
@@ -390,13 +390,13 @@ export function ReservasPublicPage() {
                 onClick={() => setSelectedCategory(categoria)}
               >
                 <CardContent className="p-0">
-                  <div className="aspect-square relative overflow-hidden bg-gray-100">
+                  <div className="aspect-[16/9] relative overflow-hidden bg-gray-100">
                     <Image
                       src={imagenesCategoria[categoria as keyof typeof imagenesCategoria]}
                       alt={`Vehículo ${label}`}
                       fill
                       className="object-cover"
-                      sizes="(max-width: 768px) 50vw, 25vw"
+                      sizes="(max-width: 768px) 100vw, 50vw"
                     />
                   </div>
                   <div className="p-4 text-center">
