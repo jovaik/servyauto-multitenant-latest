@@ -373,12 +373,12 @@ export function ReservasPublicPage() {
           </p>
         </div>
 
-        {/* Fotos Anchas de Vehículos en Una Sola Columna */}
-        <div className="mb-12 max-w-4xl mx-auto">
+        {/* Fotos en Una Sola Fila Horizontal */}
+        <div className="mb-12 w-full px-4">
           <h3 className="text-2xl font-semibold text-center text-gray-800 mb-8">
             Selecciona tu tipo de vehículo
           </h3>
-          <div className="grid grid-cols-1 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {Object.entries(categoriasLabels).map(([categoria, label]) => (
               <Card 
                 key={categoria}
@@ -390,18 +390,18 @@ export function ReservasPublicPage() {
                 onClick={() => setSelectedCategory(categoria)}
               >
                 <CardContent className="p-0">
-                  <div className="aspect-[21/9] relative overflow-hidden bg-gray-100">
+                  <div className="aspect-[4/3] relative overflow-hidden bg-gray-100">
                     <Image
                       src={imagenesCategoria[categoria as keyof typeof imagenesCategoria]}
                       alt={`Vehículo ${label}`}
                       fill
                       className="object-cover"
-                      sizes="100vw"
+                      sizes="(max-width: 768px) 50vw, 25vw"
                     />
                   </div>
-                  <div className="p-4 text-center">
-                    <h4 className="font-bold text-lg text-gray-800">{label}</h4>
-                    <p className="text-xs text-gray-500 mt-1">
+                  <div className="p-3 text-center">
+                    <h4 className="font-bold text-sm text-gray-800">{label}</h4>
+                    <p className="text-xs text-gray-500 mt-1 line-clamp-2">
                       {categoriasDescripciones[categoria as keyof typeof categoriasDescripciones]}
                     </p>
                   </div>
