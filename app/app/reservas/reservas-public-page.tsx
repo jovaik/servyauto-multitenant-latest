@@ -373,12 +373,12 @@ export function ReservasPublicPage() {
           </p>
         </div>
 
-        {/* Fotos en Una Sola Fila Horizontal - Formato 16:9 Grandes */}
-        <div className="mb-12 w-full px-6 lg:px-12">
+        {/* Fotos en Una Sola Fila Horizontal - Formato 16:9 GRANDES */}
+        <div className="mb-12 w-full px-2 lg:px-4">
           <h3 className="text-3xl font-semibold text-center text-gray-800 mb-10">
             Selecciona tu tipo de vehículo
           </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
             {Object.entries(categoriasLabels).map(([categoria, label]) => (
               <Card 
                 key={categoria}
