@@ -203,16 +203,16 @@ export function ReservasPublicPage() {
       const response = await fetch('/api/servicios')
       if (response.ok) {
         const data = await response.json()
-        // Invertir el orden para mostrar los más importantes primero
-        setServicios((data || []).reverse())
+        // Mantener el orden original de la base de datos
+        setServicios(data || [])
       }
     } catch (error) {
       console.error('Error loading servicios:', error)
       setServicios([
-        { id: 4, nombre: 'Pulido y Encerado', precio: 45, descripcion: 'Corrección de arañazos y encerado' },
-        { id: 3, nombre: 'Detailing Completo', precio: 65, descripcion: 'Servicio premium completo' },
+        { id: 1, nombre: 'Lavado Exterior Básico', precio: 15, descripcion: 'Lavado exterior completo' },
         { id: 2, nombre: 'Lavado Completo + Interior', precio: 25, descripcion: 'Lavado exterior e interior' },
-        { id: 1, nombre: 'Lavado Exterior Básico', precio: 15, descripcion: 'Lavado exterior completo' }
+        { id: 3, nombre: 'Detailing Completo', precio: 65, descripcion: 'Servicio premium completo' },
+        { id: 4, nombre: 'Pulido y Encerado', precio: 45, descripcion: 'Corrección de arañazos y encerado' }
       ])
     }
   }
@@ -373,16 +373,16 @@ export function ReservasPublicPage() {
           </p>
         </div>
 
-        {/* 4 Fotos Grandes de Vehículos */}
-        <div className="mb-12">
+        {/* Fotos Anchas de Vehículos en Una Sola Columna */}
+        <div className="mb-12 max-w-4xl mx-auto">
           <h3 className="text-2xl font-semibold text-center text-gray-800 mb-8">
             Selecciona tu tipo de vehículo
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6">
             {Object.entries(categoriasLabels).map(([categoria, label]) => (
               <Card 
                 key={categoria}
-                className={`cursor-pointer transition-all duration-200 hover:shadow-xl hover:-translate-y-2 ${
+                className={`cursor-pointer transition-all duration-200 hover:shadow-xl hover:-translate-y-1 ${
                   selectedCategory === categoria 
                     ? 'ring-4 ring-blue-500 shadow-xl' 
                     : 'hover:ring-2 hover:ring-blue-300'
@@ -390,13 +390,13 @@ export function ReservasPublicPage() {
                 onClick={() => setSelectedCategory(categoria)}
               >
                 <CardContent className="p-0">
-                  <div className="aspect-[16/9] relative overflow-hidden bg-gray-100">
+                  <div className="aspect-[21/9] relative overflow-hidden bg-gray-100">
                     <Image
                       src={imagenesCategoria[categoria as keyof typeof imagenesCategoria]}
                       alt={`Vehículo ${label}`}
                       fill
                       className="object-cover"
-                      sizes="(max-width: 768px) 100vw, 50vw"
+                      sizes="100vw"
                     />
                   </div>
                   <div className="p-4 text-center">
