@@ -373,35 +373,36 @@ export function ReservasPublicPage() {
           </p>
         </div>
 
-        {/* Fotos en Una Sola Fila Horizontal - Formato 16:9 */}
-        <div className="mb-12 w-full max-w-7xl mx-auto px-4">
-          <h3 className="text-2xl font-semibold text-center text-gray-800 mb-8">
+        {/* Fotos en Una Sola Fila Horizontal - Formato 16:9 Grandes */}
+        <div className="mb-12 w-full px-6 lg:px-12">
+          <h3 className="text-3xl font-semibold text-center text-gray-800 mb-10">
             Selecciona tu tipo de vehículo
           </h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
             {Object.entries(categoriasLabels).map(([categoria, label]) => (
               <Card 
                 key={categoria}
-                className={`cursor-pointer transition-all duration-200 hover:shadow-xl hover:-translate-y-1 ${
+                className={`cursor-pointer transition-all duration-200 hover:shadow-2xl hover:-translate-y-2 ${
                   selectedCategory === categoria 
-                    ? 'ring-4 ring-blue-500 shadow-xl' 
+                    ? 'ring-4 ring-blue-500 shadow-2xl' 
                     : 'hover:ring-2 hover:ring-blue-300'
                 }`}
                 onClick={() => setSelectedCategory(categoria)}
               >
                 <CardContent className="p-0">
-                  <div className="aspect-[16/9] relative overflow-hidden bg-gray-100">
+                  <div className="aspect-[16/9] relative overflow-hidden bg-gray-100 rounded-t-lg">
                     <Image
                       src={imagenesCategoria[categoria as keyof typeof imagenesCategoria]}
                       alt={`Vehículo ${label}`}
                       fill
                       className="object-cover"
-                      sizes="(max-width: 768px) 50vw, 25vw"
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                      priority
                     />
                   </div>
-                  <div className="p-3 text-center">
-                    <h4 className="font-bold text-base text-gray-800">{label}</h4>
-                    <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                  <div className="p-4 text-center">
+                    <h4 className="font-bold text-lg text-gray-800">{label}</h4>
+                    <p className="text-sm text-gray-600 mt-2 line-clamp-2">
                       {categoriasDescripciones[categoria as keyof typeof categoriasDescripciones]}
                     </p>
                   </div>
