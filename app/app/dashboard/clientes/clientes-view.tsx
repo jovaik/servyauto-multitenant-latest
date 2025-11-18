@@ -41,6 +41,7 @@ export function ClientesView() {
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editingCliente, setEditingCliente] = useState<Cliente | null>(null)
+  const [searchTerm, setSearchTerm] = useState('')
   const [formData, setFormData] = useState({
     nombre: '',
     apellido: '',
@@ -173,6 +174,17 @@ export function ClientesView() {
     }
   }
 
+  // Filtrar clientes por búsqueda
+  const clientesFiltrados = clientes.filter(cliente => {
+    if (!searchTerm) return true
+    
+    const search = searchTerm.toLowerCase()
+    const nombreCompleto = `${cliente.nombre} ${cliente.apellido || ''}`.toLowerCase()
+    const telefono = cliente.telefono.toLowerCase()
+    
+    return nombreCompleto.includes(search) || telefono.includes(search)
+  })
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -246,18 +258,39 @@ export function ClientesView() {
             Lista de Clientes
           </CardTitle>
           <CardDescription>
-            {clientes?.length || 0} clientes registrados en el sistema
+            {clientesFiltrados?.length || 0} de {clientes?.length || 0} clientes
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {/* Buscador */}
+          <div className="mb-6">
+            <div className="relative">
+              <Input
+                type="text"
+                placeholder="Buscar por nombre o teléfono..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 pr-10"
+              />
+              <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
           {loading ? (
             <div className="text-center py-8">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
               <p className="mt-2 text-gray-600">Cargando clientes...</p>
             </div>
-          ) : clientes?.length > 0 ? (
+          ) : clientesFiltrados?.length > 0 ? (
             <div className="space-y-4">
-              {clientes.map((cliente) => (
+              {clientesFiltrados.map((cliente) => (
                 <div 
                   key={cliente.id} 
                   className="border rounded-lg p-4 bg-white hover:shadow-md transition-shadow"
@@ -352,6 +385,18 @@ export function ClientesView() {
                   )}
                 </div>
               ))}
+            </div>
+          ) : searchTerm ? (
+            <div className="text-center py-8 text-gray-500">
+              <Users className="mx-auto h-12 w-12 text-gray-300 mb-4" />
+              <p>No se encontraron clientes con "{searchTerm}"</p>
+              <Button
+                variant="outline"
+                className="mt-4"
+                onClick={() => setSearchTerm('')}
+              >
+                Limpiar búsqueda
+              </Button>
             </div>
           ) : (
             <div className="text-center py-8 text-gray-500">
