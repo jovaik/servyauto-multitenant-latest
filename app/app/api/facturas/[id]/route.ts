@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { notificarModificacionGSControl, notificarEliminacionGSControl } from '@/lib/gscontrol-sync'
+import { enviarSolicitudResena } from '@/lib/notifications'
 
 export async function GET(
   request: NextRequest,
@@ -126,6 +127,34 @@ export async function PUT(
     })
 
     console.log('=== FACTURA ACTUALIZADA ===')
+
+    // ⭐ ENVIAR SOLICITUD DE RESEÑA cuando se marca como PAGADA
+    // En este momento el cliente ya recogió su vehículo y puede dar su opinión
+    if (estado === 'PAGADA') {
+      try {
+        console.log('=== ENVIANDO SOLICITUD DE RESEÑA (FACTURA PAGADA) ===')
+        console.log('Cliente:', factura.cliente.nombre)
+        console.log('Teléfono:', factura.cliente.telefono)
+        
+        const reviewResult = await enviarSolicitudResena({
+          clienteName: factura.cliente.nombre,
+          telefono: factura.cliente.telefono
+        })
+        
+        if (reviewResult.success) {
+          if (reviewResult.whatsappSent) {
+            console.log('✅ Solicitud de reseña enviada por WhatsApp exitosamente')
+          } else if (reviewResult.smsSent) {
+            console.log('✅ Solicitud de reseña enviada por SMS exitosamente')
+          }
+        } else {
+          console.warn('⚠️ No se pudo enviar la solicitud de reseña:', reviewResult.error)
+        }
+      } catch (reviewError) {
+        // No fallar la actualización si falla la solicitud de reseña
+        console.error('❌ Error enviando solicitud de reseña:', reviewError)
+      }
+    }
 
     // 🔄 SINCRONIZAR MODIFICACIÓN CON GSCONTROL - CÓDIGO ACTUALIZADO 31/10/2025
     const descripcionFactura = `${factura.tipo}: ${factura.numero} - ${factura.cliente.nombre} ${factura.cliente.apellido || ''}`

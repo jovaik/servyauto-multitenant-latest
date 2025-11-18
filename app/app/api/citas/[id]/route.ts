@@ -287,25 +287,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
           console.warn('⚠️ No se pudo enviar la notificación:', notificationResult.error)
         }
 
-        // ⭐ ENVIAR SOLICITUD DE RESEÑA AUTOMÁTICAMENTE
-        // Se envía INMEDIATAMENTE después de marcar como completado
-        console.log('=== ENVIANDO SOLICITUD DE RESEÑA AUTOMÁTICA ===')
-        
-        const reviewResult = await enviarSolicitudResena({
-          clienteName: cita.cliente.nombre,
-          telefono: cita.cliente.telefono,
-          servicioNombre: cita.cita_servicios?.[0]?.servicios?.nombre
-        })
-        
-        if (reviewResult.success) {
-          if (reviewResult.whatsappSent) {
-            console.log('✅ Solicitud de reseña enviada por WhatsApp exitosamente')
-          } else if (reviewResult.smsSent) {
-            console.log('✅ Solicitud de reseña enviada por SMS exitosamente')
-          }
-        } else {
-          console.warn('⚠️ No se pudo enviar la solicitud de reseña:', reviewResult.error)
-        }
+        // ℹ️ NOTA: La solicitud de reseña se envía cuando se marca la factura como PAGADA
+        // (cuando el cliente ya recogió y pagó su vehículo)
       } catch (notificationError) {
         // No fallar la actualización si falla la notificación
         console.error('❌ Error enviando notificación:', notificationError)
