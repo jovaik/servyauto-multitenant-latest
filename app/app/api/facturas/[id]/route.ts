@@ -128,11 +128,12 @@ export async function PUT(
 
     console.log('=== FACTURA ACTUALIZADA ===')
 
-    // ⭐ ENVIAR SOLICITUD DE RESEÑA cuando se marca como PAGADA
+    // ⭐ GENERAR ENLACE WHATSAPP cuando se marca como PAGADA
     // En este momento el cliente ya recogió su vehículo y puede dar su opinión
+    let whatsappData = null;
     if (estado === 'PAGADA') {
       try {
-        console.log('=== ENVIANDO SOLICITUD DE RESEÑA (FACTURA PAGADA) ===')
+        console.log('=== GENERANDO ENLACE WHATSAPP (FACTURA PAGADA) ===')
         console.log('Cliente:', factura.cliente.nombre)
         console.log('Teléfono:', factura.cliente.telefono)
         
@@ -141,18 +142,18 @@ export async function PUT(
           telefono: factura.cliente.telefono
         })
         
-        if (reviewResult.success) {
-          if (reviewResult.whatsappSent) {
-            console.log('✅ Solicitud de reseña enviada por WhatsApp exitosamente')
-          } else if (reviewResult.smsSent) {
-            console.log('✅ Solicitud de reseña enviada por SMS exitosamente')
+        if (reviewResult.success && reviewResult.whatsappUrl) {
+          whatsappData = {
+            clienteName: factura.cliente.nombre,
+            telefono: reviewResult.telefono,
+            whatsappUrl: reviewResult.whatsappUrl,
+            mensaje: reviewResult.mensaje
           }
-        } else {
-          console.warn('⚠️ No se pudo enviar la solicitud de reseña:', reviewResult.error)
+          console.log('✅ Enlace WhatsApp generado exitosamente')
         }
       } catch (reviewError) {
-        // No fallar la actualización si falla la solicitud de reseña
-        console.error('❌ Error enviando solicitud de reseña:', reviewError)
+        // No fallar la actualización si falla la generación del enlace
+        console.error('❌ Error generando enlace WhatsApp:', reviewError)
       }
     }
 
@@ -176,7 +177,8 @@ export async function PUT(
     // Transformar los datos para el frontend
     const facturaConItems = {
       ...factura,
-      items: factura.factura_items || []
+      items: factura.factura_items || [],
+      whatsappData: whatsappData // Incluir datos de WhatsApp si se generó
     }
 
     return NextResponse.json(facturaConItems)

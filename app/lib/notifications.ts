@@ -117,99 +117,62 @@ Gracias por confiar en ServyAuto 🚗`;
 }
 
 /**
+ * Genera enlace de WhatsApp Web con mensaje pre-cargado para solicitud de reseña
+ * MODO MANUAL: El usuario hace clic en el enlace para enviar desde su WhatsApp
+ */
+export function generarEnlaceWhatsAppResena(data: {
+  clienteName: string;
+  telefono: string;
+}) {
+  // Limpiar el número de teléfono
+  let phoneNumber = data.telefono.replace(/\s+/g, '').replace(/\+/g, '');
+  
+  // Si no tiene código de país, asumir España (+34)
+  if (!phoneNumber.startsWith('34')) {
+    phoneNumber = '34' + phoneNumber;
+  }
+
+  // Mensaje de reseña personalizado
+  const mensaje = `Hola ${data.clienteName},
+
+Muchas gracias por su confianza. Esperamos volver a tenerles como clientes. Le agradeceríamos que dejase un comentario acerca de nuestros servicios en nuestra pagina de google. Este es el enlace directo:
+
+https://opinas.es/servyautocarwashdeta
+
+Muchas gracias`;
+
+  // Codificar mensaje para URL
+  const mensajeCodificado = encodeURIComponent(mensaje);
+  
+  // Generar enlace de WhatsApp Web
+  const enlaceWhatsApp = `https://wa.me/${phoneNumber}?text=${mensajeCodificado}`;
+  
+  console.log('📱 Enlace WhatsApp generado para:', data.clienteName);
+  console.log('Teléfono:', phoneNumber);
+  
+  return {
+    success: true,
+    whatsappUrl: enlaceWhatsApp,
+    telefono: phoneNumber,
+    mensaje: mensaje
+  };
+}
+
+/**
  * Envía solicitud de reseña al cliente cuando termina el servicio
- * Se envía automáticamente al marcar una cita como COMPLETADO
+ * DEPRECADO: Ahora se usa generarEnlaceWhatsAppResena() para modo manual
  */
 export async function enviarSolicitudResena(data: {
   clienteName: string;
   telefono: string;
   servicioNombre?: string;
 }) {
-  const client = getTwilioClient();
-  
-  if (!client) {
-    console.log('❌ Notificaciones deshabilitadas - Credenciales de Twilio no configuradas');
-    return {
-      success: false,
-      error: 'Twilio not configured',
-      whatsappSent: false,
-      smsSent: false
-    };
-  }
-
-  // Limpiar el número de teléfono
-  let phoneNumber = data.telefono.replace(/\s+/g, '');
-  
-  // Asegurar formato internacional
-  if (!phoneNumber.startsWith('+')) {
-    // Asumir España si no tiene código de país
-    phoneNumber = '+34' + phoneNumber;
-  }
-
-  const mensaje = `¡Hola ${data.clienteName}! 👋
-
-Esperamos que estés disfrutando de tu vehículo recién lavado ✨
-
-Tu opinión es muy importante para nosotros. ¿Podrías dedicar un minuto para dejarnos una reseña?
-
-⭐⭐⭐⭐⭐
-
-Responde a este mensaje con tu valoración o déjanos tu comentario en Google.
-
-¡Gracias por confiar en ServyAuto! 🚗💙`;
-
-  const result = {
-    success: false,
-    whatsappSent: false,
-    smsSent: false,
-    error: null as string | null
-  };
-
-  // Intentar WhatsApp primero
-  if (whatsappNumber) {
-    try {
-      console.log(`📱 Enviando solicitud de reseña por WhatsApp a ${phoneNumber}...`);
-      
-      const whatsappMessage = await client.messages.create({
-        from: whatsappNumber,
-        to: `whatsapp:${phoneNumber}`,
-        body: mensaje
-      });
-
-      console.log(`✅ Solicitud de reseña enviada por WhatsApp (SID: ${whatsappMessage.sid})`);
-      result.success = true;
-      result.whatsappSent = true;
-      return result;
-      
-    } catch (whatsappError: any) {
-      console.warn(`⚠️ WhatsApp falló: ${whatsappError.message}`);
-      console.log('🔄 Intentando enviar por SMS...');
-    }
-  }
-
-  // Si WhatsApp falló, intentar SMS
-  if (process.env.TWILIO_PHONE_NUMBER) {
-    try {
-      const smsMessage = await client.messages.create({
-        from: process.env.TWILIO_PHONE_NUMBER,
-        to: phoneNumber,
-        body: mensaje
-      });
-
-      console.log(`✅ Solicitud de reseña enviada por SMS (SID: ${smsMessage.sid})`);
-      result.success = true;
-      result.smsSent = true;
-      return result;
-      
-    } catch (smsError: any) {
-      console.error(`❌ SMS también falló: ${smsError.message}`);
-      result.error = smsError.message;
-      return result;
-    }
-  }
-
-  result.error = 'Ni WhatsApp ni SMS configurados';
-  return result;
+  // Modo manual: generar enlace de WhatsApp en lugar de enviar automáticamente
+  console.log('⚠️ Usando modo manual de WhatsApp. Generando enlace...');
+  return generarEnlaceWhatsAppResena({
+    clienteName: data.clienteName,
+    telefono: data.telefono
+  });
 }
 
 /**
