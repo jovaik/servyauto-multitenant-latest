@@ -128,34 +128,8 @@ export async function PUT(
 
     console.log('=== FACTURA ACTUALIZADA ===')
 
-    // ⭐ GENERAR ENLACE WHATSAPP cuando se marca como PAGADA
-    // En este momento el cliente ya recogió su vehículo y puede dar su opinión
-    let whatsappData = null;
-    if (estado === 'PAGADA') {
-      try {
-        console.log('=== GENERANDO ENLACE WHATSAPP (FACTURA PAGADA) ===')
-        console.log('Cliente:', factura.cliente.nombre)
-        console.log('Teléfono:', factura.cliente.telefono)
-        
-        const reviewResult = await enviarSolicitudResena({
-          clienteName: factura.cliente.nombre,
-          telefono: factura.cliente.telefono
-        })
-        
-        if (reviewResult.success && reviewResult.whatsappUrl) {
-          whatsappData = {
-            clienteName: factura.cliente.nombre,
-            telefono: reviewResult.telefono,
-            whatsappUrl: reviewResult.whatsappUrl,
-            mensaje: reviewResult.mensaje
-          }
-          console.log('✅ Enlace WhatsApp generado exitosamente')
-        }
-      } catch (reviewError) {
-        // No fallar la actualización si falla la generación del enlace
-        console.error('❌ Error generando enlace WhatsApp:', reviewError)
-      }
-    }
+    // ℹ️ NOTA: La solicitud de reseña se envía desde las CITAS cuando se marcan como COMPLETADA
+    // (porque completar = el cliente ya pagó y recogió su vehículo)
 
     // 🔄 SINCRONIZAR MODIFICACIÓN CON GSCONTROL - CÓDIGO ACTUALIZADO 31/10/2025
     const descripcionFactura = `${factura.tipo}: ${factura.numero} - ${factura.cliente.nombre} ${factura.cliente.apellido || ''}`
@@ -177,8 +151,7 @@ export async function PUT(
     // Transformar los datos para el frontend
     const facturaConItems = {
       ...factura,
-      items: factura.factura_items || [],
-      whatsappData: whatsappData // Incluir datos de WhatsApp si se generó
+      items: factura.factura_items || []
     }
 
     return NextResponse.json(facturaConItems)

@@ -261,41 +261,43 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       }
     }
     
-    // Enviar notificación automática cuando se marca como COMPLETADA
+    // ⭐ GENERAR ENLACE WHATSAPP cuando se marca como COMPLETADA
+    // Completar servicio = cliente pagó, momento para pedir reseña
+    let whatsappData = null;
     if (estado === 'COMPLETADA') {
       try {
-        console.log('=== ENVIANDO NOTIFICACIÓN AUTOMÁTICA ===')
+        console.log('=== GENERANDO ENLACE WHATSAPP (CITA COMPLETADA) ===')
         console.log('Cliente:', cita.cliente.nombre)
         console.log('Teléfono:', cita.cliente.telefono)
         console.log('Vehículo:', `${cita.vehiculo.marca} ${cita.vehiculo.modelo} - ${cita.vehiculo.matricula}`)
         console.log('Total:', cita.total)
         
-        const notificationResult = await enviarNotificacionVehiculoListo({
+        const { generarEnlaceWhatsAppResena } = await import('@/lib/notifications')
+        
+        const reviewResult = generarEnlaceWhatsAppResena({
           clienteName: cita.cliente.nombre,
-          vehiculo: `${cita.vehiculo.marca} ${cita.vehiculo.modelo} - ${cita.vehiculo.matricula}`,
-          total: cita.total || 0,
           telefono: cita.cliente.telefono
         })
         
-        if (notificationResult.success) {
-          if (notificationResult.whatsappSent) {
-            console.log('✅ Notificación enviada por WhatsApp exitosamente')
-          } else if (notificationResult.smsSent) {
-            console.log('✅ Notificación enviada por SMS exitosamente')
+        if (reviewResult.success && reviewResult.whatsappUrl) {
+          whatsappData = {
+            clienteName: cita.cliente.nombre,
+            telefono: reviewResult.telefono,
+            whatsappUrl: reviewResult.whatsappUrl,
+            mensaje: reviewResult.mensaje
           }
-        } else {
-          console.warn('⚠️ No se pudo enviar la notificación:', notificationResult.error)
+          console.log('✅ Enlace WhatsApp generado exitosamente')
         }
-
-        // ℹ️ NOTA: La solicitud de reseña se envía cuando se marca la factura como PAGADA
-        // (cuando el cliente ya recogió y pagó su vehículo)
-      } catch (notificationError) {
-        // No fallar la actualización si falla la notificación
-        console.error('❌ Error enviando notificación:', notificationError)
+      } catch (reviewError) {
+        // No fallar la actualización si falla la generación del enlace
+        console.error('❌ Error generando enlace WhatsApp:', reviewError)
       }
     }
     
-    return NextResponse.json(cita)
+    return NextResponse.json({
+      ...cita,
+      whatsappData: whatsappData // Incluir datos de WhatsApp si se generó
+    })
   } catch (error: any) {
     console.error('=== ERROR EN ACTUALIZACIÓN ===')
     console.error('Error completo:', error)

@@ -156,29 +156,9 @@ export function EditarFacturaDialog({ facturaId, facturaNumero, onFacturaActuali
       })
 
       if (response.ok) {
-        const data = await response.json()
-        
         setOpen(false)
         onFacturaActualizada()
-        
-        // Si se generó un enlace de WhatsApp (cuando se marca como PAGADA), mostrar el botón
-        if (data.whatsappData && data.whatsappData.whatsappUrl) {
-          const { clienteName, telefono, whatsappUrl } = data.whatsappData
-          
-          // Mostrar confirmación con opción de abrir WhatsApp
-          const abrirWhatsApp = confirm(
-            `✅ Factura actualizada correctamente.\n\n` +
-            `📱 ¿Quieres enviar la solicitud de reseña a ${clienteName} (${telefono})?\n\n` +
-            `Se abrirá WhatsApp Web con el mensaje pre-cargado.`
-          )
-          
-          if (abrirWhatsApp) {
-            // Abrir WhatsApp Web en nueva pestaña
-            window.open(whatsappUrl, '_blank')
-          }
-        } else {
-          alert('Factura actualizada correctamente')
-        }
+        alert('Factura actualizada correctamente')
       } else {
         throw new Error('Error al actualizar la factura')
       }

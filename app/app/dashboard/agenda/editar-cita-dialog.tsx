@@ -119,12 +119,31 @@ export function EditarCitaDialog({
       })
 
       if (response.ok) {
+        const data = await response.json()
+        
         toast({
           title: "¡Éxito!",
           description: "Cita actualizada correctamente",
         })
         onSuccess()
         onOpenChange(false)
+        
+        // Si se generó un enlace de WhatsApp (cuando se marca como COMPLETADA), mostrar el botón
+        if (data.whatsappData && data.whatsappData.whatsappUrl) {
+          const { clienteName, telefono, whatsappUrl } = data.whatsappData
+          
+          // Mostrar confirmación con opción de abrir WhatsApp
+          const abrirWhatsApp = confirm(
+            `✅ Servicio completado correctamente.\n\n` +
+            `📱 ¿Quieres enviar la solicitud de reseña a ${clienteName} (${telefono})?\n\n` +
+            `Se abrirá WhatsApp Web con el mensaje pre-cargado.`
+          )
+          
+          if (abrirWhatsApp) {
+            // Abrir WhatsApp Web en nueva pestaña
+            window.open(whatsappUrl, '_blank')
+          }
+        }
       } else {
         const error = await response.json()
         toast({
