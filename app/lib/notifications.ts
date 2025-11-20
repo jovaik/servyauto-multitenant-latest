@@ -124,14 +124,27 @@ export function generarEnlaceWhatsAppResena(data: {
   clienteName: string;
   telefono: string;
 }) {
-  // Limpiar el número de teléfono (quitar espacios y signos +)
-  let phoneNumber = data.telefono.replace(/\s+/g, '').replace(/\+/g, '');
+  // Limpiar el número de teléfono (quitar espacios en blanco)
+  let phoneNumber = data.telefono.replace(/\s+/g, '');
+  
+  // Quitar el signo + si existe (WhatsApp lo requiere sin +)
+  phoneNumber = phoneNumber.replace(/^\+/, '');
   
   // Guardar el número original para mostrar
   const numeroOriginal = data.telefono;
   
-  // Si no tiene código de país, asumir España (+34)
-  if (!phoneNumber.startsWith('34')) {
+  // ⚠️ IMPORTANTE: NO agregamos prefijo automáticamente
+  // El número debe estar completo con su código de país en la base de datos
+  // Ejemplos válidos: 
+  //   - España: 34678569098 o +34678569098
+  //   - Marruecos: 212612345678 o +212612345678
+  //   - Francia: 33612345678 o +33612345678
+  
+  // Si el número no tiene código de país, agregamos +34 (España) como último recurso
+  // pero mostramos advertencia
+  if (phoneNumber.length === 9 && /^[6-9]/.test(phoneNumber)) {
+    console.warn('⚠️ Número sin código de país detectado:', numeroOriginal);
+    console.warn('⚠️ Agregando +34 (España) automáticamente');
     phoneNumber = '34' + phoneNumber;
   }
 
@@ -152,7 +165,7 @@ Muchas gracias`;
   
   console.log('📱 Enlace WhatsApp generado para:', data.clienteName);
   console.log('Teléfono original:', numeroOriginal);
-  console.log('Teléfono con código país:', phoneNumber);
+  console.log('Teléfono para WhatsApp:', phoneNumber);
   
   return {
     success: true,
