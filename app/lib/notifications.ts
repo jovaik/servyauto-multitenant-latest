@@ -124,8 +124,11 @@ export function generarEnlaceWhatsAppResena(data: {
   clienteName: string;
   telefono: string;
 }) {
-  // Limpiar el número de teléfono
+  // Limpiar el número de teléfono (quitar espacios y signos +)
   let phoneNumber = data.telefono.replace(/\s+/g, '').replace(/\+/g, '');
+  
+  // Guardar el número original para mostrar
+  const numeroOriginal = data.telefono;
   
   // Si no tiene código de país, asumir España (+34)
   if (!phoneNumber.startsWith('34')) {
@@ -148,12 +151,14 @@ Muchas gracias`;
   const enlaceWhatsApp = `https://wa.me/${phoneNumber}?text=${mensajeCodificado}`;
   
   console.log('📱 Enlace WhatsApp generado para:', data.clienteName);
-  console.log('Teléfono:', phoneNumber);
+  console.log('Teléfono original:', numeroOriginal);
+  console.log('Teléfono con código país:', phoneNumber);
   
   return {
     success: true,
     whatsappUrl: enlaceWhatsApp,
-    telefono: phoneNumber,
+    telefono: numeroOriginal, // Devolver el número original sin modificar
+    telefonoCompleto: `+${phoneNumber}`, // Número completo con formato internacional
     mensaje: mensaje
   };
 }

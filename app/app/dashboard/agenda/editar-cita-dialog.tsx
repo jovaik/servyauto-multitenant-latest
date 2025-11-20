@@ -135,7 +135,9 @@ export function EditarCitaDialog({
           // Mostrar confirmación con opción de abrir WhatsApp
           const abrirWhatsApp = confirm(
             `✅ Servicio completado correctamente.\n\n` +
-            `📱 ¿Quieres enviar la solicitud de reseña a ${clienteName} (${telefono})?\n\n` +
+            `📱 ¿Quieres enviar la solicitud de reseña a:\n` +
+            `   ${clienteName}\n` +
+            `   Teléfono: ${telefono}\n\n` +
             `Se abrirá WhatsApp Web con el mensaje pre-cargado.`
           )
           
