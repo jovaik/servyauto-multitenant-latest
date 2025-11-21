@@ -26,6 +26,9 @@ export interface ExtractedInvoiceData {
   /** CIF/NIF del proveedor */
   cif?: string;
   
+  /** CIF/NIF del proveedor (alternativo) */
+  proveedor_cif?: string;
+  
   /** Categoría del gasto (ServyAuto: tipoGasto) */
   categoria?: string;
   

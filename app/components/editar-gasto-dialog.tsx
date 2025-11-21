@@ -203,13 +203,29 @@ export function EditarGastoDialog({ gasto, onGastoActualizado }: EditarGastoDial
 
           <div className="space-y-2">
             <Label htmlFor="tipoGasto">Tipo de Gasto *</Label>
-            <Input
-              id="tipoGasto"
-              placeholder="Tipo de gasto"
+            <Select
               value={formData.tipoGasto}
-              onChange={(e) => setFormData({ ...formData, tipoGasto: e.target.value })}
-              required
-            />
+              onValueChange={(value) => setFormData({ ...formData, tipoGasto: value })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecciona categoría" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Combustible">🛢️ Combustible</SelectItem>
+                <SelectItem value="Mantenimiento">🔧 Mantenimiento</SelectItem>
+                <SelectItem value="Productos Lavado">🧽 Productos Lavado</SelectItem>
+                <SelectItem value="Repuestos">⚙️ Repuestos</SelectItem>
+                <SelectItem value="Alquiler">🏢 Alquiler</SelectItem>
+                <SelectItem value="Seguros">🛡️ Seguros</SelectItem>
+                <SelectItem value="Limpieza">🧹 Limpieza</SelectItem>
+                <SelectItem value="Suministros">💡 Suministros (Agua/Luz/Gas)</SelectItem>
+                <SelectItem value="Administración">📋 Administración</SelectItem>
+                <SelectItem value="Marketing">📢 Marketing y Publicidad</SelectItem>
+                <SelectItem value="Personal">👥 Personal (Nóminas/SS)</SelectItem>
+                <SelectItem value="Asesoría">💼 Asesoría</SelectItem>
+                <SelectItem value="Otros">📦 Otros</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

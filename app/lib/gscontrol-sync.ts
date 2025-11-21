@@ -114,6 +114,13 @@ export async function notificarCreacionGSControl(transaccion: {
       payload.costCategory = transaccion.costCategory
     }
 
+    // 🔍 LOG DETALLADO PARA DEBUGGING
+    console.log('🔄 [GSCONTROL-SYNC] Sincronizando transacción:')
+    console.log('   Tipo:', transaccion.esIngreso ? '💰 INGRESO' : '💸 GASTO')
+    console.log('   ID:', transaccion.id)
+    console.log('   Importe:', transaccion.importe)
+    console.log('   Payload completo:', JSON.stringify(payload, null, 2))
+
     const response = await fetch(GSCONTROL_INGEST_ENDPOINT, {
       method: 'POST',
       headers: {
@@ -123,13 +130,18 @@ export async function notificarCreacionGSControl(transaccion: {
       body: JSON.stringify(payload)
     })
 
+    const responseText = await response.text()
+    
     if (!response.ok) {
-      console.error('Error sincronizando con GS Control:', await response.text())
+      console.error('❌ [GSCONTROL-SYNC] Error sincronizando:', response.status, responseText)
+      console.error('   Payload que falló:', JSON.stringify(payload, null, 2))
     } else {
-      console.log('✅ Transacción sincronizada con GS Control')
+      console.log(`✅ [GSCONTROL-SYNC] ${transaccion.esIngreso ? 'INGRESO' : 'GASTO'} sincronizado correctamente`)
+      console.log('   Respuesta:', responseText)
     }
   } catch (error) {
-    console.error('Error enviando a GS Control:', error)
+    console.error('❌ [GSCONTROL-SYNC] Error de red:', error)
+    console.error('   Datos de la transacción:', JSON.stringify(transaccion, null, 2))
   }
 }
 
@@ -182,6 +194,13 @@ export async function notificarModificacionGSControl(transaccion: {
       payload.costCategory = transaccion.costCategory
     }
 
+    // 🔍 LOG DETALLADO PARA DEBUGGING
+    console.log('🔄 [GSCONTROL-SYNC] Modificando transacción:')
+    console.log('   Tipo:', transaccion.esIngreso ? '💰 INGRESO' : '💸 GASTO')
+    console.log('   ID:', transaccion.id)
+    console.log('   Importe:', transaccion.importe)
+    console.log('   Payload completo:', JSON.stringify(payload, null, 2))
+
     const response = await fetch(GSCONTROL_INGEST_ENDPOINT, {
       method: 'PUT',
       headers: {
@@ -191,13 +210,18 @@ export async function notificarModificacionGSControl(transaccion: {
       body: JSON.stringify(payload)
     })
 
+    const responseText = await response.text()
+
     if (!response.ok) {
-      console.error('Error sincronizando modificación con GS Control:', await response.text())
+      console.error('❌ [GSCONTROL-SYNC] Error sincronizando modificación:', response.status, responseText)
+      console.error('   Payload que falló:', JSON.stringify(payload, null, 2))
     } else {
-      console.log('✅ Modificación sincronizada con GS Control')
+      console.log(`✅ [GSCONTROL-SYNC] Modificación de ${transaccion.esIngreso ? 'INGRESO' : 'GASTO'} sincronizada correctamente`)
+      console.log('   Respuesta:', responseText)
     }
   } catch (error) {
-    console.error('Error enviando modificación a GS Control:', error)
+    console.error('❌ [GSCONTROL-SYNC] Error de red en modificación:', error)
+    console.error('   Datos de la transacción:', JSON.stringify(transaccion, null, 2))
   }
 }
 

@@ -46,34 +46,42 @@ export async function POST(request: NextRequest) {
     }
     console.log('🔑 [INVOICE-OCR] API key encontrada');
 
-    // ✅ PROMPT ADAPTADO PARA SERVYAUTO
-    const extractionPrompt = `Analiza esta factura o ticket español y extrae los siguientes datos en formato JSON:
+    // ✅ PROMPT MEJORADO PARA SERVYAUTO - EXTRACCIÓN AGRESIVA DE CIF/NIF
+    const extractionPrompt = `Analiza esta factura o ticket ESPAÑOL y extrae TODOS los datos en formato JSON.
 
+IMPORTANTE - CIF/NIF:
+- Busca OBLIGATORIAMENTE el CIF o NIF del proveedor en TODAS las áreas del documento
+- Formatos comunes: "CIF:", "NIF:", "C.I.F.:", "N.I.F.:", cerca del nombre de la empresa, en el encabezado, al final
+- Patrones típicos: letra seguida de 8 dígitos (ej: B12345678, A87654321) o 8 dígitos seguidos de letra
+- Si ves "NIF/CIF" seguido de un número, ese es el que necesito
+- Si encuentras múltiples identificadores, elige el que esté cerca del nombre del proveedor
+
+FORMATO DE RESPUESTA (JSON únicamente, sin markdown):
 {
   "tipo_documento": "FACTURA o TICKET (si dice 'FACTURA SIMPLIFICADA' = TICKET)",
-  "fecha": "fecha en formato YYYY-MM-DD",
-  "numero_factura": "número de factura si existe",
-  "proveedor": "nombre del proveedor/empresa",
-  "proveedor_cif": "CIF del proveedor si existe",
-  "proveedor_direccion": "dirección completa del proveedor si existe",
-  "proveedor_codigo_postal": "código postal del proveedor si existe",
-  "proveedor_ciudad": "ciudad del proveedor si existe",
-  "proveedor_provincia": "provincia del proveedor si existe",
-  "concepto": "concepto o descripción breve del gasto",
-  "base_imponible": número sin IVA si existe,
-  "iva_porcentaje": porcentaje de IVA si existe,
-  "iva_importe": importe de IVA si existe,
-  "total": total final del documento,
-  "categoria": "categoría del gasto (ej: Combustible, Mantenimiento, Productos Lavado, Repuestos, etc)",
-  "metodo_pago": "método de pago si se menciona (Efectivo, Tarjeta, Transferencia, etc)"
+  "fecha": "YYYY-MM-DD (busca fecha de emisión, no de vencimiento)",
+  "numero_factura": "número completo de factura/ticket",
+  "proveedor": "nombre exacto de la empresa proveedora",
+  "proveedor_cif": "CIF/NIF completo con letra (OBLIGATORIO, busca exhaustivamente)",
+  "proveedor_direccion": "calle, número, edificio completo",
+  "proveedor_codigo_postal": "5 dígitos del CP",
+  "proveedor_ciudad": "ciudad/municipio",
+  "proveedor_provincia": "provincia",
+  "concepto": "descripción del servicio/producto principal",
+  "base_imponible": número decimal sin símbolo €,
+  "iva_porcentaje": 21 (o el porcentaje real si aparece),
+  "iva_importe": número decimal del IVA,
+  "total": número decimal total OBLIGATORIO,
+  "categoria": "Combustible | Mantenimiento | Productos Lavado | Repuestos | Alquiler | Seguros | Limpieza | Suministros | Administración | Otros",
+  "metodo_pago": "Efectivo | Tarjeta | Transferencia | Otro"
 }
 
-INSTRUCCIONES:
-- Devuelve SOLO el JSON, sin texto adicional
-- Si un campo no existe, usa null
-- Convierte todas las fechas a formato YYYY-MM-DD
-- El total es OBLIGATORIO
-- Extrae la dirección completa del proveedor si aparece en el documento`;
+REGLAS ESTRICTAS:
+1. Si encuentras el CIF/NIF, siempre inclúyelo completo con la letra
+2. Si no encuentras CIF/NIF, devuelve null pero SIGUE BUSCANDO texto como "CIF", "NIF", "Tax ID"
+3. El total es OBLIGATORIO (puede estar como "TOTAL", "IMPORTE", "A PAGAR")
+4. La fecha debe ser la de emisión (no vencimiento ni entrega)
+5. Devuelve SOLO JSON limpio, sin \`\`\`json ni texto extra`;
 
     // Llamar a la API de Vision
     console.log('🚀 [INVOICE-OCR] Enviando petición a Abacus.AI Vision API...');
