@@ -139,7 +139,6 @@ export function EditarCitaDialog({
           title: "¡Éxito!",
           description: "Cita actualizada correctamente",
         })
-        onSuccess()
         
         // Cerrar dialog primero
         onOpenChange(false)
@@ -185,6 +184,12 @@ export function EditarCitaDialog({
             }, 300)
           }
         }
+        
+        // Llamar a onSuccess DESPUÉS de mostrar los diálogos
+        // o directamente si no hay diálogos
+        setTimeout(() => {
+          onSuccess()
+        }, (data.depositoData || data.whatsappData) ? 400 : 100)
       } else {
         const error = await response.json()
         toast({

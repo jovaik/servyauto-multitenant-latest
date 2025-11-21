@@ -418,7 +418,7 @@ export function NuevaCitaDialog({
           title: "¡Éxito!",
           description: "Cita creada correctamente",
         })
-        onSuccess()
+        
         resetForm()
         
         // Cerrar dialog primero
@@ -444,6 +444,12 @@ export function NuevaCitaDialog({
             }, 300)
           }
         }
+        
+        // Llamar a onSuccess DESPUÉS de mostrar el diálogo de depósito
+        // o directamente si no hay diálogo
+        setTimeout(() => {
+          onSuccess()
+        }, data.depositoData ? 400 : 100)
       } else {
         const error = await response.json()
         toast({
