@@ -59,6 +59,12 @@ interface NuevaCitaDialogProps {
   onSuccess: () => void
   selectedDate: Date
   preselectedSlot?: {time: string, box: string} | null
+  onDepositoRequest?: (data: {
+    clienteName: string
+    telefono: string
+    whatsappUrl: string
+    smsUrl: string
+  }) => void
 }
 
 export function NuevaCitaDialog({ 
@@ -66,7 +72,8 @@ export function NuevaCitaDialog({
   onOpenChange, 
   onSuccess,
   selectedDate,
-  preselectedSlot 
+  preselectedSlot,
+  onDepositoRequest
 }: NuevaCitaDialogProps) {
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
@@ -405,12 +412,38 @@ export function NuevaCitaDialog({
       })
 
       if (response.ok) {
+        const data = await response.json()
+        
         toast({
           title: "¡Éxito!",
           description: "Cita creada correctamente",
         })
         onSuccess()
         resetForm()
+        
+        // Cerrar dialog primero
+        onOpenChange(false)
+        
+        // Si se generaron enlaces de confirmación de depósito (nueva cita)
+        if (data.depositoData && data.depositoData.whatsappUrl && data.depositoData.smsUrl) {
+          const { clienteName, telefono, whatsappUrl, smsUrl } = data.depositoData
+          
+          console.log('✅ Datos de confirmación de depósito recibidos (nueva cita):', data.depositoData)
+          
+          // Usar callback para activar el dialog en el componente padre
+          if (onDepositoRequest) {
+            // Delay para asegurar que el dialog de crear se cierre completamente
+            setTimeout(() => {
+              console.log('🚗 Enviando solicitud de confirmación de depósito al componente padre...')
+              onDepositoRequest({
+                clienteName,
+                telefono,
+                whatsappUrl,
+                smsUrl
+              })
+            }, 300)
+          }
+        }
       } else {
         const error = await response.json()
         toast({

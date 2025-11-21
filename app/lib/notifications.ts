@@ -268,3 +268,83 @@ export function getTwilioStatus() {
     accountSid: accountSid ? `${accountSid.substring(0, 8)}...` : 'No configurado'
   };
 }
+
+/**
+ * Genera enlaces de WhatsApp y SMS para confirmación de depósito de vehículo
+ * Se utiliza al crear/editar una cita para confirmar la recepción del vehículo
+ */
+export function generarEnlaceConfirmacionDeposito(data: {
+  clienteName: string;
+  telefono: string;
+  vehiculo: {
+    marca: string;
+    modelo: string;
+    matricula: string;
+  };
+  fecha: string; // formato: "dd/mm/yyyy - HH:mm"
+  servicios: string[]; // lista de nombres de servicios
+  box: string;
+}) {
+  // Limpiar el número de teléfono (quitar espacios en blanco)
+  let phoneNumber = data.telefono.replace(/\s+/g, '');
+  
+  // Quitar el signo + si existe (WhatsApp Web lo requiere sin +)
+  phoneNumber = phoneNumber.replace(/^\+/, '');
+  
+  // Guardar el número original para mostrar
+  const numeroOriginal = data.telefono;
+  
+  // Agregar prefijo 34 para números españoles de 9 dígitos
+  if (phoneNumber.length === 9 && /^[6-9]/.test(phoneNumber)) {
+    console.log('📱 Número español detectado (9 dígitos):', phoneNumber);
+    phoneNumber = '34' + phoneNumber;
+    console.log('📱 Prefijo 34 agregado para WhatsApp Web:', phoneNumber);
+  } else {
+    console.log('📱 Número internacional o ya con prefijo:', phoneNumber);
+  }
+
+  // Formatear lista de servicios
+  const serviciosTexto = data.servicios.length > 0 
+    ? data.servicios.map(s => `• ${s}`).join('\n')
+    : '• Servicio estándar';
+
+  // Mensaje de confirmación de depósito personalizado
+  const mensaje = `Hola ${data.clienteName},
+
+¡Hemos recibido su vehículo en ServyAuto! 🚗
+
+📋 *CONFIRMACIÓN DE DEPÓSITO*
+
+🚙 Vehículo: ${data.vehiculo.marca} ${data.vehiculo.modelo}
+🔢 Matrícula: ${data.vehiculo.matricula}
+📅 Fecha: ${data.fecha}
+📍 Box asignado: ${data.box}
+
+🔧 *Servicios solicitados:*
+${serviciosTexto}
+
+Le mantendremos informado del progreso de su vehículo.
+¡Gracias por confiar en nosotros!
+
+*ServyAuto Car Wash & Detailing*
+📞 +34 678 569 098`;
+
+  const mensajeCodificado = encodeURIComponent(mensaje);
+  
+  const whatsappUrl = `https://wa.me/${phoneNumber}?text=${mensajeCodificado}`;
+  const smsUrl = `sms:${phoneNumber}?body=${mensajeCodificado}`;
+
+  console.log('✅ Enlaces de confirmación de depósito generados correctamente');
+  console.log('📱 Número para WhatsApp:', phoneNumber);
+  console.log('🔗 WhatsApp URL:', whatsappUrl);
+  console.log('📧 SMS URL:', smsUrl);
+
+  return {
+    success: true,
+    smsUrl,
+    whatsappUrl,
+    phoneNumber,
+    numeroOriginal,
+    mensaje
+  };
+}

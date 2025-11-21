@@ -20,6 +20,7 @@ import { NuevaCitaDialog } from './nueva-cita-dialog'
 import { EditarCitaDialog } from './editar-cita-dialog'
 import { Cita } from '@/lib/types'
 import EnviarResenaDialog from '@/components/enviar-resena-dialog'
+import EnviarDepositoDialog from '@/components/enviar-deposito-dialog'
 
 interface AgendaSlot {
   time: string
@@ -41,6 +42,15 @@ export function AgendaView() {
   // Estado para el dialog de reseña (movido desde EditarCitaDialog)
   const [showResenaDialog, setShowResenaDialog] = useState(false)
   const [resenaData, setResenaData] = useState<{
+    clienteName: string
+    telefono: string
+    whatsappUrl: string
+    smsUrl: string
+  } | null>(null)
+
+  // Estado para el dialog de confirmación de depósito
+  const [showDepositoDialog, setShowDepositoDialog] = useState(false)
+  const [depositoData, setDepositoData] = useState<{
     clienteName: string
     telefono: string
     whatsappUrl: string
@@ -406,6 +416,11 @@ export function AgendaView() {
         onSuccess={handleCitaUpdated}
         selectedDate={selectedDate}
         preselectedSlot={preselectedSlot}
+        onDepositoRequest={(data) => {
+          console.log('🚗 Solicitud de confirmación de depósito recibida (nueva cita) en AgendaView:', data)
+          setDepositoData(data)
+          setShowDepositoDialog(true)
+        }}
       />
 
       {selectedCita && (
@@ -419,6 +434,11 @@ export function AgendaView() {
             setResenaData(data)
             setShowResenaDialog(true)
           }}
+          onDepositoRequest={(data) => {
+            console.log('🚗 Solicitud de confirmación de depósito recibida en AgendaView:', data)
+            setDepositoData(data)
+            setShowDepositoDialog(true)
+          }}
         />
       )}
 
@@ -431,6 +451,18 @@ export function AgendaView() {
           telefono={resenaData.telefono}
           whatsappUrl={resenaData.whatsappUrl}
           smsUrl={resenaData.smsUrl}
+        />
+      )}
+
+      {/* Dialog de confirmación de depósito */}
+      {depositoData && (
+        <EnviarDepositoDialog
+          open={showDepositoDialog}
+          onOpenChange={setShowDepositoDialog}
+          clienteName={depositoData.clienteName}
+          telefono={depositoData.telefono}
+          whatsappUrl={depositoData.whatsappUrl}
+          smsUrl={depositoData.smsUrl}
         />
       )}
     </div>

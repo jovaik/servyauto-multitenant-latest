@@ -238,7 +238,57 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    return NextResponse.json(cita, { status: 201 })
+    // ⭐ GENERAR ENLACES DE CONFIRMACIÓN DE DEPÓSITO (cita nueva)
+    let depositoData = null;
+    try {
+      console.log('=== GENERANDO CONFIRMACIÓN DE DEPÓSITO (CITA NUEVA) ===')
+      console.log('Cliente:', cita.cliente.nombre)
+      console.log('Teléfono:', cita.cliente.telefono)
+      console.log('Vehículo:', `${cita.vehiculo.marca} ${cita.vehiculo.modelo} - ${cita.vehiculo.matricula}`)
+      
+      const { generarEnlaceConfirmacionDeposito } = await import('@/lib/notifications')
+      
+      // Formatear fecha
+      const fechaFormateada = new Date(cita.fecha).toLocaleDateString('es-ES', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      }) + ' - ' + cita.horaInicio;
+      
+      // Obtener nombres de servicios
+      const nombresServicios = cita.cita_servicios?.map((cs: any) => cs.servicios.nombre) || [];
+      
+      const resultado = generarEnlaceConfirmacionDeposito({
+        clienteName: cita.cliente.nombre,
+        telefono: cita.cliente.telefono,
+        vehiculo: {
+          marca: cita.vehiculo.marca,
+          modelo: cita.vehiculo.modelo,
+          matricula: cita.vehiculo.matricula
+        },
+        fecha: fechaFormateada,
+        servicios: nombresServicios,
+        box: cita.box
+      });
+      
+      if (resultado.success) {
+        depositoData = {
+          clienteName: cita.cliente.nombre,
+          telefono: resultado.numeroOriginal,
+          whatsappUrl: resultado.whatsappUrl,
+          smsUrl: resultado.smsUrl,
+          mensaje: resultado.mensaje
+        };
+        console.log('✅ Enlaces de confirmación de depósito generados exitosamente');
+      }
+    } catch (depositoError) {
+      console.error('❌ Error generando confirmación de depósito:', depositoError);
+    }
+
+    return NextResponse.json({
+      ...cita,
+      depositoData: depositoData // Incluir datos de confirmación si se generaron
+    }, { status: 201 })
   } catch (error) {
     console.error('Error creating appointment:', error)
     return NextResponse.json(

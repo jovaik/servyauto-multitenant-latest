@@ -38,6 +38,12 @@ interface EditarCitaDialogProps {
     whatsappUrl: string
     smsUrl: string
   }) => void
+  onDepositoRequest?: (data: {
+    clienteName: string
+    telefono: string
+    whatsappUrl: string
+    smsUrl: string
+  }) => void
 }
 
 export function EditarCitaDialog({ 
@@ -45,7 +51,8 @@ export function EditarCitaDialog({
   onOpenChange, 
   onSuccess,
   cita,
-  onResenaRequest
+  onResenaRequest,
+  onDepositoRequest
 }: EditarCitaDialogProps) {
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
@@ -137,6 +144,27 @@ export function EditarCitaDialog({
         // Cerrar dialog primero
         onOpenChange(false)
         
+        // Si se generaron enlaces de confirmación de depósito (cuando estado es PENDIENTE)
+        if (data.depositoData && data.depositoData.whatsappUrl && data.depositoData.smsUrl) {
+          const { clienteName, telefono, whatsappUrl, smsUrl } = data.depositoData
+          
+          console.log('✅ Datos de confirmación de depósito recibidos:', data.depositoData)
+          
+          // Usar callback para activar el dialog en el componente padre
+          if (onDepositoRequest) {
+            // Delay para asegurar que el dialog de editar se cierre completamente
+            setTimeout(() => {
+              console.log('🚗 Enviando solicitud de confirmación de depósito al componente padre...')
+              onDepositoRequest({
+                clienteName,
+                telefono,
+                whatsappUrl,
+                smsUrl
+              })
+            }, 300)
+          }
+        }
+        
         // Si se generaron enlaces de WhatsApp/SMS (cuando se marca como COMPLETADA), activar el dialog de reseña
         if (data.whatsappData && data.whatsappData.whatsappUrl && data.whatsappData.smsUrl) {
           const { clienteName, telefono, whatsappUrl, smsUrl } = data.whatsappData
@@ -156,8 +184,6 @@ export function EditarCitaDialog({
               })
             }, 300)
           }
-        } else {
-          console.log('ℹ️ No hay datos de reseña para mostrar')
         }
       } else {
         const error = await response.json()
