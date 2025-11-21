@@ -421,11 +421,21 @@ export function NuevaCitaDialog({
         
         resetForm()
         
-        // Cerrar dialog primero
+        // Verificar si hay diálogo de depósito que mostrar
+        const hasDepositoDialog = !!(data.depositoData && data.depositoData.whatsappUrl && data.depositoData.smsUrl)
+        
+        // Si NO hay diálogo que mostrar, llamar a onSuccess inmediatamente y cerrar
+        if (!hasDepositoDialog) {
+          onSuccess()
+          onOpenChange(false)
+          return
+        }
+        
+        // Si HAY diálogo que mostrar, cerrar este dialog primero
         onOpenChange(false)
         
         // Si se generaron enlaces de confirmación de depósito (nueva cita)
-        if (data.depositoData && data.depositoData.whatsappUrl && data.depositoData.smsUrl) {
+        if (hasDepositoDialog) {
           const { clienteName, telefono, whatsappUrl, smsUrl } = data.depositoData
           
           console.log('✅ Datos de confirmación de depósito recibidos (nueva cita):', data.depositoData)
@@ -446,10 +456,9 @@ export function NuevaCitaDialog({
         }
         
         // Llamar a onSuccess DESPUÉS de mostrar el diálogo de depósito
-        // o directamente si no hay diálogo
         setTimeout(() => {
           onSuccess()
-        }, data.depositoData ? 400 : 100)
+        }, 400)
       } else {
         const error = await response.json()
         toast({

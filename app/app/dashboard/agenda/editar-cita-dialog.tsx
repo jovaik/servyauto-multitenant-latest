@@ -140,11 +140,22 @@ export function EditarCitaDialog({
           description: "Cita actualizada correctamente",
         })
         
-        // Cerrar dialog primero
+        // Verificar si hay diálogos que mostrar
+        const hasDepositoDialog = !!(data.depositoData && data.depositoData.whatsappUrl && data.depositoData.smsUrl)
+        const hasResenaDialog = !!(data.whatsappData && data.whatsappData.whatsappUrl && data.whatsappData.smsUrl)
+        
+        // Si NO hay diálogos que mostrar, llamar a onSuccess inmediatamente y cerrar
+        if (!hasDepositoDialog && !hasResenaDialog) {
+          onSuccess()
+          onOpenChange(false)
+          return
+        }
+        
+        // Si HAY diálogos que mostrar, cerrar este dialog primero
         onOpenChange(false)
         
         // Si se generaron enlaces de confirmación de depósito (cuando estado es PENDIENTE)
-        if (data.depositoData && data.depositoData.whatsappUrl && data.depositoData.smsUrl) {
+        if (hasDepositoDialog) {
           const { clienteName, telefono, whatsappUrl, smsUrl } = data.depositoData
           
           console.log('✅ Datos de confirmación de depósito recibidos:', data.depositoData)
@@ -165,7 +176,7 @@ export function EditarCitaDialog({
         }
         
         // Si se generaron enlaces de WhatsApp/SMS (cuando se marca como COMPLETADA), activar el dialog de reseña
-        if (data.whatsappData && data.whatsappData.whatsappUrl && data.whatsappData.smsUrl) {
+        if (hasResenaDialog) {
           const { clienteName, telefono, whatsappUrl, smsUrl } = data.whatsappData
           
           console.log('✅ Datos de reseña recibidos:', data.whatsappData)
@@ -186,10 +197,9 @@ export function EditarCitaDialog({
         }
         
         // Llamar a onSuccess DESPUÉS de mostrar los diálogos
-        // o directamente si no hay diálogos
         setTimeout(() => {
           onSuccess()
-        }, (data.depositoData || data.whatsappData) ? 400 : 100)
+        }, 400)
       } else {
         const error = await response.json()
         toast({
