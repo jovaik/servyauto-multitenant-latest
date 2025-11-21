@@ -266,37 +266,47 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     let whatsappData = null;
     if (estado === 'COMPLETADA') {
       try {
-        console.log('=== GENERANDO ENLACE WHATSAPP (CITA COMPLETADA) ===')
+        console.log('=== GENERANDO ENLACES WHATSAPP Y SMS (CITA COMPLETADA) ===')
         console.log('Cliente:', cita.cliente.nombre)
         console.log('Teléfono:', cita.cliente.telefono)
         console.log('Vehículo:', `${cita.vehiculo.marca} ${cita.vehiculo.modelo} - ${cita.vehiculo.matricula}`)
         console.log('Total:', cita.total)
         
-        const { generarEnlaceWhatsAppResena } = await import('@/lib/notifications')
+        const { generarEnlaceWhatsAppResena, generarEnlaceSMSResena } = await import('@/lib/notifications')
         
-        const reviewResult = generarEnlaceWhatsAppResena({
+        // Generar enlace WhatsApp
+        const whatsappResult = generarEnlaceWhatsAppResena({
           clienteName: cita.cliente.nombre,
           telefono: cita.cliente.telefono
         })
         
-        if (reviewResult.success && reviewResult.whatsappUrl) {
+        // Generar enlace SMS
+        const smsResult = generarEnlaceSMSResena({
+          clienteName: cita.cliente.nombre,
+          telefono: cita.cliente.telefono
+        })
+        
+        if (whatsappResult.success && smsResult.success) {
           whatsappData = {
             clienteName: cita.cliente.nombre,
-            telefono: reviewResult.telefono,
-            whatsappUrl: reviewResult.whatsappUrl,
-            mensaje: reviewResult.mensaje
+            telefono: whatsappResult.telefono,
+            whatsappUrl: whatsappResult.whatsappUrl,
+            smsUrl: smsResult.smsUrl,
+            mensaje: whatsappResult.mensaje
           }
-          console.log('✅ Enlace WhatsApp generado exitosamente')
+          console.log('✅ Enlaces WhatsApp y SMS generados exitosamente')
+          console.log('WhatsApp URL:', whatsappResult.whatsappUrl)
+          console.log('SMS URL:', smsResult.smsUrl)
         }
       } catch (reviewError) {
         // No fallar la actualización si falla la generación del enlace
-        console.error('❌ Error generando enlace WhatsApp:', reviewError)
+        console.error('❌ Error generando enlaces WhatsApp/SMS:', reviewError)
       }
     }
     
     return NextResponse.json({
       ...cita,
-      whatsappData: whatsappData // Incluir datos de WhatsApp si se generó
+      whatsappData: whatsappData // Incluir datos de WhatsApp y SMS si se generaron
     })
   } catch (error: any) {
     console.error('=== ERROR EN ACTUALIZACIÓN ===')

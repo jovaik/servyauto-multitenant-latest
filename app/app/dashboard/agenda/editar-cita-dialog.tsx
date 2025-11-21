@@ -128,23 +128,31 @@ export function EditarCitaDialog({
         onSuccess()
         onOpenChange(false)
         
-        // Si se generó un enlace de WhatsApp (cuando se marca como COMPLETADA), mostrar el botón
-        if (data.whatsappData && data.whatsappData.whatsappUrl) {
-          const { clienteName, telefono, whatsappUrl } = data.whatsappData
+        // Si se generaron enlaces de WhatsApp/SMS (cuando se marca como COMPLETADA), mostrar el menú
+        if (data.whatsappData && data.whatsappData.whatsappUrl && data.whatsappData.smsUrl) {
+          const { clienteName, telefono, whatsappUrl, smsUrl } = data.whatsappData
           
-          // Mostrar confirmación con opción de abrir WhatsApp
-          const abrirWhatsApp = confirm(
-            `✅ Servicio completado correctamente.\n\n` +
-            `📱 ¿Quieres enviar la solicitud de reseña a:\n` +
-            `   ${clienteName}\n` +
-            `   Teléfono: ${telefono}\n\n` +
-            `Se abrirá WhatsApp Web con el mensaje pre-cargado.`
-          )
-          
-          if (abrirWhatsApp) {
-            // Abrir WhatsApp Web en nueva pestaña
-            window.open(whatsappUrl, '_blank')
-          }
+          // Mostrar diálogo de selección con opciones
+          setTimeout(() => {
+            const opcion = prompt(
+              `✅ Servicio completado correctamente.\n\n` +
+              `📱 ¿Cómo deseas enviar la solicitud de reseña a ${clienteName}?\n` +
+              `   Teléfono: ${telefono}\n\n` +
+              `Escribe el número de tu elección:\n` +
+              `1 - WhatsApp\n` +
+              `2 - SMS\n` +
+              `0 - Cancelar (no enviar)`
+            )
+            
+            if (opcion === '1') {
+              // Opción 1: Abrir WhatsApp Web
+              window.open(whatsappUrl, '_blank')
+            } else if (opcion === '2') {
+              // Opción 2: Abrir app de SMS
+              window.open(smsUrl, '_blank')
+            }
+            // Si es 0 o cualquier otra cosa, no hacer nada (cancelar)
+          }, 500)
         }
       } else {
         const error = await response.json()

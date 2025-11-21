@@ -177,8 +177,62 @@ Muchas gracias`;
 }
 
 /**
+ * Genera enlace de SMS con mensaje pre-cargado para solicitud de reseña
+ * MODO MANUAL: El usuario hace clic en el enlace para enviar desde su app de SMS
+ */
+export function generarEnlaceSMSResena(data: {
+  clienteName: string;
+  telefono: string;
+}) {
+  // Limpiar el número de teléfono (quitar espacios en blanco)
+  let phoneNumber = data.telefono.replace(/\s+/g, '');
+  
+  // Agregar + si no lo tiene (SMS requiere formato internacional con +)
+  if (!phoneNumber.startsWith('+')) {
+    // Si el número no tiene código de país, agregamos +34 (España) como último recurso
+    if (phoneNumber.length === 9 && /^[6-9]/.test(phoneNumber)) {
+      phoneNumber = '+34' + phoneNumber;
+    } else if (!phoneNumber.startsWith('34')) {
+      phoneNumber = '+' + phoneNumber;
+    } else {
+      phoneNumber = '+' + phoneNumber;
+    }
+  }
+  
+  // Guardar el número original para mostrar
+  const numeroOriginal = data.telefono;
+
+  // Mensaje de reseña personalizado (igual que WhatsApp)
+  const mensaje = `Hola ${data.clienteName},
+
+Muchas gracias por su confianza. Esperamos volver a tenerles como clientes. Le agradeceríamos que dejase un comentario acerca de nuestros servicios en nuestra pagina de google. Este es el enlace directo:
+
+https://opinas.es/servyautocarwashdeta
+
+Muchas gracias`;
+
+  // Codificar mensaje para URL
+  const mensajeCodificado = encodeURIComponent(mensaje);
+  
+  // Generar enlace de SMS
+  const enlaceSMS = `sms:${phoneNumber}?body=${mensajeCodificado}`;
+  
+  console.log('📧 Enlace SMS generado para:', data.clienteName);
+  console.log('Teléfono original:', numeroOriginal);
+  console.log('Teléfono para SMS:', phoneNumber);
+  
+  return {
+    success: true,
+    smsUrl: enlaceSMS,
+    telefono: numeroOriginal,
+    telefonoCompleto: phoneNumber,
+    mensaje: mensaje
+  };
+}
+
+/**
  * Envía solicitud de reseña al cliente cuando termina el servicio
- * DEPRECADO: Ahora se usa generarEnlaceWhatsAppResena() para modo manual
+ * DEPRECADO: Ahora se usa generarEnlaceWhatsAppResena() o generarEnlaceSMSResena() para modo manual
  */
 export async function enviarSolicitudResena(data: {
   clienteName: string;
