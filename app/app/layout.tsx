@@ -55,6 +55,15 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="msapplication-TileColor" content="#DC2626" />
         <meta name="msapplication-tap-highlight" content="no" />
+        
+        {/* PDF.js para OCR Cropper */}
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+        <script dangerouslySetInnerHTML={{__html: `
+          if (typeof window !== 'undefined' && window.pdfjsLib) {
+            window.pdfjsLib.GlobalWorkerOptions.workerSrc = 
+              'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+          }
+        `}} />
       </head>
       <body className={inter.className} suppressHydrationWarning>
         <Providers>

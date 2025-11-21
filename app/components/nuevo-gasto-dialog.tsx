@@ -2,7 +2,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, Scan, Edit } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -21,6 +21,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { SimpleDocumentScanner } from '@/app/components/gastos/simple-document-scanner'
+import type { ExtractedInvoiceData } from '@/types/invoice-types'
+import { toast } from 'react-hot-toast'
 
 interface NuevoGastoDialogProps {
   onGastoCreado: () => void
@@ -29,6 +33,7 @@ interface NuevoGastoDialogProps {
 export function NuevoGastoDialog({ onGastoCreado }: NuevoGastoDialogProps) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [activeTab, setActiveTab] = useState('scan')
   const [formData, setFormData] = useState({
     concepto: '',
     fecha: new Date().toISOString().split('T')[0],
@@ -45,6 +50,36 @@ export function NuevoGastoDialog({ onGastoCreado }: NuevoGastoDialogProps) {
     proveedorCiudad: '',
     proveedorProvincia: ''
   })
+
+  // ✅ Manejar datos extraídos del OCR
+  const handleExtractedData = (data: ExtractedInvoiceData) => {
+    console.log('📄 [OCR] Datos extraídos:', data)
+    
+    setFormData(prev => ({
+      ...prev,
+      concepto: data.concepto || prev.concepto,
+      fecha: data.fecha || prev.fecha,
+      proveedor: data.proveedor || prev.proveedor,
+      tipoGasto: data.categoria || prev.tipoGasto,
+      importe: data.total ? String(data.total) : prev.importe,
+      metodoPago: data.metodo_pago?.toUpperCase() === 'EFECTIVO' ? 'EFECTIVO' : 
+                  data.metodo_pago?.toUpperCase() === 'TARJETA' ? 'TARJETA' : 
+                  data.metodo_pago?.toUpperCase() === 'TRANSFERENCIA' ? 'TRANSFERENCIA' : prev.metodoPago,
+      tipo: data.tipo_documento as any || prev.tipo,
+      iva: data.iva_porcentaje ? String(data.iva_porcentaje) : prev.iva,
+      numeroFactura: data.numero_factura || prev.numeroFactura,
+      proveedorCIF: data.cif || prev.proveedorCIF,
+      proveedorDireccion: data.proveedor_direccion || prev.proveedorDireccion,
+      proveedorCodigoPostal: data.proveedor_codigo_postal || prev.proveedorCodigoPostal,
+      proveedorCiudad: data.proveedor_ciudad || prev.proveedorCiudad,
+      proveedorProvincia: data.proveedor_provincia || prev.proveedorProvincia
+    }))
+
+    toast.success('✅ Datos extraídos y rellenados automáticamente')
+    
+    // Cambiar a la pestaña manual para que el usuario vea los datos
+    setActiveTab('manual')
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -99,15 +134,58 @@ export function NuevoGastoDialog({ onGastoCreado }: NuevoGastoDialogProps) {
           Nuevo Gasto
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Nuevo Gasto</DialogTitle>
           <DialogDescription>
-            Registra un nuevo gasto o compra del taller
+            Escanea una factura/ticket o rellena manualmente los datos
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {/* ✅ TABS: Escanear vs Manual */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="scan" className="flex items-center gap-2">
+              <Scan className="h-4 w-4" />
+              Escanear Documento
+            </TabsTrigger>
+            <TabsTrigger value="manual" className="flex items-center gap-2">
+              <Edit className="h-4 w-4" />
+              Rellenar Manual
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Tab 1: Escanear con OCR */}
+          <TabsContent value="scan" className="space-y-4 mt-4">
+            <SimpleDocumentScanner
+              onExtractedDataChange={handleExtractedData}
+              onFileSelect={(file) => {
+                console.log('📁 Archivo seleccionado:', file.name)
+              }}
+            />
+            
+            {/* Mostrar preview de datos extraídos */}
+            {formData.importe && parseFloat(formData.importe) > 0 && (
+              <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                <h3 className="font-semibold text-green-800 mb-2 flex items-center gap-2">
+                  ✅ Datos Extraídos
+                </h3>
+                <div className="grid grid-cols-2 gap-2 text-sm text-green-700">
+                  <div><strong>Fecha:</strong> {formData.fecha}</div>
+                  <div><strong>Total:</strong> €{formData.importe}</div>
+                  <div><strong>Proveedor:</strong> {formData.proveedor || '-'}</div>
+                  <div><strong>Categoría:</strong> {formData.tipoGasto || '-'}</div>
+                </div>
+                <p className="mt-2 text-xs text-green-600">
+                  Cambia a "Rellenar Manual" para revisar/editar los datos antes de guardar
+                </p>
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Tab 2: Formulario Manual */}
+          <TabsContent value="manual" className="mt-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="concepto">Concepto *</Label>
             <Input
@@ -329,6 +407,8 @@ export function NuevoGastoDialog({ onGastoCreado }: NuevoGastoDialogProps) {
             </Button>
           </div>
         </form>
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   )
