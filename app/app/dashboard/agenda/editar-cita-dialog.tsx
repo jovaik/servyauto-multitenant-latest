@@ -26,33 +26,30 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/use-toast'
 import { Cita, EstadoCita, MetodoPago } from '@/lib/types'
-import EnviarResenaDialog from '@/components/enviar-resena-dialog'
 
 interface EditarCitaDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSuccess: () => void
   cita: Cita
+  onResenaRequest?: (data: {
+    clienteName: string
+    telefono: string
+    whatsappUrl: string
+    smsUrl: string
+  }) => void
 }
 
 export function EditarCitaDialog({ 
   open, 
   onOpenChange, 
   onSuccess,
-  cita 
+  cita,
+  onResenaRequest
 }: EditarCitaDialogProps) {
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  
-  // Estado para el dialog de enviar reseña
-  const [showResenaDialog, setShowResenaDialog] = useState(false)
-  const [resenaData, setResenaData] = useState<{
-    clienteName: string
-    telefono: string
-    whatsappUrl: string
-    smsUrl: string
-  } | null>(null)
   
   const [formData, setFormData] = useState({
     fecha: '',
@@ -137,32 +134,30 @@ export function EditarCitaDialog({
         })
         onSuccess()
         
-        // Si se generaron enlaces de WhatsApp/SMS (cuando se marca como COMPLETADA), mostrar el dialog
+        // Cerrar dialog primero
+        onOpenChange(false)
+        
+        // Si se generaron enlaces de WhatsApp/SMS (cuando se marca como COMPLETADA), activar el dialog de reseña
         if (data.whatsappData && data.whatsappData.whatsappUrl && data.whatsappData.smsUrl) {
           const { clienteName, telefono, whatsappUrl, smsUrl } = data.whatsappData
           
           console.log('✅ Datos de reseña recibidos:', data.whatsappData)
           
-          // Guardar datos PRIMERO
-          setResenaData({
-            clienteName,
-            telefono,
-            whatsappUrl,
-            smsUrl
-          })
-          
-          // Cerrar dialog de editar
-          onOpenChange(false)
-          
-          // Delay más largo para asegurar que el dialog se cierre antes de abrir el nuevo
-          setTimeout(() => {
-            console.log('📱 Mostrando dialog de reseña...')
-            setShowResenaDialog(true)
-          }, 500)
+          // Usar callback para activar el dialog en el componente padre
+          if (onResenaRequest) {
+            // Delay para asegurar que el dialog de editar se cierre completamente
+            setTimeout(() => {
+              console.log('📱 Enviando solicitud de reseña al componente padre...')
+              onResenaRequest({
+                clienteName,
+                telefono,
+                whatsappUrl,
+                smsUrl
+              })
+            }, 300)
+          }
         } else {
-          // Si no hay datos de reseña, cerrar normalmente
           console.log('ℹ️ No hay datos de reseña para mostrar')
-          onOpenChange(false)
         }
       } else {
         const error = await response.json()
@@ -417,18 +412,6 @@ export function EditarCitaDialog({
         </form>
       </DialogContent>
     </Dialog>
-
-    {/* Dialog de selección de canal para enviar reseña */}
-    {resenaData && (
-      <EnviarResenaDialog
-        open={showResenaDialog}
-        onOpenChange={setShowResenaDialog}
-        clienteName={resenaData.clienteName}
-        telefono={resenaData.telefono}
-        whatsappUrl={resenaData.whatsappUrl}
-        smsUrl={resenaData.smsUrl}
-      />
-    )}
     </>
   )
 }

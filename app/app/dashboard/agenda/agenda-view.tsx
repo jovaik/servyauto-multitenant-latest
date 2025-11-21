@@ -19,6 +19,7 @@ import { Badge } from '@/components/ui/badge'
 import { NuevaCitaDialog } from './nueva-cita-dialog'
 import { EditarCitaDialog } from './editar-cita-dialog'
 import { Cita } from '@/lib/types'
+import EnviarResenaDialog from '@/components/enviar-resena-dialog'
 
 interface AgendaSlot {
   time: string
@@ -36,6 +37,15 @@ export function AgendaView() {
   const [selectedCita, setSelectedCita] = useState<Cita | null>(null)
   const [preselectedSlot, setPreselectedSlot] = useState<{time: string, box: string} | null>(null)
   const [mounted, setMounted] = useState(false)
+  
+  // Estado para el dialog de reseña (movido desde EditarCitaDialog)
+  const [showResenaDialog, setShowResenaDialog] = useState(false)
+  const [resenaData, setResenaData] = useState<{
+    clienteName: string
+    telefono: string
+    whatsappUrl: string
+    smsUrl: string
+  } | null>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -404,6 +414,23 @@ export function AgendaView() {
           onOpenChange={setShowEditarCita}
           onSuccess={handleCitaUpdated}
           cita={selectedCita}
+          onResenaRequest={(data) => {
+            console.log('📱 Solicitud de reseña recibida en AgendaView:', data)
+            setResenaData(data)
+            setShowResenaDialog(true)
+          }}
+        />
+      )}
+
+      {/* Dialog de selección de canal para enviar reseña */}
+      {resenaData && (
+        <EnviarResenaDialog
+          open={showResenaDialog}
+          onOpenChange={setShowResenaDialog}
+          clienteName={resenaData.clienteName}
+          telefono={resenaData.telefono}
+          whatsappUrl={resenaData.whatsappUrl}
+          smsUrl={resenaData.smsUrl}
         />
       )}
     </div>
