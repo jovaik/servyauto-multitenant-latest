@@ -127,26 +127,24 @@ export function generarEnlaceWhatsAppResena(data: {
   // Limpiar el número de teléfono (quitar espacios en blanco)
   let phoneNumber = data.telefono.replace(/\s+/g, '');
   
-  // Quitar el signo + si existe (WhatsApp lo requiere sin +)
+  // Quitar el signo + si existe (WhatsApp Web lo requiere sin +)
   phoneNumber = phoneNumber.replace(/^\+/, '');
   
   // Guardar el número original para mostrar
   const numeroOriginal = data.telefono;
   
-  // ⚠️ IMPORTANTE: NO agregamos prefijo automáticamente
-  // El número debe estar completo con su código de país en la base de datos
-  // Ejemplos válidos: 
-  //   - España: 34678569098 o +34678569098
-  //   - Marruecos: 212612345678 o +212612345678
-  //   - Francia: 33612345678 o +33612345678
+  // ⭐ NUEVO: Usar el número TAL CUAL está guardado en la base de datos
+  // WhatsApp Web funciona MEJOR con números locales SIN prefijo internacional
+  // cuando el remitente está en el mismo país
+  // 
+  // Ejemplos de cómo deben estar en la BD:
+  //   - España (local): 612345678 → funciona perfecto sin prefijo
+  //   - España (con prefijo): 34612345678 → también funciona
+  //   - Internacional: 212612345678 (Marruecos) → necesita prefijo completo
+  //
+  // NO agregamos prefijo automáticamente para evitar el warning de WhatsApp
   
-  // Si el número no tiene código de país, agregamos +34 (España) como último recurso
-  // pero mostramos advertencia
-  if (phoneNumber.length === 9 && /^[6-9]/.test(phoneNumber)) {
-    console.warn('⚠️ Número sin código de país detectado:', numeroOriginal);
-    console.warn('⚠️ Agregando +34 (España) automáticamente');
-    phoneNumber = '34' + phoneNumber;
-  }
+  console.log('📱 Usando número ORIGINAL:', phoneNumber, '(sin modificaciones automáticas)')
 
   // Mensaje de reseña personalizado
   const mensaje = `Hola ${data.clienteName},
