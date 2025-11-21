@@ -26,6 +26,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/use-toast'
 import { Cita, EstadoCita, MetodoPago } from '@/lib/types'
+import EnviarResenaDialog from '@/components/enviar-resena-dialog'
 
 interface EditarCitaDialogProps {
   open: boolean
@@ -43,6 +44,15 @@ export function EditarCitaDialog({
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  
+  // Estado para el dialog de enviar reseña
+  const [showResenaDialog, setShowResenaDialog] = useState(false)
+  const [resenaData, setResenaData] = useState<{
+    clienteName: string
+    telefono: string
+    whatsappUrl: string
+    smsUrl: string
+  } | null>(null)
   
   const [formData, setFormData] = useState({
     fecha: '',
@@ -128,31 +138,22 @@ export function EditarCitaDialog({
         onSuccess()
         onOpenChange(false)
         
-        // Si se generaron enlaces de WhatsApp/SMS (cuando se marca como COMPLETADA), mostrar el menú
+        // Si se generaron enlaces de WhatsApp/SMS (cuando se marca como COMPLETADA), mostrar el dialog
         if (data.whatsappData && data.whatsappData.whatsappUrl && data.whatsappData.smsUrl) {
           const { clienteName, telefono, whatsappUrl, smsUrl } = data.whatsappData
           
-          // Mostrar diálogo de selección con opciones
+          // Guardar datos y mostrar dialog visual
+          setResenaData({
+            clienteName,
+            telefono,
+            whatsappUrl,
+            smsUrl
+          })
+          
+          // Pequeño delay para que se cierre el dialog de editar primero
           setTimeout(() => {
-            const opcion = prompt(
-              `✅ Servicio completado correctamente.\n\n` +
-              `📱 ¿Cómo deseas enviar la solicitud de reseña a ${clienteName}?\n` +
-              `   Teléfono: ${telefono}\n\n` +
-              `Escribe el número de tu elección:\n` +
-              `1 - WhatsApp\n` +
-              `2 - SMS\n` +
-              `0 - Cancelar (no enviar)`
-            )
-            
-            if (opcion === '1') {
-              // Opción 1: Abrir WhatsApp Web
-              window.open(whatsappUrl, '_blank')
-            } else if (opcion === '2') {
-              // Opción 2: Abrir app de SMS
-              window.open(smsUrl, '_blank')
-            }
-            // Si es 0 o cualquier otra cosa, no hacer nada (cancelar)
-          }, 500)
+            setShowResenaDialog(true)
+          }, 300)
         }
       } else {
         const error = await response.json()
@@ -211,6 +212,7 @@ export function EditarCitaDialog({
   }
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -406,5 +408,18 @@ export function EditarCitaDialog({
         </form>
       </DialogContent>
     </Dialog>
+
+    {/* Dialog de selección de canal para enviar reseña */}
+    {resenaData && (
+      <EnviarResenaDialog
+        open={showResenaDialog}
+        onOpenChange={setShowResenaDialog}
+        clienteName={resenaData.clienteName}
+        telefono={resenaData.telefono}
+        whatsappUrl={resenaData.whatsappUrl}
+        smsUrl={resenaData.smsUrl}
+      />
+    )}
+    </>
   )
 }
