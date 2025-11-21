@@ -9,19 +9,17 @@ export async function POST(request: NextRequest) {
   console.log('🔵 [API] /api/document-detection - Inicio de petición');
   
   try {
-    const formData = await request.formData();
-    const image = formData.get('image') as File;
-    const width = parseInt(formData.get('width') as string);
-    const height = parseInt(formData.get('height') as string);
+    const body = await request.json();
+    const { image: base64Image, width, height } = body;
 
     console.log('📥 [API] Parámetros recibidos:', {
-      hasImage: !!image,
-      imageSize: image?.size,
+      hasImage: !!base64Image,
+      imageLength: base64Image?.length,
       width,
       height
     });
 
-    if (!image || !width || !height) {
+    if (!base64Image || !width || !height) {
       console.error('❌ [API] Faltan parámetros requeridos');
       return NextResponse.json(
         { error: 'Faltan parámetros requeridos' },
@@ -29,13 +27,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Convertir imagen a base64
-    console.log('🔄 [API] Convirtiendo imagen a base64...');
-    const bytes = await image.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-    const base64Image = buffer.toString('base64');
-    const mimeType = image.type || 'image/jpeg';
-    console.log('✅ [API] Base64 generado:', base64Image.length, 'caracteres');
+    // La imagen ya viene en base64 desde el cliente
+    const mimeType = 'image/jpeg';
+    console.log('✅ [API] Base64 recibido:', base64Image.length, 'caracteres');
 
     // Obtener API key
     const apiKey = process.env.ABACUSAI_API_KEY;
@@ -201,10 +195,18 @@ Return ONLY the JSON, no additional text or markdown formatting.`;
       corners: detectionData.corners
     });
 
+    // Convertir array de corners a objeto con nombres
+    const [topLeft, topRight, bottomRight, bottomLeft] = detectionData.corners;
+
     return NextResponse.json({
       success: detectionData.success !== false, // Default true si no viene
       confidence: detectionData.confidence || 0,
-      corners: detectionData.corners
+      corners: {
+        topLeft,
+        topRight,
+        bottomRight,
+        bottomLeft
+      }
     });
 
   } catch (error) {
