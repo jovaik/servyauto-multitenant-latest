@@ -136,13 +136,14 @@ export function EditarCitaDialog({
           description: "Cita actualizada correctamente",
         })
         onSuccess()
-        onOpenChange(false)
         
         // Si se generaron enlaces de WhatsApp/SMS (cuando se marca como COMPLETADA), mostrar el dialog
         if (data.whatsappData && data.whatsappData.whatsappUrl && data.whatsappData.smsUrl) {
           const { clienteName, telefono, whatsappUrl, smsUrl } = data.whatsappData
           
-          // Guardar datos y mostrar dialog visual
+          console.log('✅ Datos de reseña recibidos:', data.whatsappData)
+          
+          // Guardar datos PRIMERO
           setResenaData({
             clienteName,
             telefono,
@@ -150,10 +151,18 @@ export function EditarCitaDialog({
             smsUrl
           })
           
-          // Pequeño delay para que se cierre el dialog de editar primero
+          // Cerrar dialog de editar
+          onOpenChange(false)
+          
+          // Delay más largo para asegurar que el dialog se cierre antes de abrir el nuevo
           setTimeout(() => {
+            console.log('📱 Mostrando dialog de reseña...')
             setShowResenaDialog(true)
-          }, 300)
+          }, 500)
+        } else {
+          // Si no hay datos de reseña, cerrar normalmente
+          console.log('ℹ️ No hay datos de reseña para mostrar')
+          onOpenChange(false)
         }
       } else {
         const error = await response.json()
