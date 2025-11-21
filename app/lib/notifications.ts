@@ -133,18 +133,23 @@ export function generarEnlaceWhatsAppResena(data: {
   // Guardar el número original para mostrar
   const numeroOriginal = data.telefono;
   
-  // ⭐ NUEVO: Usar el número TAL CUAL está guardado en la base de datos
-  // WhatsApp Web funciona MEJOR con números locales SIN prefijo internacional
-  // cuando el remitente está en el mismo país
+  // ⭐ CORRECCIÓN DEFINITIVA: WhatsApp Web REQUIERE código de país
+  // Aunque la app móvil funcione sin prefijo dentro del mismo país,
+  // WhatsApp Web (wa.me) SIEMPRE necesita el formato internacional completo
   // 
-  // Ejemplos de cómo deben estar en la BD:
-  //   - España (local): 612345678 → funciona perfecto sin prefijo
-  //   - España (con prefijo): 34612345678 → también funciona
-  //   - Internacional: 212612345678 (Marruecos) → necesita prefijo completo
-  //
-  // NO agregamos prefijo automáticamente para evitar el warning de WhatsApp
+  // REGLA: Si el número tiene 9 dígitos y empieza con 6/7/8/9 → es español → agregar 34
+  if (phoneNumber.length === 9 && /^[6-9]/.test(phoneNumber)) {
+    console.log('📱 Número español detectado (9 dígitos):', phoneNumber);
+    phoneNumber = '34' + phoneNumber;
+    console.log('📱 Prefijo 34 agregado para WhatsApp Web:', phoneNumber);
+  } else {
+    console.log('📱 Número internacional o ya con prefijo:', phoneNumber);
+  }
   
-  console.log('📱 Usando número ORIGINAL:', phoneNumber, '(sin modificaciones automáticas)')
+  // Números válidos para WhatsApp Web:
+  //   - España: 34658347687
+  //   - Marruecos: 212612345678
+  //   - Francia: 33612345678
 
   // Mensaje de reseña personalizado
   const mensaje = `Hola ${data.clienteName},
