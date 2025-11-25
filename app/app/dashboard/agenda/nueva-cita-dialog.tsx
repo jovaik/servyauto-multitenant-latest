@@ -101,9 +101,12 @@ export function NuevaCitaDialog({
   // Guardar info del cliente seleccionado para evitar problemas de sincronización
   const [clienteSeleccionadoInfo, setClienteSeleccionadoInfo] = useState<{ clienteParking: boolean } | null>(null)
 
-  // Buscador de matrícula
+  // Autocomplete de matrícula
   const [matriculaBusqueda, setMatriculaBusqueda] = useState('')
+  const [resultadosBusqueda, setResultadosBusqueda] = useState<any[]>([])
   const [buscandoMatricula, setBuscandoMatricula] = useState(false)
+  const [mostrarResultados, setMostrarResultados] = useState(false)
+  const [debounceTimeout, setDebounceTimeout] = useState<NodeJS.Timeout | null>(null)
 
   // Nuevo cliente
   const [newCliente, setNewCliente] = useState({
@@ -147,6 +150,30 @@ export function NuevaCitaDialog({
       }))
     }
   }, [open, selectedDate, preselectedSlot])
+
+  // Limpiar timeout al desmontar
+  useEffect(() => {
+    return () => {
+      if (debounceTimeout) {
+        clearTimeout(debounceTimeout)
+      }
+    }
+  }, [debounceTimeout])
+
+  // Cerrar dropdown al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (!target.closest('.autocomplete-container')) {
+        setMostrarResultados(false)
+      }
+    }
+
+    if (mostrarResultados) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [mostrarResultados])
 
   const loadBoxes = async () => {
     try {
@@ -208,86 +235,75 @@ export function NuevaCitaDialog({
     }
   }
 
-  const buscarPorMatricula = async () => {
-    if (!matriculaBusqueda.trim()) {
-      toast({
-        title: "Error",
-        description: "Por favor introduce una matrícula",
-        variant: "destructive"
-      })
+  // Búsqueda en tiempo real con debounce
+  const buscarMatriculaAutocomplete = async (query: string) => {
+    if (!query || query.length < 2) {
+      setResultadosBusqueda([])
+      setMostrarResultados(false)
       return
     }
 
     setBuscandoMatricula(true)
     try {
-      const response = await fetch(`/api/vehiculos/search/${encodeURIComponent(matriculaBusqueda.trim().toUpperCase())}`)
+      const response = await fetch(`/api/vehiculos/buscar?q=${encodeURIComponent(query)}`)
       
-      // Procesar respuesta tanto si es OK (200) como si es NOT FOUND (404)
-      if (response.ok || response.status === 404) {
+      if (response.ok) {
         const data = await response.json()
-        
-        if (data.found) {
-          // Vehículo y cliente encontrados
-          console.log('✅ Vehículo encontrado:', data)
-          
-          // Actualizar lista de clientes con el cliente encontrado si no existe
-          const clienteExiste = clientes.find(c => c.id === data.cliente.id)
-          if (!clienteExiste) {
-            await loadClientes() // Recargar clientes para asegurar que está en la lista
-          }
-          
-          // Seleccionar automáticamente cliente y vehículo
-          setFormData(prev => ({
-            ...prev,
-            clienteId: data.cliente.id,
-            vehiculoId: data.vehiculo.id
-          }))
-          
-          setClienteSeleccionadoInfo({ clienteParking: false }) // Asumimos false por defecto
-          
-          toast({
-            title: "¡Vehículo encontrado!",
-            description: `${data.vehiculo.marca} ${data.vehiculo.modelo} de ${data.cliente.nombre} ${data.cliente.apellido}`
-          })
-          
-          // Limpiar búsqueda
-          setMatriculaBusqueda('')
-        } else {
-          // Vehículo no encontrado - mostrar formulario de nuevo cliente/vehículo
-          toast({
-            title: "Vehículo no encontrado",
-            description: `La matrícula ${matriculaBusqueda.toUpperCase()} no está registrada. Puedes dar de alta al cliente y vehículo.`,
-            variant: "default"
-          })
-          
-          // Pre-rellenar matrícula en formulario de nuevo vehículo
-          setNewVehiculo(prev => ({
-            ...prev,
-            matricula: matriculaBusqueda.toUpperCase()
-          }))
-          
-          // Mostrar formularios de nuevo cliente y vehículo
-          setShowNewCliente(true)
-          setShowNewVehiculo(true)
-        }
-      } else {
-        // Otro error (401, 500, etc.)
-        toast({
-          title: "Error",
-          description: `Error al buscar la matrícula (${response.status})`,
-          variant: "destructive"
-        })
+        setResultadosBusqueda(data.vehiculos || [])
+        setMostrarResultados(true)
       }
     } catch (error) {
-      console.error('Error buscando matrícula:', error)
-      toast({
-        title: "Error",
-        description: "Error al buscar la matrícula",
-        variant: "destructive"
-      })
+      console.error('Error buscando vehículos:', error)
     } finally {
       setBuscandoMatricula(false)
     }
+  }
+
+  // Handler para el input con debounce
+  const handleMatriculaChange = (value: string) => {
+    setMatriculaBusqueda(value.toUpperCase())
+    
+    // Cancelar timeout anterior
+    if (debounceTimeout) {
+      clearTimeout(debounceTimeout)
+    }
+    
+    // Crear nuevo timeout
+    const timeout = setTimeout(() => {
+      buscarMatriculaAutocomplete(value)
+    }, 300) // 300ms de delay
+    
+    setDebounceTimeout(timeout)
+  }
+
+  // Seleccionar un vehículo del autocomplete
+  const seleccionarVehiculo = async (vehiculo: any) => {
+    console.log('✅ Vehículo seleccionado:', vehiculo)
+    
+    // Actualizar lista de clientes si no existe
+    const clienteExiste = clientes.find(c => c.id === vehiculo.cliente.id)
+    if (!clienteExiste) {
+      await loadClientes()
+    }
+    
+    // Seleccionar automáticamente cliente y vehículo
+    setFormData(prev => ({
+      ...prev,
+      clienteId: vehiculo.cliente.id,
+      vehiculoId: vehiculo.id
+    }))
+    
+    setClienteSeleccionadoInfo({ clienteParking: false })
+    
+    toast({
+      title: "¡Vehículo seleccionado!",
+      description: `${vehiculo.marca} ${vehiculo.modelo} - ${vehiculo.matricula}`
+    })
+    
+    // Limpiar búsqueda y ocultar resultados
+    setMatriculaBusqueda('')
+    setResultadosBusqueda([])
+    setMostrarResultados(false)
   }
 
   const loadServicios = async () => {
@@ -710,37 +726,77 @@ export function NuevaCitaDialog({
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* 🔍 Buscador de Matrícula */}
-              <div className="space-y-2 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-lg">
+              {/* 🔍 Buscador Autocomplete de Matrícula */}
+              <div className="space-y-2 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-lg relative autocomplete-container">
                 <div className="flex items-center gap-2 mb-2">
                   <Car className="h-5 w-5 text-blue-600" />
                   <Label className="text-base font-semibold text-blue-900">Búsqueda rápida por matrícula</Label>
                 </div>
                 <p className="text-xs text-blue-700 mb-3">
-                  Introduce la matrícula del vehículo para cargar automáticamente el cliente y vehículo
+                  Escribe la matrícula y selecciona el vehículo de la lista
                 </p>
-                <div className="flex gap-2">
+                <div className="relative autocomplete-container">
                   <Input
-                    placeholder="Ej: 1234ABC"
+                    placeholder="Ej: 1426, 7178, HLJ..."
                     value={matriculaBusqueda}
-                    onChange={(e) => setMatriculaBusqueda(e.target.value.toUpperCase())}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault()
-                        buscarPorMatricula()
+                    onChange={(e) => handleMatriculaChange(e.target.value)}
+                    onFocus={() => {
+                      if (resultadosBusqueda.length > 0) {
+                        setMostrarResultados(true)
                       }
                     }}
-                    className="flex-1 uppercase font-mono text-lg"
-                    disabled={buscandoMatricula}
+                    className="uppercase font-mono text-lg pr-10"
                   />
-                  <Button
-                    type="button"
-                    onClick={buscarPorMatricula}
-                    disabled={buscandoMatricula}
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
-                    {buscandoMatricula ? 'Buscando...' : 'Buscar'}
-                  </Button>
+                  {buscandoMatricula && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      <div className="animate-spin h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full" />
+                    </div>
+                  )}
+                  
+                  {/* Dropdown de resultados */}
+                  {mostrarResultados && resultadosBusqueda.length > 0 && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border-2 border-blue-300 rounded-lg shadow-xl max-h-64 overflow-y-auto">
+                      {resultadosBusqueda.map((vehiculo) => (
+                        <button
+                          key={vehiculo.id}
+                          type="button"
+                          onClick={() => seleccionarVehiculo(vehiculo)}
+                          className="w-full px-4 py-3 text-left hover:bg-blue-50 border-b last:border-b-0 transition-colors"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="flex-shrink-0">
+                              <div className="bg-blue-600 text-white font-mono text-xs px-2 py-1 rounded">
+                                {vehiculo.matricula}
+                              </div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-gray-900">
+                                {vehiculo.marca} {vehiculo.modelo}
+                              </div>
+                              <div className="text-sm text-gray-600">
+                                {vehiculo.cliente.nombre} {vehiculo.cliente.apellido}
+                              </div>
+                            </div>
+                            <div className="flex-shrink-0 text-xs text-gray-500">
+                              {vehiculo.anio}
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {/* Mensaje cuando no hay resultados */}
+                  {mostrarResultados && resultadosBusqueda.length === 0 && !buscandoMatricula && matriculaBusqueda.length >= 2 && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border-2 border-gray-300 rounded-lg shadow-xl p-4 text-center">
+                      <p className="text-gray-600 text-sm">
+                        No se encontraron vehículos con "<span className="font-mono font-semibold">{matriculaBusqueda}</span>"
+                      </p>
+                      <p className="text-gray-500 text-xs mt-1">
+                        Puedes dar de alta un nuevo cliente y vehículo abajo
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 
