@@ -222,7 +222,8 @@ export function NuevaCitaDialog({
     try {
       const response = await fetch(`/api/vehiculos/search/${encodeURIComponent(matriculaBusqueda.trim().toUpperCase())}`)
       
-      if (response.ok) {
+      // Procesar respuesta tanto si es OK (200) como si es NOT FOUND (404)
+      if (response.ok || response.status === 404) {
         const data = await response.json()
         
         if (data.found) {
@@ -269,6 +270,13 @@ export function NuevaCitaDialog({
           setShowNewCliente(true)
           setShowNewVehiculo(true)
         }
+      } else {
+        // Otro error (401, 500, etc.)
+        toast({
+          title: "Error",
+          description: `Error al buscar la matrícula (${response.status})`,
+          variant: "destructive"
+        })
       }
     } catch (error) {
       console.error('Error buscando matrícula:', error)
