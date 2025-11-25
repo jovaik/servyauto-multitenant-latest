@@ -310,6 +310,44 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       }
     }
     
+    // ⭐ GENERAR ENLACES DE NOTIFICACIÓN cuando estado es LISTO_PARA_RECOGER
+    let listoData = null;
+    if (estado === 'LISTO_PARA_RECOGER') {
+      try {
+        console.log('=== GENERANDO NOTIFICACIÓN DE VEHÍCULO LISTO (CITA ACTUALIZADA) ===')
+        console.log('Cliente:', cita.cliente.nombre)
+        console.log('Teléfono:', cita.cliente.telefono)
+        console.log('Vehículo:', `${cita.vehiculo.marca} ${cita.vehiculo.modelo} - ${cita.vehiculo.matricula}`)
+        
+        const { generarEnlaceNotificacionListoParaRecoger } = await import('@/lib/notifications')
+        
+        const resultado = generarEnlaceNotificacionListoParaRecoger({
+          clienteName: cita.cliente.nombre,
+          telefono: cita.cliente.telefono,
+          vehiculo: {
+            marca: cita.vehiculo.marca,
+            modelo: cita.vehiculo.modelo,
+            matricula: cita.vehiculo.matricula
+          },
+          total: cita.total || undefined,
+          metodoPago: cita.metodoPago || undefined
+        });
+        
+        if (resultado.success) {
+          listoData = {
+            clienteName: cita.cliente.nombre,
+            telefono: resultado.numeroOriginal,
+            whatsappUrl: resultado.whatsappUrl,
+            smsUrl: resultado.smsUrl,
+            mensaje: resultado.mensaje
+          };
+          console.log('✅ Enlaces de notificación de vehículo listo generados exitosamente');
+        }
+      } catch (listoError) {
+        console.error('❌ Error generando notificación de vehículo listo:', listoError);
+      }
+    }
+    
     // ⭐ GENERAR ENLACE WHATSAPP cuando se marca como COMPLETADA
     // Completar servicio = cliente pagó, momento para pedir reseña
     let whatsappData = null;
@@ -356,6 +394,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json({
       ...cita,
       depositoData: depositoData, // Incluir datos de confirmación de depósito si se generaron
+      listoData: listoData, // Incluir datos de notificación de vehículo listo si se generaron
       whatsappData: whatsappData // Incluir datos de WhatsApp y SMS si se generaron
     })
   } catch (error: any) {

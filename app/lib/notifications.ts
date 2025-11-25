@@ -348,3 +348,75 @@ Le mantendremos informado del progreso de su vehículo.
     mensaje
   };
 }
+
+/**
+ * Genera enlaces de WhatsApp y SMS para notificar al cliente que su vehículo está listo para recoger
+ * Se utiliza al marcar una cita como LISTO_PARA_RECOGER
+ */
+export function generarEnlaceNotificacionListoParaRecoger(data: {
+  clienteName: string;
+  telefono: string;
+  vehiculo: {
+    marca: string;
+    modelo: string;
+    matricula: string;
+  };
+  total?: number;
+  metodoPago?: string;
+}) {
+  // Limpiar el número de teléfono (quitar espacios en blanco)
+  let phoneNumber = data.telefono.replace(/\s+/g, '');
+  
+  // Quitar el signo + si existe (WhatsApp Web lo requiere sin +)
+  phoneNumber = phoneNumber.replace(/^\+/, '');
+  
+  // Guardar el número original para mostrar
+  const numeroOriginal = data.telefono;
+  
+  // Agregar prefijo 34 para números españoles de 9 dígitos
+  if (phoneNumber.length === 9 && /^[6-9]/.test(phoneNumber)) {
+    console.log('📱 Número español detectado (9 dígitos):', phoneNumber);
+    phoneNumber = '34' + phoneNumber;
+    console.log('📱 Prefijo 34 agregado para WhatsApp Web:', phoneNumber);
+  } else {
+    console.log('📱 Número internacional o ya con prefijo:', phoneNumber);
+  }
+
+  // Formatear información de pago si está disponible
+  const infoPago = data.total && data.metodoPago 
+    ? `\n💰 Total: ${data.total.toFixed(2)}€\n💳 Forma de pago: ${data.metodoPago}\n`
+    : '';
+
+  // Mensaje de notificación de vehículo listo
+  const mensaje = `Hola ${data.clienteName},
+
+¡Buenas noticias! Su vehículo está listo para recoger. 🎉
+
+🚙 Vehículo: ${data.vehiculo.marca} ${data.vehiculo.modelo}
+🔢 Matrícula: ${data.vehiculo.matricula}${infoPago}
+Puede pasar a recogerlo cuando le resulte conveniente durante nuestro horario de atención.
+
+¡Gracias por confiar en ServyAuto! 🚗✨
+
+*ServyAuto Car Wash & Detailing*
+📞 +34 678 569 098`;
+
+  const mensajeCodificado = encodeURIComponent(mensaje);
+  
+  const whatsappUrl = `https://wa.me/${phoneNumber}?text=${mensajeCodificado}`;
+  const smsUrl = `sms:${phoneNumber}?body=${mensajeCodificado}`;
+
+  console.log('✅ Enlaces de notificación de vehículo listo generados correctamente');
+  console.log('📱 Número para WhatsApp:', phoneNumber);
+  console.log('🔗 WhatsApp URL:', whatsappUrl);
+  console.log('📧 SMS URL:', smsUrl);
+
+  return {
+    success: true,
+    smsUrl,
+    whatsappUrl,
+    phoneNumber,
+    numeroOriginal,
+    mensaje
+  };
+}

@@ -44,6 +44,13 @@ interface EditarCitaDialogProps {
     whatsappUrl: string
     smsUrl: string
   }) => void
+  onListoRequest?: (data: {
+    clienteName: string
+    vehiculoInfo: string
+    whatsappUrl: string
+    smsUrl: string
+    mensaje: string
+  }) => void
 }
 
 export function EditarCitaDialog({ 

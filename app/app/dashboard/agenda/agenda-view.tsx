@@ -21,6 +21,7 @@ import { EditarCitaDialog } from './editar-cita-dialog'
 import { Cita } from '@/lib/types'
 import EnviarResenaDialog from '@/components/enviar-resena-dialog'
 import EnviarDepositoDialog from '@/components/enviar-deposito-dialog'
+import EnviarNotificacionListoDialog from '@/components/enviar-notificacion-listo-dialog'
 
 interface AgendaSlot {
   time: string
@@ -55,6 +56,16 @@ export function AgendaView() {
     telefono: string
     whatsappUrl: string
     smsUrl: string
+  } | null>(null)
+
+  // Estado para el dialog de notificación de vehículo listo
+  const [showListoDialog, setShowListoDialog] = useState(false)
+  const [listoData, setListoData] = useState<{
+    clienteName: string
+    vehiculoInfo: string
+    whatsappUrl: string
+    smsUrl: string
+    mensaje: string
   } | null>(null)
 
   useEffect(() => {
@@ -168,6 +179,7 @@ export function AgendaView() {
       case 'PENDIENTE': return 'bg-yellow-100 text-yellow-800 border-yellow-200'
       case 'CONFIRMADA': return 'bg-blue-100 text-blue-800 border-blue-200'
       case 'EN_PROCESO': return 'bg-purple-100 text-purple-800 border-purple-200'
+      case 'LISTO_PARA_RECOGER': return 'bg-emerald-100 text-emerald-800 border-emerald-200'
       case 'COMPLETADA': return 'bg-green-100 text-green-800 border-green-200'
       case 'CANCELADA': return 'bg-red-100 text-red-800 border-red-200'
       default: return 'bg-gray-100 text-gray-800 border-gray-200'
@@ -439,6 +451,11 @@ export function AgendaView() {
             setDepositoData(data)
             setShowDepositoDialog(true)
           }}
+          onListoRequest={(data) => {
+            console.log('✅ Solicitud de notificación de vehículo listo recibida en AgendaView:', data)
+            setListoData(data)
+            setShowListoDialog(true)
+          }}
         />
       )}
 
@@ -463,6 +480,19 @@ export function AgendaView() {
           telefono={depositoData.telefono}
           whatsappUrl={depositoData.whatsappUrl}
           smsUrl={depositoData.smsUrl}
+        />
+      )}
+
+      {/* Dialog de notificación de vehículo listo para recoger */}
+      {listoData && (
+        <EnviarNotificacionListoDialog
+          open={showListoDialog}
+          onOpenChange={setShowListoDialog}
+          clienteName={listoData.clienteName}
+          vehiculoInfo={listoData.vehiculoInfo}
+          whatsappUrl={listoData.whatsappUrl}
+          smsUrl={listoData.smsUrl}
+          message={listoData.mensaje}
         />
       )}
     </div>
