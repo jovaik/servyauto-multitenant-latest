@@ -104,6 +104,7 @@ export function DashboardContent({ session }: DashboardContentProps) {
       'PENDIENTE': 'default',
       'CONFIRMADA': 'secondary',
       'EN_PROCESO': 'default',
+      'LISTO_PARA_RECOGER': 'default',
       'COMPLETADA': 'default',
       'CANCELADA': 'destructive',
     } as const

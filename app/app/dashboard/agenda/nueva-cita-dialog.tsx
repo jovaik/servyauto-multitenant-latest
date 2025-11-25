@@ -101,6 +101,10 @@ export function NuevaCitaDialog({
   // Guardar info del cliente seleccionado para evitar problemas de sincronización
   const [clienteSeleccionadoInfo, setClienteSeleccionadoInfo] = useState<{ clienteParking: boolean } | null>(null)
 
+  // Buscador de matrícula
+  const [matriculaBusqueda, setMatriculaBusqueda] = useState('')
+  const [buscandoMatricula, setBuscandoMatricula] = useState(false)
+
   // Nuevo cliente
   const [newCliente, setNewCliente] = useState({
     nombre: '',
@@ -201,6 +205,80 @@ export function NuevaCitaDialog({
       }
     } catch (error) {
       console.error('Error loading clients:', error)
+    }
+  }
+
+  const buscarPorMatricula = async () => {
+    if (!matriculaBusqueda.trim()) {
+      toast({
+        title: "Error",
+        description: "Por favor introduce una matrícula",
+        variant: "destructive"
+      })
+      return
+    }
+
+    setBuscandoMatricula(true)
+    try {
+      const response = await fetch(`/api/vehiculos/search/${encodeURIComponent(matriculaBusqueda.trim().toUpperCase())}`)
+      
+      if (response.ok) {
+        const data = await response.json()
+        
+        if (data.found) {
+          // Vehículo y cliente encontrados
+          console.log('✅ Vehículo encontrado:', data)
+          
+          // Actualizar lista de clientes con el cliente encontrado si no existe
+          const clienteExiste = clientes.find(c => c.id === data.cliente.id)
+          if (!clienteExiste) {
+            await loadClientes() // Recargar clientes para asegurar que está en la lista
+          }
+          
+          // Seleccionar automáticamente cliente y vehículo
+          setFormData(prev => ({
+            ...prev,
+            clienteId: data.cliente.id,
+            vehiculoId: data.vehiculo.id
+          }))
+          
+          setClienteSeleccionadoInfo({ clienteParking: false }) // Asumimos false por defecto
+          
+          toast({
+            title: "¡Vehículo encontrado!",
+            description: `${data.vehiculo.marca} ${data.vehiculo.modelo} de ${data.cliente.nombre} ${data.cliente.apellido}`
+          })
+          
+          // Limpiar búsqueda
+          setMatriculaBusqueda('')
+        } else {
+          // Vehículo no encontrado - mostrar formulario de nuevo cliente/vehículo
+          toast({
+            title: "Vehículo no encontrado",
+            description: `La matrícula ${matriculaBusqueda.toUpperCase()} no está registrada. Puedes dar de alta al cliente y vehículo.`,
+            variant: "default"
+          })
+          
+          // Pre-rellenar matrícula en formulario de nuevo vehículo
+          setNewVehiculo(prev => ({
+            ...prev,
+            matricula: matriculaBusqueda.toUpperCase()
+          }))
+          
+          // Mostrar formularios de nuevo cliente y vehículo
+          setShowNewCliente(true)
+          setShowNewVehiculo(true)
+        }
+      }
+    } catch (error) {
+      console.error('Error buscando matrícula:', error)
+      toast({
+        title: "Error",
+        description: "Error al buscar la matrícula",
+        variant: "destructive"
+      })
+    } finally {
+      setBuscandoMatricula(false)
     }
   }
 
@@ -624,6 +702,49 @@ export function NuevaCitaDialog({
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* 🔍 Buscador de Matrícula */}
+              <div className="space-y-2 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <Car className="h-5 w-5 text-blue-600" />
+                  <Label className="text-base font-semibold text-blue-900">Búsqueda rápida por matrícula</Label>
+                </div>
+                <p className="text-xs text-blue-700 mb-3">
+                  Introduce la matrícula del vehículo para cargar automáticamente el cliente y vehículo
+                </p>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Ej: 1234ABC"
+                    value={matriculaBusqueda}
+                    onChange={(e) => setMatriculaBusqueda(e.target.value.toUpperCase())}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        buscarPorMatricula()
+                      }
+                    }}
+                    className="flex-1 uppercase font-mono text-lg"
+                    disabled={buscandoMatricula}
+                  />
+                  <Button
+                    type="button"
+                    onClick={buscarPorMatricula}
+                    disabled={buscandoMatricula}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    {buscandoMatricula ? 'Buscando...' : 'Buscar'}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-gray-300" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-white px-2 text-gray-500">o seleccionar manualmente</span>
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label>Cliente *</Label>

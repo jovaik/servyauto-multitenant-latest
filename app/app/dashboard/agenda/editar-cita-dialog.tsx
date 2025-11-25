@@ -59,7 +59,8 @@ export function EditarCitaDialog({
   onSuccess,
   cita,
   onResenaRequest,
-  onDepositoRequest
+  onDepositoRequest,
+  onListoRequest
 }: EditarCitaDialogProps) {
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
@@ -105,6 +106,7 @@ export function EditarCitaDialog({
       [EstadoCita.PENDIENTE]: 'default',
       [EstadoCita.CONFIRMADA]: 'secondary',
       [EstadoCita.EN_PROCESO]: 'default',
+      [EstadoCita.LISTO_PARA_RECOGER]: 'default',
       [EstadoCita.COMPLETADA]: 'default',
       [EstadoCita.CANCELADA]: 'destructive',
       [EstadoCita.NO_SHOW]: 'destructive',
@@ -149,10 +151,11 @@ export function EditarCitaDialog({
         
         // Verificar si hay diálogos que mostrar
         const hasDepositoDialog = !!(data.depositoData && data.depositoData.whatsappUrl && data.depositoData.smsUrl)
+        const hasListoDialog = !!(data.listoData && data.listoData.whatsappUrl && data.listoData.smsUrl)
         const hasResenaDialog = !!(data.whatsappData && data.whatsappData.whatsappUrl && data.whatsappData.smsUrl)
         
         // Si NO hay diálogos que mostrar, llamar a onSuccess inmediatamente y cerrar
-        if (!hasDepositoDialog && !hasResenaDialog) {
+        if (!hasDepositoDialog && !hasListoDialog && !hasResenaDialog) {
           onSuccess()
           onOpenChange(false)
           return
@@ -177,6 +180,28 @@ export function EditarCitaDialog({
                 telefono,
                 whatsappUrl,
                 smsUrl
+              })
+            }, 300)
+          }
+        }
+        
+        // Si se generaron enlaces de notificación de vehículo listo (cuando estado es LISTO_PARA_RECOGER)
+        if (hasListoDialog) {
+          const { clienteName, vehiculoInfo, whatsappUrl, smsUrl, mensaje } = data.listoData
+          
+          console.log('✅ Datos de notificación de vehículo listo recibidos:', data.listoData)
+          
+          // Usar callback para activar el dialog en el componente padre
+          if (onListoRequest) {
+            // Delay para asegurar que el dialog de editar se cierre completamente
+            setTimeout(() => {
+              console.log('🚗 Enviando solicitud de notificación de vehículo listo al componente padre...')
+              onListoRequest({
+                clienteName,
+                vehiculoInfo,
+                whatsappUrl,
+                smsUrl,
+                mensaje
               })
             }, 300)
           }
