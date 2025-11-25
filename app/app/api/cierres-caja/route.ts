@@ -64,8 +64,8 @@ export async function POST(request: NextRequest) {
       }
     })
     const citasConFacturaIds = citasConFactura
-      .map(f => f.citaId)
-      .filter((id): id is string => id !== null && id !== undefined)
+      .map((f: any) => f.citaId)
+      .filter((id: any): id is string => id !== null && id !== undefined)
 
     // Calcular totales de ventas (facturas pagadas)
     const facturas = await prisma.factura.findMany({
@@ -92,16 +92,16 @@ export async function POST(request: NextRequest) {
 
     // Sumar ventas de facturas
     let totalEfectivo = facturas
-      .filter(f => f.metodoPago === 'EFECTIVO')
-      .reduce((sum, f) => sum + f.total, 0)
+      .filter((f: any) => f.metodoPago === 'EFECTIVO')
+      .reduce((sum: number, f: any) => sum + f.total, 0)
 
     let totalTPVSumup = facturas
-      .filter(f => f.metodoPago === 'TPV_SUMUP')
-      .reduce((sum, f) => sum + f.total, 0)
+      .filter((f: any) => f.metodoPago === 'TPV_SUMUP')
+      .reduce((sum: number, f: any) => sum + f.total, 0)
 
     let totalTPVUnicaja = facturas
-      .filter(f => f.metodoPago === 'TPV_UNICAJA')
-      .reduce((sum, f) => sum + f.total, 0)
+      .filter((f: any) => f.metodoPago === 'TPV_UNICAJA')
+      .reduce((sum: number, f: any) => sum + f.total, 0)
 
     // Sumar ventas de citas completadas sin factura
     for (const cita of citasCompletadas) {
@@ -128,12 +128,12 @@ export async function POST(request: NextRequest) {
     })
 
     const gastosEfectivo = gastos
-      .filter(g => g.metodoPago === 'EFECTIVO')
-      .reduce((sum, g) => sum + g.importe, 0)
+      .filter((g: any) => g.metodoPago === 'EFECTIVO')
+      .reduce((sum: number, g: any) => sum + g.importe, 0)
 
     const gastosTarjeta = gastos
-      .filter(g => g.metodoPago === 'TPV_SUMUP' || g.metodoPago === 'TPV_UNICAJA')
-      .reduce((sum, g) => sum + g.importe, 0)
+      .filter((g: any) => g.metodoPago === 'TPV_SUMUP' || g.metodoPago === 'TPV_UNICAJA')
+      .reduce((sum: number, g: any) => sum + g.importe, 0)
 
     const efectivoFinal = totalEfectivo - gastosEfectivo
 
