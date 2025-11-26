@@ -65,6 +65,14 @@ interface NuevaCitaDialogProps {
     whatsappUrl: string
     smsUrl: string
   }) => void
+  onConfirmacionICSRequest?: (data: {
+    clienteName: string
+    telefono: string
+    whatsappUrl: string
+    smsUrl: string
+    icsUrl: string
+    mensaje: string
+  }) => void
 }
 
 export function NuevaCitaDialog({ 
@@ -73,7 +81,8 @@ export function NuevaCitaDialog({
   onSuccess,
   selectedDate,
   preselectedSlot,
-  onDepositoRequest
+  onDepositoRequest,
+  onConfirmacionICSRequest
 }: NuevaCitaDialogProps) {
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
@@ -523,17 +532,18 @@ export function NuevaCitaDialog({
         
         resetForm()
         
-        // Verificar si hay diálogo de depósito que mostrar
+        // Verificar si hay diálogo de depósito o confirmación ICS que mostrar
         const hasDepositoDialog = !!(data.depositoData && data.depositoData.whatsappUrl && data.depositoData.smsUrl)
+        const hasConfirmacionICSDialog = !!(data.confirmacionICSData && data.confirmacionICSData.icsUrl)
         
-        // Si NO hay diálogo que mostrar, llamar a onSuccess inmediatamente y cerrar
-        if (!hasDepositoDialog) {
+        // Si NO hay diálogos que mostrar, llamar a onSuccess inmediatamente y cerrar
+        if (!hasDepositoDialog && !hasConfirmacionICSDialog) {
           onSuccess()
           onOpenChange(false)
           return
         }
         
-        // Si HAY diálogo que mostrar, cerrar este dialog primero
+        // Si HAY diálogos que mostrar, cerrar este dialog primero
         onOpenChange(false)
         
         // Si se generaron enlaces de confirmación de depósito (nueva cita)
@@ -557,10 +567,35 @@ export function NuevaCitaDialog({
           }
         }
         
-        // Llamar a onSuccess DESPUÉS de mostrar el diálogo de depósito
+        // Si se generó confirmación con ICS (nueva cita)
+        if (hasConfirmacionICSDialog) {
+          const { clienteName, telefono, whatsappUrl, smsUrl, icsUrl, mensaje } = data.confirmacionICSData
+          
+          console.log('✅ Datos de confirmación con ICS recibidos (nueva cita):', data.confirmacionICSData)
+          
+          // Usar callback para activar el dialog en el componente padre
+          if (onConfirmacionICSRequest) {
+            // Delay mayor si ya hay dialog de depósito, menor si no
+            const delay = hasDepositoDialog ? 600 : 300
+            setTimeout(() => {
+              console.log('📅 Enviando solicitud de confirmación con ICS al componente padre...')
+              onConfirmacionICSRequest({
+                clienteName,
+                telefono,
+                whatsappUrl,
+                smsUrl,
+                icsUrl,
+                mensaje
+              })
+            }, delay)
+          }
+        }
+        
+        // Llamar a onSuccess DESPUÉS de mostrar los diálogos
+        const finalDelay = hasDepositoDialog && hasConfirmacionICSDialog ? 700 : 400
         setTimeout(() => {
           onSuccess()
-        }, 400)
+        }, finalDelay)
       } else {
         const error = await response.json()
         toast({

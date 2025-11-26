@@ -420,3 +420,111 @@ Puede pasar a recogerlo cuando le resulte conveniente durante nuestro horario de
     mensaje
   };
 }
+
+/**
+ * Genera enlaces de notificación con archivo ICS para agregar al calendario
+ */
+export function generarNotificacionConICS(data: {
+  citaId: string;
+  clienteName: string;
+  telefono: string;
+  vehiculo: {
+    marca: string;
+    modelo: string;
+    matricula: string;
+  };
+  fecha: string; // formato: "dd/mm/yyyy"
+  horaInicio: string; // formato: "HH:mm"
+  horaFin: string; // formato: "HH:mm"
+  servicios: string[];
+  box: string;
+  tipoDestinatario: 'CLIENTE' | 'EMPRESA';
+  destinatarioNombre?: string; // Para operarios
+}) {
+  // Limpiar el número de teléfono
+  let phoneNumber = data.telefono.replace(/\s+/g, '');
+  phoneNumber = phoneNumber.replace(/^\+/, '');
+  
+  const numeroOriginal = data.telefono;
+  
+  // Agregar prefijo 34 para números españoles
+  if (phoneNumber.length === 9 && /^[6-9]/.test(phoneNumber)) {
+    phoneNumber = '34' + phoneNumber;
+  }
+
+  // URL base de la aplicación
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.servyauto.com';
+  
+  // URL del archivo ICS
+  const icsUrl = `${baseUrl}/api/citas/${data.citaId}/ics?tipo=${data.tipoDestinatario}`;
+
+  // Formatear lista de servicios
+  const serviciosTexto = data.servicios.length > 0 
+    ? data.servicios.map(s => `• ${s}`).join('\n')
+    : '• Servicio estándar';
+
+  // Mensaje según el tipo de destinatario
+  let mensaje: string;
+
+  if (data.tipoDestinatario === 'CLIENTE') {
+    mensaje = `Hola ${data.clienteName},
+
+✅ *CONFIRMACIÓN DE CITA*
+
+Su cita ha sido confirmada con éxito.
+
+🚙 Vehículo: ${data.vehiculo.marca} ${data.vehiculo.modelo}
+🔢 Matrícula: ${data.vehiculo.matricula}
+📅 Fecha: ${data.fecha}
+⏰ Hora: ${data.horaInicio} - ${data.horaFin}
+📍 Box: ${data.box}
+
+🔧 *Servicios:*
+${serviciosTexto}
+
+📅 *Agregar a tu calendario:*
+${icsUrl}
+
+*ServyAuto Car Wash & Detailing*
+📞 +34 678 569 098`;
+  } else {
+    // Mensaje para empresa/operarios
+    const destinatario = data.destinatarioNombre || 'Equipo';
+    mensaje = `📋 *NUEVA CITA ASIGNADA*
+
+Hola ${destinatario},
+
+👤 Cliente: ${data.clienteName}
+🚙 Vehículo: ${data.vehiculo.marca} ${data.vehiculo.modelo}
+🔢 Matrícula: ${data.vehiculo.matricula}
+📅 Fecha: ${data.fecha}
+⏰ Hora: ${data.horaInicio} - ${data.horaFin}
+📍 Box: ${data.box}
+
+🔧 *Servicios:*
+${serviciosTexto}
+
+📅 *Agregar a calendario:*
+${icsUrl}
+
+*ServyAuto - Sistema de Gestión*`;
+  }
+
+  const mensajeCodificado = encodeURIComponent(mensaje);
+  
+  const whatsappUrl = `https://wa.me/${phoneNumber}?text=${mensajeCodificado}`;
+  const smsUrl = `sms:${phoneNumber}?body=${mensajeCodificado}`;
+
+  console.log(`✅ Notificación con ICS generada (${data.tipoDestinatario})`);
+  console.log('📅 URL ICS:', icsUrl);
+
+  return {
+    success: true,
+    smsUrl,
+    whatsappUrl,
+    icsUrl,
+    phoneNumber,
+    numeroOriginal,
+    mensaje
+  };
+}

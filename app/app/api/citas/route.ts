@@ -285,9 +285,57 @@ export async function POST(req: NextRequest) {
       console.error('❌ Error generando confirmación de depósito:', depositoError);
     }
 
+    // Generar confirmación con archivo ICS para el cliente
+    let confirmacionICSData = null;
+    try {
+      const { generarNotificacionConICS } = await import('@/lib/notifications')
+      
+      // Formatear fecha solo (sin hora)
+      const fechaSoloFormateada = new Date(cita.fecha).toLocaleDateString('es-ES', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+      
+      // Obtener nombres de servicios
+      const nombresServicios = cita.cita_servicios?.map((cs: any) => cs.servicios.nombre) || [];
+      
+      const resultadoICS = generarNotificacionConICS({
+        citaId: cita.id,
+        clienteName: `${cita.cliente.nombre} ${cita.cliente.apellido || ''}`.trim(),
+        telefono: cita.cliente.telefono,
+        vehiculo: {
+          marca: cita.vehiculo.marca,
+          modelo: cita.vehiculo.modelo,
+          matricula: cita.vehiculo.matricula
+        },
+        fecha: fechaSoloFormateada,
+        horaInicio: cita.horaInicio,
+        horaFin: cita.horaFin,
+        servicios: nombresServicios,
+        box: cita.box,
+        tipoDestinatario: 'CLIENTE'
+      });
+      
+      if (resultadoICS.success) {
+        confirmacionICSData = {
+          clienteName: `${cita.cliente.nombre} ${cita.cliente.apellido || ''}`.trim(),
+          telefono: resultadoICS.numeroOriginal,
+          whatsappUrl: resultadoICS.whatsappUrl,
+          smsUrl: resultadoICS.smsUrl,
+          icsUrl: resultadoICS.icsUrl,
+          mensaje: resultadoICS.mensaje
+        };
+        console.log('📅 Confirmación con ICS generada exitosamente');
+      }
+    } catch (icsError) {
+      console.error('❌ Error generando confirmación con ICS:', icsError);
+    }
+
     return NextResponse.json({
       ...cita,
-      depositoData: depositoData // Incluir datos de confirmación si se generaron
+      depositoData: depositoData, // Incluir datos de confirmación de depósito si se generaron
+      confirmacionICSData: confirmacionICSData // Incluir datos de confirmación con ICS si se generaron
     }, { status: 201 })
   } catch (error) {
     console.error('Error creating appointment:', error)

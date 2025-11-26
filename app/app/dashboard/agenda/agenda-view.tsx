@@ -21,6 +21,7 @@ import { EditarCitaDialog } from './editar-cita-dialog'
 import { Cita } from '@/lib/types'
 import EnviarResenaDialog from '@/components/enviar-resena-dialog'
 import EnviarDepositoDialog from '@/components/enviar-deposito-dialog'
+import { EnviarConfirmacionICSDialog } from '@/components/enviar-confirmacion-ics-dialog'
 import EnviarNotificacionListoDialog from '@/components/enviar-notificacion-listo-dialog'
 
 interface AgendaSlot {
@@ -65,6 +66,17 @@ export function AgendaView() {
     vehiculoInfo: string
     whatsappUrl: string
     smsUrl: string
+    mensaje: string
+  } | null>(null)
+
+  // Estado para el dialog de confirmación con ICS
+  const [showConfirmacionICSDialog, setShowConfirmacionICSDialog] = useState(false)
+  const [confirmacionICSData, setConfirmacionICSData] = useState<{
+    clienteName: string
+    telefono: string
+    whatsappUrl: string
+    smsUrl: string
+    icsUrl: string
     mensaje: string
   } | null>(null)
 
@@ -433,6 +445,11 @@ export function AgendaView() {
           setDepositoData(data)
           setShowDepositoDialog(true)
         }}
+        onConfirmacionICSRequest={(data) => {
+          console.log('📅 Solicitud de confirmación con ICS recibida (nueva cita) en AgendaView:', data)
+          setConfirmacionICSData(data)
+          setShowConfirmacionICSDialog(true)
+        }}
       />
 
       {selectedCita && (
@@ -455,6 +472,11 @@ export function AgendaView() {
             console.log('✅ Solicitud de notificación de vehículo listo recibida en AgendaView:', data)
             setListoData(data)
             setShowListoDialog(true)
+          }}
+          onConfirmacionICSRequest={(data) => {
+            console.log('📅 Solicitud de confirmación con ICS recibida en AgendaView:', data)
+            setConfirmacionICSData(data)
+            setShowConfirmacionICSDialog(true)
           }}
         />
       )}
@@ -493,6 +515,15 @@ export function AgendaView() {
           whatsappUrl={listoData.whatsappUrl}
           smsUrl={listoData.smsUrl}
           message={listoData.mensaje}
+        />
+      )}
+
+      {/* Dialog de confirmación con archivo ICS */}
+      {confirmacionICSData && (
+        <EnviarConfirmacionICSDialog
+          open={showConfirmacionICSDialog}
+          onOpenChange={setShowConfirmacionICSDialog}
+          confirmacionData={confirmacionICSData}
         />
       )}
     </div>

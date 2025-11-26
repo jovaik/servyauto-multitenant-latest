@@ -51,6 +51,14 @@ interface EditarCitaDialogProps {
     smsUrl: string
     mensaje: string
   }) => void
+  onConfirmacionICSRequest?: (data: {
+    clienteName: string
+    telefono: string
+    whatsappUrl: string
+    smsUrl: string
+    icsUrl: string
+    mensaje: string
+  }) => void
 }
 
 export function EditarCitaDialog({ 
@@ -60,7 +68,8 @@ export function EditarCitaDialog({
   cita,
   onResenaRequest,
   onDepositoRequest,
-  onListoRequest
+  onListoRequest,
+  onConfirmacionICSRequest
 }: EditarCitaDialogProps) {
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
