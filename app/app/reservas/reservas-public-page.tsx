@@ -126,33 +126,11 @@ export function ReservasPublicPage() {
     return () => clearTimeout(timeoutId)
   }, [formData.fecha, formData.hora])
 
+  // Función removida - ahora se usa input type="time" para mayor flexibilidad
+  // Los clientes pueden seleccionar cualquier hora y minuto exacto
   const generateTimeSlots = (apertura: string, cierre: string): string[] => {
-    const slots: string[] = []
-    const [aperturaHour, aperturaMinute] = apertura.split(':').map(Number)
-    const [cierreHour, cierreMinute] = cierre.split(':').map(Number)
-    
-    let currentHour = aperturaHour
-    let currentMinute = aperturaMinute
-    
-    while (
-      currentHour < cierreHour || 
-      (currentHour === cierreHour && currentMinute <= cierreMinute)
-    ) {
-      const timeString = `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`
-      slots.push(timeString)
-      
-      if (currentHour === cierreHour && currentMinute === cierreMinute) {
-        break
-      }
-      
-      currentMinute += 30
-      if (currentMinute >= 60) {
-        currentHour += 1
-        currentMinute = 0
-      }
-    }
-    
-    return slots
+    // Ya no se usa, pero se mantiene por compatibilidad para evitar errores
+    return []
   }
 
   const loadConfiguration = async () => {
@@ -556,23 +534,26 @@ export function ReservasPublicPage() {
               <div className="space-y-2">
                 <Label htmlFor="hora">
                   <Clock className="inline mr-2 h-4 w-4" />
-                  Hora *
+                  Hora de llegada *
+                  <span className="text-xs text-gray-500 ml-2">(Puedes elegir cualquier minuto)</span>
                 </Label>
-                <Select 
-                  value={formData.hora} 
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, hora: value }))}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Selecciona una hora" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {timeSlots.map((time) => (
-                      <SelectItem key={time} value={time}>
-                        {time}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="relative">
+                  <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    id="hora"
+                    type="time"
+                    value={formData.hora}
+                    onChange={(e) => setFormData(prev => ({ ...prev, hora: e.target.value }))}
+                    className="pl-10 w-full text-lg"
+                    required
+                    min="08:00"
+                    max="20:00"
+                    step="60" // Permite cualquier minuto
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Ej: 10:10, 14:23, 16:45 - Elige la hora exacta a la que llegarás
+                </p>
               </div>
 
               {/* Mensaje de disponibilidad */}

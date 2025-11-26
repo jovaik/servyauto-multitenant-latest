@@ -85,12 +85,7 @@ export function EditarCitaDialog({
     metodoPago: '',
   })
 
-  const timeSlots = [
-    '08:00', '08:30', '09:00', '09:30', '10:00', '10:30',
-    '11:00', '11:30', '12:00', '12:30', '13:00', '13:30',
-    '14:00', '14:30', '15:00', '15:30', '16:00', '16:30',
-    '17:00', '17:30', '18:00', '18:30', '19:00'
-  ]
+  // Franjas horarias removidas - ahora se usa input type="time" para mayor flexibilidad
 
   const boxes = ['Box 1', 'Box 2', 'Box 3']
   const estados = Object.values(EstadoCita)
@@ -372,38 +367,50 @@ export function EditarCitaDialog({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="horaInicio">Hora inicio</Label>
-              <Select value={formData.horaInicio || ""} onValueChange={(value) => 
-                setFormData(prev => ({ ...prev, horaInicio: value }))
-              }>
-                <SelectTrigger>
-                  <SelectValue placeholder="Hora inicio" />
-                </SelectTrigger>
-                <SelectContent>
-                  {timeSlots.map((time) => (
-                    <SelectItem key={time} value={time}>
-                      {time}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="horaInicio">
+                Hora inicio
+                <span className="text-xs text-gray-500 ml-2">(Puedes escribir cualquier minuto)</span>
+              </Label>
+              <div className="relative">
+                <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  id="horaInicio"
+                  type="time"
+                  value={formData.horaInicio}
+                  onChange={(e) => setFormData(prev => ({ ...prev, horaInicio: e.target.value }))}
+                  className="pl-10"
+                  required
+                  min="08:00"
+                  max="20:00"
+                  step="60" // Permite cualquier minuto
+                />
+              </div>
+              <p className="text-xs text-gray-500">
+                Ej: 10:10, 14:23, 16:45
+              </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="horaFin">Hora de recogida</Label>
-              <Select value={formData.horaFin || ""} onValueChange={(value) => 
-                setFormData(prev => ({ ...prev, horaFin: value }))
-              }>
-                <SelectTrigger>
-                  <SelectValue placeholder="Hora de recogida" />
-                </SelectTrigger>
-                <SelectContent>
-                  {timeSlots.map((time) => (
-                    <SelectItem key={time} value={time}>
-                      {time}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="horaFin">
+                Hora de recogida
+                <span className="text-xs text-gray-500 ml-2">(Estimada)</span>
+              </Label>
+              <div className="relative">
+                <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  id="horaFin"
+                  type="time"
+                  value={formData.horaFin}
+                  onChange={(e) => setFormData(prev => ({ ...prev, horaFin: e.target.value }))}
+                  className="pl-10"
+                  required
+                  min="08:00"
+                  max="20:00"
+                  step="60"
+                />
+              </div>
+              <p className="text-xs text-gray-500">
+                Hora estimada de entrega
+              </p>
             </div>
           </div>
 
