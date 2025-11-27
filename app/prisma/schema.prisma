@@ -44,10 +44,11 @@ model User {
   password      String?
   role          RolUsuario @default(ADMIN)
   activo        Boolean    @default(true)
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-  accounts      Account[]
-  sessions      Session[]
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  accounts          Account[]
+  sessions          Session[]
+  serviciosRapidos  ServicioRapido[]
 }
 
 model VerificationToken {
@@ -69,9 +70,10 @@ model Cliente {
   clienteParking Boolean    @default(false) // Indica si el cliente es abonado del parking
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
-  citas          Cita[]
-  facturas       Factura[]
-  vehiculos      Vehiculo[]
+  citas           Cita[]
+  facturas        Factura[]
+  vehiculos       Vehiculo[]
+  serviciosRapidos ServicioRapido[]
 
   @@map("clientes")
 }
@@ -89,9 +91,10 @@ model Vehiculo {
   observaciones String?
   clienteId     String
   createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  citas         Cita[]
-  cliente       Cliente  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  updatedAt         DateTime @updatedAt
+  citas             Cita[]
+  cliente           Cliente  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  serviciosRapidos  ServicioRapido[]
 
   @@map("vehiculos")
 }
@@ -150,9 +153,10 @@ model Factura {
   pdfPath          String?
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
-  factura_items    factura_items[]
-  citas            Cita?           @relation(fields: [citaId], references: [id])
-  cliente          Cliente         @relation(fields: [clienteId], references: [id])
+  factura_items     factura_items[]
+  citas             Cita?           @relation(fields: [citaId], references: [id])
+  cliente           Cliente         @relation(fields: [clienteId], references: [id])
+  servicioRapido    ServicioRapido?
 
   @@map("facturas")
 }
@@ -349,4 +353,90 @@ model Portfolio {
   updatedAt   DateTime @updatedAt
 
   @@map("portfolio")
+}
+
+// ========================================
+// MÓDULO SERVICIOS RÁPIDOS / TALLER
+// ========================================
+
+// Tipos de servicio predefinidos con márgenes
+model TipoServicio {
+  id              Int              @id @default(autoincrement())
+  nombre          String           @unique // "Cambio de Batería", "Pastillas de Freno", etc.
+  codigo          String           @unique // "BAT", "FRE", "ACE", etc.
+  margenDefecto   Float            @default(30) // Margen en porcentaje
+  categoria       String           @default("OTROS") // BATERIAS, FRENOS, ACEITE, NEUMATICOS, ELECTRICA, OTROS
+  descripcion     String?
+  activo          Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  servicios       ServicioRapido[]
+
+  @@map("tipos_servicio")
+}
+
+// Servicios rápidos de taller (baterías, frenos, aceite, etc.)
+model ServicioRapido {
+  id                Int           @id @default(autoincrement())
+  fecha             DateTime      @default(now())
+  
+  // Relaciones con tablas existentes
+  clienteId         String
+  cliente           Cliente       @relation(fields: [clienteId], references: [id])
+  vehiculoId        String
+  vehiculo          Vehiculo      @relation(fields: [vehiculoId], references: [id])
+  
+  // Tipo de servicio
+  tipoServicioId    Int
+  tipoServicio      TipoServicio  @relation(fields: [tipoServicioId], references: [id])
+  
+  // Descripción del trabajo
+  descripcion       String        // Ej: "Cambio de batería Varta 60Ah"
+  observaciones     String?
+  
+  // Control de estado
+  estado            EstadoServicioRapido @default(PENDIENTE)
+  
+  // Costes y precios
+  costePiezas       Float         @default(0) // Coste de compra de piezas
+  costeManoObra     Float         @default(0) // Coste de mano de obra
+  precioVenta       Float         // Precio final al cliente (incluye margen)
+  margen            Float         // Margen aplicado en porcentaje
+  
+  // IVA
+  iva               Float         @default(21) // Porcentaje de IVA
+  totalConIva       Float         // Total con IVA incluido
+  
+  // Método de pago
+  metodoPago        MetodoPago?
+  pagado            Boolean       @default(false)
+  
+  // Mecánico asignado (opcional, usa User existente)
+  mecanicoId        String?
+  mecanico          User?         @relation(fields: [mecanicoId], references: [id])
+  
+  // Factura generada (relación con Factura existente)
+  facturaId         String?       @unique
+  factura           Factura?      @relation(fields: [facturaId], references: [id])
+  
+  // Factura de proveedor escaneada (OCR)
+  facturaProveedor  String?       // URL de imagen de factura del proveedor
+  cifProveedor      String?       // CIF extraído por OCR
+  nombreProveedor   String?       // Nombre del proveedor extraído por OCR
+  
+  // Timestamps
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  completadoAt      DateTime?     // Fecha de completado
+
+  @@map("servicios_rapidos")
+}
+
+// Enum para estados de servicio rápido
+enum EstadoServicioRapido {
+  PENDIENTE        // Pendiente de realizar
+  EN_PROCESO       // En proceso de reparación
+  COMPLETADO       // Completado, listo para cobrar
+  FACTURADO        // Facturado y cobrado
+  CANCELADO        // Cancelado
 }

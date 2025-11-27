@@ -155,12 +155,12 @@ export function EditarCitaDialog({
         
         // Verificar si hay diálogos que mostrar
         const hasDepositoDialog = !!(data.depositoData && data.depositoData.whatsappUrl && data.depositoData.smsUrl)
-        // const hasConfirmacionICSDialog = !!(data.confirmacionICSData && data.confirmacionICSData.whatsappUrl && data.confirmacionICSData.smsUrl) // COMENTADO PARA DEBUG
+        const hasConfirmacionICSDialog = !!(data.confirmacionICSData && data.confirmacionICSData.whatsappUrl && data.confirmacionICSData.smsUrl)
         const hasListoDialog = !!(data.listoData && data.listoData.whatsappUrl && data.listoData.smsUrl)
         const hasResenaDialog = !!(data.whatsappData && data.whatsappData.whatsappUrl && data.whatsappData.smsUrl)
         
         // Si NO hay diálogos que mostrar, llamar a onSuccess inmediatamente y cerrar
-        if (!hasDepositoDialog && /* !hasConfirmacionICSDialog && */ !hasListoDialog && !hasResenaDialog) {
+        if (!hasDepositoDialog && !hasConfirmacionICSDialog && !hasListoDialog && !hasResenaDialog) {
           onSuccess()
           onOpenChange(false)
           return
@@ -191,7 +191,6 @@ export function EditarCitaDialog({
         }
         
         // Si se generaron enlaces de confirmación con ICS (cuando estado es CONFIRMADA)
-        /* COMENTADO PARA DEBUG
         if (hasConfirmacionICSDialog) {
           const { clienteName, telefono, whatsappUrl, smsUrl, icsUrl, mensaje } = data.confirmacionICSData
           
@@ -213,7 +212,6 @@ export function EditarCitaDialog({
             }, 300)
           }
         }
-        */
         
         // Si se generaron enlaces de notificación de vehículo listo (cuando estado es LISTO_PARA_RECOGER)
         if (hasListoDialog) {

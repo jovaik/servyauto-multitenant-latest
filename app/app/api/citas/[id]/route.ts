@@ -312,7 +312,6 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     
     // ⭐ GENERAR CONFIRMACIÓN CON ICS cuando estado es CONFIRMADA
     let confirmacionICSData = null;
-    /* TEMPORALMENTE COMENTADO PARA DEBUG
     if (estado === 'CONFIRMADA') {
       try {
         console.log('=== GENERANDO CONFIRMACIÓN CON ICS (CITA CONFIRMADA) ===')
@@ -364,7 +363,6 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         console.error('❌ Error generando confirmación con ICS:', icsError);
       }
     }
-    */
     
     // ⭐ GENERAR ENLACES DE NOTIFICACIÓN cuando estado es LISTO_PARA_RECOGER
     let listoData = null;
