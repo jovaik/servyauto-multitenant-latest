@@ -386,22 +386,29 @@ model ServicioRapido {
   vehiculoId        String
   vehiculo          Vehiculo      @relation(fields: [vehiculoId], references: [id])
   
-  // Tipo de servicio
-  tipoServicioId    Int
-  tipoServicio      TipoServicio  @relation(fields: [tipoServicioId], references: [id])
+  // Tipo de servicio (opcional, si no se usa tipo predefinido)
+  tipoServicioId    Int?
+  tipoServicio      TipoServicio?  @relation(fields: [tipoServicioId], references: [id])
+  
+  // Concepto libre (usado cuando no hay tipoServicio)
+  concepto          String?        // Ej: "Cambio de batería", "Reparación frenos"
   
   // Descripción del trabajo
-  descripcion       String        // Ej: "Cambio de batería Varta 60Ah"
+  descripcion       String?        // Detalles adicionales
   observaciones     String?
   
   // Control de estado
   estado            EstadoServicioRapido @default(PENDIENTE)
   
-  // Costes y precios
-  costePiezas       Float         @default(0) // Coste de compra de piezas
-  costeManoObra     Float         @default(0) // Coste de mano de obra
-  precioVenta       Float         // Precio final al cliente (incluye margen)
-  margen            Float         // Margen aplicado en porcentaje
+  // Costes internos (NO aparecen en factura)
+  costeProducto     Float         @default(0) // Coste de compra del producto/pieza
+  costeManoObra     Float         @default(0) // Coste interno de mano de obra
+  
+  // Precios al cliente (SÍ aparecen en factura)
+  precioProducto    Float         @default(0) // Precio de venta del producto al cliente
+  precioManoObra    Float         @default(0) // Precio de mano de obra al cliente
+  total             Float         // Total = precioProducto + precioManoObra
+  margen            Float         // Margen en euros = precioProducto - costeProducto
   
   // IVA
   iva               Float         @default(21) // Porcentaje de IVA

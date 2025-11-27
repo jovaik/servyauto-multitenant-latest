@@ -1,0 +1,408 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
+import { toast } from 'sonner'
+import { Wrench, Plus, Search } from 'lucide-react'
+
+interface Cliente {
+  id: string
+  nombre: string
+  apellido: string | null
+  telefono: string
+}
+
+interface Vehiculo {
+  id: string
+  marca: string
+  modelo: string
+  matricula: string
+  clienteId: string
+}
+
+interface ServicioTaller {
+  id: number
+  fecha: string
+  concepto: string
+  costeProducto: number
+  precioProducto: number
+  precioManoObra: number
+  total: number
+  margen: number
+  metodoPago: string
+  estado: string
+  cliente: {
+    nombre: string
+    apellido: string | null
+  }
+  vehiculo: {
+    marca: string
+    modelo: string
+    matricula: string
+  }
+  factura: {
+    numero: string
+    tipo: string
+    total: number
+  } | null
+}
+
+export default function ServiciosTallerView() {
+  const [servicios, setServicios] = useState<ServicioTaller[]>([])
+  const [clientes, setClientes] = useState<Cliente[]>([])
+  const [vehiculos, setVehiculos] = useState<Vehiculo[]>([])
+  const [vehiculosFiltrados, setVehiculosFiltrados] = useState<Vehiculo[]>([])
+  const [loading, setLoading] = useState(false)
+  const [showForm, setShowForm] = useState(false)
+
+  // Campos del formulario
+  const [clienteId, setClienteId] = useState('')
+  const [vehiculoId, setVehiculoId] = useState('')
+  const [concepto, setConcepto] = useState('')
+  const [costeProducto, setCosteProducto] = useState('')
+  const [precioProducto, setPrecioProducto] = useState('')
+  const [precioManoObra, setPrecioManoObra] = useState('')
+  const [metodoPago, setMetodoPago] = useState('')
+
+  // Calcular totales automáticamente
+  const total = (parseFloat(precioProducto) || 0) + (parseFloat(precioManoObra) || 0)
+  const margen = (parseFloat(precioProducto) || 0) - (parseFloat(costeProducto) || 0)
+
+  useEffect(() => {
+    fetchServicios()
+    fetchClientes()
+    fetchVehiculos()
+  }, [])
+
+  useEffect(() => {
+    // Filtrar vehículos cuando se selecciona un cliente
+    if (clienteId) {
+      const vehiculosCliente = vehiculos.filter(v => v.clienteId === clienteId)
+      setVehiculosFiltrados(vehiculosCliente)
+    } else {
+      setVehiculosFiltrados([])
+    }
+  }, [clienteId, vehiculos])
+
+  const fetchServicios = async () => {
+    try {
+      const response = await fetch('/api/servicios-taller')
+      if (response.ok) {
+        const data = await response.json()
+        setServicios(data)
+      }
+    } catch (error) {
+      console.error('Error fetching servicios:', error)
+      toast.error('Error al cargar los servicios')
+    }
+  }
+
+  const fetchClientes = async () => {
+    try {
+      const response = await fetch('/api/clientes')
+      if (response.ok) {
+        const data = await response.json()
+        setClientes(data)
+      }
+    } catch (error) {
+      console.error('Error fetching clientes:', error)
+    }
+  }
+
+  const fetchVehiculos = async () => {
+    try {
+      const response = await fetch('/api/vehiculos')
+      if (response.ok) {
+        const data = await response.json()
+        setVehiculos(data)
+      }
+    } catch (error) {
+      console.error('Error fetching vehiculos:', error)
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+
+    try {
+      const response = await fetch('/api/servicios-taller', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clienteId,
+          vehiculoId,
+          concepto,
+          costeProducto: parseFloat(costeProducto) || 0,
+          precioProducto: parseFloat(precioProducto) || 0,
+          precioManoObra: parseFloat(precioManoObra) || 0,
+          metodoPago,
+          solicitaFactura: metodoPago === 'TPV_UNICAJA'
+        })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Error al crear el servicio')
+      }
+
+      const data = await response.json()
+      toast.success(`Servicio registrado y ${data.factura.tipo} ${data.factura.numero} generada`)
+      
+      // Limpiar formulario
+      setClienteId('')
+      setVehiculoId('')
+      setConcepto('')
+      setCosteProducto('')
+      setPrecioProducto('')
+      setPrecioManoObra('')
+      setMetodoPago('')
+      setShowForm(false)
+      
+      // Recargar lista
+      fetchServicios()
+    } catch (error: any) {
+      console.error('Error:', error)
+      toast.error(error.message || 'Error al crear el servicio')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold flex items-center gap-2">
+            <Wrench className="h-8 w-8" />
+            Servicios de Taller
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Gestión rápida de servicios: cambios de batería, frenos, neumáticos, etc.
+          </p>
+        </div>
+        <Button onClick={() => setShowForm(!showForm)}>
+          <Plus className="h-4 w-4 mr-2" />
+          {showForm ? 'Cancelar' : 'Nuevo Servicio'}
+        </Button>
+      </div>
+
+      {/* FORMULARIO */}
+      {showForm && (
+        <Card className="p-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Cliente */}
+              <div className="space-y-2">
+                <Label htmlFor="cliente">Cliente *</Label>
+                <Select value={clienteId} onValueChange={setClienteId} required>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar cliente" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clientes.map(cliente => (
+                      <SelectItem key={cliente.id} value={cliente.id}>
+                        {cliente.nombre} {cliente.apellido || ''} - {cliente.telefono}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Vehículo */}
+              <div className="space-y-2">
+                <Label htmlFor="vehiculo">Vehículo *</Label>
+                <Select value={vehiculoId} onValueChange={setVehiculoId} required disabled={!clienteId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar vehículo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {vehiculosFiltrados.map(vehiculo => (
+                      <SelectItem key={vehiculo.id} value={vehiculo.id}>
+                        {vehiculo.marca} {vehiculo.modelo} - {vehiculo.matricula}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Concepto */}
+            <div className="space-y-2">
+              <Label htmlFor="concepto">Concepto / Descripción del Servicio *</Label>
+              <Input
+                id="concepto"
+                value={concepto}
+                onChange={(e) => setConcepto(e.target.value)}
+                placeholder="Ej: Cambio de batería, Cambio de pastillas de freno, etc."
+                required
+              />
+            </div>
+
+            <div className="border-t pt-6">
+              <h3 className="text-lg font-semibold mb-4">💰 Costes Internos (no aparecen en factura)</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="costeProducto">Coste del Producto</Label>
+                  <Input
+                    id="costeProducto"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={costeProducto}
+                    onChange={(e) => setCosteProducto(e.target.value)}
+                    placeholder="0.00"
+                  />
+                  <p className="text-xs text-muted-foreground">Lo que te costó la pieza/producto</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t pt-6">
+              <h3 className="text-lg font-semibold mb-4">💵 Precio al Cliente (aparece en factura)</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="precioProducto">Precio Producto *</Label>
+                  <Input
+                    id="precioProducto"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={precioProducto}
+                    onChange={(e) => setPrecioProducto(e.target.value)}
+                    placeholder="0.00"
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground">Precio de venta al cliente</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="precioManoObra">Mano de Obra *</Label>
+                  <Input
+                    id="precioManoObra"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={precioManoObra}
+                    onChange={(e) => setPrecioManoObra(e.target.value)}
+                    placeholder="0.00"
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground">Precio de la mano de obra</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Resumen automático */}
+            <div className="bg-muted p-4 rounded-lg space-y-2">
+              <div className="flex justify-between text-lg">
+                <span className="font-medium">TOTAL:</span>
+                <span className="font-bold">{total.toFixed(2)} €</span>
+              </div>
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>Margen (Beneficio):</span>
+                <span className={margen >= 0 ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'}>
+                  {margen.toFixed(2)} €
+                </span>
+              </div>
+            </div>
+
+            {/* Método de pago */}
+            <div className="space-y-2">
+              <Label htmlFor="metodoPago">Método de Pago *</Label>
+              <Select value={metodoPago} onValueChange={setMetodoPago} required>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar método de pago" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="EFECTIVO">Efectivo → Genera TICKET</SelectItem>
+                  <SelectItem value="TPV_SUMUP">TPV SumUp → Genera TICKET</SelectItem>
+                  <SelectItem value="TPV_UNICAJA">TPV Unicaja → Genera FACTURA</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {metodoPago === 'TPV_UNICAJA' && '📄 Se generará FACTURA automáticamente'}
+                {(metodoPago === 'EFECTIVO' || metodoPago === 'TPV_SUMUP') && '🎫 Se generará TICKET automáticamente'}
+              </p>
+            </div>
+
+            <div className="flex gap-4">
+              <Button type="submit" disabled={loading} className="flex-1">
+                {loading ? 'Guardando...' : 'Guardar y Cobrar'}
+              </Button>
+              <Button type="button" variant="outline" onClick={() => setShowForm(false)}>
+                Cancelar
+              </Button>
+            </div>
+          </form>
+        </Card>
+      )}
+
+      {/* LISTA DE SERVICIOS */}
+      <Card className="p-6">
+        <h2 className="text-xl font-semibold mb-4">Historial de Servicios</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b">
+                <th className="text-left py-3 px-4">Fecha</th>
+                <th className="text-left py-3 px-4">Cliente</th>
+                <th className="text-left py-3 px-4">Vehículo</th>
+                <th className="text-left py-3 px-4">Concepto</th>
+                <th className="text-right py-3 px-4">Total</th>
+                <th className="text-right py-3 px-4">Margen</th>
+                <th className="text-left py-3 px-4">Documento</th>
+              </tr>
+            </thead>
+            <tbody>
+              {servicios.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="text-center py-8 text-muted-foreground">
+                    No hay servicios registrados
+                  </td>
+                </tr>
+              ) : (
+                servicios.map(servicio => (
+                  <tr key={servicio.id} className="border-b hover:bg-muted/50">
+                    <td className="py-3 px-4">
+                      {new Date(servicio.fecha).toLocaleDateString('es-ES')}
+                    </td>
+                    <td className="py-3 px-4">
+                      {servicio.cliente.nombre} {servicio.cliente.apellido || ''}
+                    </td>
+                    <td className="py-3 px-4">
+                      {servicio.vehiculo.marca} {servicio.vehiculo.modelo}
+                      <br />
+                      <span className="text-xs text-muted-foreground">{servicio.vehiculo.matricula}</span>
+                    </td>
+                    <td className="py-3 px-4">{servicio.concepto}</td>
+                    <td className="text-right py-3 px-4 font-semibold">
+                      {servicio.total.toFixed(2)} €
+                    </td>
+                    <td className="text-right py-3 px-4">
+                      <span className={servicio.margen >= 0 ? 'text-green-600' : 'text-red-600'}>
+                        {servicio.margen.toFixed(2)} €
+                      </span>
+                    </td>
+                    <td className="py-3 px-4">
+                      {servicio.factura && (
+                        <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
+                          {servicio.factura.tipo} {servicio.factura.numero}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
+  )
+}

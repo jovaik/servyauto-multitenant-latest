@@ -25,7 +25,8 @@ import {
   Download,
   Archive,
   Upload,
-  Globe
+  Globe,
+  Wrench
 } from 'lucide-react'
 import { RolUsuario } from '@/lib/types'
 import { Button } from '@/components/ui/button'
@@ -50,6 +51,7 @@ const navigation: NavItem[] = [
   { name: 'Clientes', href: '/dashboard/clientes', icon: Users, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
   { name: 'Vehículos', href: '/dashboard/vehiculos', icon: Car, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
   { name: 'Facturación', href: '/dashboard/facturacion', icon: CreditCard, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
+  { name: 'Servicios Taller', href: '/dashboard/servicios-taller', icon: Wrench, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
   { name: 'Gastos', href: '/dashboard/gastos', icon: TrendingDown, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN] },
   { name: 'Cierres de Caja', href: '/dashboard/cierres-caja', icon: Archive, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN] },
   { name: 'Tickets Parking', href: '/dashboard/tickets', icon: Download, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN] },

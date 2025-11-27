@@ -59,8 +59,10 @@ export async function POST(req: NextRequest) {
       tipoServicioId,
       descripcion,
       observaciones,
-      costePiezas,
+      costeProducto,
       costeManoObra,
+      precioProducto,
+      precioManoObra,
       margen,
       iva,
       metodoPago,
@@ -74,7 +76,7 @@ export async function POST(req: NextRequest) {
     console.log('Cliente ID:', clienteId)
     console.log('Vehículo ID:', vehiculoId)
     console.log('Tipo servicio ID:', tipoServicioId)
-    console.log('Coste piezas:', costePiezas)
+    console.log('Coste producto:', costeProducto)
     console.log('Coste mano obra:', costeManoObra)
     console.log('Margen:', margen)
 
@@ -86,21 +88,16 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Calcular precio de venta (coste + margen)
-    const costes = parseFloat(costePiezas || 0) + parseFloat(costeManoObra || 0)
-    const margenPorcentaje = parseFloat(margen || 0)
-    const margenEuros = costes * (margenPorcentaje / 100)
-    const precioVenta = costes + margenEuros
+    // Calcular totales
+    const total = parseFloat(precioProducto || 0) + parseFloat(precioManoObra || 0)
+    const margenEuros = parseFloat(precioProducto || 0) - parseFloat(costeProducto || 0)
 
     // Calcular total con IVA
     const ivaPorcentaje = parseFloat(iva || 21)
-    const ivaEuros = precioVenta * (ivaPorcentaje / 100)
-    const totalConIva = precioVenta + ivaEuros
+    const totalConIva = total * (1 + ivaPorcentaje / 100)
 
-    console.log('Costes totales:', costes)
+    console.log('Total:', total)
     console.log('Margen en €:', margenEuros)
-    console.log('Precio venta:', precioVenta)
-    console.log('IVA:', ivaEuros)
     console.log('Total con IVA:', totalConIva)
 
     // Crear el servicio
@@ -108,14 +105,16 @@ export async function POST(req: NextRequest) {
       data: {
         clienteId,
         vehiculoId,
-        tipoServicioId: parseInt(tipoServicioId),
+        tipoServicioId: tipoServicioId ? parseInt(tipoServicioId) : null,
         descripcion,
         observaciones: observaciones || null,
         estado: 'PENDIENTE',
-        costePiezas: parseFloat(costePiezas || 0),
+        costeProducto: parseFloat(costeProducto || 0),
         costeManoObra: parseFloat(costeManoObra || 0),
-        precioVenta,
-        margen: margenPorcentaje,
+        precioProducto: parseFloat(precioProducto || 0),
+        precioManoObra: parseFloat(precioManoObra || 0),
+        total,
+        margen: margenEuros,
         iva: ivaPorcentaje,
         totalConIva,
         metodoPago: metodoPago || null,
