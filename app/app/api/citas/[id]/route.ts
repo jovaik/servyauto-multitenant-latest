@@ -310,6 +310,60 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       }
     }
     
+    // ⭐ GENERAR CONFIRMACIÓN CON ICS cuando estado es CONFIRMADA
+    let confirmacionICSData = null;
+    if (estado === 'CONFIRMADA') {
+      try {
+        console.log('=== GENERANDO CONFIRMACIÓN CON ICS (CITA CONFIRMADA) ===')
+        console.log('Cliente:', cita.cliente.nombre)
+        console.log('Teléfono:', cita.cliente.telefono)
+        console.log('Vehículo:', `${cita.vehiculo.marca} ${cita.vehiculo.modelo} - ${cita.vehiculo.matricula}`)
+        
+        const { generarNotificacionConICS } = await import('@/lib/notifications')
+        
+        // Formatear fecha solo (sin hora)
+        const fechaSoloFormateada = new Date(cita.fecha).toLocaleDateString('es-ES', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric'
+        });
+        
+        // Obtener nombres de servicios
+        const nombresServicios = cita.cita_servicios?.map((cs: any) => cs.servicios.nombre) || [];
+        
+        const resultadoICS = generarNotificacionConICS({
+          citaId: cita.id,
+          clienteName: `${cita.cliente.nombre} ${cita.cliente.apellido || ''}`.trim(),
+          telefono: cita.cliente.telefono,
+          vehiculo: {
+            marca: cita.vehiculo.marca,
+            modelo: cita.vehiculo.modelo,
+            matricula: cita.vehiculo.matricula
+          },
+          fecha: fechaSoloFormateada,
+          horaInicio: cita.horaInicio,
+          horaFin: cita.horaFin,
+          servicios: nombresServicios,
+          box: cita.box,
+          tipoDestinatario: 'CLIENTE'
+        });
+        
+        if (resultadoICS.success) {
+          confirmacionICSData = {
+            clienteName: `${cita.cliente.nombre} ${cita.cliente.apellido || ''}`.trim(),
+            telefono: resultadoICS.numeroOriginal,
+            whatsappUrl: resultadoICS.whatsappUrl,
+            smsUrl: resultadoICS.smsUrl,
+            icsUrl: resultadoICS.icsUrl,
+            mensaje: resultadoICS.mensaje
+          };
+          console.log('📅 Confirmación con ICS generada exitosamente');
+        }
+      } catch (icsError) {
+        console.error('❌ Error generando confirmación con ICS:', icsError);
+      }
+    }
+    
     // ⭐ GENERAR ENLACES DE NOTIFICACIÓN cuando estado es LISTO_PARA_RECOGER
     let listoData = null;
     if (estado === 'LISTO_PARA_RECOGER') {
@@ -394,6 +448,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json({
       ...cita,
       depositoData: depositoData, // Incluir datos de confirmación de depósito si se generaron
+      confirmacionICSData: confirmacionICSData, // Incluir datos de confirmación con ICS si se generaron
       listoData: listoData, // Incluir datos de notificación de vehículo listo si se generaron
       whatsappData: whatsappData // Incluir datos de WhatsApp y SMS si se generaron
     })

@@ -155,11 +155,12 @@ export function EditarCitaDialog({
         
         // Verificar si hay diálogos que mostrar
         const hasDepositoDialog = !!(data.depositoData && data.depositoData.whatsappUrl && data.depositoData.smsUrl)
+        const hasConfirmacionICSDialog = !!(data.confirmacionICSData && data.confirmacionICSData.whatsappUrl && data.confirmacionICSData.smsUrl)
         const hasListoDialog = !!(data.listoData && data.listoData.whatsappUrl && data.listoData.smsUrl)
         const hasResenaDialog = !!(data.whatsappData && data.whatsappData.whatsappUrl && data.whatsappData.smsUrl)
         
         // Si NO hay diálogos que mostrar, llamar a onSuccess inmediatamente y cerrar
-        if (!hasDepositoDialog && !hasListoDialog && !hasResenaDialog) {
+        if (!hasDepositoDialog && !hasConfirmacionICSDialog && !hasListoDialog && !hasResenaDialog) {
           onSuccess()
           onOpenChange(false)
           return
@@ -184,6 +185,29 @@ export function EditarCitaDialog({
                 telefono,
                 whatsappUrl,
                 smsUrl
+              })
+            }, 300)
+          }
+        }
+        
+        // Si se generaron enlaces de confirmación con ICS (cuando estado es CONFIRMADA)
+        if (hasConfirmacionICSDialog) {
+          const { clienteName, telefono, whatsappUrl, smsUrl, icsUrl, mensaje } = data.confirmacionICSData
+          
+          console.log('✅ Datos de confirmación con ICS recibidos:', data.confirmacionICSData)
+          
+          // Usar callback para activar el dialog en el componente padre
+          if (onConfirmacionICSRequest) {
+            // Delay para asegurar que el dialog de editar se cierre completamente
+            setTimeout(() => {
+              console.log('📅 Enviando solicitud de confirmación con ICS al componente padre...')
+              onConfirmacionICSRequest({
+                clienteName,
+                telefono,
+                whatsappUrl,
+                smsUrl,
+                icsUrl,
+                mensaje
               })
             }, 300)
           }
