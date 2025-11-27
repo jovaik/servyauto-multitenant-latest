@@ -84,7 +84,8 @@ export function AgendaView() {
     setMounted(true)
   }, [])
 
-  const [timeSlots, setTimeSlots] = useState<string[]>([])
+  // ❌ ESTADO DESHABILITADO: Ya no se usan franjas horarias fijas
+  // const [timeSlots, setTimeSlots] = useState<string[]>([])
   const [boxes, setBoxes] = useState(['Box 1', 'Box 2', 'Box 3'])
 
   useEffect(() => {
@@ -92,7 +93,13 @@ export function AgendaView() {
     loadConfiguration()
   }, [selectedDate])
 
+  // ❌ FUNCIÓN DESHABILITADA: Ya no se usan franjas horarias fijas
+  // Las citas ahora aparecen con su hora exacta (10:10, 14:23, etc.)
   const generateTimeSlots = (apertura: string, cierre: string): string[] => {
+    // Función removida - ya no genera franjas fijas
+    return []
+    
+    /* CÓDIGO ANTERIOR (comentado):
     const slots: string[] = []
     const [aperturaHour, aperturaMinute] = apertura.split(':').map(Number)
     const [cierreHour, cierreMinute] = cierre.split(':').map(Number)
@@ -107,7 +114,6 @@ export function AgendaView() {
       const timeString = `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`
       slots.push(timeString)
       
-      // Si llegamos exactamente a la hora de cierre, parar
       if (currentHour === cierreHour && currentMinute === cierreMinute) {
         break
       }
@@ -120,6 +126,7 @@ export function AgendaView() {
     }
     
     return slots
+    */
   }
 
   const loadConfiguration = async () => {
@@ -135,7 +142,9 @@ export function AgendaView() {
           setBoxes(boxNames)
         }
         
-        // Cargar horarios
+        // ❌ CÓDIGO DESHABILITADO: Ya no se generan franjas horarias fijas
+        // Las citas aparecen dinámicamente con su hora exacta
+        /*
         const aperturaConfig = configs?.find((c: any) => c.clave === 'horarios.apertura')
         const cierreConfig = configs?.find((c: any) => c.clave === 'horarios.cierre')
         
@@ -144,11 +153,11 @@ export function AgendaView() {
         
         const slots = generateTimeSlots(apertura, cierre)
         setTimeSlots(slots)
+        */
       }
     } catch (error) {
       console.error('Error loading configuration:', error)
-      // Fallback a horarios por defecto
-      setTimeSlots(generateTimeSlots('09:00', '19:00'))
+      // Ya no se necesita fallback de timeSlots
     }
   }
 
@@ -169,12 +178,25 @@ export function AgendaView() {
     }
   }
 
+  // 🔄 NUEVA LÓGICA: Genera slots dinámicamente basados en citas reales
   const getSlotData = (): AgendaSlot[] => {
-    return timeSlots.map((time) => {
+    if (!citas || citas.length === 0) {
+      // Si no hay citas, retornar array vacío (sin franjas vacías)
+      return []
+    }
+
+    // Extraer todas las horas de inicio únicas de las citas
+    const horasUnicas = Array.from(
+      new Set(citas.map(cita => cita.horaInicio))
+    ).sort() // Ordenar cronológicamente
+
+    // Crear slots para cada hora única
+    return horasUnicas.map((time) => {
       const slot: AgendaSlot = { time }
       
-      citas?.forEach((cita) => {
-        if (cita?.horaInicio === time) {
+      // Asignar citas a sus boxes correspondientes
+      citas.forEach((cita) => {
+        if (cita.horaInicio === time) {
           const boxIndex = boxes.findIndex(box => box === cita.box)
           if (boxIndex === 0) slot.box1 = cita
           else if (boxIndex === 1) slot.box2 = cita
@@ -350,6 +372,26 @@ export function AgendaView() {
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
               <p className="mt-2 text-gray-600">Cargando agenda...</p>
             </div>
+          ) : getSlotData().length === 0 ? (
+            /* 📅 Estado vacío: No hay citas para este día */
+            <div className="text-center py-12">
+              <div className="mb-4">
+                <CalendarIcon className="h-16 w-16 text-gray-300 mx-auto mb-3" />
+                <p className="text-lg font-medium text-gray-600 mb-2">
+                  No hay citas programadas para este día
+                </p>
+                <p className="text-sm text-gray-500">
+                  Haz clic en el botón de arriba para crear la primera cita
+                </p>
+              </div>
+              <Button
+                onClick={() => setShowNuevaCita(true)}
+                className="mt-2"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Nueva Cita
+              </Button>
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <div className="min-w-full">
@@ -363,7 +405,7 @@ export function AgendaView() {
                   ))}
                 </div>
 
-                {/* Time slots */}
+                {/* Time slots - Dinámico basado en citas reales */}
                 <div className="space-y-1">
                   {getSlotData().map((slot, index) => (
                     <div 
@@ -411,15 +453,10 @@ export function AgendaView() {
                                 </div>
                               </div>
                             ) : (
-                              <button
-                                onClick={() => handleSlotClick(slot.time, box)}
-                                className="w-full h-full min-h-[50px] border-2 border-dashed border-gray-200 rounded-lg flex items-center justify-center opacity-50 hover:opacity-100 hover:border-blue-300 hover:bg-blue-50 transition-all group"
-                              >
-                                <div className="text-center">
-                                  <Plus className="h-4 w-4 text-gray-400 group-hover:text-blue-500 mx-auto mb-1" />
-                                  <span className="text-xs text-gray-400 group-hover:text-blue-500">Reservar</span>
-                                </div>
-                              </button>
+                              /* Slot vacío - sin cita en este box a esta hora */
+                              <div className="w-full h-full min-h-[50px] flex items-center justify-center">
+                                <span className="text-xs text-gray-300">—</span>
+                              </div>
                             )}
                           </div>
                         )
