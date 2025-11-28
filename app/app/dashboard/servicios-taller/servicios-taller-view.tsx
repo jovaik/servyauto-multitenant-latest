@@ -40,12 +40,16 @@ interface ServicioTaller {
   id: number
   fecha: string
   concepto: string
+  tipoGasto: string
   costeProducto: number
+  costeManoObra?: number
   precioProducto: number
   precioManoObra: number
   total: number
   margen: number
   metodoPago: string
+  tipo: string
+  iva: number
   estado: string
   cliente: {
     nombre: string
@@ -83,6 +87,7 @@ export default function ServiciosTallerView() {
   const [clienteId, setClienteId] = useState('')
   const [vehiculoId, setVehiculoId] = useState('')
   const [concepto, setConcepto] = useState('')
+  const [tipoGasto, setTipoGasto] = useState('')
   const [costeProducto, setCosteProducto] = useState('')
   const [precioProducto, setPrecioProducto] = useState('')
   const [precioManoObra, setPrecioManoObra] = useState('')
@@ -157,6 +162,7 @@ export default function ServiciosTallerView() {
           clienteId,
           vehiculoId,
           concepto,
+          tipoGasto,
           costeProducto: parseFloat(costeProducto) || 0,
           precioProducto: parseFloat(precioProducto) || 0,
           precioManoObra: parseFloat(precioManoObra) || 0,
@@ -171,12 +177,13 @@ export default function ServiciosTallerView() {
       }
 
       const data = await response.json()
-      toast.success(`Servicio registrado y ${data.factura.tipo} ${data.factura.numero} generada`)
+      toast.success(`Servicio registrado y ${data.factura?.tipo || 'Documento'} ${data.factura?.numero || ''} generado`)
       
       // Limpiar formulario
       setClienteId('')
       setVehiculoId('')
       setConcepto('')
+      setTipoGasto('')
       setCosteProducto('')
       setPrecioProducto('')
       setPrecioManoObra('')
@@ -306,6 +313,26 @@ export default function ServiciosTallerView() {
               />
             </div>
 
+            {/* Tipo de Servicio */}
+            <div className="space-y-2">
+              <Label htmlFor="tipoGasto">Tipo de Servicio *</Label>
+              <Select value={tipoGasto} onValueChange={setTipoGasto} required>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar tipo de servicio" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Batería">Batería</SelectItem>
+                  <SelectItem value="Frenos">Frenos</SelectItem>
+                  <SelectItem value="Neumáticos">Neumáticos</SelectItem>
+                  <SelectItem value="Aceite">Aceite y Filtros</SelectItem>
+                  <SelectItem value="Mecánica">Mecánica General</SelectItem>
+                  <SelectItem value="Electricidad">Electricidad</SelectItem>
+                  <SelectItem value="Chapa y Pintura">Chapa y Pintura</SelectItem>
+                  <SelectItem value="Otros">Otros</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="border-t pt-6">
               <h3 className="text-lg font-semibold mb-4">💰 Costes Internos (no aparecen en factura)</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -415,6 +442,7 @@ export default function ServiciosTallerView() {
                 <th className="text-left py-3 px-4">Fecha</th>
                 <th className="text-left py-3 px-4">Cliente</th>
                 <th className="text-left py-3 px-4">Vehículo</th>
+                <th className="text-left py-3 px-4">Tipo</th>
                 <th className="text-left py-3 px-4">Concepto</th>
                 <th className="text-right py-3 px-4">Total</th>
                 <th className="text-right py-3 px-4">Margen</th>
@@ -425,7 +453,7 @@ export default function ServiciosTallerView() {
             <tbody>
               {servicios.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-8 text-muted-foreground">
+                  <td colSpan={9} className="text-center py-8 text-muted-foreground">
                     No hay servicios registrados
                   </td>
                 </tr>
@@ -442,6 +470,11 @@ export default function ServiciosTallerView() {
                       {servicio.vehiculo.marca} {servicio.vehiculo.modelo}
                       <br />
                       <span className="text-xs text-muted-foreground">{servicio.vehiculo.matricula}</span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className="text-xs bg-secondary px-2 py-1 rounded">
+                        {servicio.tipoGasto || 'N/A'}
+                      </span>
                     </td>
                     <td className="py-3 px-4">{servicio.concepto}</td>
                     <td className="text-right py-3 px-4 font-semibold">

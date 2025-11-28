@@ -159,6 +159,63 @@ export async function POST(request: NextRequest) {
 
     console.log('Servicio creado exitosamente:', servicio.id)
 
+    // 📄 GENERAR FACTURA O TICKET AUTOMÁTICAMENTE
+    const solicitaFactura = metodoPago === 'TPV_UNICAJA'
+    const tipoDocumento = solicitaFactura ? 'FACTURA' : 'TICKET'
+
+    // Crear items de la factura
+    const items = []
+    
+    // Item 1: Producto/Pieza
+    if (precioProductoNum > 0) {
+      items.push({
+        descripcion: `${servicio.concepto} - Pieza/Producto`,
+        cantidad: 1,
+        precioUnitario: precioProductoNum
+      })
+    }
+    
+    // Item 2: Mano de obra
+    if (precioManoObraNum > 0) {
+      items.push({
+        descripcion: `${servicio.concepto} - Mano de Obra`,
+        cantidad: 1,
+        precioUnitario: precioManoObraNum
+      })
+    }
+
+    // Crear factura/ticket
+    const facturaResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/facturas`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': request.headers.get('cookie') || ''
+      },
+      body: JSON.stringify({
+        clienteId: servicio.clienteId,
+        vehiculoId: servicio.vehiculoId,
+        citaId: null, // No viene de una cita
+        items: items,
+        metodoPago: metodoPago,
+        solicitaFactura: solicitaFactura,
+        estado: 'PAGADA' // Ya está pagada al momento de crear el servicio
+      })
+    })
+
+    let factura = null
+    if (facturaResponse.ok) {
+      factura = await facturaResponse.json()
+      console.log('✅ Factura/Ticket generado:', factura.numero)
+      
+      // Asociar factura al servicio
+      await prisma.servicioTaller.update({
+        where: { id: servicio.id },
+        data: { facturaId: factura.id }
+      })
+    } else {
+      console.error('❌ Error al generar factura/ticket:', await facturaResponse.text())
+    }
+
     // 🔄 SINCRONIZAR CON GSCONTROL como INGRESO
     const descripcionServicio = `${servicio.concepto} - ${servicio.cliente.nombre} ${servicio.cliente.apellido || ''} (${servicio.vehiculo.matricula})`
     const categoriaGSControl = mapearCategoriaGasto(servicio.tipoGasto)
@@ -172,7 +229,17 @@ export async function POST(request: NextRequest) {
       costCategory: categoriaGSControl
     })
 
-    return NextResponse.json(servicio, { status: 201 })
+    // Recargar servicio con factura incluida
+    const servicioConFactura = await prisma.servicioTaller.findUnique({
+      where: { id: servicio.id },
+      include: {
+        cliente: true,
+        vehiculo: true,
+        factura: true
+      }
+    })
+
+    return NextResponse.json(servicioConFactura, { status: 201 })
   } catch (error: any) {
     console.error('Error creating servicio taller:', error)
     console.error('Error stack:', error.stack)
