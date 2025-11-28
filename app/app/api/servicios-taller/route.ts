@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { notificarCreacionGSControl } from '@/lib/gscontrol-sync'
+import { notificarCreacionGSControl, mapearCategoriaGasto } from '@/lib/gscontrol-sync'
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,10 +11,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
-    const servicios = await prisma.servicioRapido.findMany({
+    const servicios = await prisma.servicioTaller.findMany({
       include: {
         cliente: {
           select: {
+            id: true,
             nombre: true,
             apellido: true,
             telefono: true,
@@ -23,6 +24,7 @@ export async function GET(request: NextRequest) {
         },
         vehiculo: {
           select: {
+            id: true,
             marca: true,
             modelo: true,
             matricula: true
@@ -30,25 +32,22 @@ export async function GET(request: NextRequest) {
         },
         factura: {
           select: {
+            id: true,
             numero: true,
             tipo: true,
-            total: true,
-            estado: true
+            total: true
           }
         }
       },
       orderBy: {
-        createdAt: 'desc'
+        fecha: 'desc'
       }
     })
 
     return NextResponse.json(servicios)
   } catch (error) {
     console.error('Error fetching servicios taller:', error)
-    return NextResponse.json(
-      { error: 'Error interno del servidor' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Error al obtener servicios' }, { status: 500 })
   }
 }
 
@@ -60,215 +59,126 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    console.log('Datos recibidos para crear servicio taller:', body)
-
-    const {
+    console.log('Datos recibidos para crear servicio:', JSON.stringify(body, null, 2))
+    
+    const { 
+      concepto,
+      fecha,
       clienteId,
       vehiculoId,
-      concepto,
-      costeProducto = 0,
+      tipoGasto, // Categoria del servicio
+      costeProducto,
+      costeManoObra,
       precioProducto,
       precioManoObra,
       metodoPago,
-      solicitaFactura = false
+      tipo,
+      iva,
+      numeroFactura,
+      clienteCIF,
+      clienteDireccion,
+      clienteCodigoPostal,
+      clienteCiudad,
+      clienteProvincia,
+      adjunto
     } = body
 
     // Validar campos requeridos
-    if (!clienteId) {
+    if (!concepto || !clienteId || !vehiculoId || !tipoGasto || !metodoPago) {
+      console.error('Faltan campos requeridos', { concepto, clienteId, vehiculoId, tipoGasto, metodoPago })
       return NextResponse.json(
-        { error: 'Falta el campo requerido: clienteId' },
+        { error: 'Faltan campos requeridos: concepto, clienteId, vehiculoId, tipoGasto, metodoPago' },
         { status: 400 }
       )
     }
 
-    if (!vehiculoId) {
+    // Validar que metodoPago sea uno de los valores válidos del enum
+    const metodosValidos = ['EFECTIVO', 'TPV_SUMUP', 'TPV_UNICAJA']
+    if (!metodosValidos.includes(metodoPago)) {
+      console.error('Método de pago inválido:', metodoPago)
       return NextResponse.json(
-        { error: 'Falta el campo requerido: vehiculoId' },
-        { status: 400 }
-      )
-    }
-
-    if (!concepto || concepto.trim() === '') {
-      return NextResponse.json(
-        { error: 'Falta el campo requerido: concepto' },
-        { status: 400 }
-      )
-    }
-
-    if (precioProducto === undefined || precioProducto < 0) {
-      return NextResponse.json(
-        { error: 'El precio del producto debe ser mayor o igual a 0' },
-        { status: 400 }
-      )
-    }
-
-    if (precioManoObra === undefined || precioManoObra < 0) {
-      return NextResponse.json(
-        { error: 'El precio de mano de obra debe ser mayor o igual a 0' },
-        { status: 400 }
-      )
-    }
-
-    if (!metodoPago || metodoPago === '' || metodoPago === 'undefined') {
-      return NextResponse.json(
-        { error: 'Falta el campo requerido: metodoPago' },
+        { error: `Método de pago inválido. Debe ser uno de: ${metodosValidos.join(', ')}` },
         { status: 400 }
       )
     }
 
     // Calcular totales
-    const total = parseFloat(precioProducto) + parseFloat(precioManoObra)
-    const margen = parseFloat(precioProducto) - parseFloat(costeProducto)
-    const subtotal = total / 1.21  // Base imponible (desglosando IVA 21%)
-    const iva = total - subtotal    // IVA desglosado
-    const totalConIva = total  // Total con IVA
-
-    // Determinar tipo de documento basado en método de pago
-    let tipo: 'TICKET' | 'FACTURA' = 'TICKET'
-    if (solicitaFactura || metodoPago === 'TPV_UNICAJA') {
-      tipo = 'FACTURA'
-    }
-
-    // Generar número de documento
-    const año = new Date().getFullYear()
-    const prefijo = tipo === 'FACTURA' ? 'FAC' : 'TKT'
+    const costoProductoNum = parseFloat(costeProducto) || 0
+    const costoManoObraNum = parseFloat(costeManoObra) || 0
+    const precioProductoNum = parseFloat(precioProducto) || 0
+    const precioManoObraNum = parseFloat(precioManoObra) || 0
     
-    const ultimoDocumento = await prisma.factura.findFirst({
-      where: { 
-        numero: {
-          startsWith: `${prefijo}-${año}-`
-        }
-      },
-      orderBy: { createdAt: 'desc' }
-    })
+    const importeTotal = precioProductoNum + precioManoObraNum
+    const margen = precioProductoNum - costoProductoNum
 
-    let numeroSecuencia = 1
-    if (ultimoDocumento) {
-      const partes = ultimoDocumento.numero.split('-')
-      if (partes.length === 3 && partes[0] === prefijo) {
-        const ultimoNumero = parseInt(partes[2]) || 0
-        numeroSecuencia = ultimoNumero + 1
+    // Si es FACTURA, validar campos fiscales adicionales
+    if (tipo === 'FACTURA') {
+      if (!numeroFactura || !clienteCIF || !clienteDireccion || 
+          !clienteCodigoPostal || !clienteCiudad || !clienteProvincia) {
+        return NextResponse.json(
+          { error: 'Para facturas se requieren todos los datos fiscales del cliente' },
+          { status: 400 }
+        )
       }
     }
 
-    const numero = `${prefijo}-${año}-${numeroSecuencia.toString().padStart(4, '0')}`
+    // Preparar datos para crear el servicio
+    const servicioData = {
+      concepto: concepto.trim(),
+      fecha: fecha ? new Date(fecha) : new Date(),
+      clienteId: clienteId,
+      vehiculoId: vehiculoId,
+      tipoGasto: tipoGasto.trim(),
+      costeProducto: costoProductoNum,
+      costeManoObra: costoManoObraNum,
+      precioProducto: precioProductoNum,
+      precioManoObra: precioManoObraNum,
+      importe: importeTotal,
+      margen: margen,
+      metodoPago: metodoPago,
+      tipo: tipo || 'TICKET',
+      iva: parseFloat(iva) || 21,
+      adjunto: adjunto || false,
+      numeroFactura: numeroFactura && numeroFactura.trim() ? numeroFactura.trim() : null,
+      clienteCIF: clienteCIF && clienteCIF.trim() ? clienteCIF.trim() : null,
+      clienteDireccion: clienteDireccion && clienteDireccion.trim() ? clienteDireccion.trim() : null,
+      clienteCodigoPostal: clienteCodigoPostal && clienteCodigoPostal.trim() ? clienteCodigoPostal.trim() : null,
+      clienteCiudad: clienteCiudad && clienteCiudad.trim() ? clienteCiudad.trim() : null,
+      clienteProvincia: clienteProvincia && clienteProvincia.trim() ? clienteProvincia.trim() : null
+    }
 
-    // Crear factura primero
-    const factura = await prisma.factura.create({
-      data: {
-        numero,
-        tipo,
-        subtotal,
-        iva,
-        total: totalConIva,
-        metodoPago: metodoPago as any,
-        clienteId,
-        estado: 'PAGADA', // Al crear se marca como pagada
-        factura_items: {
-          create: [
-            // Item 1: Producto/Pieza
-            {
-              id: `${numero}-1`,
-              descripcion: concepto,
-              cantidad: 1,
-              precio: parseFloat(precioProducto),
-              total: parseFloat(precioProducto)
-            },
-            // Item 2: Mano de obra (solo si > 0)
-            ...(parseFloat(precioManoObra) > 0 ? [{
-              id: `${numero}-2`,
-              descripcion: 'Mano de obra',
-              cantidad: 1,
-              precio: parseFloat(precioManoObra),
-              total: parseFloat(precioManoObra)
-            }] : [])
-          ]
-        }
-      },
+    console.log('Datos preparados para Prisma:', JSON.stringify(servicioData, null, 2))
+
+    const servicio = await prisma.servicioTaller.create({
+      data: servicioData,
       include: {
         cliente: true,
-        factura_items: true
+        vehiculo: true
       }
     })
 
-    console.log('Factura creada exitosamente:', factura.numero)
+    console.log('Servicio creado exitosamente:', servicio.id)
 
-    // Crear servicio taller vinculado a la factura
-    const servicio = await prisma.servicioRapido.create({
-      data: {
-        clienteId,
-        vehiculoId,
-        concepto,
-        costeProducto: parseFloat(costeProducto),
-        precioProducto: parseFloat(precioProducto),
-        precioManoObra: parseFloat(precioManoObra),
-        total,
-        margen,
-        iva: 21,
-        totalConIva,
-        metodoPago: metodoPago as any,
-        pagado: true,
-        estado: 'FACTURADO',
-        facturaId: factura.id
-      },
-      include: {
-        cliente: {
-          select: {
-            nombre: true,
-            apellido: true,
-            telefono: true,
-            email: true
-          }
-        },
-        vehiculo: {
-          select: {
-            marca: true,
-            modelo: true,
-            matricula: true
-          }
-        },
-        factura: {
-          select: {
-            numero: true,
-            tipo: true,
-            total: true,
-            estado: true
-          }
-        }
-      }
-    })
-
-    console.log('Servicio taller creado exitosamente con ID:', servicio.id)
-
-    // Sincronizar con GSControl
-    const descripcionFactura = `${factura.tipo}: ${factura.numero} - ${concepto}`
-    const clienteNombreCompleto = `${factura.cliente.nombre} ${factura.cliente.apellido || ''}`.trim()
+    // 🔄 SINCRONIZAR CON GSCONTROL como INGRESO
+    const descripcionServicio = `${servicio.concepto} - ${servicio.cliente.nombre} ${servicio.cliente.apellido || ''} (${servicio.vehiculo.matricula})`
+    const categoriaGSControl = mapearCategoriaGasto(servicio.tipoGasto)
     
     await notificarCreacionGSControl({
-      id: factura.id,
-      esIngreso: true,
-      fecha: factura.createdAt,
-      importe: factura.total,
-      descripcion: descripcionFactura,
-      documentType: factura.tipo,
-      invoiceNumber: factura.tipo === 'FACTURA' ? factura.numero : undefined,
-      clientName: clienteNombreCompleto || undefined,
-      clientDni: factura.cliente.documento || undefined
+      id: servicio.id,
+      esIngreso: true, // ⭐ ESTO ES UN INGRESO, NO UN GASTO
+      fecha: servicio.fecha,
+      importe: servicio.importe,
+      descripcion: descripcionServicio,
+      costCategory: categoriaGSControl
     })
 
-    return NextResponse.json({ servicio, factura }, { status: 201 })
-  } catch (error) {
+    return NextResponse.json(servicio, { status: 201 })
+  } catch (error: any) {
     console.error('Error creating servicio taller:', error)
-    console.error('Error completo:', JSON.stringify(error, null, 2))
-    
-    let errorMessage = 'Error al crear el servicio de taller'
-    if (error instanceof Error) {
-      errorMessage += `: ${error.message}`
-      console.error('Stack trace:', error.stack)
-    }
-    
+    console.error('Error stack:', error.stack)
+    console.error('Error details:', JSON.stringify(error, null, 2))
     return NextResponse.json(
-      { error: errorMessage, details: error instanceof Error ? error.message : 'Unknown error' },
+      { error: 'Error al crear servicio: ' + (error.message || 'Error desconocido') },
       { status: 500 }
     )
   }

@@ -1,15 +1,11 @@
-import { Suspense } from 'react'
+import { Metadata } from 'next'
 import ServiciosTallerView from './servicios-taller-view'
 
-export const metadata = {
+export const metadata: Metadata = {
   title: 'Servicios de Taller | ServyAuto',
-  description: 'Gestión de servicios de taller'
+  description: 'Gestión de servicios de taller (baterías, frenos, etc.)'
 }
 
 export default function ServiciosTallerPage() {
-  return (
-    <Suspense fallback={<div>Cargando...</div>}>
-      <ServiciosTallerView />
-    </Suspense>
-  )
+  return <ServiciosTallerView />
 }
