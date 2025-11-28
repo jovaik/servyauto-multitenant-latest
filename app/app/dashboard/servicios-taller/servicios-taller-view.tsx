@@ -6,9 +6,20 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
-import { Wrench, Plus, Search } from 'lucide-react'
+import { Wrench, Plus, Edit, Trash2, FileText } from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import EditarServicioTallerDialog from '@/components/editar-servicio-taller-dialog'
+import { useRouter } from 'next/navigation'
 
 interface Cliente {
   id: string
@@ -53,12 +64,20 @@ interface ServicioTaller {
 }
 
 export default function ServiciosTallerView() {
+  const router = useRouter()
   const [servicios, setServicios] = useState<ServicioTaller[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [vehiculos, setVehiculos] = useState<Vehiculo[]>([])
   const [vehiculosFiltrados, setVehiculosFiltrados] = useState<Vehiculo[]>([])
   const [loading, setLoading] = useState(false)
   const [showForm, setShowForm] = useState(false)
+
+  // Estados para editar y eliminar
+  const [servicioToEdit, setServicioToEdit] = useState<ServicioTaller | null>(null)
+  const [showEditDialog, setShowEditDialog] = useState(false)
+  const [servicioToDelete, setServicioToDelete] = useState<ServicioTaller | null>(null)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   // Campos del formulario
   const [clienteId, setClienteId] = useState('')
@@ -171,6 +190,49 @@ export default function ServiciosTallerView() {
       toast.error(error.message || 'Error al crear el servicio')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleEdit = (servicio: ServicioTaller) => {
+    setServicioToEdit(servicio)
+    setShowEditDialog(true)
+  }
+
+  const handleDelete = (servicio: ServicioTaller) => {
+    setServicioToDelete(servicio)
+    setShowDeleteDialog(true)
+  }
+
+  const confirmDelete = async () => {
+    if (!servicioToDelete) return
+
+    setDeleting(true)
+    try {
+      const response = await fetch(`/api/servicios-taller/${servicioToDelete.id}`, {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Error al eliminar el servicio')
+      }
+
+      toast.success('Servicio eliminado correctamente')
+      setShowDeleteDialog(false)
+      setServicioToDelete(null)
+      fetchServicios()
+    } catch (error: any) {
+      console.error('Error:', error)
+      toast.error(error.message || 'Error al eliminar el servicio')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const handleViewFactura = (servicio: ServicioTaller) => {
+    if (servicio.factura) {
+      router.push('/dashboard/facturacion')
+      toast.info(`Busca el ${servicio.factura.tipo} ${servicio.factura.numero}`)
     }
   }
 
@@ -357,12 +419,13 @@ export default function ServiciosTallerView() {
                 <th className="text-right py-3 px-4">Total</th>
                 <th className="text-right py-3 px-4">Margen</th>
                 <th className="text-left py-3 px-4">Documento</th>
+                <th className="text-center py-3 px-4">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {servicios.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <td colSpan={8} className="text-center py-8 text-muted-foreground">
                     No hay servicios registrados
                   </td>
                 </tr>
@@ -396,6 +459,37 @@ export default function ServiciosTallerView() {
                         </span>
                       )}
                     </td>
+                    <td className="py-3 px-4">
+                      <div className="flex items-center justify-center gap-2">
+                        {servicio.factura && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleViewFactura(servicio)}
+                            title="Ver factura"
+                          >
+                            <FileText className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(servicio)}
+                          title="Editar"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(servicio)}
+                          title="Eliminar"
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </td>
                   </tr>
                 ))
               )}
@@ -403,6 +497,57 @@ export default function ServiciosTallerView() {
           </table>
         </div>
       </Card>
+
+      {/* Dialog de edición */}
+      <EditarServicioTallerDialog
+        servicio={servicioToEdit}
+        open={showEditDialog}
+        onOpenChange={setShowEditDialog}
+        onSuccess={() => {
+          fetchServicios()
+          setShowEditDialog(false)
+          setServicioToEdit(null)
+        }}
+      />
+
+      {/* Dialog de confirmación de eliminación */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Vas a eliminar el servicio:
+              <div className="mt-2 p-3 bg-muted rounded-lg">
+                <p className="font-semibold">{servicioToDelete?.concepto}</p>
+                <p className="text-sm mt-1">
+                  Cliente: {servicioToDelete?.cliente.nombre} {servicioToDelete?.cliente.apellido || ''}
+                </p>
+                <p className="text-sm">
+                  Vehículo: {servicioToDelete?.vehiculo.marca} {servicioToDelete?.vehiculo.modelo}
+                </p>
+                {servicioToDelete?.factura && (
+                  <p className="text-sm text-orange-600 mt-2">
+                    ⚠️ También se eliminará la {servicioToDelete.factura.tipo} {servicioToDelete.factura.numero}
+                  </p>
+                )}
+              </div>
+              <p className="mt-3 text-red-600 font-semibold">
+                Esta acción no se puede deshacer.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={deleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deleting ? 'Eliminando...' : 'Eliminar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
