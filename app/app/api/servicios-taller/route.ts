@@ -66,21 +66,12 @@ export async function POST(request: NextRequest) {
       fecha,
       clienteId,
       vehiculoId,
-      tipoGasto, // Categoria del servicio
+      tipoGasto,
       costeProducto,
-      costeManoObra,
       precioProducto,
       precioManoObra,
       metodoPago,
-      tipo,
-      iva,
-      numeroFactura,
-      clienteCIF,
-      clienteDireccion,
-      clienteCodigoPostal,
-      clienteCiudad,
-      clienteProvincia,
-      adjunto
+      solicitaFactura
     } = body
 
     // Validar campos requeridos
@@ -104,64 +95,55 @@ export async function POST(request: NextRequest) {
 
     // Calcular totales
     const costoProductoNum = parseFloat(costeProducto) || 0
-    const costoManoObraNum = parseFloat(costeManoObra) || 0
     const precioProductoNum = parseFloat(precioProducto) || 0
     const precioManoObraNum = parseFloat(precioManoObra) || 0
     
     const importeTotal = precioProductoNum + precioManoObraNum
     const margen = precioProductoNum - costoProductoNum
-
-    // Si es FACTURA, validar campos fiscales adicionales
-    if (tipo === 'FACTURA') {
-      if (!numeroFactura || !clienteCIF || !clienteDireccion || 
-          !clienteCodigoPostal || !clienteCiudad || !clienteProvincia) {
-        return NextResponse.json(
-          { error: 'Para facturas se requieren todos los datos fiscales del cliente' },
-          { status: 400 }
-        )
-      }
-    }
+    const tipoDocumento = solicitaFactura ? 'FACTURA' : 'TICKET'
 
     // Preparar datos para crear el servicio
-    const servicioData = {
+    const servicioData: any = {
       concepto: concepto.trim(),
       fecha: fecha ? new Date(fecha) : new Date(),
       clienteId: clienteId,
       vehiculoId: vehiculoId,
       tipoGasto: tipoGasto.trim(),
       costeProducto: costoProductoNum,
-      costeManoObra: costoManoObraNum,
+      costeManoObra: 0, // Por ahora siempre 0
       precioProducto: precioProductoNum,
       precioManoObra: precioManoObraNum,
       importe: importeTotal,
       margen: margen,
       metodoPago: metodoPago,
-      tipo: tipo || 'TICKET',
-      iva: parseFloat(iva) || 21,
-      adjunto: adjunto || false,
-      numeroFactura: numeroFactura && numeroFactura.trim() ? numeroFactura.trim() : null,
-      clienteCIF: clienteCIF && clienteCIF.trim() ? clienteCIF.trim() : null,
-      clienteDireccion: clienteDireccion && clienteDireccion.trim() ? clienteDireccion.trim() : null,
-      clienteCodigoPostal: clienteCodigoPostal && clienteCodigoPostal.trim() ? clienteCodigoPostal.trim() : null,
-      clienteCiudad: clienteCiudad && clienteCiudad.trim() ? clienteCiudad.trim() : null,
-      clienteProvincia: clienteProvincia && clienteProvincia.trim() ? clienteProvincia.trim() : null
+      tipo: tipoDocumento,
+      iva: 21,
+      adjunto: false
     }
 
     console.log('Datos preparados para Prisma:', JSON.stringify(servicioData, null, 2))
 
     const servicio = await prisma.servicioTaller.create({
-      data: servicioData,
+      data: servicioData
+    })
+
+    console.log('Servicio creado exitosamente:', servicio.id)
+    
+    // Cargar el servicio con sus relaciones
+    const servicioCompleto = await prisma.servicioTaller.findUnique({
+      where: { id: servicio.id },
       include: {
         cliente: true,
         vehiculo: true
       }
     })
-
-    console.log('Servicio creado exitosamente:', servicio.id)
+    
+    if (!servicioCompleto) {
+      throw new Error('No se pudo cargar el servicio creado')
+    }
 
     // 📄 GENERAR FACTURA O TICKET AUTOMÁTICAMENTE
-    const solicitaFactura = metodoPago === 'TPV_UNICAJA'
-    const tipoDocumento = solicitaFactura ? 'FACTURA' : 'TICKET'
+    const esFactura = metodoPago === 'TPV_UNICAJA'
 
     // Crear items de la factura
     const items = []
@@ -169,7 +151,7 @@ export async function POST(request: NextRequest) {
     // Item 1: Producto/Pieza
     if (precioProductoNum > 0) {
       items.push({
-        descripcion: `${servicio.concepto} - Pieza/Producto`,
+        descripcion: `${servicioCompleto.concepto} - Pieza/Producto`,
         cantidad: 1,
         precioUnitario: precioProductoNum
       })
@@ -178,7 +160,7 @@ export async function POST(request: NextRequest) {
     // Item 2: Mano de obra
     if (precioManoObraNum > 0) {
       items.push({
-        descripcion: `${servicio.concepto} - Mano de Obra`,
+        descripcion: `${servicioCompleto.concepto} - Mano de Obra`,
         cantidad: 1,
         precioUnitario: precioManoObraNum
       })
@@ -192,12 +174,12 @@ export async function POST(request: NextRequest) {
         'Cookie': request.headers.get('cookie') || ''
       },
       body: JSON.stringify({
-        clienteId: servicio.clienteId,
-        vehiculoId: servicio.vehiculoId,
+        clienteId: servicioCompleto.clienteId,
+        vehiculoId: servicioCompleto.vehiculoId,
         citaId: null, // No viene de una cita
         items: items,
         metodoPago: metodoPago,
-        solicitaFactura: solicitaFactura,
+        solicitaFactura: esFactura,
         estado: 'PAGADA' // Ya está pagada al momento de crear el servicio
       })
     })
@@ -209,7 +191,7 @@ export async function POST(request: NextRequest) {
       
       // Asociar factura al servicio
       await prisma.servicioTaller.update({
-        where: { id: servicio.id },
+        where: { id: servicioCompleto.id },
         data: { facturaId: factura.id }
       })
     } else {
@@ -217,21 +199,21 @@ export async function POST(request: NextRequest) {
     }
 
     // 🔄 SINCRONIZAR CON GSCONTROL como INGRESO
-    const descripcionServicio = `${servicio.concepto} - ${servicio.cliente.nombre} ${servicio.cliente.apellido || ''} (${servicio.vehiculo.matricula})`
-    const categoriaGSControl = mapearCategoriaGasto(servicio.tipoGasto)
+    const descripcionServicio = `${servicioCompleto.concepto} - ${servicioCompleto.cliente.nombre} ${servicioCompleto.cliente.apellido || ''} (${servicioCompleto.vehiculo.matricula})`
+    const categoriaGSControl = mapearCategoriaGasto(servicioCompleto.tipoGasto)
     
     await notificarCreacionGSControl({
-      id: servicio.id,
+      id: servicioCompleto.id,
       esIngreso: true, // ⭐ ESTO ES UN INGRESO, NO UN GASTO
-      fecha: servicio.fecha,
-      importe: servicio.importe,
+      fecha: servicioCompleto.fecha,
+      importe: servicioCompleto.importe,
       descripcion: descripcionServicio,
       costCategory: categoriaGSControl
     })
 
     // Recargar servicio con factura incluida
     const servicioConFactura = await prisma.servicioTaller.findUnique({
-      where: { id: servicio.id },
+      where: { id: servicioCompleto.id },
       include: {
         cliente: true,
         vehiculo: true,

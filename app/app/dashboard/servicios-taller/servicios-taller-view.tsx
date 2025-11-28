@@ -37,7 +37,7 @@ interface Vehiculo {
 }
 
 interface ServicioTaller {
-  id: number
+  id: string
   fecha: string
   concepto: string
   tipoGasto: string
@@ -45,12 +45,11 @@ interface ServicioTaller {
   costeManoObra?: number
   precioProducto: number
   precioManoObra: number
-  total: number
+  importe: number
   margen: number
   metodoPago: string
   tipo: string
   iva: number
-  estado: string
   cliente: {
     nombre: string
     apellido: string | null
@@ -478,7 +477,7 @@ export default function ServiciosTallerView() {
                     </td>
                     <td className="py-3 px-4">{servicio.concepto}</td>
                     <td className="text-right py-3 px-4 font-semibold">
-                      {servicio.total.toFixed(2)} €
+                      {servicio.importe.toFixed(2)} €
                     </td>
                     <td className="text-right py-3 px-4">
                       <span className={servicio.margen >= 0 ? 'text-green-600' : 'text-red-600'}>

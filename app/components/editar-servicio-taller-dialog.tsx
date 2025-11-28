@@ -22,7 +22,7 @@ import {
 import { toast } from 'sonner'
 
 interface ServicioTaller {
-  id: number
+  id: string
   fecha: string
   concepto: string
   tipoGasto: string
@@ -30,7 +30,7 @@ interface ServicioTaller {
   costeManoObra?: number
   precioProducto: number
   precioManoObra: number
-  total: number
+  importe: number
   margen: number
   metodoPago: string
   tipo: string
