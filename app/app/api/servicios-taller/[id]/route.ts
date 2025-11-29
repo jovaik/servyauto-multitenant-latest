@@ -148,11 +148,25 @@ export async function PUT(
       },
       include: {
         cliente: true,
-        vehiculo: true
+        vehiculo: true,
+        cita: true
       }
     })
 
     console.log('Servicio actualizado exitosamente:', servicio.id)
+
+    // ⭐ ACTUALIZAR CITA ASOCIADA SI EXISTE
+    if (servicio.citaId) {
+      await prisma.cita.update({
+        where: { id: servicio.citaId },
+        data: {
+          total: importeTotal,
+          observaciones: `Servicio de taller: ${concepto}`,
+          metodoPago: metodoPago as any
+        }
+      })
+      console.log('✅ Cita actualizada:', servicio.citaId)
+    }
 
     // 🔄 SINCRONIZAR MODIFICACIÓN CON GSCONTROL como INGRESO
     const descripcionServicio = `${servicio.concepto} - ${servicio.cliente.nombre} ${servicio.cliente.apellido || ''} (${servicio.vehiculo.matricula})`
@@ -191,7 +205,12 @@ export async function DELETE(
     const servicio = await prisma.servicioTaller.findUnique({
       where: { id: params.id },
       include: {
-        factura: true
+        factura: true,
+        cita: {
+          include: {
+            cita_servicios: true
+          }
+        }
       }
     })
 
@@ -199,24 +218,48 @@ export async function DELETE(
       return NextResponse.json({ error: 'Servicio no encontrado' }, { status: 404 })
     }
 
-    // Si tiene factura asociada, eliminarla primero
+    // ⭐ ELIMINAR EN ORDEN CORRECTO PARA EVITAR ERRORES DE FK
+    
+    // 1. Eliminar items de factura si existe
     if (servicio.facturaId && servicio.factura) {
       await prisma.$executeRaw`DELETE FROM factura_items WHERE "facturaId" = ${servicio.facturaId}`
       await prisma.factura.delete({
         where: { id: servicio.facturaId }
       })
+      console.log('✅ Factura eliminada:', servicio.facturaId)
     }
 
-    // 🔄 SINCRONIZAR ELIMINACIÓN CON GSCONTROL
-    await notificarEliminacionGSControl(servicio.id)
+    // 2. Eliminar cita_servicios si la cita existe
+    if (servicio.citaId && servicio.cita) {
+      if (servicio.cita.cita_servicios.length > 0) {
+        await prisma.$executeRaw`DELETE FROM cita_servicios WHERE "citaId" = ${servicio.citaId}`
+        console.log('✅ Cita servicios eliminados para cita:', servicio.citaId)
+      }
+      
+      // 3. Eliminar la cita
+      await prisma.cita.delete({
+        where: { id: servicio.citaId }
+      })
+      console.log('✅ Cita eliminada de agenda:', servicio.citaId)
+    }
 
+    // 4. Sincronizar eliminación con GSControl
+    await notificarEliminacionGSControl(servicio.id)
+    console.log('✅ Sincronizado con GSControl')
+
+    // 5. Finalmente eliminar el servicio de taller
     await prisma.servicioTaller.delete({
       where: { id: params.id }
     })
+    console.log('✅ Servicio de taller eliminado:', params.id)
 
-    return NextResponse.json({ message: 'Servicio eliminado' })
+    return NextResponse.json({ 
+      message: 'Servicio, cita y factura eliminados correctamente'
+    })
   } catch (error) {
     console.error('Error deleting servicio:', error)
-    return NextResponse.json({ error: 'Error al eliminar servicio' }, { status: 500 })
+    return NextResponse.json({ 
+      error: 'Error al eliminar servicio: ' + (error as Error).message 
+    }, { status: 500 })
   }
 }
