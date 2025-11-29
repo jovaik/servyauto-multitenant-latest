@@ -132,6 +132,7 @@ model Cita {
   cliente        Cliente          @relation(fields: [clienteId], references: [id])
   vehiculo       Vehiculo         @relation(fields: [vehiculoId], references: [id])
   facturas       Factura?
+  servicioTaller ServicioTaller?
 
   @@map("citas")
 }
@@ -384,6 +385,10 @@ model ServicioTaller {
   cliente               Cliente     @relation(fields: [clienteId], references: [id])
   vehiculoId            String
   vehiculo              Vehiculo    @relation(fields: [vehiculoId], references: [id])
+  
+  // Cita asociada (para que aparezca en la agenda)
+  citaId                String?     @unique
+  cita                  Cita?       @relation(fields: [citaId], references: [id])
   
   // Categoría del servicio
   tipoGasto             String      // Reutilizamos este campo para "tipo de servicio"

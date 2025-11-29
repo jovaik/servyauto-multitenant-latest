@@ -100,17 +100,103 @@ export async function POST(request: NextRequest) {
     
     const importeTotal = precioProductoNum + precioManoObraNum
     const margen = precioProductoNum - costoProductoNum
-    const tipoDocumento = solicitaFactura ? 'FACTURA' : 'TICKET'
+    
+    // ⭐ CORREGIR REGLA DE FACTURA/TICKET:
+    // Efectivo o TPV_SUMUP → TICKET
+    // TPV_UNICAJA → FACTURA
+    const esFactura = metodoPago === 'TPV_UNICAJA'
+    const tipoDocumento = esFactura ? 'FACTURA' : 'TICKET'
 
-    // Preparar datos para crear el servicio
+    // 🗓️ OBTENER BOX CONFIGURADO (primer box disponible)
+    let boxAsignado = 'Box 1' // Default
+    try {
+      const configBoxes = await prisma.configuracion.findUnique({
+        where: { clave: 'boxes.nombres' }
+      })
+      if (configBoxes?.valor) {
+        const boxes = JSON.parse(configBoxes.valor)
+        if (boxes.length > 0) {
+          boxAsignado = boxes[0]
+        }
+      }
+    } catch (err) {
+      console.log('Usando box por defecto:', boxAsignado)
+    }
+
+    // Preparar fecha y hora para la cita
+    const fechaCita = fecha ? new Date(fecha) : new Date()
+    const horaInicio = fechaCita.toTimeString().substring(0, 5) // formato HH:MM
+    const horaFin = horaInicio // Mismo horario ya que el servicio está completado
+
+    console.log('Creando cita en agenda con:', {
+      fecha: fechaCita,
+      horaInicio,
+      box: boxAsignado
+    })
+
+    // 🔧 CREAR SERVICIO PARA LA CITA (debe existir en catálogo)
+    // Buscar o crear un servicio genérico "Servicio de Taller"
+    let servicioGenerico = await prisma.servicio.findFirst({
+      where: { nombre: 'Servicio de Taller' }
+    })
+
+    if (!servicioGenerico) {
+      servicioGenerico = await prisma.servicio.create({
+        data: {
+          nombre: 'Servicio de Taller',
+          descripcion: 'Servicios rápidos de taller (baterías, frenos, etc.)',
+          precio: 0, // El precio viene de cada servicio individual
+          duracion: 60,
+          activo: true
+        }
+      })
+      console.log('✅ Servicio genérico creado:', servicioGenerico.id)
+    }
+
+    // 📅 CREAR CITA EN LA AGENDA (estado COMPLETADA porque ya se realizó)
+    const cita = await prisma.cita.create({
+      data: {
+        fecha: fechaCita,
+        horaInicio,
+        horaFin,
+        clienteId,
+        vehiculoId,
+        box: boxAsignado,
+        estado: 'COMPLETADA', // ⭐ El servicio ya está hecho
+        ticketsUsados: 0,
+        observaciones: `Servicio de taller: ${concepto}`,
+        metodoPago: metodoPago,
+        total: importeTotal,
+        cita_servicios: {
+          create: [{
+            id: `cs_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
+            servicioId: servicioGenerico.id,
+            precio: importeTotal
+          }]
+        }
+      },
+      include: {
+        cliente: true,
+        vehiculo: true,
+        cita_servicios: {
+          include: {
+            servicios: true
+          }
+        }
+      }
+    })
+
+    console.log('✅ Cita creada en agenda:', cita.id)
+
+    // 📝 CREAR REGISTRO EN SERVICIOTALLER (para tracking interno)
     const servicioData: any = {
       concepto: concepto.trim(),
-      fecha: fecha ? new Date(fecha) : new Date(),
+      fecha: fechaCita,
       clienteId: clienteId,
       vehiculoId: vehiculoId,
       tipoGasto: tipoGasto.trim(),
       costeProducto: costoProductoNum,
-      costeManoObra: 0, // Por ahora siempre 0
+      costeManoObra: 0,
       precioProducto: precioProductoNum,
       precioManoObra: precioManoObraNum,
       importe: importeTotal,
@@ -118,55 +204,36 @@ export async function POST(request: NextRequest) {
       metodoPago: metodoPago,
       tipo: tipoDocumento,
       iva: 21,
-      adjunto: false
+      adjunto: false,
+      citaId: cita.id // ⭐ Vincular con la cita
     }
-
-    console.log('Datos preparados para Prisma:', JSON.stringify(servicioData, null, 2))
 
     const servicio = await prisma.servicioTaller.create({
       data: servicioData
     })
 
-    console.log('Servicio creado exitosamente:', servicio.id)
-    
-    // Cargar el servicio con sus relaciones
-    const servicioCompleto = await prisma.servicioTaller.findUnique({
-      where: { id: servicio.id },
-      include: {
-        cliente: true,
-        vehiculo: true
-      }
-    })
-    
-    if (!servicioCompleto) {
-      throw new Error('No se pudo cargar el servicio creado')
-    }
+    console.log('✅ Servicio de taller registrado:', servicio.id)
 
     // 📄 GENERAR FACTURA O TICKET AUTOMÁTICAMENTE
-    const esFactura = metodoPago === 'TPV_UNICAJA'
-
-    // Crear items de la factura
     const items = []
     
-    // Item 1: Producto/Pieza
     if (precioProductoNum > 0) {
       items.push({
-        descripcion: `${servicioCompleto.concepto} - Pieza/Producto`,
+        descripcion: `${concepto} - Pieza/Producto`,
         cantidad: 1,
         precioUnitario: precioProductoNum
       })
     }
     
-    // Item 2: Mano de obra
     if (precioManoObraNum > 0) {
       items.push({
-        descripcion: `${servicioCompleto.concepto} - Mano de Obra`,
+        descripcion: `${concepto} - Mano de Obra`,
         cantidad: 1,
         precioUnitario: precioManoObraNum
       })
     }
 
-    // Crear factura/ticket
+    // Crear factura/ticket vinculada a la CITA
     const facturaResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/facturas`, {
       method: 'POST',
       headers: {
@@ -174,54 +241,65 @@ export async function POST(request: NextRequest) {
         'Cookie': request.headers.get('cookie') || ''
       },
       body: JSON.stringify({
-        clienteId: servicioCompleto.clienteId,
-        vehiculoId: servicioCompleto.vehiculoId,
-        citaId: null, // No viene de una cita
+        clienteId: clienteId,
+        vehiculoId: vehiculoId,
+        citaId: cita.id, // ⭐ Asociada a la cita
         items: items,
         metodoPago: metodoPago,
-        solicitaFactura: esFactura,
-        estado: 'PAGADA' // Ya está pagada al momento de crear el servicio
+        solicitaFactura: esFactura, // true para TPV_UNICAJA, false para el resto
+        estado: 'PAGADA' // Ya está pagada
       })
     })
 
     let factura = null
     if (facturaResponse.ok) {
       factura = await facturaResponse.json()
-      console.log('✅ Factura/Ticket generado:', factura.numero)
+      console.log(`✅ ${factura.tipo} generado:`, factura.numero)
       
-      // Asociar factura al servicio
+      // Asociar factura al servicio de taller
       await prisma.servicioTaller.update({
-        where: { id: servicioCompleto.id },
+        where: { id: servicio.id },
         data: { facturaId: factura.id }
       })
     } else {
-      console.error('❌ Error al generar factura/ticket:', await facturaResponse.text())
+      const errorText = await facturaResponse.text()
+      console.error('❌ Error al generar factura/ticket:', errorText)
+      throw new Error(`Error al generar documento: ${errorText}`)
     }
 
     // 🔄 SINCRONIZAR CON GSCONTROL como INGRESO
-    const descripcionServicio = `${servicioCompleto.concepto} - ${servicioCompleto.cliente.nombre} ${servicioCompleto.cliente.apellido || ''} (${servicioCompleto.vehiculo.matricula})`
-    const categoriaGSControl = mapearCategoriaGasto(servicioCompleto.tipoGasto)
+    const descripcionServicio = `${concepto} - ${cita.cliente.nombre} ${cita.cliente.apellido || ''} (${cita.vehiculo.matricula})`
+    const categoriaGSControl = mapearCategoriaGasto(tipoGasto)
     
     await notificarCreacionGSControl({
-      id: servicioCompleto.id,
-      esIngreso: true, // ⭐ ESTO ES UN INGRESO, NO UN GASTO
-      fecha: servicioCompleto.fecha,
-      importe: servicioCompleto.importe,
+      id: servicio.id,
+      esIngreso: true, // ⭐ INGRESO
+      fecha: fechaCita,
+      importe: importeTotal,
       descripcion: descripcionServicio,
       costCategory: categoriaGSControl
     })
 
-    // Recargar servicio con factura incluida
-    const servicioConFactura = await prisma.servicioTaller.findUnique({
-      where: { id: servicioCompleto.id },
+    // Recargar servicio con todas las relaciones
+    const servicioCompleto = await prisma.servicioTaller.findUnique({
+      where: { id: servicio.id },
       include: {
         cliente: true,
         vehiculo: true,
-        factura: true
+        factura: true,
+        cita: {
+          include: {
+            cita_servicios: {
+              include: {
+                servicios: true
+              }
+            }
+          }
+        }
       }
     })
 
-    return NextResponse.json(servicioConFactura, { status: 201 })
+    return NextResponse.json(servicioCompleto, { status: 201 })
   } catch (error: any) {
     console.error('Error creating servicio taller:', error)
     console.error('Error stack:', error.stack)
