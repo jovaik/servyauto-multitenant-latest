@@ -20,14 +20,18 @@ interface TotalesPDF {
   tpvUnicaja: number
 }
 
+async function loadJsPDF() {
+  const jsPDFModule = await import('jspdf')
+  const { default: autoTable } = await import('jspdf-autotable')
+  return { jsPDF: jsPDFModule.jsPDF, autoTable }
+}
+
 export async function generarPDFDiarioCaja(
   movimientos: MovimientoPDF[],
   totales: TotalesPDF,
   periodo: string
 ) {
-  const jsPDFModule = await import('jspdf')
-  const jsPDF = jsPDFModule.jsPDF
-  await import('jspdf-autotable')
+  const { jsPDF, autoTable } = await loadJsPDF()
   
   const doc = new jsPDF() as any
   const pageWidth = doc.internal.pageSize.getWidth()
@@ -48,7 +52,7 @@ export async function generarPDFDiarioCaja(
   doc.setTextColor(40, 40, 40)
   doc.text('Resumen por Método de Pago', 14, 48)
   
-  doc.autoTable({
+  autoTable(doc, {
     startY: 52,
     head: [['Método', 'Balance']],
     body: [
@@ -68,7 +72,7 @@ export async function generarPDFDiarioCaja(
   const y1 = doc.lastAutoTable.finalY + 10
   doc.text('Resumen General', 14, y1)
   
-  doc.autoTable({
+  autoTable(doc, {
     startY: y1 + 4,
     head: [['Concepto', 'Importe']],
     body: [
@@ -104,7 +108,7 @@ export async function generarPDFDiarioCaja(
     m.creadoPor || '-'
   ])
   
-  doc.autoTable({
+  autoTable(doc, {
     startY: y2 + 4,
     head: [['Fecha', 'Tipo', 'Concepto', 'Categoría', 'M. Pago', 'Importe', 'Usuario']],
     body: tableData,
@@ -156,9 +160,7 @@ export async function generarPDFCierreCaja(
   cierre: any,
   detalles: any
 ) {
-  const jsPDFModule = await import('jspdf')
-  const jsPDF = jsPDFModule.jsPDF
-  await import('jspdf-autotable')
+  const { jsPDF, autoTable } = await loadJsPDF()
   
   const doc = new jsPDF() as any
   const pageWidth = doc.internal.pageSize.getWidth()
@@ -173,7 +175,7 @@ export async function generarPDFCierreCaja(
   doc.text(`Fecha: ${format(new Date(cierre.fecha), "dd/MM/yyyy", { locale: es })}`, pageWidth / 2, 28, { align: 'center' })
   
   // Resumen
-  doc.autoTable({
+  autoTable(doc, {
     startY: 40,
     head: [['Concepto', 'Importe']],
     body: [
@@ -201,9 +203,7 @@ export async function generarPDFGastos(
   totales: { total: number; porCategoria: Record<string, number> },
   periodo: string
 ) {
-  const jsPDFModule = await import('jspdf')
-  const jsPDF = jsPDFModule.jsPDF
-  await import('jspdf-autotable')
+  const { jsPDF, autoTable } = await loadJsPDF()
   
   const doc = new jsPDF() as any
   const pageWidth = doc.internal.pageSize.getWidth()
@@ -233,7 +233,7 @@ export async function generarPDFGastos(
     `€${importe.toFixed(2)}`
   ])
   
-  doc.autoTable({
+  autoTable(doc, {
     startY: 64,
     head: [['Categoría', 'Importe']],
     body: categoriaData,
@@ -257,7 +257,7 @@ export async function generarPDFGastos(
     `€${(g.importe || g.total || 0).toFixed(2)}`
   ])
   
-  doc.autoTable({
+  autoTable(doc, {
     startY: y1 + 4,
     head: [['Fecha', 'Concepto', 'Categoría', 'Proveedor', 'Importe']],
     body: tableData,
@@ -293,9 +293,7 @@ export async function generarPDFFacturacion(
   totales: { total: number; tickets: number; facturas: number },
   periodo: string
 ) {
-  const jsPDFModule = await import('jspdf')
-  const jsPDF = jsPDFModule.jsPDF
-  await import('jspdf-autotable')
+  const { jsPDF, autoTable } = await loadJsPDF()
   
   const doc = new jsPDF() as any
   const pageWidth = doc.internal.pageSize.getWidth()
@@ -315,7 +313,7 @@ export async function generarPDFFacturacion(
   doc.setTextColor(40, 40, 40)
   doc.text('Resumen', 14, 48)
   
-  doc.autoTable({
+  autoTable(doc, {
     startY: 52,
     head: [['Concepto', 'Importe']],
     body: [
@@ -344,7 +342,7 @@ export async function generarPDFFacturacion(
     `€${f.total.toFixed(2)}`
   ])
   
-  doc.autoTable({
+  autoTable(doc, {
     startY: y1 + 4,
     head: [['Fecha', 'Número', 'Tipo', 'Cliente', 'M. Pago', 'Total']],
     body: tableData,
