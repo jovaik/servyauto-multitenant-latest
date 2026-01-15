@@ -146,6 +146,10 @@ export async function POST(request: NextRequest) {
         clienteId,
         citaId: citaId || null,
         estado: 'PAGADA', // Al crear se marca como pagada
+        fechaPago: new Date(),
+        // Trazabilidad - quién creó este ingreso
+        creadoPorId: (session.user as any)?.id || null,
+        creadoPorNombre: session.user?.name || session.user?.email || 'Sistema',
         factura_items: {
           create: items.map((item: any, index: number) => ({
             id: `${numero}-${index + 1}`,

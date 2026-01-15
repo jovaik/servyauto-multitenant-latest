@@ -151,6 +151,10 @@ model Factura {
   citaId           String?         @unique
   datosFacturacion String?
   pdfPath          String?
+  // Trazabilidad
+  creadoPorId      String?
+  creadoPorNombre  String?
+  fechaPago        DateTime?
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
   factura_items     factura_items[]
@@ -229,6 +233,9 @@ model Gasto {
   proveedorCodigoPostal String?
   proveedorCiudad       String?
   proveedorProvincia    String?
+  // Trazabilidad
+  creadoPorId           String?
+  creadoPorNombre       String?
   createdAt             DateTime    @default(now())
   updatedAt             DateTime    @updatedAt
 

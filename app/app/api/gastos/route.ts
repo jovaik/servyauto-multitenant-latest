@@ -98,7 +98,10 @@ export async function POST(request: NextRequest) {
       proveedorDireccion: proveedorDireccion && proveedorDireccion.trim() ? proveedorDireccion.trim() : null,
       proveedorCodigoPostal: proveedorCodigoPostal && proveedorCodigoPostal.trim() ? proveedorCodigoPostal.trim() : null,
       proveedorCiudad: proveedorCiudad && proveedorCiudad.trim() ? proveedorCiudad.trim() : null,
-      proveedorProvincia: proveedorProvincia && proveedorProvincia.trim() ? proveedorProvincia.trim() : null
+      proveedorProvincia: proveedorProvincia && proveedorProvincia.trim() ? proveedorProvincia.trim() : null,
+      // Trazabilidad - quién creó este gasto
+      creadoPorId: (session.user as any)?.id || null,
+      creadoPorNombre: session.user?.name || session.user?.email || 'Sistema'
     }
 
     console.log('Datos preparados para Prisma:', JSON.stringify(gastoData, null, 2))

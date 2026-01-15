@@ -31,6 +31,9 @@ interface Movimiento {
   importe: number
   metodoPago?: string
   referencia?: string
+  // Trazabilidad
+  creadoPor?: string
+  creadoEn?: Date
 }
 
 export default function DiarioCajaView() {
@@ -65,7 +68,10 @@ export default function DiarioCajaView() {
         categoria: f.tipo === 'TICKET' ? 'Ticket' : 'Factura',
         importe: f.total,
         metodoPago: f.metodoPago,
-        referencia: f.numero
+        referencia: f.numero,
+        // Trazabilidad
+        creadoPor: f.creadoPorNombre || null,
+        creadoEn: f.createdAt ? new Date(f.createdAt) : null
       }))
 
       // Transformar gastos a movimientos
@@ -77,7 +83,10 @@ export default function DiarioCajaView() {
         categoria: g.tipoGasto || g.categoria || 'General',
         importe: g.importe || g.total,
         metodoPago: g.metodoPago,
-        referencia: g.numeroFactura
+        referencia: g.numeroFactura,
+        // Trazabilidad
+        creadoPor: g.creadoPorNombre || null,
+        creadoEn: g.createdAt ? new Date(g.createdAt) : null
       }))
 
       // Combinar y ordenar por fecha (más reciente primero)
@@ -328,6 +337,8 @@ export default function DiarioCajaView() {
                     <TableHead>Categoría</TableHead>
                     <TableHead>Método Pago</TableHead>
                     <TableHead className="text-right">Importe</TableHead>
+                    <TableHead>Creado por</TableHead>
+                    <TableHead>Registrado</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -363,6 +374,16 @@ export default function DiarioCajaView() {
                       <TableCell className="text-right font-medium">
                         <span className={mov.tipo === 'INGRESO' ? 'text-green-600' : 'text-red-600'}>
                           {mov.tipo === 'INGRESO' ? '+' : '-'}€{mov.importe.toFixed(2)}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm text-gray-600">
+                          {mov.creadoPor || '-'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        <span className="text-xs text-gray-500">
+                          {mov.creadoEn ? format(new Date(mov.creadoEn), 'dd/MM/yy HH:mm', { locale: es }) : '-'}
                         </span>
                       </TableCell>
                     </TableRow>
