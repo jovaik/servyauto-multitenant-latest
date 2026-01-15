@@ -225,7 +225,52 @@ export default function DiarioCajaView() {
         </Button>
       </div>
 
-      {/* Tarjetas de resumen por método de pago */}
+      {/* Resumen general */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="border-l-4 border-l-green-500">
+          <CardContent className="pt-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">Total Ingresos</p>
+                <p className="text-2xl font-bold text-green-600">
+                  €{totales.ingresos.toFixed(2)}
+                </p>
+              </div>
+              <ArrowUpCircle className="h-10 w-10 text-green-500 opacity-50" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-red-500">
+          <CardContent className="pt-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">Total Gastos</p>
+                <p className="text-2xl font-bold text-red-600">
+                  €{totales.gastos.toFixed(2)}
+                </p>
+              </div>
+              <ArrowDownCircle className="h-10 w-10 text-red-500 opacity-50" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className={`border-l-4 ${totales.balance >= 0 ? 'border-l-blue-500' : 'border-l-orange-500'}`}>
+          <CardContent className="pt-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">Balance Total</p>
+                <p className={`text-2xl font-bold ${totales.balance >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
+                  €{totales.balance.toFixed(2)}
+                </p>
+              </div>
+              <Wallet className={`h-10 w-10 opacity-50 ${totales.balance >= 0 ? 'text-blue-500' : 'text-orange-500'}`} />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Desglose por método de pago */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="border-l-4 border-l-yellow-500 bg-yellow-50/50">
           <CardContent className="pt-4">
@@ -268,51 +313,6 @@ export default function DiarioCajaView() {
                 <p className="text-xs text-gray-500">Ingresos - Gastos</p>
               </div>
               <Building2 className="h-10 w-10 text-cyan-600 opacity-50" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Resumen general */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="border-l-4 border-l-green-500">
-          <CardContent className="pt-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Total Ingresos</p>
-                <p className="text-2xl font-bold text-green-600">
-                  €{totales.ingresos.toFixed(2)}
-                </p>
-              </div>
-              <ArrowUpCircle className="h-10 w-10 text-green-500 opacity-50" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-red-500">
-          <CardContent className="pt-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Total Gastos</p>
-                <p className="text-2xl font-bold text-red-600">
-                  €{totales.gastos.toFixed(2)}
-                </p>
-              </div>
-              <ArrowDownCircle className="h-10 w-10 text-red-500 opacity-50" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className={`border-l-4 ${totales.balance >= 0 ? 'border-l-blue-500' : 'border-l-orange-500'}`}>
-          <CardContent className="pt-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Balance Total</p>
-                <p className={`text-2xl font-bold ${totales.balance >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
-                  €{totales.balance.toFixed(2)}
-                </p>
-              </div>
-              <Wallet className={`h-10 w-10 opacity-50 ${totales.balance >= 0 ? 'text-blue-500' : 'text-orange-500'}`} />
             </div>
           </CardContent>
         </Card>
