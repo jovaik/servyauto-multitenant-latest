@@ -18,6 +18,7 @@ import {
   Trash2,
   X
 } from 'lucide-react'
+import { generarPDFFacturacion } from '@/lib/pdf-generator'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { NuevaFacturaDialog } from '@/components/nueva-factura-dialog'
@@ -360,18 +361,38 @@ export function FacturacionView() {
               <CreditCard className="mr-2 h-5 w-5" />
               Resumen de Ventas - Arqueo de Caja
             </div>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => {
-                loadStats()
-                loadFacturas()
-              }}
-              className="bg-white hover:bg-blue-50"
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Actualizar
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const total = facturas.filter(f => f.estado === 'PAGADA').reduce((sum, f) => sum + f.total, 0)
+                  const tickets = facturas.filter(f => f.tipo === 'TICKET' && f.estado === 'PAGADA').reduce((sum, f) => sum + f.total, 0)
+                  const facturasTotal = facturas.filter(f => f.tipo === 'FACTURA' && f.estado === 'PAGADA').reduce((sum, f) => sum + f.total, 0)
+                  generarPDFFacturacion(
+                    facturas.filter(f => f.estado === 'PAGADA'),
+                    { total, tickets, facturas: facturasTotal },
+                    'Período seleccionado'
+                  )
+                }}
+                className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                PDF
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  loadStats()
+                  loadFacturas()
+                }}
+                className="bg-white hover:bg-blue-50"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Actualizar
+              </Button>
+            </div>
           </CardTitle>
           <p className="text-sm text-blue-700">
             Incluye facturas/tickets pagados + citas completadas de la agenda

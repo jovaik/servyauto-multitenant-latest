@@ -11,8 +11,10 @@ import {
   Pencil,
   Trash2,
   FileText,
-  Receipt
+  Receipt,
+  Download
 } from 'lucide-react'
+import { generarPDFGastos } from '@/lib/pdf-generator'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -235,6 +237,22 @@ export function GastosView() {
               </Button>
             </div>
 
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => {
+                const total = filteredGastos.reduce((sum, g) => sum + g.importe, 0)
+                const porCategoria: Record<string, number> = {}
+                filteredGastos.forEach(g => {
+                  porCategoria[g.tipoGasto] = (porCategoria[g.tipoGasto] || 0) + g.importe
+                })
+                generarPDFGastos(filteredGastos, { total, porCategoria }, 'Período seleccionado')
+              }}
+              className="bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
+            >
+              <Download className="h-4 w-4 mr-1" />
+              PDF
+            </Button>
             <Button variant="outline" size="sm" onClick={loadGastos}>
               <RefreshCw className="h-4 w-4" />
             </Button>

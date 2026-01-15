@@ -19,8 +19,10 @@ import {
   ArrowDownCircle,
   Wallet,
   CreditCard,
-  Building2
+  Building2,
+  Download
 } from 'lucide-react'
+import { generarPDFDiarioCaja } from '@/lib/pdf-generator'
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, subMonths, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 
@@ -219,10 +221,27 @@ export default function DiarioCajaView() {
             Vista unificada de ingresos y gastos
           </p>
         </div>
-        <Button onClick={cargarDatos} variant="outline" disabled={loading}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-          Actualizar
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            onClick={() => {
+              const periodoTexto = filtroPeriodo === 'HOY' ? 'Hoy' :
+                filtroPeriodo === 'SEMANA' ? 'Esta semana' :
+                filtroPeriodo === 'MES_ACTUAL' ? 'Mes actual' :
+                filtroPeriodo === 'MES_ANTERIOR' ? 'Mes anterior' :
+                `${fechaInicio || ''} - ${fechaFin || ''}`
+              generarPDFDiarioCaja(movimientosFiltrados, totales, periodoTexto)
+            }} 
+            variant="outline"
+            className="bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Descargar PDF
+          </Button>
+          <Button onClick={cargarDatos} variant="outline" disabled={loading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Actualizar
+          </Button>
+        </div>
       </div>
 
       {/* Resumen general */}
