@@ -21,12 +21,15 @@ import {
   UserCheck,
   CreditCard,
   ChevronDown,
+  ChevronRight,
   TrendingDown,
+  TrendingUp,
   Download,
   Archive,
   Upload,
   Globe,
-  Wrench
+  Wrench,
+  BookOpen
 } from 'lucide-react'
 import { RolUsuario } from '@/lib/types'
 import { Button } from '@/components/ui/button'
@@ -41,18 +44,40 @@ interface NavItem {
   name: string
   href: string
   icon: React.ComponentType<any>
-  roles?: RolUsuario[] // Si no se especifica, está disponible para todos
+  roles?: RolUsuario[]
 }
 
-const navigation: NavItem[] = [
-  { name: 'Dashboard', href: '/dashboard', icon: BarChart3, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN] },
-  { name: 'Agenda', href: '/dashboard/agenda', icon: Calendar }, // Disponible para todos
-  { name: 'Reservas', href: '/dashboard/reservas', icon: Clock }, // Disponible para todos
+interface NavSection {
+  name: string
+  icon: React.ComponentType<any>
+  roles?: RolUsuario[]
+  items: NavItem[]
+}
+
+// Items de navegación simples (sin submenú)
+const simpleNavigation: NavItem[] = [
+  { name: 'Agenda', href: '/dashboard/agenda', icon: Calendar },
+  { name: 'Reservas', href: '/dashboard/reservas', icon: Clock },
   { name: 'Clientes', href: '/dashboard/clientes', icon: Users, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
   { name: 'Vehículos', href: '/dashboard/vehiculos', icon: Car, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
-  { name: 'Facturación', href: '/dashboard/facturacion', icon: CreditCard, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
+]
+
+// Sección GESTIÓN (con submenú desplegable)
+const gestionSection: NavSection = {
+  name: 'Gestión',
+  icon: BarChart3,
+  roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN],
+  items: [
+    { name: 'Dashboard', href: '/dashboard', icon: BarChart3 },
+    { name: 'Diario de Caja', href: '/dashboard/diario-caja', icon: BookOpen },
+    { name: 'Facturación', href: '/dashboard/facturacion', icon: CreditCard },
+    { name: 'Gastos', href: '/dashboard/gastos', icon: TrendingDown },
+  ]
+}
+
+// Items adicionales después de Gestión
+const additionalNavigation: NavItem[] = [
   { name: 'Servicios Taller', href: '/dashboard/servicios-taller', icon: Wrench, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
-  { name: 'Gastos', href: '/dashboard/gastos', icon: TrendingDown, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN] },
   { name: 'Cierres de Caja', href: '/dashboard/cierres-caja', icon: Archive, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN] },
   { name: 'Tickets Parking', href: '/dashboard/tickets', icon: Download, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN] },
   { name: 'Importador', href: '/dashboard/importador', icon: Upload, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN] },
@@ -60,6 +85,13 @@ const navigation: NavItem[] = [
   { name: 'Usuarios', href: '/dashboard/usuarios', icon: UserCheck, roles: [RolUsuario.SUPER_ADMIN] },
   { name: 'Configuración', href: '/dashboard/configuracion', icon: Settings, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN] },
   { name: 'Página Pública', href: '/dashboard/configuracion-publica', icon: Globe, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN] },
+]
+
+// Combinar todo para búsqueda de nombres
+const allNavItems: NavItem[] = [
+  ...simpleNavigation,
+  ...gestionSection.items,
+  ...additionalNavigation,
 ]
 
 const getRoleLabel = (role: string): string => {
@@ -75,19 +107,30 @@ const getRoleLabel = (role: string): string => {
 export function DashboardLayoutClient({ children, session }: DashboardLayoutClientProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const [gestionOpen, setGestionOpen] = useState(true) // Sección Gestión abierta por defecto
   const pathname = usePathname()
   const userMenuRef = useRef<HTMLDivElement>(null)
   
   // Obtener rol del usuario
   const userRole = (session?.user as any)?.role as RolUsuario || RolUsuario.OPERADOR
   
-  // Filtrar navegación según rol
-  const filteredNavigation = navigation.filter(item => {
-    // Si no tiene roles especificados, está disponible para todos
+  // Filtrar navegación simple según rol
+  const filteredSimpleNav = simpleNavigation.filter(item => {
     if (!item.roles || item.roles.length === 0) return true
-    // Si tiene roles, verificar si el usuario tiene uno de esos roles
     return item.roles.includes(userRole)
   })
+
+  // Verificar si el usuario puede ver la sección Gestión
+  const canSeeGestion = !gestionSection.roles || gestionSection.roles.includes(userRole)
+
+  // Filtrar navegación adicional según rol
+  const filteredAdditionalNav = additionalNavigation.filter(item => {
+    if (!item.roles || item.roles.length === 0) return true
+    return item.roles.includes(userRole)
+  })
+
+  // Verificar si estamos en una página de Gestión para mantenerla abierta
+  const isInGestionSection = gestionSection.items.some(item => pathname === item.href)
 
   const handleSignOut = () => {
     signOut({ callbackUrl: '/login' })
@@ -160,8 +203,9 @@ export function DashboardLayoutClient({ children, session }: DashboardLayoutClie
           </Button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-4 py-6 space-y-2">
-          {filteredNavigation.map((item) => {
+        <nav className="flex-1 overflow-y-auto px-4 py-6 space-y-1">
+          {/* Items simples de navegación */}
+          {filteredSimpleNav.map((item) => {
             const Icon = item.icon
             const isActive = pathname === item.href
             
@@ -183,6 +227,82 @@ export function DashboardLayoutClient({ children, session }: DashboardLayoutClie
               </Link>
             )
           })}
+
+          {/* Sección GESTIÓN desplegable */}
+          {canSeeGestion && (
+            <div className="pt-2">
+              <button
+                onClick={() => setGestionOpen(!gestionOpen)}
+                className={`
+                  w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200
+                  ${isInGestionSection 
+                    ? 'bg-orange-50 text-orange-600' 
+                    : 'text-gray-700 hover:bg-orange-50 hover:text-orange-600'
+                  }
+                `}
+              >
+                <div className="flex items-center">
+                  <BarChart3 className={`mr-3 h-5 w-5 ${isInGestionSection ? 'text-orange-600' : 'text-gray-400'}`} />
+                  <span>{gestionSection.name}</span>
+                </div>
+                <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${gestionOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {/* Subitems de Gestión */}
+              {gestionOpen && (
+                <div className="ml-4 mt-1 space-y-1 border-l-2 border-orange-200 pl-2">
+                  {gestionSection.items.map((item) => {
+                    const Icon = item.icon
+                    const isActive = pathname === item.href
+                    
+                    return (
+                      <Link
+                        key={item.name}
+                        href={item.href}
+                        className={`
+                          flex items-center px-3 py-2 rounded-lg text-sm transition-colors duration-200 group
+                          ${isActive 
+                            ? 'bg-orange-100 text-orange-700 font-medium' 
+                            : 'text-gray-600 hover:bg-orange-50 hover:text-orange-600'
+                          }
+                        `}
+                        onClick={handleNavClick}
+                      >
+                        <Icon className={`mr-3 h-4 w-4 ${isActive ? 'text-orange-600' : 'text-gray-400 group-hover:text-orange-600'}`} />
+                        {item.name}
+                      </Link>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Items adicionales de navegación */}
+          <div className="pt-2 space-y-1">
+            {filteredAdditionalNav.map((item) => {
+              const Icon = item.icon
+              const isActive = pathname === item.href
+              
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={`
+                    flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 group
+                    ${isActive 
+                      ? 'bg-red-50 text-red-600 border-r-2 border-red-600' 
+                      : 'text-gray-700 hover:bg-red-50 hover:text-red-600'
+                    }
+                  `}
+                  onClick={handleNavClick}
+                >
+                  <Icon className={`mr-3 h-5 w-5 transition-colors duration-200 ${isActive ? 'text-red-600' : 'text-gray-400 group-hover:text-red-600'}`} />
+                  {item.name}
+                </Link>
+              )
+            })}
+          </div>
         </nav>
 
         <div className="px-4 py-3 text-center border-t">
@@ -272,7 +392,7 @@ export function DashboardLayoutClient({ children, session }: DashboardLayoutClie
               </div>
               <div className="h-14 w-px bg-gray-300"></div>
               <h2 className="text-xl font-semibold text-gray-900">
-                {filteredNavigation.find(item => item.href === pathname)?.name || 'ServyAuto Manager'}
+                {allNavItems.find(item => item.href === pathname)?.name || 'ServyAuto Manager'}
               </h2>
             </div>
           </div>

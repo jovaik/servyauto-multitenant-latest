@@ -1,0 +1,378 @@
+'use client'
+
+import { useState, useEffect, useMemo } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
+import {
+  TrendingUp,
+  TrendingDown,
+  BookOpen,
+  Calendar,
+  Search,
+  Filter,
+  RefreshCw,
+  ArrowUpCircle,
+  ArrowDownCircle,
+  Wallet
+} from 'lucide-react'
+import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, subMonths, parseISO } from 'date-fns'
+import { es } from 'date-fns/locale'
+
+interface Movimiento {
+  id: string
+  fecha: Date
+  tipo: 'INGRESO' | 'GASTO'
+  concepto: string
+  categoria: string
+  importe: number
+  metodoPago?: string
+  referencia?: string
+}
+
+export default function DiarioCajaView() {
+  const [movimientos, setMovimientos] = useState<Movimiento[]>([])
+  const [loading, setLoading] = useState(true)
+  const [filtroTipo, setFiltroTipo] = useState<string>('TODOS')
+  const [filtroPeriodo, setFiltroPeriodo] = useState<string>('MES_ACTUAL')
+  const [busqueda, setBusqueda] = useState('')
+  const [fechaInicio, setFechaInicio] = useState<string>('')
+  const [fechaFin, setFechaFin] = useState<string>('')
+
+  // Cargar datos
+  const cargarDatos = async () => {
+    setLoading(true)
+    try {
+      // Cargar facturas (ingresos)
+      const resFacturas = await fetch('/api/facturas')
+      const facturas = await resFacturas.json()
+
+      // Cargar gastos
+      const resGastos = await fetch('/api/gastos')
+      const gastos = await resGastos.json()
+
+      // Transformar facturas a movimientos (solo pagadas)
+      const ingresosFacturas = (facturas || []).filter((f: any) => f.estado === 'PAGADA').map((f: any) => ({
+        id: `FAC-${f.id}`,
+        fecha: new Date(f.fechaPago || f.fecha),
+        tipo: 'INGRESO' as const,
+        concepto: f.tipo === 'TICKET' 
+          ? `Ticket #${f.numero}` 
+          : `Factura #${f.numero}`,
+        categoria: f.tipo === 'TICKET' ? 'Ticket' : 'Factura',
+        importe: f.total,
+        metodoPago: f.metodoPago,
+        referencia: f.numero
+      }))
+
+      // Transformar gastos a movimientos
+      const movimientosGastos = (gastos || []).map((g: any) => ({
+        id: `GAS-${g.id}`,
+        fecha: new Date(g.fecha),
+        tipo: 'GASTO' as const,
+        concepto: g.concepto || g.descripcion || 'Gasto',
+        categoria: g.tipoGasto || g.categoria || 'General',
+        importe: g.importe || g.total,
+        metodoPago: g.metodoPago,
+        referencia: g.numeroFactura
+      }))
+
+      // Combinar y ordenar por fecha (más reciente primero)
+      const todoMovimientos = [...ingresosFacturas, ...movimientosGastos]
+        .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
+
+      setMovimientos(todoMovimientos)
+    } catch (error) {
+      console.error('Error cargando datos:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    cargarDatos()
+  }, [])
+
+  // Calcular rango de fechas según filtro de período
+  const rangoFechas = useMemo(() => {
+    const hoy = new Date()
+    switch (filtroPeriodo) {
+      case 'HOY':
+        return { inicio: hoy, fin: hoy }
+      case 'SEMANA':
+        return { inicio: startOfWeek(hoy, { weekStartsOn: 1 }), fin: endOfWeek(hoy, { weekStartsOn: 1 }) }
+      case 'MES_ACTUAL':
+        return { inicio: startOfMonth(hoy), fin: endOfMonth(hoy) }
+      case 'MES_ANTERIOR':
+        const mesAnterior = subMonths(hoy, 1)
+        return { inicio: startOfMonth(mesAnterior), fin: endOfMonth(mesAnterior) }
+      case 'PERSONALIZADO':
+        return {
+          inicio: fechaInicio ? parseISO(fechaInicio) : new Date(0),
+          fin: fechaFin ? parseISO(fechaFin) : new Date()
+        }
+      default:
+        return { inicio: startOfMonth(hoy), fin: endOfMonth(hoy) }
+    }
+  }, [filtroPeriodo, fechaInicio, fechaFin])
+
+  // Filtrar movimientos
+  const movimientosFiltrados = useMemo(() => {
+    return movimientos.filter(m => {
+      // Filtro por tipo
+      if (filtroTipo !== 'TODOS' && m.tipo !== filtroTipo) return false
+
+      // Filtro por fecha
+      const fechaMov = new Date(m.fecha)
+      fechaMov.setHours(0, 0, 0, 0)
+      const inicio = new Date(rangoFechas.inicio)
+      inicio.setHours(0, 0, 0, 0)
+      const fin = new Date(rangoFechas.fin)
+      fin.setHours(23, 59, 59, 999)
+      
+      if (fechaMov < inicio || fechaMov > fin) return false
+
+      // Filtro por búsqueda
+      if (busqueda) {
+        const termino = busqueda.toLowerCase()
+        return (
+          m.concepto.toLowerCase().includes(termino) ||
+          m.categoria.toLowerCase().includes(termino) ||
+          (m.referencia && m.referencia.toLowerCase().includes(termino))
+        )
+      }
+
+      return true
+    })
+  }, [movimientos, filtroTipo, rangoFechas, busqueda])
+
+  // Calcular totales
+  const totales = useMemo(() => {
+    const ingresos = movimientosFiltrados
+      .filter(m => m.tipo === 'INGRESO')
+      .reduce((sum, m) => sum + m.importe, 0)
+    
+    const gastos = movimientosFiltrados
+      .filter(m => m.tipo === 'GASTO')
+      .reduce((sum, m) => sum + m.importe, 0)
+
+    return {
+      ingresos,
+      gastos,
+      balance: ingresos - gastos
+    }
+  }, [movimientosFiltrados])
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <BookOpen className="h-7 w-7 text-orange-600" />
+            Diario de Caja
+          </h1>
+          <p className="text-gray-500 text-sm mt-1">
+            Vista unificada de ingresos y gastos
+          </p>
+        </div>
+        <Button onClick={cargarDatos} variant="outline" disabled={loading}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+          Actualizar
+        </Button>
+      </div>
+
+      {/* Tarjetas de resumen */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="border-l-4 border-l-green-500">
+          <CardContent className="pt-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">Total Ingresos</p>
+                <p className="text-2xl font-bold text-green-600">
+                  €{totales.ingresos.toFixed(2)}
+                </p>
+              </div>
+              <ArrowUpCircle className="h-10 w-10 text-green-500 opacity-50" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-red-500">
+          <CardContent className="pt-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">Total Gastos</p>
+                <p className="text-2xl font-bold text-red-600">
+                  €{totales.gastos.toFixed(2)}
+                </p>
+              </div>
+              <ArrowDownCircle className="h-10 w-10 text-red-500 opacity-50" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className={`border-l-4 ${totales.balance >= 0 ? 'border-l-blue-500' : 'border-l-orange-500'}`}>
+          <CardContent className="pt-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">Balance</p>
+                <p className={`text-2xl font-bold ${totales.balance >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
+                  €{totales.balance.toFixed(2)}
+                </p>
+              </div>
+              <Wallet className={`h-10 w-10 opacity-50 ${totales.balance >= 0 ? 'text-blue-500' : 'text-orange-500'}`} />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filtros */}
+      <Card>
+        <CardContent className="pt-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {/* Búsqueda */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Buscar concepto..."
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+
+            {/* Filtro por tipo */}
+            <Select value={filtroTipo} onValueChange={setFiltroTipo}>
+              <SelectTrigger>
+                <Filter className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Tipo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="TODOS">Todos</SelectItem>
+                <SelectItem value="INGRESO">Solo Ingresos</SelectItem>
+                <SelectItem value="GASTO">Solo Gastos</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Filtro por período */}
+            <Select value={filtroPeriodo} onValueChange={setFiltroPeriodo}>
+              <SelectTrigger>
+                <Calendar className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Período" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="HOY">Hoy</SelectItem>
+                <SelectItem value="SEMANA">Esta semana</SelectItem>
+                <SelectItem value="MES_ACTUAL">Mes actual</SelectItem>
+                <SelectItem value="MES_ANTERIOR">Mes anterior</SelectItem>
+                <SelectItem value="PERSONALIZADO">Personalizado</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Mostrar contador */}
+            <div className="flex items-center justify-end text-sm text-gray-500">
+              {movimientosFiltrados.length} movimientos
+            </div>
+          </div>
+
+          {/* Fechas personalizadas */}
+          {filtroPeriodo === 'PERSONALIZADO' && (
+            <div className="grid grid-cols-2 gap-4 mt-4">
+              <div>
+                <label className="text-sm text-gray-500">Desde</label>
+                <Input
+                  type="date"
+                  value={fechaInicio}
+                  onChange={(e) => setFechaInicio(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="text-sm text-gray-500">Hasta</label>
+                <Input
+                  type="date"
+                  value={fechaFin}
+                  onChange={(e) => setFechaFin(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Tabla de movimientos */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Movimientos</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <RefreshCw className="h-8 w-8 animate-spin text-gray-400" />
+            </div>
+          ) : movimientosFiltrados.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              No hay movimientos para mostrar
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Fecha</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Concepto</TableHead>
+                    <TableHead>Categoría</TableHead>
+                    <TableHead>Método Pago</TableHead>
+                    <TableHead className="text-right">Importe</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {movimientosFiltrados.map((mov) => (
+                    <TableRow key={mov.id} className={mov.tipo === 'INGRESO' ? 'bg-green-50/50' : 'bg-red-50/50'}>
+                      <TableCell className="whitespace-nowrap">
+                        {format(new Date(mov.fecha), 'dd/MM/yyyy', { locale: es })}
+                      </TableCell>
+                      <TableCell>
+                        {mov.tipo === 'INGRESO' ? (
+                          <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
+                            <TrendingUp className="h-3 w-3 mr-1" />
+                            Ingreso
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-red-100 text-red-800 hover:bg-red-100">
+                            <TrendingDown className="h-3 w-3 mr-1" />
+                            Gasto
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="max-w-[200px] truncate" title={mov.concepto}>
+                        {mov.concepto}
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm text-gray-600">{mov.categoria}</span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm text-gray-500">
+                          {mov.metodoPago || '-'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        <span className={mov.tipo === 'INGRESO' ? 'text-green-600' : 'text-red-600'}>
+                          {mov.tipo === 'INGRESO' ? '+' : '-'}€{mov.importe.toFixed(2)}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
