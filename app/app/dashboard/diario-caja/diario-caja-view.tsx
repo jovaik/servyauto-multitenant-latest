@@ -17,7 +17,9 @@ import {
   RefreshCw,
   ArrowUpCircle,
   ArrowDownCircle,
-  Wallet
+  Wallet,
+  CreditCard,
+  Building2
 } from 'lucide-react'
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, subMonths, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -168,10 +170,39 @@ export default function DiarioCajaView() {
       .filter(m => m.tipo === 'GASTO')
       .reduce((sum, m) => sum + m.importe, 0)
 
+    // Desglose por método de pago
+    const ingresosEfectivo = movimientosFiltrados
+      .filter(m => m.tipo === 'INGRESO' && m.metodoPago === 'EFECTIVO')
+      .reduce((sum, m) => sum + m.importe, 0)
+    
+    const gastosEfectivo = movimientosFiltrados
+      .filter(m => m.tipo === 'GASTO' && m.metodoPago === 'EFECTIVO')
+      .reduce((sum, m) => sum + m.importe, 0)
+
+    const ingresosSumUp = movimientosFiltrados
+      .filter(m => m.tipo === 'INGRESO' && m.metodoPago === 'TPV_SUMUP')
+      .reduce((sum, m) => sum + m.importe, 0)
+
+    const gastosSumUp = movimientosFiltrados
+      .filter(m => m.tipo === 'GASTO' && m.metodoPago === 'TPV_SUMUP')
+      .reduce((sum, m) => sum + m.importe, 0)
+
+    const ingresosUnicaja = movimientosFiltrados
+      .filter(m => m.tipo === 'INGRESO' && m.metodoPago === 'TPV_UNICAJA')
+      .reduce((sum, m) => sum + m.importe, 0)
+
+    const gastosUnicaja = movimientosFiltrados
+      .filter(m => m.tipo === 'GASTO' && m.metodoPago === 'TPV_UNICAJA')
+      .reduce((sum, m) => sum + m.importe, 0)
+
     return {
       ingresos,
       gastos,
-      balance: ingresos - gastos
+      balance: ingresos - gastos,
+      // Por método de pago
+      efectivo: ingresosEfectivo - gastosEfectivo,
+      tpvSumUp: ingresosSumUp - gastosSumUp,
+      tpvUnicaja: ingresosUnicaja - gastosUnicaja
     }
   }, [movimientosFiltrados])
 
@@ -194,7 +225,55 @@ export default function DiarioCajaView() {
         </Button>
       </div>
 
-      {/* Tarjetas de resumen */}
+      {/* Tarjetas de resumen por método de pago */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="border-l-4 border-l-yellow-500 bg-yellow-50/50">
+          <CardContent className="pt-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 font-medium">💵 Efectivo</p>
+                <p className={`text-2xl font-bold ${totales.efectivo >= 0 ? 'text-yellow-700' : 'text-red-600'}`}>
+                  €{totales.efectivo.toFixed(2)}
+                </p>
+                <p className="text-xs text-gray-500">Ingresos - Gastos</p>
+              </div>
+              <Wallet className="h-10 w-10 text-yellow-600 opacity-50" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-purple-500 bg-purple-50/50">
+          <CardContent className="pt-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 font-medium">💳 TPV SumUp</p>
+                <p className={`text-2xl font-bold ${totales.tpvSumUp >= 0 ? 'text-purple-700' : 'text-red-600'}`}>
+                  €{totales.tpvSumUp.toFixed(2)}
+                </p>
+                <p className="text-xs text-gray-500">Ingresos - Gastos</p>
+              </div>
+              <CreditCard className="h-10 w-10 text-purple-600 opacity-50" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-cyan-500 bg-cyan-50/50">
+          <CardContent className="pt-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 font-medium">🏦 TPV Unicaja</p>
+                <p className={`text-2xl font-bold ${totales.tpvUnicaja >= 0 ? 'text-cyan-700' : 'text-red-600'}`}>
+                  €{totales.tpvUnicaja.toFixed(2)}
+                </p>
+                <p className="text-xs text-gray-500">Ingresos - Gastos</p>
+              </div>
+              <Building2 className="h-10 w-10 text-cyan-600 opacity-50" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Resumen general */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="border-l-4 border-l-green-500">
           <CardContent className="pt-4">
@@ -228,7 +307,7 @@ export default function DiarioCajaView() {
           <CardContent className="pt-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Balance</p>
+                <p className="text-sm text-gray-500">Balance Total</p>
                 <p className={`text-2xl font-bold ${totales.balance >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
                   €{totales.balance.toFixed(2)}
                 </p>
