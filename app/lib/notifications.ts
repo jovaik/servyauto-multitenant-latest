@@ -60,6 +60,9 @@ Tu ${data.vehiculo} está listo para recoger.
 
 💰 Total: ${data.total.toFixed(2)}€
 
+📅 Puede hacer su próxima cita desde este enlace:
+https://app.servyauto.com/reservas
+
 Gracias por confiar en ServyAuto 🚗`;
 
   const result = {
@@ -158,6 +161,9 @@ Muchas gracias por su confianza. Esperamos volver a tenerles como clientes. Le a
 
 https://opinas.es/servyautocarwashdeta
 
+📅 Puede hacer su próxima cita desde este enlace:
+https://app.servyauto.com/reservas
+
 Muchas gracias`;
 
   // Codificar mensaje para URL
@@ -211,6 +217,9 @@ export function generarEnlaceSMSResena(data: {
 Muchas gracias por su confianza. Esperamos volver a tenerles como clientes. Le agradeceríamos que dejase un comentario acerca de nuestros servicios en nuestra pagina de google. Este es el enlace directo:
 
 https://opinas.es/servyautocarwashdeta
+
+📅 Puede hacer su próxima cita desde este enlace:
+https://app.servyauto.com/reservas
 
 Muchas gracias`;
 
@@ -324,6 +333,10 @@ export function generarEnlaceConfirmacionDeposito(data: {
 ${serviciosTexto}
 
 Le mantendremos informado del progreso de su vehículo.
+
+📅 Puede hacer su próxima cita desde este enlace:
+https://app.servyauto.com/reservas
+
 ¡Gracias por confiar en nosotros!
 
 *ServyAuto Car Wash & Detailing*
@@ -484,6 +497,9 @@ ${serviciosTexto}
 
 📅 *Agregar a tu calendario:*
 ${icsUrl}
+
+📅 *Para su próxima cita:*
+https://app.servyauto.com/reservas
 
 *ServyAuto Car Wash & Detailing*
 📞 +34 678 569 098`;

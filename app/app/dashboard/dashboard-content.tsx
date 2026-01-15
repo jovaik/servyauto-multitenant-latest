@@ -270,7 +270,7 @@ export function DashboardContent({ session }: DashboardContentProps) {
                       <Cell key={`cell-${index}`} fill={['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'][index % 5]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value: number) => `€${value.toFixed(2)}`} />
+                  <Tooltip formatter={(value) => `€${typeof value === 'number' ? value.toFixed(2) : value}`} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
