@@ -1,7 +1,15 @@
-import jsPDF from 'jspdf'
-import autoTable from 'jspdf-autotable'
+import { jsPDF } from 'jspdf'
+import 'jspdf-autotable'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+
+// Extend jsPDF type for autoTable
+declare module 'jspdf' {
+  interface jsPDF {
+    autoTable: (options: any) => jsPDF;
+    lastAutoTable: { finalY: number };
+  }
+}
 
 interface MovimientoPDF {
   fecha: Date
@@ -46,7 +54,7 @@ export function generarPDFDiarioCaja(
   doc.setTextColor(40, 40, 40)
   doc.text('Resumen por Método de Pago', 14, 48)
   
-  autoTable(doc, {
+  doc.autoTable({
     startY: 52,
     head: [['Método', 'Balance']],
     body: [
@@ -63,10 +71,10 @@ export function generarPDFDiarioCaja(
   })
   
   // Resumen general
-  const y1 = (doc as any).lastAutoTable.finalY + 10
+  const y1 = doc.lastAutoTable.finalY + 10
   doc.text('Resumen General', 14, y1)
   
-  autoTable(doc, {
+  doc.autoTable({
     startY: y1 + 4,
     head: [['Concepto', 'Importe']],
     body: [
@@ -88,7 +96,7 @@ export function generarPDFDiarioCaja(
   })
   
   // Tabla de movimientos
-  const y2 = (doc as any).lastAutoTable.finalY + 15
+  const y2 = doc.lastAutoTable.finalY + 15
   doc.setFontSize(14)
   doc.text('Detalle de Movimientos', 14, y2)
   
@@ -102,7 +110,7 @@ export function generarPDFDiarioCaja(
     m.creadoPor || '-'
   ])
   
-  autoTable(doc, {
+  doc.autoTable({
     startY: y2 + 4,
     head: [['Fecha', 'Tipo', 'Concepto', 'Categoría', 'M. Pago', 'Importe', 'Usuario']],
     body: tableData,
@@ -167,7 +175,7 @@ export function generarPDFCierreCaja(
   doc.text(`Fecha: ${format(new Date(cierre.fecha), "dd/MM/yyyy", { locale: es })}`, pageWidth / 2, 28, { align: 'center' })
   
   // Resumen
-  autoTable(doc, {
+  doc.autoTable({
     startY: 40,
     head: [['Concepto', 'Importe']],
     body: [
@@ -223,7 +231,7 @@ export function generarPDFGastos(
     `€${importe.toFixed(2)}`
   ])
   
-  autoTable(doc, {
+  doc.autoTable({
     startY: 64,
     head: [['Categoría', 'Importe']],
     body: categoriaData,
@@ -236,7 +244,7 @@ export function generarPDFGastos(
   })
   
   // Detalle
-  const y1 = (doc as any).lastAutoTable.finalY + 15
+  const y1 = doc.lastAutoTable.finalY + 15
   doc.text('Detalle de Gastos', 14, y1)
   
   const tableData = gastos.map(g => [
@@ -247,7 +255,7 @@ export function generarPDFGastos(
     `€${(g.importe || g.total || 0).toFixed(2)}`
   ])
   
-  autoTable(doc, {
+  doc.autoTable({
     startY: y1 + 4,
     head: [['Fecha', 'Concepto', 'Categoría', 'Proveedor', 'Importe']],
     body: tableData,
@@ -301,7 +309,7 @@ export function generarPDFFacturacion(
   doc.setTextColor(40, 40, 40)
   doc.text('Resumen', 14, 48)
   
-  autoTable(doc, {
+  doc.autoTable({
     startY: 52,
     head: [['Concepto', 'Importe']],
     body: [
@@ -318,7 +326,7 @@ export function generarPDFFacturacion(
   })
   
   // Detalle
-  const y1 = (doc as any).lastAutoTable.finalY + 15
+  const y1 = doc.lastAutoTable.finalY + 15
   doc.text('Detalle de Facturas/Tickets', 14, y1)
   
   const tableData = facturas.map(f => [
@@ -330,7 +338,7 @@ export function generarPDFFacturacion(
     `€${f.total.toFixed(2)}`
   ])
   
-  autoTable(doc, {
+  doc.autoTable({
     startY: y1 + 4,
     head: [['Fecha', 'Número', 'Tipo', 'Cliente', 'M. Pago', 'Total']],
     body: tableData,
