@@ -240,13 +240,13 @@ export function GastosView() {
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={() => {
+              onClick={async () => {
                 const total = filteredGastos.reduce((sum, g) => sum + g.importe, 0)
                 const porCategoria: Record<string, number> = {}
                 filteredGastos.forEach(g => {
                   porCategoria[g.tipoGasto] = (porCategoria[g.tipoGasto] || 0) + g.importe
                 })
-                generarPDFGastos(filteredGastos, { total, porCategoria }, 'Período seleccionado')
+                await generarPDFGastos(filteredGastos, { total, porCategoria }, 'Período seleccionado')
               }}
               className="bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
             >

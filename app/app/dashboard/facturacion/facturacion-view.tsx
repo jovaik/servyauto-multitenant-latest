@@ -365,11 +365,11 @@ export function FacturacionView() {
               <Button 
                 variant="outline"
                 size="sm"
-                onClick={() => {
+                onClick={async () => {
                   const total = facturas.filter(f => f.estado === 'PAGADA').reduce((sum, f) => sum + f.total, 0)
                   const tickets = facturas.filter(f => f.tipo === 'TICKET' && f.estado === 'PAGADA').reduce((sum, f) => sum + f.total, 0)
                   const facturasTotal = facturas.filter(f => f.tipo === 'FACTURA' && f.estado === 'PAGADA').reduce((sum, f) => sum + f.total, 0)
-                  generarPDFFacturacion(
+                  await generarPDFFacturacion(
                     facturas.filter(f => f.estado === 'PAGADA'),
                     { total, tickets, facturas: facturasTotal },
                     'Período seleccionado'

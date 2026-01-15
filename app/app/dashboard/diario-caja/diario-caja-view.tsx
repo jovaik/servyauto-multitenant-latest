@@ -223,13 +223,13 @@ export default function DiarioCajaView() {
         </div>
         <div className="flex gap-2">
           <Button 
-            onClick={() => {
+            onClick={async () => {
               const periodoTexto = filtroPeriodo === 'HOY' ? 'Hoy' :
                 filtroPeriodo === 'SEMANA' ? 'Esta semana' :
                 filtroPeriodo === 'MES_ACTUAL' ? 'Mes actual' :
                 filtroPeriodo === 'MES_ANTERIOR' ? 'Mes anterior' :
                 `${fechaInicio || ''} - ${fechaFin || ''}`
-              generarPDFDiarioCaja(movimientosFiltrados, totales, periodoTexto)
+              await generarPDFDiarioCaja(movimientosFiltrados, totales, periodoTexto)
             }} 
             variant="outline"
             className="bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100"

@@ -1,15 +1,5 @@
-import { jsPDF } from 'jspdf'
-import 'jspdf-autotable'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-
-// Extend jsPDF type for autoTable
-declare module 'jspdf' {
-  interface jsPDF {
-    autoTable: (options: any) => jsPDF;
-    lastAutoTable: { finalY: number };
-  }
-}
 
 interface MovimientoPDF {
   fecha: Date
@@ -30,12 +20,16 @@ interface TotalesPDF {
   tpvUnicaja: number
 }
 
-export function generarPDFDiarioCaja(
+export async function generarPDFDiarioCaja(
   movimientos: MovimientoPDF[],
   totales: TotalesPDF,
   periodo: string
 ) {
-  const doc = new jsPDF()
+  const jsPDFModule = await import('jspdf')
+  const jsPDF = jsPDFModule.jsPDF
+  await import('jspdf-autotable')
+  
+  const doc = new jsPDF() as any
   const pageWidth = doc.internal.pageSize.getWidth()
   
   // Título
@@ -158,11 +152,15 @@ export function generarPDFDiarioCaja(
   doc.save(nombreArchivo)
 }
 
-export function generarPDFCierreCaja(
+export async function generarPDFCierreCaja(
   cierre: any,
   detalles: any
 ) {
-  const doc = new jsPDF()
+  const jsPDFModule = await import('jspdf')
+  const jsPDF = jsPDFModule.jsPDF
+  await import('jspdf-autotable')
+  
+  const doc = new jsPDF() as any
   const pageWidth = doc.internal.pageSize.getWidth()
   
   // Título
@@ -198,12 +196,16 @@ export function generarPDFCierreCaja(
   doc.save(nombreArchivo)
 }
 
-export function generarPDFGastos(
+export async function generarPDFGastos(
   gastos: any[],
   totales: { total: number; porCategoria: Record<string, number> },
   periodo: string
 ) {
-  const doc = new jsPDF()
+  const jsPDFModule = await import('jspdf')
+  const jsPDF = jsPDFModule.jsPDF
+  await import('jspdf-autotable')
+  
+  const doc = new jsPDF() as any
   const pageWidth = doc.internal.pageSize.getWidth()
   
   // Título
@@ -286,12 +288,16 @@ export function generarPDFGastos(
   doc.save(nombreArchivo)
 }
 
-export function generarPDFFacturacion(
+export async function generarPDFFacturacion(
   facturas: any[],
   totales: { total: number; tickets: number; facturas: number },
   periodo: string
 ) {
-  const doc = new jsPDF()
+  const jsPDFModule = await import('jspdf')
+  const jsPDF = jsPDFModule.jsPDF
+  await import('jspdf-autotable')
+  
+  const doc = new jsPDF() as any
   const pageWidth = doc.internal.pageSize.getWidth()
   
   // Título
