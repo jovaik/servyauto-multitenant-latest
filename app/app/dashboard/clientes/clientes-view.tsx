@@ -2,7 +2,8 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Users, User, Car, Phone, Mail, Plus, Edit, Trash2, X } from 'lucide-react'
+import { Users, User, Car, Phone, Mail, Plus, Edit, Trash2, X, Download } from 'lucide-react'
+import { exportarClientesExcel } from '@/lib/excel-generator'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -195,13 +196,23 @@ export function ClientesView() {
             Gestiona la información de los clientes y sus vehículos
           </p>
         </div>
-        <Button 
-          className="bg-blue-600 hover:bg-blue-700"
-          onClick={() => handleOpenModal()}
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Nuevo Cliente
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline"
+            onClick={() => exportarClientesExcel(clientes)}
+            className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Excel
+          </Button>
+          <Button 
+            className="bg-blue-600 hover:bg-blue-700"
+            onClick={() => handleOpenModal()}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Nuevo Cliente
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}

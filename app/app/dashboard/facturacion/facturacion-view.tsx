@@ -19,6 +19,7 @@ import {
   X
 } from 'lucide-react'
 import { generarPDFFacturacion } from '@/lib/pdf-generator'
+import { exportarFacturacionExcel } from '@/lib/excel-generator'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { NuevaFacturaDialog } from '@/components/nueva-factura-dialog'
@@ -375,10 +376,28 @@ export function FacturacionView() {
                     'Período seleccionado'
                   )
                 }}
-                className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+                className="bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
               >
                 <Download className="h-4 w-4 mr-2" />
                 PDF
+              </Button>
+              <Button 
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  const total = facturas.filter(f => f.estado === 'PAGADA').reduce((sum, f) => sum + f.total, 0)
+                  const tickets = facturas.filter(f => f.tipo === 'TICKET' && f.estado === 'PAGADA').reduce((sum, f) => sum + f.total, 0)
+                  const facturasTotal = facturas.filter(f => f.tipo === 'FACTURA' && f.estado === 'PAGADA').reduce((sum, f) => sum + f.total, 0)
+                  await exportarFacturacionExcel(
+                    facturas.filter(f => f.estado === 'PAGADA'),
+                    { total, tickets, facturas: facturasTotal },
+                    'Período seleccionado'
+                  )
+                }}
+                className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Excel
               </Button>
               <Button 
                 variant="outline" 

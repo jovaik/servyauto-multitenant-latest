@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
     console.log(`✅ Encontrados ${vehiculos.length} vehículos`)
 
     // Formatear respuesta
-    const resultados = vehiculos.map(v => ({
+    const resultados = vehiculos.map((v: any) => ({
       id: v.id,
       marca: v.marca,
       modelo: v.modelo,

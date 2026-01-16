@@ -53,7 +53,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         },
       })
       
-      precioFinal = serviciosData.reduce((sum, servicio) => sum + servicio.precio, 0)
+      precioFinal = serviciosData.reduce((sum: number, servicio: any) => sum + servicio.precio, 0)
       
       // Aplicar descuento de parking si el cliente es abonado
       const cliente = await prisma.cliente.findUnique({

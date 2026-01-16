@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
     })
 
     // Mapear para agregar el conteo de visitas
-    const clientesConVisitas = clientes.map(cliente => ({
+    const clientesConVisitas = clientes.map((cliente: any) => ({
       ...cliente,
       totalVisitas: cliente._count.citas
     }))

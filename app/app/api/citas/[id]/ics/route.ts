@@ -45,7 +45,7 @@ export async function GET(
     })
 
     const getConfigValue = (key: string, defaultValue: string = '') => {
-      const config = configs.find(c => c.clave === key)
+      const config = configs.find((c: any) => c.clave === key)
       return config?.valor || defaultValue
     }
 

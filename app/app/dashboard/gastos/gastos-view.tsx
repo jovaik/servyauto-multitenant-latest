@@ -15,6 +15,7 @@ import {
   Download
 } from 'lucide-react'
 import { generarPDFGastos } from '@/lib/pdf-generator'
+import { exportarGastosExcel } from '@/lib/excel-generator'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -252,6 +253,22 @@ export function GastosView() {
             >
               <Download className="h-4 w-4 mr-1" />
               PDF
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={async () => {
+                const total = filteredGastos.reduce((sum, g) => sum + g.importe, 0)
+                const porCategoria: Record<string, number> = {}
+                filteredGastos.forEach(g => {
+                  porCategoria[g.tipoGasto] = (porCategoria[g.tipoGasto] || 0) + g.importe
+                })
+                await exportarGastosExcel(filteredGastos, { total, porCategoria }, 'Período seleccionado')
+              }}
+              className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+            >
+              <Download className="h-4 w-4 mr-1" />
+              Excel
             </Button>
             <Button variant="outline" size="sm" onClick={loadGastos}>
               <RefreshCw className="h-4 w-4" />

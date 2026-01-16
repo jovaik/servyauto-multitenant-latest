@@ -23,6 +23,7 @@ import {
   Download
 } from 'lucide-react'
 import { generarPDFDiarioCaja } from '@/lib/pdf-generator'
+import { exportarDiarioCajaExcel } from '@/lib/excel-generator'
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, subMonths, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 
@@ -232,10 +233,25 @@ export default function DiarioCajaView() {
               await generarPDFDiarioCaja(movimientosFiltrados, totales, periodoTexto)
             }} 
             variant="outline"
-            className="bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100"
+            className="bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
           >
             <Download className="h-4 w-4 mr-2" />
-            Descargar PDF
+            PDF
+          </Button>
+          <Button 
+            onClick={async () => {
+              const periodoTexto = filtroPeriodo === 'HOY' ? 'Hoy' :
+                filtroPeriodo === 'SEMANA' ? 'Esta semana' :
+                filtroPeriodo === 'MES_ACTUAL' ? 'Mes actual' :
+                filtroPeriodo === 'MES_ANTERIOR' ? 'Mes anterior' :
+                `${fechaInicio || ''} - ${fechaFin || ''}`
+              await exportarDiarioCajaExcel(movimientosFiltrados, totales, periodoTexto)
+            }} 
+            variant="outline"
+            className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Excel
           </Button>
           <Button onClick={cargarDatos} variant="outline" disabled={loading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />

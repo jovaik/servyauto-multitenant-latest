@@ -84,7 +84,7 @@ export async function GET(req: NextRequest) {
       }
     })
     const citasConFacturaIds = citasConFactura
-      .map(f => f.citaId)
+      .map((f: any) => f.citaId)
       .filter((id): id is string => id !== null && id !== undefined)
 
     // Obtener estadísticas básicas según el período seleccionado
@@ -234,7 +234,7 @@ export async function GET(req: NextRequest) {
       },
     })
 
-    const facturasIds = facturasDelAnio.map(f => f.id)
+    const facturasIds = facturasDelAnio.map((f: any) => f.id)
 
     let topConceptos: { concepto: string; total: number }[] = []
 
@@ -247,7 +247,7 @@ export async function GET(req: NextRequest) {
         },
       })
       
-      const nombresServiciosActuales = serviciosActuales.map(s => s.nombre)
+      const nombresServiciosActuales = serviciosActuales.map((s: any) => s.nombre)
       
       // Obtener items de esas facturas agrupados por descripción
       // Solo servicios que todavía existen en el sistema
