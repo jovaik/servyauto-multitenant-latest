@@ -215,11 +215,30 @@ model reservas {
   updatedAt DateTime
 }
 
+model Proveedor {
+  id           String   @id @default(cuid())
+  nombre       String   @unique
+  cif          String?
+  direccion    String?
+  codigoPostal String?
+  ciudad       String?
+  provincia    String?
+  telefono     String?
+  email        String?
+  gastos       Gasto[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("proveedores")
+}
+
 model Gasto {
   id                    String      @id @default(cuid())
   concepto              String
   fecha                 DateTime
-  proveedor             String?
+  proveedor             String?     // Nombre del proveedor (legacy)
+  proveedorId           String?     // Relación con modelo Proveedor
+  proveedorRef          Proveedor?  @relation(fields: [proveedorId], references: [id])
   tipoGasto             String
   importe               Float
   metodoPago            MetodoPago? // Método de pago del gasto
