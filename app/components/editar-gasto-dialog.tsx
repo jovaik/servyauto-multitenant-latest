@@ -1,37 +1,36 @@
-
 'use client'
 
-import React, { useState, useEffect } from 'react'
-import { Pencil } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
+import { toast } from 'sonner'
+import { format } from 'date-fns'
+import { Pencil } from 'lucide-react'
+
+interface Proveedor {
+  id: string
+  nombre: string
+  cif?: string
+  direccion?: string
+  codigoPostal?: string
+  ciudad?: string
+  provincia?: string
+}
 
 interface Gasto {
   id: string
   concepto: string
   fecha: string
-  proveedor: string | null
+  proveedor?: string | null
+  proveedorId?: string | null
   tipoGasto: string
   importe: number
-  metodoPago?: 'EFECTIVO' | 'TPV_SUMUP' | 'TPV_UNICAJA' | null
-  tipo: 'TICKET' | 'FACTURA'
+  metodoPago?: string | null
+  tipo: string
   iva: number
   numeroFactura?: string | null
   proveedorCIF?: string | null
@@ -46,71 +45,131 @@ interface EditarGastoDialogProps {
   onGastoActualizado: () => void
 }
 
+const CATEGORIAS = [
+  'MATERIAL_LIMPIEZA',
+  'HERRAMIENTAS',
+  'SUMINISTROS',
+  'ALQUILER',
+  'SERVICIOS',
+  'IMPUESTOS',
+  'SEGUROS',
+  'VEHICULO',
+  'MARKETING',
+  'OTROS'
+]
+
+const METODOS_PAGO = [
+  { value: 'EFECTIVO', label: 'Efectivo' },
+  { value: 'TRANSFERENCIA', label: 'Transferencia' },
+  { value: 'TARJETA', label: 'Tarjeta' },
+  { value: 'TPV_UNICAJA', label: 'TPV Unicaja' },
+]
+
 export function EditarGastoDialog({ gasto, onGastoActualizado }: EditarGastoDialogProps) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [proveedores, setProveedores] = useState<Proveedor[]>([])
   const [formData, setFormData] = useState({
-    concepto: gasto.concepto,
-    fecha: new Date(gasto.fecha).toISOString().split('T')[0],
-    proveedor: gasto.proveedor || '',
-    tipoGasto: gasto.tipoGasto,
-    importe: gasto.importe.toString(),
-    metodoPago: gasto.metodoPago || 'EFECTIVO',
-    tipo: gasto.tipo,
-    iva: gasto.iva.toString(),
-    numeroFactura: gasto.numeroFactura || '',
-    proveedorCIF: gasto.proveedorCIF || '',
-    proveedorDireccion: gasto.proveedorDireccion || '',
-    proveedorCodigoPostal: gasto.proveedorCodigoPostal || '',
-    proveedorCiudad: gasto.proveedorCiudad || '',
-    proveedorProvincia: gasto.proveedorProvincia || ''
+    concepto: '',
+    fecha: '',
+    proveedor: '',
+    proveedorId: '',
+    tipoGasto: 'OTROS',
+    importe: 0,
+    metodoPago: 'EFECTIVO',
+    tipo: 'TICKET',
+    iva: 21,
+    numeroFactura: '',
+    proveedorCIF: '',
+    proveedorDireccion: '',
+    proveedorCodigoPostal: '',
+    proveedorCiudad: '',
+    proveedorProvincia: '',
   })
 
+  // Cargar proveedores
   useEffect(() => {
+    const fetchProveedores = async () => {
+      try {
+        const res = await fetch('/api/proveedores')
+        if (res.ok) {
+          const data = await res.json()
+          setProveedores(data)
+        }
+      } catch (error) {
+        console.error('Error cargando proveedores:', error)
+      }
+    }
     if (open) {
+      fetchProveedores()
+    }
+  }, [open])
+
+  // Cargar datos del gasto cuando se abre el diálogo
+  useEffect(() => {
+    if (gasto && open) {
       setFormData({
-        concepto: gasto.concepto,
-        fecha: new Date(gasto.fecha).toISOString().split('T')[0],
+        concepto: gasto.concepto || '',
+        fecha: gasto.fecha ? format(new Date(gasto.fecha), 'yyyy-MM-dd') : '',
         proveedor: gasto.proveedor || '',
-        tipoGasto: gasto.tipoGasto,
-        importe: gasto.importe.toString(),
+        proveedorId: gasto.proveedorId || '',
+        tipoGasto: gasto.tipoGasto || 'OTROS',
+        importe: gasto.importe || 0,
         metodoPago: gasto.metodoPago || 'EFECTIVO',
-        tipo: gasto.tipo,
-        iva: gasto.iva.toString(),
+        tipo: gasto.tipo || 'TICKET',
+        iva: gasto.iva || 21,
         numeroFactura: gasto.numeroFactura || '',
         proveedorCIF: gasto.proveedorCIF || '',
         proveedorDireccion: gasto.proveedorDireccion || '',
         proveedorCodigoPostal: gasto.proveedorCodigoPostal || '',
         proveedorCiudad: gasto.proveedorCiudad || '',
-        proveedorProvincia: gasto.proveedorProvincia || ''
+        proveedorProvincia: gasto.proveedorProvincia || '',
       })
     }
-  }, [open, gasto])
+  }, [gasto, open])
+
+  // Cuando se selecciona un proveedor existente, rellenar datos fiscales
+  const handleProveedorChange = (proveedorId: string) => {
+    const proveedor = proveedores.find(p => p.id === proveedorId)
+    if (proveedor) {
+      setFormData(prev => ({
+        ...prev,
+        proveedorId: proveedor.id,
+        proveedor: proveedor.nombre,
+        proveedorCIF: proveedor.cif || prev.proveedorCIF,
+        proveedorDireccion: proveedor.direccion || prev.proveedorDireccion,
+        proveedorCodigoPostal: proveedor.codigoPostal || prev.proveedorCodigoPostal,
+        proveedorCiudad: proveedor.ciudad || prev.proveedorCiudad,
+        proveedorProvincia: proveedor.provincia || prev.proveedorProvincia,
+      }))
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
+    if (!gasto) return
 
+    setLoading(true)
     try {
-      const response = await fetch(`/api/gastos/${gasto.id}`, {
+      const res = await fetch(`/api/gastos/${gasto.id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...formData,
+          fecha: new Date(formData.fecha).toISOString(),
+        }),
       })
 
-      if (response.ok) {
-        alert('Gasto actualizado correctamente')
-        setOpen(false)
-        onGastoActualizado()
-      } else {
-        const error = await response.json()
-        alert(error.error || 'Error al actualizar gasto')
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || 'Error al actualizar')
       }
-    } catch (error) {
-      console.error('Error updating gasto:', error)
-      alert('Error al actualizar gasto. Por favor intenta de nuevo.')
+
+      toast.success('Gasto actualizado correctamente')
+      onGastoActualizado()
+      setOpen(false)
+    } catch (error: any) {
+      toast.error(error.message || 'Error al actualizar el gasto')
     } finally {
       setLoading(false)
     }
@@ -119,124 +178,94 @@ export function EditarGastoDialog({ gasto, onGastoActualizado }: EditarGastoDial
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <DropdownMenuItem onSelect={(e) => {
-          e.preventDefault()
-          setOpen(true)
-        }}>
+        <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
           <Pencil className="mr-2 h-4 w-4" />
           Editar
         </DropdownMenuItem>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Editar Gasto</DialogTitle>
-          <DialogDescription>
-            Modifica los datos del gasto
-          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="concepto">Concepto *</Label>
-            <Input
-              id="concepto"
-              placeholder="Concepto del gasto"
-              value={formData.concepto}
-              onChange={(e) => setFormData({ ...formData, concepto: e.target.value })}
-              required
-            />
-          </div>
-
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="fecha">Fecha *</Label>
+            <div className="col-span-2">
+              <Label>Concepto</Label>
               <Input
-                id="fecha"
+                value={formData.concepto}
+                onChange={(e) => setFormData(prev => ({ ...prev, concepto: e.target.value }))}
+                required
+              />
+            </div>
+
+            <div>
+              <Label>Fecha</Label>
+              <Input
                 type="date"
                 value={formData.fecha}
-                onChange={(e) => setFormData({ ...formData, fecha: e.target.value })}
+                onChange={(e) => setFormData(prev => ({ ...prev, fecha: e.target.value }))}
                 required
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="importe">Importe (€) *</Label>
+            <div>
+              <Label>Importe (€)</Label>
               <Input
-                id="importe"
                 type="number"
                 step="0.01"
-                min="0"
-                placeholder="0.00"
                 value={formData.importe}
-                onChange={(e) => setFormData({ ...formData, importe: e.target.value })}
+                onChange={(e) => setFormData(prev => ({ ...prev, importe: parseFloat(e.target.value) || 0 }))}
                 required
               />
             </div>
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="metodoPago">Método de Pago *</Label>
-            <Select
-              value={formData.metodoPago}
-              onValueChange={(value) => setFormData({ ...formData, metodoPago: value as any })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecciona método" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="EFECTIVO">Efectivo</SelectItem>
-                <SelectItem value="TPV_SUMUP">TPV SUMUP</SelectItem>
-                <SelectItem value="TPV_UNICAJA">TPV UNICAJA</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="proveedor">Proveedor</Label>
-            <Input
-              id="proveedor"
-              placeholder="Nombre del proveedor"
-              value={formData.proveedor}
-              onChange={(e) => setFormData({ ...formData, proveedor: e.target.value })}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="tipoGasto">Tipo de Gasto *</Label>
-            <Select
-              value={formData.tipoGasto}
-              onValueChange={(value) => setFormData({ ...formData, tipoGasto: value })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecciona categoría" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Combustible">🛢️ Combustible</SelectItem>
-                <SelectItem value="Mantenimiento">🔧 Mantenimiento</SelectItem>
-                <SelectItem value="Productos Lavado">🧽 Productos Lavado</SelectItem>
-                <SelectItem value="Repuestos">⚙️ Repuestos</SelectItem>
-                <SelectItem value="Alquiler">🏢 Alquiler</SelectItem>
-                <SelectItem value="Seguros">🛡️ Seguros</SelectItem>
-                <SelectItem value="Limpieza">🧹 Limpieza</SelectItem>
-                <SelectItem value="Suministros">💡 Suministros (Agua/Luz/Gas)</SelectItem>
-                <SelectItem value="Administración">📋 Administración</SelectItem>
-                <SelectItem value="Marketing">📢 Marketing y Publicidad</SelectItem>
-                <SelectItem value="Personal">👥 Personal (Nóminas/SS)</SelectItem>
-                <SelectItem value="Asesoría">💼 Asesoría</SelectItem>
-                <SelectItem value="Otros">📦 Otros</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="tipo">Tipo Documento *</Label>
+            <div>
+              <Label>Categoría</Label>
               <Select
-                value={formData.tipo}
-                onValueChange={(value) => setFormData({ ...formData, tipo: value as 'FACTURA' | 'TICKET' })}
+                value={formData.tipoGasto}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, tipoGasto: value }))}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecciona tipo" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORIAS.map(cat => (
+                    <SelectItem key={cat} value={cat}>
+                      {cat.replace(/_/g, ' ')}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Método de Pago</Label>
+              <Select
+                value={formData.metodoPago}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, metodoPago: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {METODOS_PAGO.map(mp => (
+                    <SelectItem key={mp.value} value={mp.value}>
+                      {mp.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Tipo de Documento</Label>
+              <Select
+                value={formData.tipo}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, tipo: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="TICKET">Ticket</SelectItem>
@@ -245,127 +274,103 @@ export function EditarGastoDialog({ gasto, onGastoActualizado }: EditarGastoDial
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="iva">IVA (%) *</Label>
-              <Select
+            <div>
+              <Label>IVA (%)</Label>
+              <Input
+                type="number"
                 value={formData.iva}
-                onValueChange={(value) => setFormData({ ...formData, iva: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="% IVA" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="0">0%</SelectItem>
-                  <SelectItem value="4">4%</SelectItem>
-                  <SelectItem value="10">10%</SelectItem>
-                  <SelectItem value="21">21%</SelectItem>
-                </SelectContent>
-              </Select>
+                onChange={(e) => setFormData(prev => ({ ...prev, iva: parseFloat(e.target.value) || 21 }))}
+              />
             </div>
           </div>
 
-          {/* Campos adicionales para FACTURA */}
-          {formData.tipo === 'FACTURA' && (
-            <div className="space-y-4 border-t pt-4">
-              <div className="mb-2">
-                <h4 className="text-sm font-medium text-muted-foreground">
-                  Datos Fiscales del Proveedor
-                </h4>
-                <p className="text-xs text-muted-foreground">
-                  Requeridos para el libro de IVA
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="numeroFactura">Número de Factura *</Label>
-                <Input
-                  id="numeroFactura"
-                  placeholder="Ej: 2025-0001"
-                  value={formData.numeroFactura}
-                  onChange={(e) => setFormData({ ...formData, numeroFactura: e.target.value })}
-                  required={formData.tipo === 'FACTURA'}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="proveedor-factura">Razón Social *</Label>
+          {/* Datos del proveedor */}
+          <div className="border-t pt-4 mt-4">
+            <h3 className="font-medium mb-3">Datos del Proveedor</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="col-span-2">
+                <Label>Proveedor</Label>
+                <div className="flex gap-2">
+                  <Select
+                    value={formData.proveedorId}
+                    onValueChange={handleProveedorChange}
+                  >
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Seleccionar proveedor existente..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {proveedores.map(p => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.nombre}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <Input
-                    id="proveedor-factura"
-                    placeholder="Nombre del proveedor"
+                    className="flex-1"
+                    placeholder="O escribir nombre nuevo..."
                     value={formData.proveedor}
-                    onChange={(e) => setFormData({ ...formData, proveedor: e.target.value })}
-                    required={formData.tipo === 'FACTURA'}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="proveedorCIF">CIF/NIF *</Label>
-                  <Input
-                    id="proveedorCIF"
-                    placeholder="Ej: B12345678"
-                    value={formData.proveedorCIF}
-                    onChange={(e) => setFormData({ ...formData, proveedorCIF: e.target.value })}
-                    required={formData.tipo === 'FACTURA'}
+                    onChange={(e) => setFormData(prev => ({ ...prev, proveedor: e.target.value, proveedorId: '' }))}
                   />
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="proveedorDireccion">Dirección *</Label>
-                <Input
-                  id="proveedorDireccion"
-                  placeholder="Calle, número, etc."
-                  value={formData.proveedorDireccion}
-                  onChange={(e) => setFormData({ ...formData, proveedorDireccion: e.target.value })}
-                  required={formData.tipo === 'FACTURA'}
-                />
-              </div>
+              {formData.tipo === 'FACTURA' && (
+                <>
+                  <div>
+                    <Label>Nº Factura</Label>
+                    <Input
+                      value={formData.numeroFactura}
+                      onChange={(e) => setFormData(prev => ({ ...prev, numeroFactura: e.target.value }))}
+                    />
+                  </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="proveedorCodigoPostal">C.P. *</Label>
-                  <Input
-                    id="proveedorCodigoPostal"
-                    placeholder="28001"
-                    value={formData.proveedorCodigoPostal}
-                    onChange={(e) => setFormData({ ...formData, proveedorCodigoPostal: e.target.value })}
-                    required={formData.tipo === 'FACTURA'}
-                  />
-                </div>
+                  <div>
+                    <Label>CIF/NIF</Label>
+                    <Input
+                      value={formData.proveedorCIF}
+                      onChange={(e) => setFormData(prev => ({ ...prev, proveedorCIF: e.target.value }))}
+                    />
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="proveedorCiudad">Ciudad *</Label>
-                  <Input
-                    id="proveedorCiudad"
-                    placeholder="Madrid"
-                    value={formData.proveedorCiudad}
-                    onChange={(e) => setFormData({ ...formData, proveedorCiudad: e.target.value })}
-                    required={formData.tipo === 'FACTURA'}
-                  />
-                </div>
+                  <div className="col-span-2">
+                    <Label>Dirección</Label>
+                    <Input
+                      value={formData.proveedorDireccion}
+                      onChange={(e) => setFormData(prev => ({ ...prev, proveedorDireccion: e.target.value }))}
+                    />
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="proveedorProvincia">Provincia *</Label>
-                  <Input
-                    id="proveedorProvincia"
-                    placeholder="Madrid"
-                    value={formData.proveedorProvincia}
-                    onChange={(e) => setFormData({ ...formData, proveedorProvincia: e.target.value })}
-                    required={formData.tipo === 'FACTURA'}
-                  />
-                </div>
-              </div>
+                  <div>
+                    <Label>Código Postal</Label>
+                    <Input
+                      value={formData.proveedorCodigoPostal}
+                      onChange={(e) => setFormData(prev => ({ ...prev, proveedorCodigoPostal: e.target.value }))}
+                    />
+                  </div>
+
+                  <div>
+                    <Label>Ciudad</Label>
+                    <Input
+                      value={formData.proveedorCiudad}
+                      onChange={(e) => setFormData(prev => ({ ...prev, proveedorCiudad: e.target.value }))}
+                    />
+                  </div>
+
+                  <div>
+                    <Label>Provincia</Label>
+                    <Input
+                      value={formData.proveedorProvincia}
+                      onChange={(e) => setFormData(prev => ({ ...prev, proveedorProvincia: e.target.value }))}
+                    />
+                  </div>
+                </>
+              )}
             </div>
-          )}
+          </div>
 
-          <div className="flex justify-end space-x-2 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setOpen(false)}
-              disabled={loading}
-            >
+          <div className="flex justify-end gap-2 pt-4">
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancelar
             </Button>
             <Button type="submit" disabled={loading}>

@@ -215,10 +215,12 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       
       // Crear el documento (factura o ticket)
       // IMPORTANTE: Al crear la factura cuando se entrega el vehículo, se marca como PAGADA por defecto
+      // La fecha de la factura es la fecha de la cita (servicio), no la fecha de entrega
       const factura = await prisma.factura.create({
         data: {
           numero: numeroDocumento,
           tipo: tipoDocumento,
+          fecha: cita.fecha, // Usar la fecha del servicio, no la fecha actual
           estado: 'PAGADA', // Por defecto se marca como pagada al entregar el vehículo
           subtotal: Math.round(subtotal * 100) / 100,
           iva: Math.round(iva * 100) / 100,

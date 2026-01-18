@@ -21,7 +21,8 @@ export async function PUT(
     const { 
       concepto, 
       fecha, 
-      proveedor, 
+      proveedor,
+      proveedorId, 
       tipoGasto, 
       importe, 
       metodoPago, 
@@ -36,21 +37,50 @@ export async function PUT(
     } = body
 
     // Validar campos requeridos
-    if (!concepto || !fecha || !tipoGasto || !importe || !metodoPago) {
+    if (!concepto || !fecha || !tipoGasto || !importe) {
       return NextResponse.json(
-        { error: 'Faltan campos requeridos: concepto, fecha, tipoGasto, importe, metodoPago' },
+        { error: 'Faltan campos requeridos: concepto, fecha, tipoGasto, importe' },
         { status: 400 }
       )
     }
 
-    // Si es FACTURA, validar campos fiscales adicionales
-    if (tipo === 'FACTURA') {
-      if (!numeroFactura || !proveedor || !proveedorCIF || !proveedorDireccion || 
-          !proveedorCodigoPostal || !proveedorCiudad || !proveedorProvincia) {
-        return NextResponse.json(
-          { error: 'Para facturas se requieren todos los datos fiscales del proveedor' },
-          { status: 400 }
-        )
+    // Registrar proveedor automáticamente si hay nombre
+    let proveedorRegistradoId = proveedorId || null
+    if (proveedor && !proveedorId) {
+      // Buscar si ya existe
+      const proveedorExistente = await prisma.proveedor.findFirst({
+        where: { nombre: { equals: proveedor, mode: 'insensitive' } }
+      })
+      
+      if (proveedorExistente) {
+        proveedorRegistradoId = proveedorExistente.id
+        // Actualizar datos fiscales si los hay
+        if (proveedorCIF || proveedorDireccion) {
+          await prisma.proveedor.update({
+            where: { id: proveedorExistente.id },
+            data: {
+              cif: proveedorCIF || proveedorExistente.cif,
+              direccion: proveedorDireccion || proveedorExistente.direccion,
+              codigoPostal: proveedorCodigoPostal || proveedorExistente.codigoPostal,
+              ciudad: proveedorCiudad || proveedorExistente.ciudad,
+              provincia: proveedorProvincia || proveedorExistente.provincia,
+            }
+          })
+        }
+      } else {
+        // Crear nuevo proveedor
+        const nuevoProveedor = await prisma.proveedor.create({
+          data: {
+            nombre: proveedor,
+            cif: proveedorCIF || null,
+            direccion: proveedorDireccion || null,
+            codigoPostal: proveedorCodigoPostal || null,
+            ciudad: proveedorCiudad || null,
+            provincia: proveedorProvincia || null,
+          }
+        })
+        proveedorRegistradoId = nuevoProveedor.id
+        console.log('Nuevo proveedor registrado:', nuevoProveedor.nombre)
       }
     }
 
@@ -60,11 +90,12 @@ export async function PUT(
         concepto,
         fecha: new Date(fecha),
         proveedor: proveedor || null,
+        proveedorId: proveedorRegistradoId,
         tipoGasto,
-        importe: parseFloat(importe),
+        importe: parseFloat(importe.toString()),
         metodoPago: metodoPago as any,
         tipo: tipo || 'TICKET',
-        iva: parseFloat(iva) || 21,
+        iva: parseFloat((iva || 21).toString()),
         // Campos fiscales (solo para FACTURA)
         numeroFactura: numeroFactura || null,
         proveedorCIF: proveedorCIF || null,
