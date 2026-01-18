@@ -85,6 +85,17 @@ export function EditarFacturaDialog({ facturaId, facturaNumero, onFacturaActuali
   const [busquedaCliente, setBusquedaCliente] = useState('')
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [mostrarBuscador, setMostrarBuscador] = useState(false)
+  
+  // Estados para crear nuevo cliente
+  const [mostrarFormNuevo, setMostrarFormNuevo] = useState(false)
+  const [nuevoCliente, setNuevoCliente] = useState({
+    nombre: '',
+    apellido: '',
+    documento: '',
+    telefono: '',
+    direccion: ''
+  })
+  const [creandoCliente, setCreandoCliente] = useState(false)
 
   useEffect(() => {
     if (open && facturaId) {
