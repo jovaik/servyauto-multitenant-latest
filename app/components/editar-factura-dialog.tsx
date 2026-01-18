@@ -2,7 +2,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Edit, Save, X } from 'lucide-react'
+import { Edit, Save, X, Search, Building2, User } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -30,6 +30,14 @@ interface EditarFacturaDialogProps {
   onFacturaActualizada: () => void
 }
 
+interface Cliente {
+  id: string
+  nombre: string
+  apellido: string
+  telefono?: string
+  documento?: string
+}
+
 interface FacturaCompleta {
   id: string
   numero: string
@@ -39,6 +47,7 @@ interface FacturaCompleta {
   subtotal: number
   iva: number
   total: number
+  clienteId: string
   items: Array<{
     id: string
     descripcion: string
@@ -47,6 +56,7 @@ interface FacturaCompleta {
     total: number
   }>
   cliente: {
+    id: string
     nombre: string
     apellido: string
   }
@@ -68,10 +78,18 @@ export function EditarFacturaDialog({ facturaId, facturaNumero, onFacturaActuali
     precio: number
     total: number
   }>>([])
+  
+  // Estados para cambio de cliente
+  const [clienteId, setClienteId] = useState<string>('')
+  const [clienteNombre, setClienteNombre] = useState<string>('')
+  const [busquedaCliente, setBusquedaCliente] = useState('')
+  const [clientes, setClientes] = useState<Cliente[]>([])
+  const [mostrarBuscador, setMostrarBuscador] = useState(false)
 
   useEffect(() => {
     if (open && facturaId) {
       cargarFactura()
+      cargarClientes()
     }
   }, [open, facturaId])
 
@@ -85,6 +103,8 @@ export function EditarFacturaDialog({ facturaId, facturaNumero, onFacturaActuali
         setEstado(data.estado)
         setMetodoPago(data.metodoPago || '')
         setItems(data.items || [])
+        setClienteId(data.clienteId)
+        setClienteNombre(`${data.cliente.nombre} ${data.cliente.apellido || ''}`.trim())
       }
     } catch (error) {
       console.error('Error loading factura:', error)
@@ -92,6 +112,30 @@ export function EditarFacturaDialog({ facturaId, facturaNumero, onFacturaActuali
     } finally {
       setLoading(false)
     }
+  }
+
+  const cargarClientes = async () => {
+    try {
+      const response = await fetch('/api/clientes')
+      if (response.ok) {
+        const data = await response.json()
+        setClientes(data)
+      }
+    } catch (error) {
+      console.error('Error loading clientes:', error)
+    }
+  }
+
+  const clientesFiltrados = clientes.filter(c => 
+    `${c.nombre} ${c.apellido || ''}`.toLowerCase().includes(busquedaCliente.toLowerCase()) ||
+    (c.documento && c.documento.toLowerCase().includes(busquedaCliente.toLowerCase()))
+  )
+
+  const seleccionarCliente = (cliente: Cliente) => {
+    setClienteId(cliente.id)
+    setClienteNombre(`${cliente.nombre} ${cliente.apellido || ''}`.trim())
+    setMostrarBuscador(false)
+    setBusquedaCliente('')
   }
 
   const actualizarItem = (index: number, field: 'descripcion' | 'cantidad' | 'precio', value: string | number) => {
