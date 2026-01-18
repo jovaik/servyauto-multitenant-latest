@@ -181,6 +181,11 @@ export function EditarFacturaDialog({ facturaId, facturaNumero, onFacturaActuali
         metodoPago
       }
 
+      // Incluir cambio de cliente si es diferente
+      if (clienteId !== factura?.clienteId) {
+        updateData.clienteId = clienteId
+      }
+
       // Incluir items si han cambiado
       const itemsOriginales = factura?.items || []
       const itemsCambiaron = JSON.stringify(items) !== JSON.stringify(itemsOriginales)
@@ -253,8 +258,74 @@ export function EditarFacturaDialog({ facturaId, facturaNumero, onFacturaActuali
                 <Input value={factura.numero} disabled />
               </div>
               <div>
-                <Label>Cliente</Label>
-                <Input value={`${factura.cliente.nombre} ${factura.cliente.apellido}`} disabled />
+                <Label>Facturar a (Cliente/Empresa)</Label>
+                <div className="relative">
+                  <div className="flex gap-2">
+                    <Input 
+                      value={clienteNombre} 
+                      readOnly 
+                      className="flex-1 cursor-pointer"
+                      onClick={() => setMostrarBuscador(!mostrarBuscador)}
+                    />
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setMostrarBuscador(!mostrarBuscador)}
+                    >
+                      <Search className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  
+                  {mostrarBuscador && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-hidden">
+                      <div className="p-2 border-b">
+                        <Input
+                          placeholder="Buscar por nombre, empresa o NIF/CIF..."
+                          value={busquedaCliente}
+                          onChange={(e) => setBusquedaCliente(e.target.value)}
+                          autoFocus
+                        />
+                      </div>
+                      <div className="max-h-48 overflow-y-auto">
+                        {clientesFiltrados.length === 0 ? (
+                          <div className="p-3 text-center text-gray-500 text-sm">
+                            No se encontraron clientes
+                          </div>
+                        ) : (
+                          clientesFiltrados.slice(0, 10).map((cliente) => (
+                            <div
+                              key={cliente.id}
+                              className="p-2 hover:bg-gray-100 cursor-pointer flex items-center gap-2"
+                              onClick={() => seleccionarCliente(cliente)}
+                            >
+                              {cliente.documento ? (
+                                <Building2 className="h-4 w-4 text-blue-500" />
+                              ) : (
+                                <User className="h-4 w-4 text-gray-500" />
+                              )}
+                              <div>
+                                <div className="font-medium text-sm">
+                                  {cliente.nombre} {cliente.apellido || ''}
+                                </div>
+                                {cliente.documento && (
+                                  <div className="text-xs text-gray-500">
+                                    {cliente.documento}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {clienteId !== factura.clienteId && (
+                  <p className="text-xs text-amber-600 mt-1">
+                    ⚠️ Se cambiará el cliente de la factura
+                  </p>
+                )}
               </div>
             </div>
 
