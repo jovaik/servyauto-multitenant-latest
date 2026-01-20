@@ -58,7 +58,7 @@ export async function PUT(
     }
 
     const body = await request.json()
-    const { estado, metodoPago, pagada, observaciones, subtotal, iva, total, items } = body
+    const { estado, metodoPago, pagada, observaciones, subtotal, iva, total, items, clienteId } = body
 
     console.log('=== ACTUALIZANDO FACTURA ===')
     console.log('Factura ID:', params.id)
@@ -74,6 +74,13 @@ export async function PUT(
     if (subtotal !== undefined) updateData.subtotal = subtotal
     if (iva !== undefined) updateData.iva = iva
     if (total !== undefined) updateData.total = total
+    
+    // Cambio de cliente (para facturar a terceros/empresas)
+    if (clienteId !== undefined) {
+      console.log('=== CAMBIANDO CLIENTE ===')
+      console.log('Nuevo clienteId:', clienteId)
+      updateData.clienteId = clienteId
+    }
 
     // Si hay items, actualizar los items de la factura
     if (items && Array.isArray(items) && items.length > 0) {

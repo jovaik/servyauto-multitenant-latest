@@ -149,6 +149,47 @@ export function EditarFacturaDialog({ facturaId, facturaNumero, onFacturaActuali
     setBusquedaCliente('')
   }
 
+  const crearNuevoCliente = async () => {
+    if (!nuevoCliente.nombre.trim()) {
+      alert('El nombre es obligatorio')
+      return
+    }
+    
+    setCreandoCliente(true)
+    try {
+      const response = await fetch('/api/clientes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombre: nuevoCliente.nombre.trim(),
+          apellido: nuevoCliente.apellido.trim() || null,
+          documento: nuevoCliente.documento.trim() || null,
+          telefono: nuevoCliente.telefono.trim() || null,
+          direccion: nuevoCliente.direccion.trim() || null
+        })
+      })
+      
+      if (response.ok) {
+        const cliente = await response.json()
+        setClienteId(cliente.id)
+        setClienteNombre(`${cliente.nombre} ${cliente.apellido || ''}`.trim())
+        setMostrarFormNuevo(false)
+        setMostrarBuscador(false)
+        setNuevoCliente({ nombre: '', apellido: '', documento: '', telefono: '', direccion: '' })
+        // Recargar lista de clientes
+        cargarClientes()
+      } else {
+        const error = await response.json()
+        alert(error.error || 'Error al crear el cliente')
+      }
+    } catch (error) {
+      console.error('Error:', error)
+      alert('Error al crear el cliente')
+    } finally {
+      setCreandoCliente(false)
+    }
+  }
+
   const actualizarItem = (index: number, field: 'descripcion' | 'cantidad' | 'precio', value: string | number) => {
     const nuevosItems = [...items]
     nuevosItems[index] = { ...nuevosItems[index], [field]: value }
@@ -288,8 +329,8 @@ export function EditarFacturaDialog({ facturaId, facturaNumero, onFacturaActuali
                     </Button>
                   </div>
                   
-                  {mostrarBuscador && (
-                    <div className="absolute z-50 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-hidden">
+                  {mostrarBuscador && !mostrarFormNuevo && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-72 overflow-hidden">
                       <div className="p-2 border-b">
                         <Input
                           placeholder="Buscar por nombre, empresa o NIF/CIF..."
@@ -298,13 +339,13 @@ export function EditarFacturaDialog({ facturaId, facturaNumero, onFacturaActuali
                           autoFocus
                         />
                       </div>
-                      <div className="max-h-48 overflow-y-auto">
+                      <div className="max-h-40 overflow-y-auto">
                         {clientesFiltrados.length === 0 ? (
                           <div className="p-3 text-center text-gray-500 text-sm">
                             No se encontraron clientes
                           </div>
                         ) : (
-                          clientesFiltrados.slice(0, 10).map((cliente) => (
+                          clientesFiltrados.slice(0, 8).map((cliente) => (
                             <div
                               key={cliente.id}
                               className="p-2 hover:bg-gray-100 cursor-pointer flex items-center gap-2"
@@ -328,6 +369,74 @@ export function EditarFacturaDialog({ facturaId, facturaNumero, onFacturaActuali
                             </div>
                           ))
                         )}
+                      </div>
+                      <div className="p-2 border-t bg-gray-50">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                          onClick={() => setMostrarFormNuevo(true)}
+                        >
+                          <Building2 className="h-4 w-4 mr-2" />
+                          Nuevo cliente / empresa
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {mostrarFormNuevo && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border rounded-lg shadow-lg p-3">
+                      <div className="text-sm font-medium mb-3">Nuevo cliente / empresa</div>
+                      <div className="space-y-2">
+                        <Input
+                          placeholder="Nombre o Razón Social *"
+                          value={nuevoCliente.nombre}
+                          onChange={(e) => setNuevoCliente({...nuevoCliente, nombre: e.target.value})}
+                        />
+                        <Input
+                          placeholder="Apellidos (si es persona física)"
+                          value={nuevoCliente.apellido}
+                          onChange={(e) => setNuevoCliente({...nuevoCliente, apellido: e.target.value})}
+                        />
+                        <Input
+                          placeholder="NIF / CIF"
+                          value={nuevoCliente.documento}
+                          onChange={(e) => setNuevoCliente({...nuevoCliente, documento: e.target.value})}
+                        />
+                        <Input
+                          placeholder="Teléfono"
+                          value={nuevoCliente.telefono}
+                          onChange={(e) => setNuevoCliente({...nuevoCliente, telefono: e.target.value})}
+                        />
+                        <Input
+                          placeholder="Dirección fiscal"
+                          value={nuevoCliente.direccion}
+                          onChange={(e) => setNuevoCliente({...nuevoCliente, direccion: e.target.value})}
+                        />
+                        <div className="flex gap-2 pt-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="flex-1"
+                            onClick={() => {
+                              setMostrarFormNuevo(false)
+                              setNuevoCliente({ nombre: '', apellido: '', documento: '', telefono: '', direccion: '' })
+                            }}
+                          >
+                            Cancelar
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            className="flex-1"
+                            onClick={crearNuevoCliente}
+                            disabled={creandoCliente || !nuevoCliente.nombre.trim()}
+                          >
+                            {creandoCliente ? 'Creando...' : 'Crear y seleccionar'}
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   )}
