@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { enviarNotificacionVehiculoListo, enviarSolicitudResena } from '@/lib/notifications'
+import { notificarCreacionGSControl } from '@/lib/gscontrol-sync'
 
 export const dynamic = 'force-dynamic'
 
@@ -256,10 +257,26 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       console.log('📤 Iniciando sincronización con GSControl...')
       console.log(`Tipo: ${tipoDocumento}, Total: ${total}`)
       
-      if (tipoDocumento === 'FACTURA') {
-        // NOTA: La sincronización se hace automáticamente desde el endpoint de facturas
-      } else {
-        // NOTA: La sincronización se hace automáticamente desde el endpoint de facturas
+      // Obtener datos del cliente para la sincronización
+      const clienteNombreCompleto = `${cita.cliente.nombre} ${cita.cliente.apellido || ''}`.trim()
+      const descripcionFactura = `${tipoDocumento}: ${numeroDocumento} - ${clienteNombreCompleto}`
+      
+      try {
+        await notificarCreacionGSControl({
+          id: factura.id,
+          esIngreso: true,
+          fecha: factura.createdAt,
+          importe: factura.total,
+          descripcion: descripcionFactura,
+          documentType: tipoDocumento as 'FACTURA' | 'TICKET',
+          invoiceNumber: tipoDocumento === 'FACTURA' ? numeroDocumento : undefined,
+          clientName: clienteNombreCompleto || undefined,
+          clientDni: cita.cliente.documento || undefined
+        })
+        console.log('✅ Sincronización con GSControl completada')
+      } catch (gsError) {
+        console.error('❌ Error sincronizando con GSControl:', gsError)
+        // No bloqueamos la operación si falla GSControl
       }
     }
     
