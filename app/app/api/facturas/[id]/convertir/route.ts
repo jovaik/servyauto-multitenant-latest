@@ -44,9 +44,13 @@ export async function PUT(
       )
     }
 
-    // Generar nuevo número de factura
-    const año = new Date().getFullYear()
+    // Generar nuevo número de factura usando el año del documento original
+    const fechaOriginal = new Date(documentoActual.createdAt)
+    const año = fechaOriginal.getFullYear()
     const prefijo = 'FAC'
+    
+    console.log('Fecha original del ticket:', fechaOriginal.toISOString())
+    console.log('Año para la factura:', año)
     
     const ultimaFactura = await prisma.factura.findFirst({
       where: { 
