@@ -78,6 +78,18 @@ export async function PUT(
     const body = await request.json().catch(() => ({}))
     const { datosFacturacion } = body
 
+    // Determinar la fecha de la factura
+    // Si el ticket es de un año anterior, la factura debe tener fecha máxima 31/12 de ese año
+    const ahora = new Date()
+    const añoActual = ahora.getFullYear()
+    let fechaFactura = documentoActual.createdAt
+    
+    if (año < añoActual) {
+      // Si el ticket es de un ejercicio anterior, usar 31/12 de ese año como fecha máxima
+      fechaFactura = new Date(año, 11, 31, 23, 59, 59) // 31 de diciembre del año del ticket
+      console.log('Ticket de ejercicio anterior, ajustando fecha a:', fechaFactura.toISOString())
+    }
+
     // Actualizar el documento a FACTURA
     const facturaConvertida = await prisma.factura.update({
       where: { id: params.id },
@@ -85,6 +97,7 @@ export async function PUT(
         tipo: 'FACTURA',
         numero: numeroFactura,
         datosFacturacion: datosFacturacion || documentoActual.datosFacturacion,
+        createdAt: fechaFactura, // Mantener la fecha del ejercicio original
       },
       include: {
         factura_items: true,
