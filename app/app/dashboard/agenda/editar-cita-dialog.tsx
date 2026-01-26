@@ -26,6 +26,14 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/use-toast'
 import { Cita, EstadoCita, MetodoPago } from '@/lib/types'
+import { Checkbox } from '@/components/ui/checkbox'
+
+interface Servicio {
+  id: string
+  nombre: string
+  precio: number
+  activo: boolean
+}
 
 interface EditarCitaDialogProps {
   open: boolean
@@ -74,6 +82,8 @@ export function EditarCitaDialog({
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [servicios, setServicios] = useState<Servicio[]>([])
+  const [serviciosSeleccionados, setServiciosSeleccionados] = useState<string[]>([])
   
   const [formData, setFormData] = useState({
     fecha: '',
@@ -91,18 +101,56 @@ export function EditarCitaDialog({
   const estados = Object.values(EstadoCita)
   const metodosPago = ['EFECTIVO', 'TPV_SUMUP', 'TPV_UNICAJA']
 
+  // Cargar servicios disponibles
   useEffect(() => {
-    if (open && cita) {
-      setFormData({
-        fecha: format(new Date(cita.fecha), 'yyyy-MM-dd'),
-        horaInicio: cita.horaInicio,
-        horaFin: cita.horaFin,
-        box: cita.box,
-        estado: cita.estado,
-        observaciones: cita.observaciones || '',
-        metodoPago: cita.metodoPago || '',
-      })
+    const cargarServicios = async () => {
+      try {
+        const response = await fetch('/api/servicios')
+        if (response.ok) {
+          const data = await response.json()
+          setServicios(data.filter((s: Servicio) => s.activo))
+        }
+      } catch (error) {
+        console.error('Error cargando servicios:', error)
+      }
     }
+    if (open) {
+      cargarServicios()
+    }
+  }, [open])
+
+  // Cargar datos de la cita incluyendo servicios seleccionados
+  useEffect(() => {
+    const cargarCitaCompleta = async () => {
+      if (open && cita) {
+        setFormData({
+          fecha: format(new Date(cita.fecha), 'yyyy-MM-dd'),
+          horaInicio: cita.horaInicio,
+          horaFin: cita.horaFin,
+          box: cita.box,
+          estado: cita.estado,
+          observaciones: cita.observaciones || '',
+          metodoPago: cita.metodoPago || '',
+        })
+        
+        // Cargar servicios asociados a la cita
+        try {
+          const response = await fetch(`/api/citas/${cita.id}`)
+          if (response.ok) {
+            const citaCompleta = await response.json()
+            if (citaCompleta.cita_servicios && citaCompleta.cita_servicios.length > 0) {
+              setServiciosSeleccionados(citaCompleta.cita_servicios.map((cs: any) => cs.servicioId))
+            } else {
+              setServiciosSeleccionados([])
+            }
+          }
+        } catch (error) {
+          console.error('Error cargando cita completa:', error)
+          setServiciosSeleccionados([])
+        }
+      }
+    }
+    cargarCitaCompleta()
   }, [open, cita])
 
   const getEstadoBadge = (estado: EstadoCita) => {
@@ -123,16 +171,32 @@ export function EditarCitaDialog({
     )
   }
 
+  // Calcular precio total de los servicios seleccionados
+  const calcularPrecioTotal = () => {
+    return serviciosSeleccionados.reduce((sum, servicioId) => {
+      const servicio = servicios.find(s => s.id === servicioId)
+      return sum + (servicio?.precio || 0)
+    }, 0)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
     setLoading(true)
     try {
+      // Preparar datos de servicios
+      const serviciosData = serviciosSeleccionados.map(servicioId => ({
+        servicioId,
+        precio: servicios.find(s => s.id === servicioId)?.precio || 0
+      }))
+
       // Limpiar datos: convertir strings vacíos a undefined
       const dataToSend = {
         ...formData,
         metodoPago: formData.metodoPago && formData.metodoPago.trim() !== '' ? formData.metodoPago : undefined,
         observaciones: formData.observaciones && formData.observaciones.trim() !== '' ? formData.observaciones : undefined,
+        servicios: serviciosData,
+        total: calcularPrecioTotal(),
       }
 
       console.log('Enviando datos:', dataToSend)
@@ -455,6 +519,49 @@ export function EditarCitaDialog({
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Servicios */}
+          <div className="space-y-2">
+            <Label>Servicios</Label>
+            <div className="border rounded-md p-3 space-y-2 max-h-48 overflow-y-auto">
+              {servicios.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Cargando servicios...</p>
+              ) : (
+                servicios.map((servicio) => (
+                  <div key={servicio.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`servicio-${servicio.id}`}
+                      checked={serviciosSeleccionados.includes(servicio.id)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setServiciosSeleccionados(prev => [...prev, servicio.id])
+                        } else {
+                          setServiciosSeleccionados(prev => prev.filter(s => s !== servicio.id))
+                        }
+                      }}
+                    />
+                    <label
+                      htmlFor={`servicio-${servicio.id}`}
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-1"
+                    >
+                      {servicio.nombre}
+                    </label>
+                    <span className="text-sm font-semibold text-green-600">
+                      {servicio.precio}€
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+            {serviciosSeleccionados.length > 0 && (
+              <div className="flex justify-between items-center pt-2 border-t">
+                <span className="text-sm font-medium">Total:</span>
+                <span className="text-lg font-bold text-green-600">
+                  {calcularPrecioTotal()}€
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Método de Pago */}

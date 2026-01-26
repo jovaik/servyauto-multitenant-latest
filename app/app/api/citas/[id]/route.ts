@@ -121,6 +121,39 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     }
 
     console.log('=== EJECUTANDO PRISMA UPDATE ===')
+    
+    // Si hay servicios, actualizar cita_servicios
+    if (servicios && servicios.length > 0) {
+      console.log('Actualizando servicios de la cita...')
+      
+      // Eliminar servicios existentes
+      await prisma.cita_servicios.deleteMany({
+        where: { citaId: params.id }
+      })
+      
+      // Crear nuevos servicios
+      for (const svc of servicios) {
+        const uniqueId = `cs_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
+        await prisma.cita_servicios.create({
+          data: {
+            id: uniqueId,
+            citaId: params.id,
+            servicioId: svc.servicioId,
+            precio: svc.precio
+          }
+        })
+      }
+      
+      console.log(`Servicios actualizados: ${servicios.length} servicios`)
+    } else if (servicios && servicios.length === 0) {
+      // Si se envía un array vacío, eliminar todos los servicios
+      console.log('Eliminando todos los servicios de la cita...')
+      await prisma.cita_servicios.deleteMany({
+        where: { citaId: params.id }
+      })
+      updateData.total = 0
+    }
+    
     // Actualizar la cita
     const cita = await prisma.cita.update({
       where: { id: params.id },
