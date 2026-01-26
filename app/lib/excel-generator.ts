@@ -39,7 +39,16 @@ export async function exportarGastosExcel(
   
   // Descargar
   const nombreArchivo = `Gastos_${format(new Date(), 'yyyy-MM-dd_HHmm')}.xlsx`
-  XLSX.writeFile(wb, nombreArchivo)
+  const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
+  const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = nombreArchivo
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
 }
 
 export async function exportarFacturacionExcel(
@@ -77,7 +86,18 @@ export async function exportarFacturacionExcel(
   XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen')
   
   const nombreArchivo = `Facturacion_${format(new Date(), 'yyyy-MM-dd_HHmm')}.xlsx`
-  XLSX.writeFile(wb, nombreArchivo)
+  
+  // Generar archivo y descargar en navegador
+  const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
+  const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = nombreArchivo
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
 }
 
 export async function exportarDiarioCajaExcel(
@@ -116,7 +136,16 @@ export async function exportarDiarioCajaExcel(
   XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen')
   
   const nombreArchivo = `Diario_Caja_${format(new Date(), 'yyyy-MM-dd_HHmm')}.xlsx`
-  XLSX.writeFile(wb, nombreArchivo)
+  const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
+  const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = nombreArchivo
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
 }
 
 export async function exportarCierresCajaExcel(cierres: any[]) {
@@ -138,7 +167,16 @@ export async function exportarCierresCajaExcel(cierres: any[]) {
   XLSX.utils.book_append_sheet(wb, ws, 'Cierres de Caja')
   
   const nombreArchivo = `Cierres_Caja_${format(new Date(), 'yyyy-MM-dd_HHmm')}.xlsx`
-  XLSX.writeFile(wb, nombreArchivo)
+  const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
+  const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = nombreArchivo
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
 }
 
 export async function exportarClientesExcel(clientes: any[]) {
@@ -160,7 +198,16 @@ export async function exportarClientesExcel(clientes: any[]) {
   XLSX.utils.book_append_sheet(wb, ws, 'Clientes')
   
   const nombreArchivo = `Clientes_${format(new Date(), 'yyyy-MM-dd_HHmm')}.xlsx`
-  XLSX.writeFile(wb, nombreArchivo)
+  const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
+  const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = nombreArchivo
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
 }
 
 export async function exportarVehiculosExcel(vehiculos: any[]) {
@@ -182,5 +229,14 @@ export async function exportarVehiculosExcel(vehiculos: any[]) {
   XLSX.utils.book_append_sheet(wb, ws, 'Vehículos')
   
   const nombreArchivo = `Vehiculos_${format(new Date(), 'yyyy-MM-dd_HHmm')}.xlsx`
-  XLSX.writeFile(wb, nombreArchivo)
+  const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
+  const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = nombreArchivo
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
 }
