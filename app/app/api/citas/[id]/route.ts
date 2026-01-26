@@ -178,6 +178,59 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       }
       
       console.log(`Servicios actualizados: ${servicios.length} servicios`)
+      
+      // ✅ ACTUALIZAR TAMBIÉN LA FACTURA/TICKET SI EXISTE
+      const facturaExistente = await prisma.factura.findFirst({
+        where: { citaId: params.id }
+      })
+      
+      if (facturaExistente) {
+        console.log('=== ACTUALIZANDO FACTURA EXISTENTE CON NUEVOS SERVICIOS ===')
+        
+        // Obtener nombres de servicios
+        const serviciosInfo = await prisma.servicio.findMany({
+          where: { id: { in: servicios.map((s: any) => s.servicioId) } }
+        })
+        
+        // Eliminar items existentes de la factura
+        await prisma.factura_items.deleteMany({
+          where: { facturaId: facturaExistente.id }
+        })
+        
+        // Crear nuevos items
+        for (let i = 0; i < servicios.length; i++) {
+          const svc = servicios[i]
+          const servicioInfo = serviciosInfo.find((s: any) => s.id === svc.servicioId)
+          const itemId = `fi_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+          await prisma.factura_items.create({
+            data: {
+              id: itemId,
+              facturaId: facturaExistente.id,
+              cantidad: 1,
+              descripcion: servicioInfo?.nombre || 'Servicio',
+              precio: svc.precio,
+              total: svc.precio
+            }
+          })
+        }
+        
+        // Calcular totales
+        const subtotal = servicios.reduce((sum: number, s: any) => sum + s.precio, 0)
+        const iva = subtotal * 0.21
+        const total = subtotal + iva
+        
+        // Actualizar factura
+        await prisma.factura.update({
+          where: { id: facturaExistente.id },
+          data: {
+            subtotal,
+            iva,
+            total
+          }
+        })
+        
+        console.log(`Factura ${facturaExistente.numero} actualizada: Total ${total}€`)
+      }
     } else if (servicios && servicios.length === 0) {
       // Si se envía un array vacío, eliminar todos los servicios
       console.log('Eliminando todos los servicios de la cita...')
@@ -185,6 +238,22 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         where: { citaId: params.id }
       })
       updateData.total = 0
+      
+      // También actualizar la factura si existe
+      const facturaExistente = await prisma.factura.findFirst({
+        where: { citaId: params.id }
+      })
+      
+      if (facturaExistente) {
+        await prisma.factura_items.deleteMany({
+          where: { facturaId: facturaExistente.id }
+        })
+        await prisma.factura.update({
+          where: { id: facturaExistente.id },
+          data: { subtotal: 0, iva: 0, total: 0 }
+        })
+        console.log(`Factura ${facturaExistente.numero} vaciada`)
+      }
     }
     
     // Actualizar la cita
