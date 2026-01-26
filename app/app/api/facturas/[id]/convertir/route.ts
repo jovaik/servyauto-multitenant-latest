@@ -79,15 +79,47 @@ export async function PUT(
     const { datosFacturacion } = body
 
     // Determinar la fecha de la factura
-    // Si el ticket es de un año anterior, la factura debe tener fecha máxima 31/12 de ese año
-    const ahora = new Date()
-    const añoActual = ahora.getFullYear()
-    let fechaFactura = documentoActual.createdAt
+    // Buscar si hay facturas con fecha posterior al ticket en el mismo año
+    const fechaTicket = new Date(documentoActual.createdAt)
     
-    if (año < añoActual) {
-      // Si el ticket es de un ejercicio anterior, usar 31/12 de ese año como fecha máxima
-      fechaFactura = new Date(año, 11, 31, 23, 59, 59) // 31 de diciembre del año del ticket
-      console.log('Ticket de ejercicio anterior, ajustando fecha a:', fechaFactura.toISOString())
+    const facturasPosteriores = await prisma.factura.findMany({
+      where: {
+        tipo: 'FACTURA',
+        createdAt: {
+          gt: fechaTicket // Facturas con fecha posterior al ticket
+        },
+        numero: {
+          startsWith: `FAC-${año}-` // Del mismo ejercicio
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 1
+    })
+
+    let fechaFactura: Date
+    
+    if (facturasPosteriores.length === 0) {
+      // No hay facturas posteriores, usar la fecha original del ticket
+      fechaFactura = fechaTicket
+      console.log('No hay facturas posteriores, usando fecha del ticket:', fechaFactura.toISOString())
+    } else {
+      // Hay facturas posteriores, la nueva debe ir justo después de la última factura del ejercicio
+      const ultimaFacturaDelAño = await prisma.factura.findFirst({
+        where: {
+          tipo: 'FACTURA',
+          numero: { startsWith: `FAC-${año}-` }
+        },
+        orderBy: { createdAt: 'desc' }
+      })
+      
+      if (ultimaFacturaDelAño) {
+        // Poner fecha 1 segundo después de la última factura
+        fechaFactura = new Date(ultimaFacturaDelAño.createdAt)
+        fechaFactura.setSeconds(fechaFactura.getSeconds() + 1)
+        console.log('Hay facturas posteriores, usando fecha después de la última:', fechaFactura.toISOString())
+      } else {
+        fechaFactura = fechaTicket
+      }
     }
 
     // Actualizar el documento a FACTURA
@@ -97,7 +129,7 @@ export async function PUT(
         tipo: 'FACTURA',
         numero: numeroFactura,
         datosFacturacion: datosFacturacion || documentoActual.datosFacturacion,
-        createdAt: fechaFactura, // Mantener la fecha del ejercicio original
+        createdAt: fechaFactura,
       },
       include: {
         factura_items: true,
