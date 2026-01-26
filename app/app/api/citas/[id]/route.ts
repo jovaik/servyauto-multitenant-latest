@@ -214,10 +214,10 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
           })
         }
         
-        // Calcular totales
-        const subtotal = servicios.reduce((sum: number, s: any) => sum + s.precio, 0)
-        const iva = subtotal * 0.21
-        const total = subtotal + iva
+        // Calcular totales - PRECIOS YA INCLUYEN IVA
+        const total = servicios.reduce((sum: number, s: any) => sum + s.precio, 0)
+        const subtotal = total / 1.21  // Base imponible
+        const iva = total - subtotal   // IVA incluido en el precio
         
         // Actualizar factura
         await prisma.factura.update({
