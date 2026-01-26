@@ -8,6 +8,39 @@ import { notificarCreacionGSControl } from '@/lib/gscontrol-sync'
 
 export const dynamic = 'force-dynamic'
 
+// GET - Obtener una cita por ID con sus servicios
+export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
+    const cita = await prisma.cita.findUnique({
+      where: { id: params.id },
+      include: {
+        cliente: true,
+        vehiculo: true,
+        cita_servicios: {
+          include: {
+            servicios: true
+          }
+        },
+        facturas: true,
+      },
+    })
+
+    if (!cita) {
+      return NextResponse.json({ error: 'Cita no encontrada' }, { status: 404 })
+    }
+
+    return NextResponse.json(cita)
+  } catch (error: any) {
+    console.error('Error al obtener cita:', error)
+    return NextResponse.json({ error: 'Error al obtener cita', message: error.message }, { status: 500 })
+  }
+}
+
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const session = await getServerSession(authOptions)
