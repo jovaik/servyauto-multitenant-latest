@@ -1,8 +1,8 @@
 
 'use client'
 
-import React, { useState } from 'react'
-import { Plus, Scan, Edit } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { Plus, Scan, Edit, Search, Building2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -26,6 +26,18 @@ import { SimpleDocumentScanner } from '@/app/components/gastos/simple-document-s
 import type { ExtractedInvoiceData } from '@/types/invoice-types'
 import { toast } from 'react-hot-toast'
 
+interface Proveedor {
+  id: string
+  nombre: string
+  cif: string | null
+  direccion: string | null
+  codigoPostal: string | null
+  ciudad: string | null
+  provincia: string | null
+  telefono: string | null
+  email: string | null
+}
+
 interface NuevoGastoDialogProps {
   onGastoCreado: () => void
 }
@@ -34,10 +46,15 @@ export function NuevoGastoDialog({ onGastoCreado }: NuevoGastoDialogProps) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('scan')
+  const [proveedores, setProveedores] = useState<Proveedor[]>([])
+  const [busquedaProveedor, setBusquedaProveedor] = useState('')
+  const [mostrarListaProveedores, setMostrarListaProveedores] = useState(false)
+  const [proveedorSeleccionado, setProveedorSeleccionado] = useState<Proveedor | null>(null)
   const [formData, setFormData] = useState({
     concepto: '',
     fecha: new Date().toISOString().split('T')[0],
     proveedor: '',
+    proveedorId: '',
     tipoGasto: '',
     importe: '',
     metodoPago: 'EFECTIVO',
@@ -50,6 +67,47 @@ export function NuevoGastoDialog({ onGastoCreado }: NuevoGastoDialogProps) {
     proveedorCiudad: '',
     proveedorProvincia: ''
   })
+
+  // Cargar proveedores al abrir
+  useEffect(() => {
+    if (open) {
+      fetch('/api/proveedores')
+        .then(res => res.json())
+        .then(data => setProveedores(data))
+        .catch(err => console.error('Error cargando proveedores:', err))
+    }
+  }, [open])
+
+  // Filtrar proveedores por búsqueda
+  const proveedoresFiltrados = proveedores.filter(p =>
+    p.nombre.toLowerCase().includes(busquedaProveedor.toLowerCase()) ||
+    (p.cif && p.cif.toLowerCase().includes(busquedaProveedor.toLowerCase()))
+  )
+
+  // Seleccionar proveedor existente
+  const seleccionarProveedor = (prov: Proveedor) => {
+    setProveedorSeleccionado(prov)
+    setBusquedaProveedor(prov.nombre)
+    setMostrarListaProveedores(false)
+    setFormData(prev => ({
+      ...prev,
+      proveedor: prov.nombre,
+      proveedorId: prov.id,
+      proveedorCIF: prov.cif || '',
+      proveedorDireccion: prov.direccion || '',
+      proveedorCodigoPostal: prov.codigoPostal || '',
+      proveedorCiudad: prov.ciudad || '',
+      proveedorProvincia: prov.provincia || ''
+    }))
+  }
+
+  // Escribir nuevo proveedor
+  const handleProveedorChange = (valor: string) => {
+    setBusquedaProveedor(valor)
+    setFormData(prev => ({ ...prev, proveedor: valor, proveedorId: '' }))
+    setProveedorSeleccionado(null)
+    setMostrarListaProveedores(valor.length >= 1)
+  }
 
   // ✅ Manejar datos extraídos del OCR
   const handleExtractedData = (data: ExtractedInvoiceData) => {
@@ -101,6 +159,7 @@ export function NuevoGastoDialog({ onGastoCreado }: NuevoGastoDialogProps) {
           concepto: '',
           fecha: new Date().toISOString().split('T')[0],
           proveedor: '',
+          proveedorId: '',
           tipoGasto: '',
           importe: '',
           metodoPago: 'EFECTIVO',
@@ -113,6 +172,8 @@ export function NuevoGastoDialog({ onGastoCreado }: NuevoGastoDialogProps) {
           proveedorCiudad: '',
           proveedorProvincia: ''
         })
+        setBusquedaProveedor('')
+        setProveedorSeleccionado(null)
         onGastoCreado()
       } else {
         const error = await response.json()
@@ -241,14 +302,47 @@ export function NuevoGastoDialog({ onGastoCreado }: NuevoGastoDialogProps) {
             </Select>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2 relative">
             <Label htmlFor="proveedor">Proveedor</Label>
-            <Input
-              id="proveedor"
-              placeholder="Nombre del proveedor"
-              value={formData.proveedor}
-              onChange={(e) => setFormData({ ...formData, proveedor: e.target.value })}
-            />
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="proveedor"
+                placeholder="Buscar o escribir proveedor..."
+                value={busquedaProveedor}
+                onChange={(e) => handleProveedorChange(e.target.value)}
+                onFocus={() => setMostrarListaProveedores(busquedaProveedor.length >= 1 || proveedores.length > 0)}
+                className="pl-10"
+                autoComplete="off"
+              />
+            </div>
+            {proveedorSeleccionado && (
+              <p className="text-xs text-green-600 flex items-center gap-1">
+                <Building2 className="h-3 w-3" /> Proveedor registrado - datos fiscales cargados
+              </p>
+            )}
+            {!proveedorSeleccionado && busquedaProveedor && (
+              <p className="text-xs text-amber-600">
+                ⚠️ Nuevo proveedor - se registrará automáticamente
+              </p>
+            )}
+            {mostrarListaProveedores && proveedoresFiltrados.length > 0 && (
+              <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto">
+                {proveedoresFiltrados.slice(0, 8).map(prov => (
+                  <div
+                    key={prov.id}
+                    className="px-3 py-2 hover:bg-gray-100 cursor-pointer flex justify-between items-center"
+                    onClick={() => seleccionarProveedor(prov)}
+                  >
+                    <div>
+                      <p className="font-medium text-sm">{prov.nombre}</p>
+                      {prov.cif && <p className="text-xs text-muted-foreground">{prov.cif}</p>}
+                    </div>
+                    <Building2 className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -337,75 +431,90 @@ export function NuevoGastoDialog({ onGastoCreado }: NuevoGastoDialogProps) {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="proveedor-factura">Razón Social *</Label>
-                  <Input
-                    id="proveedor-factura"
-                    placeholder="Nombre del proveedor"
-                    value={formData.proveedor}
-                    onChange={(e) => setFormData({ ...formData, proveedor: e.target.value })}
-                    required={formData.tipo === 'FACTURA'}
-                  />
+              {proveedorSeleccionado ? (
+                <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-sm font-medium text-green-800 flex items-center gap-2">
+                    <Building2 className="h-4 w-4" /> {proveedorSeleccionado.nombre}
+                  </p>
+                  <p className="text-xs text-green-700">
+                    CIF: {proveedorSeleccionado.cif || '-'} | {proveedorSeleccionado.ciudad || '-'}
+                  </p>
                 </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="proveedor-factura">Razón Social *</Label>
+                    <Input
+                      id="proveedor-factura"
+                      placeholder="Nombre del proveedor"
+                      value={formData.proveedor}
+                      onChange={(e) => setFormData({ ...formData, proveedor: e.target.value })}
+                      required={formData.tipo === 'FACTURA'}
+                    />
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="proveedorCIF">CIF/NIF *</Label>
-                  <Input
-                    id="proveedorCIF"
-                    placeholder="Ej: B12345678"
-                    value={formData.proveedorCIF}
-                    onChange={(e) => setFormData({ ...formData, proveedorCIF: e.target.value })}
-                    required={formData.tipo === 'FACTURA'}
-                  />
+                  <div className="space-y-2">
+                    <Label htmlFor="proveedorCIF">CIF/NIF *</Label>
+                    <Input
+                      id="proveedorCIF"
+                      placeholder="Ej: B12345678"
+                      value={formData.proveedorCIF}
+                      onChange={(e) => setFormData({ ...formData, proveedorCIF: e.target.value })}
+                      required={formData.tipo === 'FACTURA'}
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
-              <div className="space-y-2">
-                <Label htmlFor="proveedorDireccion">Dirección *</Label>
-                <Input
-                  id="proveedorDireccion"
-                  placeholder="Calle, número, etc."
-                  value={formData.proveedorDireccion}
-                  onChange={(e) => setFormData({ ...formData, proveedorDireccion: e.target.value })}
-                  required={formData.tipo === 'FACTURA'}
-                />
-              </div>
+              {!proveedorSeleccionado && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="proveedorDireccion">Dirección *</Label>
+                    <Input
+                      id="proveedorDireccion"
+                      placeholder="Calle, número, etc."
+                      value={formData.proveedorDireccion}
+                      onChange={(e) => setFormData({ ...formData, proveedorDireccion: e.target.value })}
+                      required={formData.tipo === 'FACTURA' && !proveedorSeleccionado}
+                    />
+                  </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="proveedorCodigoPostal">C.P. *</Label>
-                  <Input
-                    id="proveedorCodigoPostal"
-                    placeholder="28001"
-                    value={formData.proveedorCodigoPostal}
-                    onChange={(e) => setFormData({ ...formData, proveedorCodigoPostal: e.target.value })}
-                    required={formData.tipo === 'FACTURA'}
-                  />
-                </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="proveedorCodigoPostal">C.P. *</Label>
+                      <Input
+                        id="proveedorCodigoPostal"
+                        placeholder="28001"
+                        value={formData.proveedorCodigoPostal}
+                        onChange={(e) => setFormData({ ...formData, proveedorCodigoPostal: e.target.value })}
+                        required={formData.tipo === 'FACTURA' && !proveedorSeleccionado}
+                      />
+                    </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="proveedorCiudad">Ciudad *</Label>
-                  <Input
-                    id="proveedorCiudad"
-                    placeholder="Madrid"
-                    value={formData.proveedorCiudad}
-                    onChange={(e) => setFormData({ ...formData, proveedorCiudad: e.target.value })}
-                    required={formData.tipo === 'FACTURA'}
-                  />
-                </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="proveedorCiudad">Ciudad *</Label>
+                      <Input
+                        id="proveedorCiudad"
+                        placeholder="Madrid"
+                        value={formData.proveedorCiudad}
+                        onChange={(e) => setFormData({ ...formData, proveedorCiudad: e.target.value })}
+                        required={formData.tipo === 'FACTURA' && !proveedorSeleccionado}
+                      />
+                    </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="proveedorProvincia">Provincia *</Label>
-                  <Input
-                    id="proveedorProvincia"
-                    placeholder="Madrid"
-                    value={formData.proveedorProvincia}
-                    onChange={(e) => setFormData({ ...formData, proveedorProvincia: e.target.value })}
-                    required={formData.tipo === 'FACTURA'}
-                  />
-                </div>
-              </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="proveedorProvincia">Provincia *</Label>
+                      <Input
+                        id="proveedorProvincia"
+                        placeholder="Madrid"
+                        value={formData.proveedorProvincia}
+                        onChange={(e) => setFormData({ ...formData, proveedorProvincia: e.target.value })}
+                        required={formData.tipo === 'FACTURA' && !proveedorSeleccionado}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           )}
 

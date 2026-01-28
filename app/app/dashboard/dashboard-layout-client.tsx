@@ -29,7 +29,8 @@ import {
   Upload,
   Globe,
   Wrench,
-  BookOpen
+  BookOpen,
+  Building2
 } from 'lucide-react'
 import { RolUsuario } from '@/lib/types'
 import { Button } from '@/components/ui/button'
@@ -72,6 +73,7 @@ const gestionSection: NavSection = {
     { name: 'Diario de Caja', href: '/dashboard/diario-caja', icon: BookOpen },
     { name: 'Facturación', href: '/dashboard/facturacion', icon: CreditCard },
     { name: 'Gastos', href: '/dashboard/gastos', icon: TrendingDown },
+    { name: 'Proveedores', href: '/dashboard/proveedores', icon: Building2 },
   ]
 }
 
