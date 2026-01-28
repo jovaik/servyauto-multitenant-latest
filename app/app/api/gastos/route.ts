@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
       concepto, 
       fecha, 
       proveedor, 
+      proveedorId,
       tipoGasto, 
       importe, 
       metodoPago, 
@@ -49,7 +50,8 @@ export async function POST(request: NextRequest) {
       proveedorDireccion,
       proveedorCodigoPostal,
       proveedorCiudad,
-      proveedorProvincia
+      proveedorProvincia,
+      proveedorTelefono
     } = body
 
     // Validar campos requeridos
@@ -71,19 +73,66 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Si es FACTURA, validar campos fiscales adicionales
-    if (tipo === 'FACTURA') {
-      if (!numeroFactura || !proveedor || !proveedorCIF || !proveedorDireccion || 
-          !proveedorCodigoPostal || !proveedorCiudad || !proveedorProvincia) {
+    // Si es FACTURA, validar campos fiscales adicionales (solo si no hay proveedor ya registrado)
+    if (tipo === 'FACTURA' && !proveedorId) {
+      if (!numeroFactura || !proveedor) {
         return NextResponse.json(
-          { error: 'Para facturas se requieren todos los datos fiscales del proveedor' },
+          { error: 'Para facturas se requiere número de factura y proveedor' },
           { status: 400 }
         )
       }
     }
 
+    // ✅ REGISTRAR O BUSCAR PROVEEDOR AUTOMÁTICAMENTE
+    let proveedorIdFinal: string | null = proveedorId || null
+    
+    if (proveedor && proveedor.trim() && !proveedorId) {
+      console.log('Buscando/creando proveedor:', proveedor.trim())
+      
+      // Buscar si existe un proveedor con ese nombre
+      let proveedorExistente = await prisma.proveedor.findFirst({
+        where: { nombre: { equals: proveedor.trim(), mode: 'insensitive' } }
+      })
+      
+      if (proveedorExistente) {
+        console.log('Proveedor existente encontrado:', proveedorExistente.id)
+        proveedorIdFinal = proveedorExistente.id
+        
+        // Actualizar datos fiscales si se proporcionaron nuevos
+        if (proveedorCIF || proveedorDireccion || proveedorTelefono) {
+          await prisma.proveedor.update({
+            where: { id: proveedorExistente.id },
+            data: {
+              cif: proveedorCIF?.trim() || proveedorExistente.cif,
+              direccion: proveedorDireccion?.trim() || proveedorExistente.direccion,
+              codigoPostal: proveedorCodigoPostal?.trim() || proveedorExistente.codigoPostal,
+              ciudad: proveedorCiudad?.trim() || proveedorExistente.ciudad,
+              provincia: proveedorProvincia?.trim() || proveedorExistente.provincia,
+              telefono: proveedorTelefono?.trim() || proveedorExistente.telefono
+            }
+          })
+          console.log('Datos del proveedor actualizados')
+        }
+      } else {
+        // Crear nuevo proveedor
+        const nuevoProveedor = await prisma.proveedor.create({
+          data: {
+            nombre: proveedor.trim(),
+            cif: proveedorCIF?.trim() || null,
+            direccion: proveedorDireccion?.trim() || null,
+            codigoPostal: proveedorCodigoPostal?.trim() || null,
+            ciudad: proveedorCiudad?.trim() || null,
+            provincia: proveedorProvincia?.trim() || null,
+            telefono: proveedorTelefono?.trim() || null
+          }
+        })
+        console.log('Nuevo proveedor creado:', nuevoProveedor.id, nuevoProveedor.nombre)
+        proveedorIdFinal = nuevoProveedor.id
+      }
+    }
+
     // Preparar datos para crear el gasto
-    const gastoData = {
+    const gastoData: any = {
       concepto: concepto.trim(),
       fecha: new Date(fecha),
       proveedor: proveedor && proveedor.trim() ? proveedor.trim() : null,
@@ -102,6 +151,11 @@ export async function POST(request: NextRequest) {
       // Trazabilidad - quién creó este gasto
       creadoPorId: (session.user as any)?.id || null,
       creadoPorNombre: session.user?.name || session.user?.email || 'Sistema'
+    }
+    
+    // Vincular al proveedor registrado
+    if (proveedorIdFinal) {
+      gastoData.proveedorId = proveedorIdFinal
     }
 
     console.log('Datos preparados para Prisma:', JSON.stringify(gastoData, null, 2))
