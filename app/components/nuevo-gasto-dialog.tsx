@@ -347,6 +347,42 @@ export function NuevoGastoDialog({ onGastoCreado }: NuevoGastoDialogProps) {
                 ))}
               </div>
             )}
+
+            {/* Datos fiscales del proveedor - AQUÍ, justo debajo del campo */}
+            {formData.proveedor && formData.proveedor.trim() && !proveedorSeleccionado && (
+              <div className="space-y-3 border-2 border-amber-300 bg-amber-50 rounded-lg p-3 mt-2">
+                <p className="text-xs font-medium text-amber-800">
+                  📝 Completa los datos fiscales de "{formData.proveedor}"
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    placeholder="CIF/NIF"
+                    value={formData.proveedorCIF}
+                    onChange={(e) => setFormData({ ...formData, proveedorCIF: e.target.value })}
+                    className="border-amber-300 text-sm"
+                  />
+                  <Input
+                    placeholder="Teléfono"
+                    value={formData.proveedorTelefono || ''}
+                    onChange={(e) => setFormData({ ...formData, proveedorTelefono: e.target.value })}
+                    className="border-amber-300 text-sm"
+                  />
+                </div>
+                <Input
+                  placeholder="Dirección completa"
+                  value={formData.proveedorDireccion}
+                  onChange={(e) => setFormData({ ...formData, proveedorDireccion: e.target.value })}
+                  className="border-amber-300 text-sm"
+                />
+                <Input
+                  placeholder="Email"
+                  type="email"
+                  value={formData.proveedorEmail || ''}
+                  onChange={(e) => setFormData({ ...formData, proveedorEmail: e.target.value })}
+                  className="border-amber-300 text-sm"
+                />
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -423,66 +459,6 @@ export function NuevoGastoDialog({ onGastoCreado }: NuevoGastoDialogProps) {
                 onChange={(e) => setFormData({ ...formData, numeroFactura: e.target.value })}
                 required={formData.tipo === 'FACTURA'}
               />
-            </div>
-          )}
-
-          {/* Datos fiscales del proveedor - siempre que haya un nuevo proveedor escrito */}
-          {formData.proveedor && formData.proveedor.trim() && !proveedorSeleccionado && (
-            <div className="space-y-4 border-2 border-amber-300 bg-amber-50 rounded-lg p-4">
-              <div className="mb-2">
-                <h4 className="text-sm font-semibold text-amber-800 flex items-center gap-2">
-                  <Building2 className="h-4 w-4" /> 📝 Datos del proveedor: {formData.proveedor}
-                </h4>
-                <p className="text-xs text-amber-700">
-                  Completa los datos fiscales (se guardan para futuras compras)
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="proveedorCIF" className="text-amber-900">CIF/NIF</Label>
-                <Input
-                  id="proveedorCIF"
-                  placeholder="Ej: B12345678"
-                  value={formData.proveedorCIF}
-                  onChange={(e) => setFormData({ ...formData, proveedorCIF: e.target.value })}
-                  className="border-amber-300"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="proveedorDireccion" className="text-amber-900">Dirección completa</Label>
-                <Input
-                  id="proveedorDireccion"
-                  placeholder="Calle, número, C.P., Ciudad, Provincia"
-                  value={formData.proveedorDireccion}
-                  onChange={(e) => setFormData({ ...formData, proveedorDireccion: e.target.value })}
-                  className="border-amber-300"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="proveedorTelefono" className="text-amber-900">Teléfono</Label>
-                  <Input
-                    id="proveedorTelefono"
-                    placeholder="666777888"
-                    value={formData.proveedorTelefono || ''}
-                    onChange={(e) => setFormData({ ...formData, proveedorTelefono: e.target.value })}
-                    className="border-amber-300"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="proveedorEmail" className="text-amber-900">Email</Label>
-                  <Input
-                    id="proveedorEmail"
-                    type="email"
-                    placeholder="proveedor@email.com"
-                    value={formData.proveedorEmail || ''}
-                    onChange={(e) => setFormData({ ...formData, proveedorEmail: e.target.value })}
-                    className="border-amber-300"
-                  />
-                </div>
-              </div>
             </div>
           )}
 
