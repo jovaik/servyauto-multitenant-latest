@@ -426,56 +426,60 @@ export function NuevoGastoDialog({ onGastoCreado }: NuevoGastoDialogProps) {
             </div>
           )}
 
-          {/* Datos fiscales del proveedor - siempre que haya un nuevo proveedor */}
-          {busquedaProveedor && !proveedorSeleccionado && (
-            <div className="space-y-4 border-t pt-4">
+          {/* Datos fiscales del proveedor - siempre que haya un nuevo proveedor escrito */}
+          {formData.proveedor && formData.proveedor.trim() && !proveedorSeleccionado && (
+            <div className="space-y-4 border-2 border-amber-300 bg-amber-50 rounded-lg p-4">
               <div className="mb-2">
-                <h4 className="text-sm font-medium text-amber-700 flex items-center gap-2">
-                  <Building2 className="h-4 w-4" /> Nuevo Proveedor: {busquedaProveedor}
+                <h4 className="text-sm font-semibold text-amber-800 flex items-center gap-2">
+                  <Building2 className="h-4 w-4" /> 📝 Datos del proveedor: {formData.proveedor}
                 </h4>
-                <p className="text-xs text-muted-foreground">
-                  Completa los datos fiscales para registrarlo (se guardan para futuras compras)
+                <p className="text-xs text-amber-700">
+                  Completa los datos fiscales (se guardan para futuras compras)
                 </p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="proveedorCIF">CIF/NIF</Label>
+                <Label htmlFor="proveedorCIF" className="text-amber-900">CIF/NIF</Label>
                 <Input
                   id="proveedorCIF"
                   placeholder="Ej: B12345678"
                   value={formData.proveedorCIF}
                   onChange={(e) => setFormData({ ...formData, proveedorCIF: e.target.value })}
+                  className="border-amber-300"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="proveedorDireccion">Dirección completa</Label>
+                <Label htmlFor="proveedorDireccion" className="text-amber-900">Dirección completa</Label>
                 <Input
                   id="proveedorDireccion"
                   placeholder="Calle, número, C.P., Ciudad, Provincia"
                   value={formData.proveedorDireccion}
                   onChange={(e) => setFormData({ ...formData, proveedorDireccion: e.target.value })}
+                  className="border-amber-300"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="proveedorTelefono">Teléfono</Label>
+                  <Label htmlFor="proveedorTelefono" className="text-amber-900">Teléfono</Label>
                   <Input
                     id="proveedorTelefono"
                     placeholder="666777888"
                     value={formData.proveedorTelefono || ''}
                     onChange={(e) => setFormData({ ...formData, proveedorTelefono: e.target.value })}
+                    className="border-amber-300"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="proveedorEmail">Email</Label>
+                  <Label htmlFor="proveedorEmail" className="text-amber-900">Email</Label>
                   <Input
                     id="proveedorEmail"
                     type="email"
                     placeholder="proveedor@email.com"
                     value={formData.proveedorEmail || ''}
                     onChange={(e) => setFormData({ ...formData, proveedorEmail: e.target.value })}
+                    className="border-amber-300"
                   />
                 </div>
               </div>
