@@ -51,7 +51,8 @@ export async function POST(request: NextRequest) {
       proveedorCodigoPostal,
       proveedorCiudad,
       proveedorProvincia,
-      proveedorTelefono
+      proveedorTelefono,
+      proveedorEmail
     } = body
 
     // Validar campos requeridos
@@ -99,7 +100,7 @@ export async function POST(request: NextRequest) {
         proveedorIdFinal = proveedorExistente.id
         
         // Actualizar datos fiscales si se proporcionaron nuevos
-        if (proveedorCIF || proveedorDireccion || proveedorTelefono) {
+        if (proveedorCIF || proveedorDireccion || proveedorTelefono || proveedorEmail) {
           await prisma.proveedor.update({
             where: { id: proveedorExistente.id },
             data: {
@@ -108,7 +109,8 @@ export async function POST(request: NextRequest) {
               codigoPostal: proveedorCodigoPostal?.trim() || proveedorExistente.codigoPostal,
               ciudad: proveedorCiudad?.trim() || proveedorExistente.ciudad,
               provincia: proveedorProvincia?.trim() || proveedorExistente.provincia,
-              telefono: proveedorTelefono?.trim() || proveedorExistente.telefono
+              telefono: proveedorTelefono?.trim() || proveedorExistente.telefono,
+              email: proveedorEmail?.trim() || proveedorExistente.email
             }
           })
           console.log('Datos del proveedor actualizados')
@@ -123,7 +125,8 @@ export async function POST(request: NextRequest) {
             codigoPostal: proveedorCodigoPostal?.trim() || null,
             ciudad: proveedorCiudad?.trim() || null,
             provincia: proveedorProvincia?.trim() || null,
-            telefono: proveedorTelefono?.trim() || null
+            telefono: proveedorTelefono?.trim() || null,
+            email: proveedorEmail?.trim() || null
           }
         })
         console.log('Nuevo proveedor creado:', nuevoProveedor.id, nuevoProveedor.nombre)

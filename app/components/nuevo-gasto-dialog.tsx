@@ -66,7 +66,8 @@ export function NuevoGastoDialog({ onGastoCreado }: NuevoGastoDialogProps) {
     proveedorCodigoPostal: '',
     proveedorCiudad: '',
     proveedorProvincia: '',
-    proveedorTelefono: ''
+    proveedorTelefono: '',
+    proveedorEmail: ''
   })
 
   // Cargar proveedores al abrir
@@ -172,7 +173,8 @@ export function NuevoGastoDialog({ onGastoCreado }: NuevoGastoDialogProps) {
           proveedorCodigoPostal: '',
           proveedorCiudad: '',
           proveedorProvincia: '',
-          proveedorTelefono: ''
+          proveedorTelefono: '',
+          proveedorEmail: ''
         })
         setBusquedaProveedor('')
         setProveedorSeleccionado(null)
@@ -436,16 +438,27 @@ export function NuevoGastoDialog({ onGastoCreado }: NuevoGastoDialogProps) {
                 </p>
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="proveedorCIF">CIF/NIF</Label>
+                <Input
+                  id="proveedorCIF"
+                  placeholder="Ej: B12345678"
+                  value={formData.proveedorCIF}
+                  onChange={(e) => setFormData({ ...formData, proveedorCIF: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="proveedorDireccion">Dirección completa</Label>
+                <Input
+                  id="proveedorDireccion"
+                  placeholder="Calle, número, C.P., Ciudad, Provincia"
+                  value={formData.proveedorDireccion}
+                  onChange={(e) => setFormData({ ...formData, proveedorDireccion: e.target.value })}
+                />
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="proveedorCIF">CIF/NIF</Label>
-                  <Input
-                    id="proveedorCIF"
-                    placeholder="Ej: B12345678"
-                    value={formData.proveedorCIF}
-                    onChange={(e) => setFormData({ ...formData, proveedorCIF: e.target.value })}
-                  />
-                </div>
                 <div className="space-y-2">
                   <Label htmlFor="proveedorTelefono">Teléfono</Label>
                   <Input
@@ -455,46 +468,14 @@ export function NuevoGastoDialog({ onGastoCreado }: NuevoGastoDialogProps) {
                     onChange={(e) => setFormData({ ...formData, proveedorTelefono: e.target.value })}
                   />
                 </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="proveedorDireccion">Dirección</Label>
-                <Input
-                  id="proveedorDireccion"
-                  placeholder="Calle, número, etc."
-                  value={formData.proveedorDireccion}
-                  onChange={(e) => setFormData({ ...formData, proveedorDireccion: e.target.value })}
-                />
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="proveedorCodigoPostal">C.P.</Label>
+                  <Label htmlFor="proveedorEmail">Email</Label>
                   <Input
-                    id="proveedorCodigoPostal"
-                    placeholder="29001"
-                    value={formData.proveedorCodigoPostal}
-                    onChange={(e) => setFormData({ ...formData, proveedorCodigoPostal: e.target.value })}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="proveedorCiudad">Ciudad</Label>
-                  <Input
-                    id="proveedorCiudad"
-                    placeholder="Málaga"
-                    value={formData.proveedorCiudad}
-                    onChange={(e) => setFormData({ ...formData, proveedorCiudad: e.target.value })}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="proveedorProvincia">Provincia</Label>
-                  <Input
-                    id="proveedorProvincia"
-                    placeholder="Málaga"
-                    value={formData.proveedorProvincia}
-                    onChange={(e) => setFormData({ ...formData, proveedorProvincia: e.target.value })}
+                    id="proveedorEmail"
+                    type="email"
+                    placeholder="proveedor@email.com"
+                    value={formData.proveedorEmail || ''}
+                    onChange={(e) => setFormData({ ...formData, proveedorEmail: e.target.value })}
                   />
                 </div>
               </div>
