@@ -239,6 +239,7 @@ model Gasto {
   proveedor             String?     // Nombre del proveedor (legacy)
   proveedorId           String?     // Relación con modelo Proveedor
   proveedorRef          Proveedor?  @relation(fields: [proveedorId], references: [id])
+  beneficiario          String?     // 📌 Para gastos internos: nombre empleado, propietario, etc.
   tipoGasto             String
   importe               Float
   metodoPago            MetodoPago? // Método de pago del gasto

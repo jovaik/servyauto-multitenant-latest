@@ -2,7 +2,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Plus, Scan, Edit, Search, Building2 } from 'lucide-react'
+import { Plus, Scan, Edit, Search, Building2, User, Wallet } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -42,6 +42,21 @@ interface NuevoGastoDialogProps {
   onGastoCreado: () => void
 }
 
+// 📌 Categorías que NO requieren proveedor (gastos internos)
+const CATEGORIAS_SIN_PROVEEDOR = [
+  'Adelanto Empleado',
+  'Pago Empleado',
+  'Retiro Propietario',
+  'Caja Menor',
+  'Comisiones Bancarias',
+  'Gastos Bancarios'
+]
+
+// Verificar si la categoría requiere proveedor
+const requiereProveedor = (tipoGasto: string): boolean => {
+  return !CATEGORIAS_SIN_PROVEEDOR.includes(tipoGasto)
+}
+
 export function NuevoGastoDialog({ onGastoCreado }: NuevoGastoDialogProps) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -67,7 +82,8 @@ export function NuevoGastoDialog({ onGastoCreado }: NuevoGastoDialogProps) {
     proveedorCiudad: '',
     proveedorProvincia: '',
     proveedorTelefono: '',
-    proveedorEmail: ''
+    proveedorEmail: '',
+    beneficiario: '' // 📌 Nuevo campo para gastos internos
   })
 
   // Cargar proveedores al abrir
@@ -174,7 +190,8 @@ export function NuevoGastoDialog({ onGastoCreado }: NuevoGastoDialogProps) {
           proveedorCiudad: '',
           proveedorProvincia: '',
           proveedorTelefono: '',
-          proveedorEmail: ''
+          proveedorEmail: '',
+          beneficiario: ''
         })
         setBusquedaProveedor('')
         setProveedorSeleccionado(null)
@@ -306,95 +323,43 @@ export function NuevoGastoDialog({ onGastoCreado }: NuevoGastoDialogProps) {
             </Select>
           </div>
 
-          <div className="space-y-2 relative">
-            <Label htmlFor="proveedor">Proveedor</Label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="proveedor"
-                placeholder="Buscar o escribir proveedor..."
-                value={busquedaProveedor}
-                onChange={(e) => handleProveedorChange(e.target.value)}
-                onFocus={() => setMostrarListaProveedores(busquedaProveedor.length >= 1 || proveedores.length > 0)}
-                className="pl-10"
-                autoComplete="off"
-              />
-            </div>
-            {proveedorSeleccionado && (
-              <p className="text-xs text-green-600 flex items-center gap-1">
-                <Building2 className="h-3 w-3" /> Proveedor registrado - datos fiscales cargados
-              </p>
-            )}
-            {!proveedorSeleccionado && busquedaProveedor && (
-              <p className="text-xs text-amber-600">
-                ⚠️ Nuevo proveedor - se registrará automáticamente
-              </p>
-            )}
-            {mostrarListaProveedores && proveedoresFiltrados.length > 0 && (
-              <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto">
-                {proveedoresFiltrados.slice(0, 8).map(prov => (
-                  <div
-                    key={prov.id}
-                    className="px-3 py-2 hover:bg-gray-100 cursor-pointer flex justify-between items-center"
-                    onClick={() => seleccionarProveedor(prov)}
-                  >
-                    <div>
-                      <p className="font-medium text-sm">{prov.nombre}</p>
-                      {prov.cif && <p className="text-xs text-muted-foreground">{prov.cif}</p>}
-                    </div>
-                    <Building2 className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Datos fiscales del proveedor - AQUÍ, justo debajo del campo */}
-            {formData.proveedor && formData.proveedor.trim() && !proveedorSeleccionado && (
-              <div className="space-y-3 border-2 border-amber-300 bg-amber-50 rounded-lg p-3 mt-2">
-                <p className="text-xs font-medium text-amber-800">
-                  📝 Completa los datos fiscales de "{formData.proveedor}"
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                  <Input
-                    placeholder="CIF/NIF"
-                    value={formData.proveedorCIF}
-                    onChange={(e) => setFormData({ ...formData, proveedorCIF: e.target.value })}
-                    className="border-amber-300 text-sm"
-                  />
-                  <Input
-                    placeholder="Teléfono"
-                    value={formData.proveedorTelefono || ''}
-                    onChange={(e) => setFormData({ ...formData, proveedorTelefono: e.target.value })}
-                    className="border-amber-300 text-sm"
-                  />
-                </div>
-                <Input
-                  placeholder="Dirección completa"
-                  value={formData.proveedorDireccion}
-                  onChange={(e) => setFormData({ ...formData, proveedorDireccion: e.target.value })}
-                  className="border-amber-300 text-sm"
-                />
-                <Input
-                  placeholder="Email"
-                  type="email"
-                  value={formData.proveedorEmail || ''}
-                  onChange={(e) => setFormData({ ...formData, proveedorEmail: e.target.value })}
-                  className="border-amber-300 text-sm"
-                />
-              </div>
-            )}
-          </div>
-
+          {/* 📌 TIPO DE GASTO PRIMERO - Para determinar si se necesita proveedor */}
           <div className="space-y-2">
             <Label htmlFor="tipoGasto">Tipo de Gasto *</Label>
             <Select
               value={formData.tipoGasto}
-              onValueChange={(value) => setFormData({ ...formData, tipoGasto: value })}
+              onValueChange={(value) => {
+                // Si es gasto interno (sin proveedor), limpiar datos de proveedor y poner IVA 0%
+                const esGastoInterno = CATEGORIAS_SIN_PROVEEDOR.includes(value)
+                setFormData({ 
+                  ...formData, 
+                  tipoGasto: value,
+                  iva: esGastoInterno ? '0' : formData.iva,
+                  tipo: esGastoInterno ? 'TICKET' : formData.tipo,
+                  // Limpiar datos de proveedor si es gasto interno
+                  ...(esGastoInterno ? {
+                    proveedor: '',
+                    proveedorId: '',
+                    proveedorCIF: '',
+                    proveedorDireccion: '',
+                    proveedorCodigoPostal: '',
+                    proveedorCiudad: '',
+                    proveedorProvincia: '',
+                    proveedorTelefono: '',
+                    proveedorEmail: ''
+                  } : {})
+                })
+                if (esGastoInterno) {
+                  setBusquedaProveedor('')
+                  setProveedorSeleccionado(null)
+                }
+              }}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecciona categoría" />
               </SelectTrigger>
               <SelectContent>
+                {/* 💰 GASTOS CON PROVEEDOR */}
                 <SelectItem value="Combustible">🛢️ Combustible</SelectItem>
                 <SelectItem value="Mantenimiento">🔧 Mantenimiento</SelectItem>
                 <SelectItem value="Productos Lavado">🧽 Productos Lavado</SelectItem>
@@ -407,10 +372,139 @@ export function NuevoGastoDialog({ onGastoCreado }: NuevoGastoDialogProps) {
                 <SelectItem value="Marketing">📢 Marketing y Publicidad</SelectItem>
                 <SelectItem value="Personal">👥 Personal (Nóminas/SS)</SelectItem>
                 <SelectItem value="Asesoría">💼 Asesoría</SelectItem>
-                <SelectItem value="Otros">📦 Otros</SelectItem>
+                <SelectItem value="Otros">📦 Otros Gastos</SelectItem>
+                {/* 💼 GASTOS INTERNOS (SIN PROVEEDOR) */}
+                <SelectItem value="Adelanto Empleado">👤 Adelanto a Empleado</SelectItem>
+                <SelectItem value="Pago Empleado">💵 Pago a Empleado</SelectItem>
+                <SelectItem value="Retiro Propietario">🏠 Retiro Propietario/Gerente</SelectItem>
+                <SelectItem value="Caja Menor">🗃️ Caja Menor</SelectItem>
+                <SelectItem value="Comisiones Bancarias">🏦 Comisiones Bancarias</SelectItem>
+                <SelectItem value="Gastos Bancarios">💳 Gastos Bancarios</SelectItem>
               </SelectContent>
             </Select>
+            {!requiereProveedor(formData.tipoGasto) && formData.tipoGasto && (
+              <p className="text-xs text-blue-600 flex items-center gap-1">
+                <Wallet className="h-3 w-3" /> Gasto interno - no requiere datos de proveedor
+              </p>
+            )}
           </div>
+
+          {/* 📌 CAMPO PROVEEDOR O BENEFICIARIO según tipo de gasto */}
+          {requiereProveedor(formData.tipoGasto) ? (
+            // Mostrar campo de proveedor para gastos con proveedor
+            <div className="space-y-2 relative">
+              <Label htmlFor="proveedor">Proveedor</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="proveedor"
+                  placeholder="Buscar o escribir proveedor..."
+                  value={busquedaProveedor}
+                  onChange={(e) => handleProveedorChange(e.target.value)}
+                  onFocus={() => setMostrarListaProveedores(busquedaProveedor.length >= 1 || proveedores.length > 0)}
+                  className="pl-10"
+                  autoComplete="off"
+                />
+              </div>
+              {proveedorSeleccionado && (
+                <p className="text-xs text-green-600 flex items-center gap-1">
+                  <Building2 className="h-3 w-3" /> Proveedor registrado - datos fiscales cargados
+                </p>
+              )}
+              {!proveedorSeleccionado && busquedaProveedor && (
+                <p className="text-xs text-amber-600">
+                  ⚠️ Nuevo proveedor - se registrará automáticamente
+                </p>
+              )}
+              {mostrarListaProveedores && proveedoresFiltrados.length > 0 && (
+                <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto">
+                  {proveedoresFiltrados.slice(0, 8).map(prov => (
+                    <div
+                      key={prov.id}
+                      className="px-3 py-2 hover:bg-gray-100 cursor-pointer flex justify-between items-center"
+                      onClick={() => seleccionarProveedor(prov)}
+                    >
+                      <div>
+                        <p className="font-medium text-sm">{prov.nombre}</p>
+                        {prov.cif && <p className="text-xs text-muted-foreground">{prov.cif}</p>}
+                      </div>
+                      <Building2 className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Datos fiscales del proveedor */}
+              {formData.proveedor && formData.proveedor.trim() && !proveedorSeleccionado && (
+                <div className="space-y-3 border-2 border-amber-300 bg-amber-50 rounded-lg p-3 mt-2">
+                  <p className="text-xs font-medium text-amber-800">
+                    📝 Completa los datos fiscales de "{formData.proveedor}"
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input
+                      placeholder="CIF/NIF"
+                      value={formData.proveedorCIF}
+                      onChange={(e) => setFormData({ ...formData, proveedorCIF: e.target.value })}
+                      className="border-amber-300 text-sm"
+                    />
+                    <Input
+                      placeholder="Teléfono"
+                      value={formData.proveedorTelefono || ''}
+                      onChange={(e) => setFormData({ ...formData, proveedorTelefono: e.target.value })}
+                      className="border-amber-300 text-sm"
+                    />
+                  </div>
+                  <Input
+                    placeholder="Dirección completa"
+                    value={formData.proveedorDireccion}
+                    onChange={(e) => setFormData({ ...formData, proveedorDireccion: e.target.value })}
+                    className="border-amber-300 text-sm"
+                  />
+                  <Input
+                    placeholder="Email"
+                    type="email"
+                    value={formData.proveedorEmail || ''}
+                    onChange={(e) => setFormData({ ...formData, proveedorEmail: e.target.value })}
+                    className="border-amber-300 text-sm"
+                  />
+                </div>
+              )}
+            </div>
+          ) : formData.tipoGasto && (
+            // Mostrar campo de beneficiario para gastos internos
+            <div className="space-y-2">
+              <Label htmlFor="beneficiario">
+                {formData.tipoGasto === 'Adelanto Empleado' || formData.tipoGasto === 'Pago Empleado' 
+                  ? '👤 Nombre del Empleado' 
+                  : formData.tipoGasto === 'Retiro Propietario'
+                  ? '🏠 Nombre del Propietario/Gerente'
+                  : '📝 Descripción/Referencia'}
+              </Label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="beneficiario"
+                  placeholder={
+                    formData.tipoGasto === 'Adelanto Empleado' || formData.tipoGasto === 'Pago Empleado'
+                      ? "Ej: Juan García"
+                      : formData.tipoGasto === 'Retiro Propietario'
+                      ? "Ej: Carlos Propietario"
+                      : formData.tipoGasto === 'Comisiones Bancarias' || formData.tipoGasto === 'Gastos Bancarios'
+                      ? "Ej: Comisión TPV Sumup - Octubre"
+                      : "Ej: Compra pequeña urgente"
+                  }
+                  value={formData.beneficiario}
+                  onChange={(e) => setFormData({ ...formData, beneficiario: e.target.value })}
+                  className="pl-10"
+                />
+              </div>
+              <p className="text-xs text-gray-500">
+                {formData.tipoGasto === 'Caja Menor' && "Para pequeños gastos sin factura"}
+                {formData.tipoGasto === 'Comisiones Bancarias' && "Comisiones del banco o TPV"}
+                {formData.tipoGasto === 'Gastos Bancarios' && "Otros cargos bancarios"}
+              </p>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">

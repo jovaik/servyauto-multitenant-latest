@@ -22,7 +22,8 @@ export async function PUT(
       concepto, 
       fecha, 
       proveedor,
-      proveedorId, 
+      proveedorId,
+      beneficiario,  // 📌 Campo para gastos internos
       tipoGasto, 
       importe, 
       metodoPago, 
@@ -91,6 +92,7 @@ export async function PUT(
         fecha: new Date(fecha),
         proveedor: proveedor || null,
         proveedorId: proveedorRegistradoId,
+        beneficiario: beneficiario || null,  // 📌 Nuevo campo
         tipoGasto,
         importe: parseFloat(importe.toString()),
         metodoPago: metodoPago as any,

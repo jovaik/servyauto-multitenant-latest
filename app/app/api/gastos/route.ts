@@ -40,6 +40,7 @@ export async function POST(request: NextRequest) {
       fecha, 
       proveedor, 
       proveedorId,
+      beneficiario,  // 📌 Campo para gastos internos (empleados, propietario, etc.)
       tipoGasto, 
       importe, 
       metodoPago, 
@@ -139,6 +140,7 @@ export async function POST(request: NextRequest) {
       concepto: concepto.trim(),
       fecha: new Date(fecha),
       proveedor: proveedor && proveedor.trim() ? proveedor.trim() : null,
+      beneficiario: beneficiario && beneficiario.trim() ? beneficiario.trim() : null, // 📌 Nuevo campo
       tipoGasto: tipoGasto.trim(),
       importe: parseFloat(importe),
       metodoPago: metodoPago,
@@ -170,7 +172,8 @@ export async function POST(request: NextRequest) {
     console.log('Gasto creado exitosamente:', gasto.id)
 
     // 🔄 SINCRONIZAR CON GSCONTROL - CÓDIGO ACTUALIZADO 31/10/2025
-    const descripcionGasto = `${gasto.concepto}${gasto.proveedor ? ` - ${gasto.proveedor}` : ''}`
+    // Usar proveedor O beneficiario en la descripción según corresponda
+    const descripcionGasto = `${gasto.concepto}${gasto.proveedor ? ` - ${gasto.proveedor}` : gasto.beneficiario ? ` - ${gasto.beneficiario}` : ''}`
     const categoriaGSControl = mapearCategoriaGasto(gasto.tipoGasto)
     
     await notificarCreacionGSControl({

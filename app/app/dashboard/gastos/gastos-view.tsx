@@ -44,6 +44,7 @@ interface Gasto {
   concepto: string
   fecha: string
   proveedor: string | null
+  beneficiario: string | null
   tipoGasto: string
   importe: number
   tipo: 'TICKET' | 'FACTURA'
@@ -131,6 +132,7 @@ export function GastosView() {
     const matchesSearch = searchTerm === '' || 
       gasto.concepto.toLowerCase().includes(searchTerm.toLowerCase()) ||
       gasto.proveedor?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      gasto.beneficiario?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       gasto.tipoGasto.toLowerCase().includes(searchTerm.toLowerCase())
     
     const matchesType = filterType === 'ALL' || gasto.tipo === filterType
@@ -320,7 +322,7 @@ export function GastosView() {
                         {format(new Date(gasto.fecha), 'dd/MM/yyyy', { locale: es })}
                       </TableCell>
                       <TableCell>
-                        {gasto.proveedor || '-'}
+                        {gasto.proveedor || gasto.beneficiario || '-'}
                       </TableCell>
                       <TableCell>
                         {gasto.tipoGasto}
