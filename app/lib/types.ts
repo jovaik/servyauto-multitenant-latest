@@ -51,6 +51,7 @@ export interface Cita {
   observaciones?: string;
   metodoPago?: MetodoPago;
   total?: number;
+  ticketsUsados?: number;
   clienteId: string;
   vehiculoId: string;
   cliente?: Cliente;

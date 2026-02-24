@@ -59,6 +59,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       observaciones,
       metodoPago,
       servicios,
+      ticketsUsados,
     } = body
 
     console.log('=== INICIO ACTUALIZACIÓN CITA ===')
@@ -132,6 +133,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     if (box) updateData.box = box
     if (estado) updateData.estado = estado
     if (observaciones !== undefined) updateData.observaciones = observaciones
+    if (ticketsUsados !== undefined) updateData.ticketsUsados = parseInt(ticketsUsados) || 0
     
     // Manejar metodoPago: si es undefined se envía como null a Prisma
     if (metodoPago !== undefined) {

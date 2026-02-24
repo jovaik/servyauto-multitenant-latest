@@ -1231,23 +1231,6 @@ export function NuevaCitaDialog({
             </Select>
           </div>
 
-          {/* Tickets de Parking */}
-          <div className="space-y-2">
-            <Label htmlFor="ticketsUsados">Tickets de Parking Usados</Label>
-            <Input
-              id="ticketsUsados"
-              type="number"
-              min="0"
-              max="10"
-              value={formData.ticketsUsados}
-              onChange={(e) => setFormData(prev => ({ ...prev, ticketsUsados: parseInt(e.target.value) || 0 }))}
-              placeholder="0"
-            />
-            <p className="text-xs text-gray-500">
-              Número de tickets de descuento del parking entregados al cliente
-            </p>
-          </div>
-
           {/* Observaciones */}
           <div className="space-y-2">
             <Label htmlFor="observaciones">Observaciones</Label>

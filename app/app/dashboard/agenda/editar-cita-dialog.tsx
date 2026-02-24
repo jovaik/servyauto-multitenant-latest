@@ -93,6 +93,7 @@ export function EditarCitaDialog({
     estado: EstadoCita.PENDIENTE,
     observaciones: '',
     metodoPago: '',
+    ticketsUsados: 0,
   })
 
   // Franjas horarias removidas - ahora se usa input type="time" para mayor flexibilidad
@@ -131,6 +132,7 @@ export function EditarCitaDialog({
           estado: cita.estado,
           observaciones: cita.observaciones || '',
           metodoPago: cita.metodoPago || '',
+          ticketsUsados: cita.ticketsUsados || 0,
         })
         
         // Cargar servicios asociados a la cita
@@ -520,6 +522,29 @@ export function EditarCitaDialog({
               </SelectContent>
             </Select>
           </div>
+
+          {/* Tickets de Parking - Solo visible cuando el vehículo está listo o completado */}
+          {(formData.estado === EstadoCita.LISTO_PARA_RECOGER || formData.estado === EstadoCita.COMPLETADA) && (
+            <div className="space-y-2 p-3 bg-amber-50 rounded-lg border border-amber-200">
+              <Label htmlFor="ticketsUsados" className="flex items-center gap-2">
+                <span className="text-amber-600">🎟️</span>
+                Tickets de Parking Entregados
+              </Label>
+              <Input
+                id="ticketsUsados"
+                type="number"
+                min="0"
+                max="10"
+                value={formData.ticketsUsados}
+                onChange={(e) => setFormData(prev => ({ ...prev, ticketsUsados: parseInt(e.target.value) || 0 }))}
+                placeholder="0"
+                className="bg-white"
+              />
+              <p className="text-xs text-amber-700">
+                Número de tickets de descuento del parking entregados al cliente
+              </p>
+            </div>
+          )}
 
           {/* Servicios */}
           <div className="space-y-2">
