@@ -750,13 +750,11 @@ export function FacturacionView() {
                             <Eye className="mr-2 h-4 w-4" />
                             Ver Detalles
                           </DropdownMenuItem>
-                          <DropdownMenuItem asChild>
-                            <EditarFacturaDialog 
-                              facturaId={factura.id}
-                              facturaNumero={factura.numero}
-                              onFacturaActualizada={loadFacturas}
-                            />
-                          </DropdownMenuItem>
+                          <EditarFacturaDialog 
+                            facturaId={factura.id}
+                            facturaNumero={factura.numero}
+                            onFacturaActualizada={loadFacturas}
+                          />
                           {factura.tipo === 'TICKET' && (
                             <ConvertirTicketDialog 
                               ticketId={factura.id}

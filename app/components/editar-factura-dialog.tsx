@@ -9,9 +9,9 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -218,8 +218,8 @@ export function EditarFacturaDialog({ facturaId, facturaNumero, onFacturaActuali
       return
     }
 
-    // Validar items
-    if (items.some(item => !item.descripcion || item.precio <= 0)) {
+    // Validar items - permitir precio 0 para servicios gratuitos/incluidos
+    if (items.some(item => !item.descripcion || item.precio < 0)) {
       alert('Por favor complete todos los items con descripción y precio válido')
       return
     }
@@ -274,13 +274,12 @@ export function EditarFacturaDialog({ facturaId, facturaNumero, onFacturaActuali
   const { subtotal, iva, total } = calcularTotales()
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="p-0 h-auto">
-          <Edit className="mr-2 h-4 w-4" />
-          Editar
-        </Button>
-      </DialogTrigger>
+    <>
+      <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setOpen(true); }}>
+        <Edit className="mr-2 h-4 w-4" />
+        Editar
+      </DropdownMenuItem>
+      <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -581,5 +580,6 @@ export function EditarFacturaDialog({ facturaId, facturaNumero, onFacturaActuali
         )}
       </DialogContent>
     </Dialog>
+    </>
   )
 }
