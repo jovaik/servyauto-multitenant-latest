@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
-import { Plus, Building2, MapPin, Phone, Mail, Palette, Users, Calendar, FileText, Pencil, Trash2, ImageIcon, UserPlus, Shield } from 'lucide-react';
+import { Plus, Building2, MapPin, Phone, Mail, Palette, Users, Calendar, FileText, Pencil, Trash2, ImageIcon, UserPlus, Shield, UserMinus, Link } from 'lucide-react';
 import Image from 'next/image';
 
 interface Usuario {
@@ -62,6 +62,11 @@ export default function LocalesView() {
     role: 'OPERADOR',
   });
   
+  // Estado para asignar usuarios existentes
+  const [todosUsuarios, setTodosUsuarios] = useState<(Usuario & { localId?: string | null })[]>([]);
+  const [asignarUsuarioDialogOpen, setAsignarUsuarioDialogOpen] = useState(false);
+  const [usuarioSeleccionado, setUsuarioSeleccionado] = useState<string>('');
+  
   const [formData, setFormData] = useState({
     nombre: '',
     nombreComercial: '',
@@ -99,6 +104,7 @@ export default function LocalesView() {
     setSelectedLocalForUsers(local);
     setUsuariosDialogOpen(true);
     await loadUsuariosDelLocal(local.id);
+    await loadTodosUsuarios();
   };
 
   const loadUsuariosDelLocal = async (localId: string) => {
@@ -115,6 +121,75 @@ export default function LocalesView() {
       setLoadingUsuarios(false);
     }
   };
+
+  const loadTodosUsuarios = async () => {
+    try {
+      const res = await fetch('/api/usuarios');
+      if (res.ok) {
+        const data = await res.json();
+        setTodosUsuarios(data);
+      }
+    } catch (error) {
+      console.error('Error cargando todos los usuarios:', error);
+    }
+  };
+
+  const handleAsignarUsuarioExistente = async () => {
+    if (!selectedLocalForUsers || !usuarioSeleccionado) return;
+
+    try {
+      const res = await fetch(`/api/usuarios/${usuarioSeleccionado}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ localId: selectedLocalForUsers.id }),
+      });
+
+      if (res.ok) {
+        toast({ title: 'Usuario asignado', description: 'El usuario ahora tiene acceso a este local' });
+        setAsignarUsuarioDialogOpen(false);
+        setUsuarioSeleccionado('');
+        await loadUsuariosDelLocal(selectedLocalForUsers.id);
+        await loadTodosUsuarios();
+        loadLocales();
+      } else {
+        const error = await res.json();
+        toast({ title: 'Error', description: error.error || 'Error al asignar usuario', variant: 'destructive' });
+      }
+    } catch (error) {
+      console.error('Error asignando usuario:', error);
+      toast({ title: 'Error', description: 'Error al asignar usuario', variant: 'destructive' });
+    }
+  };
+
+  const handleDesasignarUsuario = async (usuarioId: string) => {
+    if (!confirm('¿Quitar este usuario del local? Perderá acceso a los datos de este local.')) return;
+
+    try {
+      const res = await fetch(`/api/usuarios/${usuarioId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ localId: null }),
+      });
+
+      if (res.ok) {
+        toast({ title: 'Usuario desasignado', description: 'El usuario ya no tiene acceso a este local' });
+        if (selectedLocalForUsers) {
+          await loadUsuariosDelLocal(selectedLocalForUsers.id);
+          loadLocales();
+        }
+      } else {
+        const error = await res.json();
+        toast({ title: 'Error', description: error.error || 'Error al desasignar', variant: 'destructive' });
+      }
+    } catch (error) {
+      console.error('Error desasignando usuario:', error);
+    }
+  };
+
+  // Usuarios disponibles para asignar (no están en este local y no son SuperAdmin)
+  const usuariosDisponibles = todosUsuarios.filter(
+    u => u.localId !== selectedLocalForUsers?.id && u.role !== 'SUPER_ADMIN'
+  );
 
   const handleCrearUsuarioLocal = async () => {
     if (!selectedLocalForUsers) return;
@@ -620,20 +695,92 @@ export default function LocalesView() {
                       <Badge variant={usuario.activo ? 'default' : 'secondary'}>
                         {usuario.activo ? 'Activo' : 'Inactivo'}
                       </Badge>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        onClick={() => handleDesasignarUsuario(usuario.id)}
+                        title="Quitar del local"
+                      >
+                        <UserMinus className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
                 ))}
               </div>
             )}
 
-            <Button 
-              className="w-full" 
-              onClick={() => setNuevoUsuarioDialogOpen(true)}
-            >
-              <UserPlus className="h-4 w-4 mr-2" />
-              Añadir Usuario al Local
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline"
+                className="flex-1" 
+                onClick={() => setAsignarUsuarioDialogOpen(true)}
+                disabled={usuariosDisponibles.length === 0}
+              >
+                <Link className="h-4 w-4 mr-2" />
+                Asignar Existente
+              </Button>
+              <Button 
+                className="flex-1" 
+                onClick={() => setNuevoUsuarioDialogOpen(true)}
+              >
+                <UserPlus className="h-4 w-4 mr-2" />
+                Crear Nuevo
+              </Button>
+            </div>
+            {usuariosDisponibles.length === 0 && (
+              <p className="text-xs text-gray-500 text-center">No hay usuarios disponibles para asignar</p>
+            )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo para asignar usuario existente */}
+      <Dialog open={asignarUsuarioDialogOpen} onOpenChange={setAsignarUsuarioDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Asignar Usuario Existente</DialogTitle>
+            <DialogDescription>
+              Selecciona un usuario para asignarlo a {selectedLocalForUsers?.nombre}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Seleccionar Usuario</Label>
+              <Select
+                value={usuarioSeleccionado}
+                onValueChange={setUsuarioSeleccionado}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona un usuario..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {usuariosDisponibles.map((usuario) => (
+                    <SelectItem key={usuario.id} value={usuario.id}>
+                      <div className="flex items-center gap-2">
+                        <span>{usuario.name || usuario.email}</span>
+                        <span className="text-gray-400">({usuario.role})</span>
+                        {usuario.localId && <span className="text-orange-500 text-xs">(otro local)</span>}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-500">
+                Los usuarios marcados con "(otro local)" serán transferidos a este local
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setAsignarUsuarioDialogOpen(false); setUsuarioSeleccionado(''); }}>
+              Cancelar
+            </Button>
+            <Button onClick={handleAsignarUsuarioExistente} disabled={!usuarioSeleccionado}>
+              Asignar Usuario
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

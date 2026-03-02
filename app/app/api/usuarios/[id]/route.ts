@@ -61,13 +61,6 @@ export async function PUT(
     const body = await request.json()
     const { name, email, password, role, activo, localId } = body
 
-    if (!email || !role) {
-      return NextResponse.json(
-        { error: 'Email y rol son requeridos' }, 
-        { status: 400 }
-      )
-    }
-
     // Verificar si el usuario existe
     const existingUser = await prisma.user.findUnique({
       where: { id: params.id }
@@ -77,32 +70,42 @@ export async function PUT(
       return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 })
     }
 
-    // Verificar si el email ya está en uso por otro usuario
-    if (email !== existingUser.email) {
-      const emailInUse = await prisma.user.findUnique({
-        where: { email }
-      })
+    // Preparar datos de actualización (solo campos proporcionados)
+    const updateData: any = {}
 
-      if (emailInUse) {
-        return NextResponse.json(
-          { error: 'El email ya está en uso por otro usuario' }, 
-          { status: 400 }
-        )
+    // Solo actualizar campos que se proporcionan
+    if (name !== undefined) updateData.name = name
+    if (email !== undefined) {
+      // Verificar si el email ya está en uso por otro usuario
+      if (email !== existingUser.email) {
+        const emailInUse = await prisma.user.findUnique({
+          where: { email }
+        })
+        if (emailInUse) {
+          return NextResponse.json(
+            { error: 'El email ya está en uso por otro usuario' }, 
+            { status: 400 }
+          )
+        }
       }
+      updateData.email = email
     }
-
-    // Preparar datos de actualización
-    const updateData: any = {
-      name,
-      email,
-      role: role as RolUsuario,
-      activo,
-      localId: localId === '' || localId === undefined ? null : localId, // null = ve todos los locales
+    if (role !== undefined) updateData.role = role as RolUsuario
+    if (activo !== undefined) updateData.activo = activo
+    
+    // LocalId: null = SuperAdmin (ve todos), string = local específico
+    if (localId !== undefined) {
+      updateData.localId = localId === '' || localId === null ? null : localId
     }
 
     // Si se proporciona una nueva contraseña, encriptarla
     if (password && password.trim() !== '') {
       updateData.password = await bcrypt.hash(password, 12)
+    }
+
+    // Si no hay nada que actualizar
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json({ error: 'No hay datos para actualizar' }, { status: 400 })
     }
 
     const updatedUser = await prisma.user.update({
