@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     console.log('Datos recibidos para crear cliente:', body)
     
-    const { nombre, apellido, email, telefono, direccion, documento, clienteParking } = body
+    const { nombre, apellido, email, telefono, direccion, documento, clienteParking, clienteVIP, clienteEmpresa } = body
 
     // Validaciones básicas (apellido ahora es opcional)
     if (!nombre || !telefono) {
@@ -91,6 +91,8 @@ export async function POST(request: NextRequest) {
         direccion: direccion || null,
         documento: documento || null,
         clienteParking: clienteParking || false,
+        clienteVIP: clienteVIP || false,
+        clienteEmpresa: clienteEmpresa || false,
       },
       include: {
         vehiculos: true,

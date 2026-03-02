@@ -7,6 +7,9 @@ export interface Cliente {
   telefono: string;
   direccion?: string;
   documento?: string;
+  clienteParking?: boolean;
+  clienteVIP?: boolean;
+  clienteEmpresa?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

@@ -41,7 +41,10 @@ export async function GET(request: NextRequest) {
             id: true,
             nombre: true,
             apellido: true,
-            telefono: true
+            telefono: true,
+            clienteParking: true,
+            clienteVIP: true,
+            clienteEmpresa: true
           }
         }
       },

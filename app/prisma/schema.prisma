@@ -67,6 +67,8 @@ model Cliente {
   direccion      String?
   documento      String?    @map("dni")
   clienteParking Boolean    @default(false) // Indica si el cliente es abonado del parking
+  clienteVIP     Boolean    @default(false) // Cliente VIP con descuento especial
+  clienteEmpresa Boolean    @default(false) // Cliente empresa con descuento
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
   citas           Cita[]
