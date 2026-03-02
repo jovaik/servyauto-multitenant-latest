@@ -44,10 +44,42 @@ model User {
   password      String?
   role          RolUsuario @default(ADMIN)
   activo        Boolean    @default(true)
+  localId       String?    // null = ve todos los locales (superadmin)
+  local         Local?     @relation(fields: [localId], references: [id])
   createdAt         DateTime   @default(now())
   updatedAt         DateTime   @updatedAt
   accounts          Account[]
   sessions          Session[]
+}
+
+// ========================================
+// SISTEMA MULTI-LOCAL
+// ========================================
+
+model Local {
+  id               String    @id @default(cuid())
+  nombre           String    // Nombre interno del local (ej: "Local Centro")
+  nombreComercial  String?   // Marca comercial si es diferente
+  logo             String?   // URL del logo
+  direccion        String?
+  ciudad           String?
+  codigoPostal     String?
+  telefono         String?
+  email            String?
+  activo           Boolean   @default(true)
+  colorPrimario    String?   // Color corporativo para personalización
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  
+  // Relaciones
+  usuarios         User[]
+  clientes         Cliente[]
+  vehiculos        Vehiculo[]
+  citas            Cita[]
+  facturas         Factura[]
+  gastos           Gasto[]
+
+  @@map("locales")
 }
 
 model VerificationToken {
@@ -69,6 +101,8 @@ model Cliente {
   clienteParking Boolean    @default(false) // Indica si el cliente es abonado del parking
   clienteVIP     Boolean    @default(false) // Cliente VIP con descuento especial
   clienteEmpresa Boolean    @default(false) // Cliente empresa con descuento
+  localId        String?    // Local al que pertenece el cliente
+  local          Local?     @relation(fields: [localId], references: [id])
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
   citas           Cita[]
@@ -91,6 +125,8 @@ model Vehiculo {
   combustible   String?
   observaciones String?
   clienteId     String
+  localId       String?  // Local al que pertenece el vehículo
+  local         Local?   @relation(fields: [localId], references: [id])
   createdAt     DateTime @default(now())
   updatedAt         DateTime @updatedAt
   citas             Cita[]
@@ -128,6 +164,8 @@ model Cita {
   ticketsUsados  Int              @default(0) // Número de tickets de parking utilizados
   clienteId      String
   vehiculoId     String
+  localId        String?          // Local donde se realiza la cita
+  local          Local?           @relation(fields: [localId], references: [id])
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
   cita_servicios cita_servicios[]
@@ -157,6 +195,8 @@ model Factura {
   creadoPorId      String?
   creadoPorNombre  String?
   fechaPago        DateTime?
+  localId          String?         // Local que generó la factura
+  local            Local?          @relation(fields: [localId], references: [id])
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
   factura_items     factura_items[]
@@ -258,6 +298,8 @@ model Gasto {
   // Trazabilidad
   creadoPorId           String?
   creadoPorNombre       String?
+  localId               String?     // Local que registró el gasto
+  local                 Local?      @relation(fields: [localId], references: [id])
   createdAt             DateTime    @default(now())
   updatedAt             DateTime    @updatedAt
 
