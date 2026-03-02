@@ -1040,12 +1040,32 @@ export function NuevaCitaDialog({
                 )}
               </div>
 
-              {/* Información de descuento y tickets */}
+              {/* Descuento manual - SIEMPRE VISIBLE */}
+              <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                <Label htmlFor="descuentoManual" className="text-purple-800 text-sm font-medium flex items-center">
+                  💰 Descuento manual
+                </Label>
+                <div className="flex items-center gap-2 mt-1">
+                  <Input
+                    id="descuentoManual"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={descuentoManual || ''}
+                    onChange={(e) => setDescuentoManual(parseFloat(e.target.value) || 0)}
+                    placeholder="0.00"
+                    className="w-24 bg-white"
+                  />
+                  <span className="text-purple-700 text-sm">€ de descuento adicional</span>
+                </div>
+              </div>
+
+              {/* Información de descuentos automáticos y tickets - solo si hay cliente */}
               {formData.clienteId && (
                   <div className="space-y-2">
                     <div className="border rounded-lg p-3 bg-blue-50 border-blue-200">
                       <div className="flex items-center justify-between mb-2">
-                        <h4 className="text-sm font-semibold text-blue-900">Descuentos del cliente</h4>
+                        <h4 className="text-sm font-semibold text-blue-900">Descuentos automáticos del cliente</h4>
                       </div>
                       <div className="space-y-1 text-sm">
                         {/* Descuentos automáticos del cliente */}
@@ -1081,26 +1101,6 @@ export function NuevaCitaDialog({
                             <span className="text-gray-600">Cliente regular (sin descuentos automáticos)</span>
                           </div>
                         )}
-                        
-                        {/* Descuento manual */}
-                        <div className="mt-3 p-3 bg-purple-50 border border-purple-200 rounded">
-                          <Label htmlFor="descuentoManual" className="text-purple-800 text-sm font-medium flex items-center">
-                            💰 Descuento manual (€)
-                          </Label>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Input
-                              id="descuentoManual"
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={descuentoManual || ''}
-                              onChange={(e) => setDescuentoManual(parseFloat(e.target.value) || 0)}
-                              placeholder="0.00"
-                              className="w-24 bg-white"
-                            />
-                            <span className="text-purple-700 text-sm">€ de descuento adicional</span>
-                          </div>
-                        </div>
                         
                         <div className="flex items-center justify-between p-2 bg-amber-50 border border-amber-200 rounded mt-2">
                           <span className="text-amber-900">

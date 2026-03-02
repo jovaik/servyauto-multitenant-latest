@@ -13,13 +13,31 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
+    // Filtro opcional por localId
+    const { searchParams } = new URL(request.url)
+    const localId = searchParams.get('localId')
+
+    const whereClause: any = {}
+    if (localId) {
+      whereClause.localId = localId
+    }
+
     const usuarios = await prisma.user.findMany({
+      where: whereClause,
       select: {
         id: true,
         name: true,
         email: true,
         role: true,
         activo: true,
+        localId: true,
+        local: {
+          select: {
+            id: true,
+            nombre: true,
+            nombreComercial: true,
+          }
+        },
         createdAt: true,
         updatedAt: true,
       },
@@ -43,7 +61,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { name, email, password, role, activo } = body
+    const { name, email, password, role, activo, localId } = body
 
     if (!email || !password || !role) {
       return NextResponse.json(
@@ -75,6 +93,7 @@ export async function POST(request: NextRequest) {
         password: hashedPassword,
         role: role as RolUsuario,
         activo: activo ?? true,
+        localId: localId || null, // null = superadmin (ve todo)
       },
       select: {
         id: true,
@@ -82,10 +101,20 @@ export async function POST(request: NextRequest) {
         email: true,
         role: true,
         activo: true,
+        localId: true,
+        local: {
+          select: {
+            id: true,
+            nombre: true,
+            nombreComercial: true,
+          }
+        },
         createdAt: true,
         updatedAt: true,
       }
     })
+
+    console.log(`✅ Usuario creado: ${name} (${email}) - Local: ${localId || 'Todos (SuperAdmin)'}`)
 
     return NextResponse.json(newUser, { status: 201 })
   } catch (error) {

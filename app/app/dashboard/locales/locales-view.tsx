@@ -5,12 +5,21 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
-import { Plus, Building2, MapPin, Phone, Mail, Palette, Users, Calendar, FileText, Pencil, Trash2, ImageIcon } from 'lucide-react';
+import { Plus, Building2, MapPin, Phone, Mail, Palette, Users, Calendar, FileText, Pencil, Trash2, ImageIcon, UserPlus, Shield } from 'lucide-react';
 import Image from 'next/image';
+
+interface Usuario {
+  id: string;
+  name: string | null;
+  email: string;
+  role: string;
+  activo: boolean;
+}
 
 interface Local {
   id: string;
@@ -39,6 +48,19 @@ export default function LocalesView() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingLocal, setEditingLocal] = useState<Local | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  
+  // Estado para gestión de usuarios del local
+  const [usuariosDialogOpen, setUsuariosDialogOpen] = useState(false);
+  const [selectedLocalForUsers, setSelectedLocalForUsers] = useState<Local | null>(null);
+  const [usuariosDelLocal, setUsuariosDelLocal] = useState<Usuario[]>([]);
+  const [loadingUsuarios, setLoadingUsuarios] = useState(false);
+  const [nuevoUsuarioDialogOpen, setNuevoUsuarioDialogOpen] = useState(false);
+  const [nuevoUsuario, setNuevoUsuario] = useState({
+    name: '',
+    email: '',
+    password: '',
+    role: 'OPERADOR',
+  });
   
   const [formData, setFormData] = useState({
     nombre: '',
@@ -70,6 +92,74 @@ export default function LocalesView() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Funciones para gestión de usuarios del local
+  const openUsuariosDialog = async (local: Local) => {
+    setSelectedLocalForUsers(local);
+    setUsuariosDialogOpen(true);
+    await loadUsuariosDelLocal(local.id);
+  };
+
+  const loadUsuariosDelLocal = async (localId: string) => {
+    setLoadingUsuarios(true);
+    try {
+      const res = await fetch(`/api/usuarios?localId=${localId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setUsuariosDelLocal(data);
+      }
+    } catch (error) {
+      console.error('Error cargando usuarios:', error);
+    } finally {
+      setLoadingUsuarios(false);
+    }
+  };
+
+  const handleCrearUsuarioLocal = async () => {
+    if (!selectedLocalForUsers) return;
+    
+    if (!nuevoUsuario.name || !nuevoUsuario.email || !nuevoUsuario.password) {
+      toast({ title: 'Error', description: 'Nombre, email y contraseña son obligatorios', variant: 'destructive' });
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/usuarios', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...nuevoUsuario,
+          localId: selectedLocalForUsers.id,
+          activo: true,
+        }),
+      });
+
+      if (res.ok) {
+        toast({ title: 'Usuario creado', description: `${nuevoUsuario.name} ahora tiene acceso al local` });
+        setNuevoUsuarioDialogOpen(false);
+        setNuevoUsuario({ name: '', email: '', password: '', role: 'OPERADOR' });
+        await loadUsuariosDelLocal(selectedLocalForUsers.id);
+        loadLocales(); // Recargar para actualizar el contador
+      } else {
+        const error = await res.json();
+        toast({ title: 'Error', description: error.error || 'Error al crear usuario', variant: 'destructive' });
+      }
+    } catch (error) {
+      console.error('Error creando usuario:', error);
+      toast({ title: 'Error', description: 'Error al crear usuario', variant: 'destructive' });
+    }
+  };
+
+  const getRoleBadge = (role: string) => {
+    const roles: { [key: string]: { label: string, variant: 'default' | 'secondary' | 'destructive' | 'outline' } } = {
+      SUPER_ADMIN: { label: 'Super Admin', variant: 'destructive' },
+      ADMIN: { label: 'Admin', variant: 'default' },
+      OPERADOR: { label: 'Operador', variant: 'outline' },
+      MECANICO: { label: 'Mecánico', variant: 'secondary' },
+    };
+    const roleInfo = roles[role] || { label: role, variant: 'outline' as const };
+    return <Badge variant={roleInfo.variant}>{roleInfo.label}</Badge>;
   };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -439,7 +529,14 @@ export default function LocalesView() {
                 </div>
 
                 {/* Estadísticas */}
-                <div className="grid grid-cols-3 gap-2 py-3 border-t border-b">
+                <div className="grid grid-cols-4 gap-2 py-3 border-t border-b">
+                  <div className="text-center">
+                    <div className="flex items-center justify-center gap-1 text-gray-500">
+                      <Shield className="h-3 w-3" />
+                    </div>
+                    <div className="font-semibold">{local._count.usuarios}</div>
+                    <div className="text-xs text-gray-500">Usuarios</div>
+                  </div>
                   <div className="text-center">
                     <div className="flex items-center justify-center gap-1 text-gray-500">
                       <Users className="h-3 w-3" />
@@ -464,25 +561,147 @@ export default function LocalesView() {
                 </div>
 
                 {/* Acciones */}
-                <div className="flex justify-end gap-2 mt-4">
-                  <Button variant="outline" size="sm" onClick={() => handleEdit(local)}>
-                    <Pencil className="h-4 w-4 mr-1" />
-                    Editar
+                <div className="flex justify-between gap-2 mt-4">
+                  <Button variant="outline" size="sm" onClick={() => openUsuariosDialog(local)}>
+                    <UserPlus className="h-4 w-4 mr-1" />
+                    Usuarios ({local._count.usuarios})
                   </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="text-red-600 hover:text-red-700"
-                    onClick={() => handleDelete(local)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => handleEdit(local)}>
+                      <Pencil className="h-4 w-4 mr-1" />
+                      Editar
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="text-red-600 hover:text-red-700"
+                      onClick={() => handleDelete(local)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
       )}
+
+      {/* Diálogo de Usuarios del Local */}
+      <Dialog open={usuariosDialogOpen} onOpenChange={setUsuariosDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Usuarios de {selectedLocalForUsers?.nombreComercial || selectedLocalForUsers?.nombre}
+            </DialogTitle>
+            <DialogDescription>
+              Gestiona quién tiene acceso a este local
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {loadingUsuarios ? (
+              <div className="text-center py-4">Cargando usuarios...</div>
+            ) : usuariosDelLocal.length === 0 ? (
+              <div className="text-center py-4 text-gray-500">
+                No hay usuarios asignados a este local
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {usuariosDelLocal.map((usuario) => (
+                  <div key={usuario.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div>
+                      <div className="font-medium">{usuario.name || 'Sin nombre'}</div>
+                      <div className="text-sm text-gray-500">{usuario.email}</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {getRoleBadge(usuario.role)}
+                      <Badge variant={usuario.activo ? 'default' : 'secondary'}>
+                        {usuario.activo ? 'Activo' : 'Inactivo'}
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <Button 
+              className="w-full" 
+              onClick={() => setNuevoUsuarioDialogOpen(true)}
+            >
+              <UserPlus className="h-4 w-4 mr-2" />
+              Añadir Usuario al Local
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo para crear nuevo usuario del local */}
+      <Dialog open={nuevoUsuarioDialogOpen} onOpenChange={setNuevoUsuarioDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nuevo Usuario para {selectedLocalForUsers?.nombre}</DialogTitle>
+            <DialogDescription>
+              Este usuario solo podrá ver datos de este local
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Nombre *</Label>
+              <Input
+                value={nuevoUsuario.name}
+                onChange={(e) => setNuevoUsuario({ ...nuevoUsuario, name: e.target.value })}
+                placeholder="Nombre del empleado"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Email *</Label>
+              <Input
+                type="email"
+                value={nuevoUsuario.email}
+                onChange={(e) => setNuevoUsuario({ ...nuevoUsuario, email: e.target.value })}
+                placeholder="email@ejemplo.com"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Contraseña *</Label>
+              <Input
+                type="password"
+                value={nuevoUsuario.password}
+                onChange={(e) => setNuevoUsuario({ ...nuevoUsuario, password: e.target.value })}
+                placeholder="Contraseña de acceso"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Rol</Label>
+              <Select
+                value={nuevoUsuario.role}
+                onValueChange={(value) => setNuevoUsuario({ ...nuevoUsuario, role: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ADMIN">Admin (gestión completa)</SelectItem>
+                  <SelectItem value="OPERADOR">Operador (operaciones diarias)</SelectItem>
+                  <SelectItem value="MECANICO">Mecánico (solo citas)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNuevoUsuarioDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleCrearUsuarioLocal}>
+              Crear Usuario
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

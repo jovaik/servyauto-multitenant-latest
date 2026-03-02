@@ -2,7 +2,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { UserPlus, Search, Edit, Trash2, Shield, Users as UsersIcon } from 'lucide-react'
+import { UserPlus, Search, Edit, Trash2, Shield, Users as UsersIcon, Store } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -32,18 +32,27 @@ import {
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 
+interface Local {
+  id: string
+  nombre: string
+  nombreComercial?: string
+}
+
 interface Usuario {
   id: string
   name: string | null
   email: string
   role: string
   activo: boolean
+  localId: string | null
+  local?: Local | null
   createdAt: string
   updatedAt: string
 }
 
 export function UsuariosView() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([])
+  const [locales, setLocales] = useState<Local[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedUsuario, setSelectedUsuario] = useState<Usuario | null>(null)
@@ -55,11 +64,13 @@ export function UsuariosView() {
     email: '',
     password: '',
     role: 'ADMIN',
-    activo: true
+    activo: true,
+    localId: '' // Vacío = todos los locales (superadmin)
   })
 
   useEffect(() => {
     fetchUsuarios()
+    fetchLocales()
   }, [])
 
   const fetchUsuarios = async () => {
@@ -76,13 +87,28 @@ export function UsuariosView() {
     }
   }
 
+  const fetchLocales = async () => {
+    try {
+      const response = await fetch('/api/locales')
+      if (response.ok) {
+        const data = await response.json()
+        setLocales(data)
+      }
+    } catch (error) {
+      console.error('Error fetching locales:', error)
+    }
+  }
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
       const response = await fetch('/api/usuarios', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          ...formData,
+          localId: formData.localId || null // null = superadmin
+        })
       })
 
       if (response.ok) {
@@ -93,7 +119,8 @@ export function UsuariosView() {
           email: '',
           password: '',
           role: 'ADMIN',
-          activo: true
+          activo: true,
+          localId: ''
         })
         fetchUsuarios()
       } else {
@@ -115,7 +142,8 @@ export function UsuariosView() {
         name: formData.name,
         email: formData.email,
         role: formData.role,
-        activo: formData.activo
+        activo: formData.activo,
+        localId: formData.localId || null // null = superadmin
       }
 
       // Solo incluir password si se proporcionó uno nuevo
@@ -138,7 +166,8 @@ export function UsuariosView() {
           email: '',
           password: '',
           role: 'ADMIN',
-          activo: true
+          activo: true,
+          localId: ''
         })
         fetchUsuarios()
       } else {
@@ -179,19 +208,29 @@ export function UsuariosView() {
       email: usuario.email,
       password: '',
       role: usuario.role,
-      activo: usuario.activo
+      activo: usuario.activo,
+      localId: usuario.localId || ''
     })
     setOpenEdit(true)
   }
 
   const getRoleBadge = (role: string) => {
     const roles: { [key: string]: { label: string, variant: 'default' | 'secondary' | 'destructive' | 'outline' } } = {
-      ADMIN: { label: 'Admin', variant: 'destructive' },
-      MECANICO: { label: 'Mecánico', variant: 'default' },
-      OPERADOR: { label: 'Operador', variant: 'secondary' }
+      SUPER_ADMIN: { label: 'Super Admin', variant: 'destructive' },
+      ADMIN: { label: 'Admin', variant: 'default' },
+      MECANICO: { label: 'Mecánico', variant: 'secondary' },
+      OPERADOR: { label: 'Operador', variant: 'outline' }
     }
     const roleInfo = roles[role] || { label: role, variant: 'outline' as const }
     return <Badge variant={roleInfo.variant}>{roleInfo.label}</Badge>
+  }
+
+  const getLocalBadge = (usuario: Usuario) => {
+    if (!usuario.localId) {
+      return <Badge variant="destructive" className="bg-purple-600">🌐 Todos (SuperAdmin)</Badge>
+    }
+    const localName = usuario.local?.nombreComercial || usuario.local?.nombre || 'Desconocido'
+    return <Badge variant="outline"><Store className="h-3 w-3 mr-1 inline" />{localName}</Badge>
   }
 
   const filteredUsuarios = usuarios.filter(u =>
@@ -284,6 +323,29 @@ export function UsuariosView() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="local">Local Asignado</Label>
+                <Select
+                  value={formData.localId}
+                  onValueChange={(value) => setFormData({ ...formData, localId: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar local..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">🌐 Todos los locales (SuperAdmin)</SelectItem>
+                    {locales.map((local) => (
+                      <SelectItem key={local.id} value={local.id}>
+                        <Store className="h-3 w-3 mr-1 inline" />
+                        {local.nombreComercial || local.nombre}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Sin local asignado = ve todos los datos (SuperAdmin)
+                </p>
+              </div>
               <div className="flex justify-end space-x-2 pt-4">
                 <Button type="button" variant="outline" onClick={() => setOpenNew(false)}>
                   Cancelar
@@ -351,6 +413,7 @@ export function UsuariosView() {
                   <TableHead>Nombre</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Rol</TableHead>
+                  <TableHead>Local</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>Fecha Creación</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
@@ -359,7 +422,7 @@ export function UsuariosView() {
               <TableBody>
                 {filteredUsuarios.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-gray-600">
+                    <TableCell colSpan={7} className="text-center py-8 text-gray-600">
                       No se encontraron usuarios
                     </TableCell>
                   </TableRow>
@@ -369,6 +432,7 @@ export function UsuariosView() {
                       <TableCell className="font-medium">{usuario.name || 'Sin nombre'}</TableCell>
                       <TableCell>{usuario.email}</TableCell>
                       <TableCell>{getRoleBadge(usuario.role)}</TableCell>
+                      <TableCell>{getLocalBadge(usuario)}</TableCell>
                       <TableCell>
                         <Badge variant={usuario.activo ? 'default' : 'secondary'}>
                           {usuario.activo ? 'Activo' : 'Inactivo'}
@@ -473,6 +537,29 @@ export function UsuariosView() {
                   <SelectItem value="false">Inactivo</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-local">Local Asignado</Label>
+              <Select
+                value={formData.localId}
+                onValueChange={(value) => setFormData({ ...formData, localId: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar local..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">🌐 Todos los locales (SuperAdmin)</SelectItem>
+                  {locales.map((local) => (
+                    <SelectItem key={local.id} value={local.id}>
+                      <Store className="h-3 w-3 mr-1 inline" />
+                      {local.nombreComercial || local.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Sin local asignado = ve todos los datos (SuperAdmin)
+              </p>
             </div>
             <div className="flex justify-end space-x-2 pt-4">
               <Button type="button" variant="outline" onClick={() => setOpenEdit(false)}>

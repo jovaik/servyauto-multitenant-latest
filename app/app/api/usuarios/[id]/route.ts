@@ -24,6 +24,14 @@ export async function GET(
         email: true,
         role: true,
         activo: true,
+        localId: true,
+        local: {
+          select: {
+            id: true,
+            nombre: true,
+            nombreComercial: true,
+          }
+        },
         createdAt: true,
         updatedAt: true,
       }
@@ -51,7 +59,7 @@ export async function PUT(
     }
 
     const body = await request.json()
-    const { name, email, password, role, activo } = body
+    const { name, email, password, role, activo, localId } = body
 
     if (!email || !role) {
       return NextResponse.json(
@@ -89,6 +97,7 @@ export async function PUT(
       email,
       role: role as RolUsuario,
       activo,
+      localId: localId === '' || localId === undefined ? null : localId, // null = ve todos los locales
     }
 
     // Si se proporciona una nueva contraseña, encriptarla
@@ -105,6 +114,14 @@ export async function PUT(
         email: true,
         role: true,
         activo: true,
+        localId: true,
+        local: {
+          select: {
+            id: true,
+            nombre: true,
+            nombreComercial: true,
+          }
+        },
         createdAt: true,
         updatedAt: true,
       }
