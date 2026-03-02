@@ -65,7 +65,7 @@ export function UsuariosView() {
     password: '',
     role: 'ADMIN',
     activo: true,
-    localId: '' // Vacío = todos los locales (superadmin)
+    localId: 'ALL' // ALL = todos los locales (superadmin)
   })
 
   useEffect(() => {
@@ -107,7 +107,7 @@ export function UsuariosView() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          localId: formData.localId || null // null = superadmin
+          localId: formData.localId === 'ALL' ? null : formData.localId // null = superadmin
         })
       })
 
@@ -120,7 +120,7 @@ export function UsuariosView() {
           password: '',
           role: 'ADMIN',
           activo: true,
-          localId: ''
+          localId: 'ALL'
         })
         fetchUsuarios()
       } else {
@@ -143,7 +143,7 @@ export function UsuariosView() {
         email: formData.email,
         role: formData.role,
         activo: formData.activo,
-        localId: formData.localId || null // null = superadmin
+        localId: formData.localId === 'ALL' ? null : formData.localId // null = superadmin
       }
 
       // Solo incluir password si se proporcionó uno nuevo
@@ -167,7 +167,7 @@ export function UsuariosView() {
           password: '',
           role: 'ADMIN',
           activo: true,
-          localId: ''
+          localId: 'ALL'
         })
         fetchUsuarios()
       } else {
@@ -209,7 +209,7 @@ export function UsuariosView() {
       password: '',
       role: usuario.role,
       activo: usuario.activo,
-      localId: usuario.localId || ''
+      localId: usuario.localId || 'ALL'
     })
     setOpenEdit(true)
   }
@@ -333,7 +333,7 @@ export function UsuariosView() {
                     <SelectValue placeholder="Seleccionar local..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">🌐 Todos los locales (SuperAdmin)</SelectItem>
+                    <SelectItem value="ALL">🌐 Todos los locales (SuperAdmin)</SelectItem>
                     {locales.map((local) => (
                       <SelectItem key={local.id} value={local.id}>
                         <Store className="h-3 w-3 mr-1 inline" />
@@ -548,7 +548,7 @@ export function UsuariosView() {
                   <SelectValue placeholder="Seleccionar local..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">🌐 Todos los locales (SuperAdmin)</SelectItem>
+                  <SelectItem value="ALL">🌐 Todos los locales (SuperAdmin)</SelectItem>
                   {locales.map((local) => (
                     <SelectItem key={local.id} value={local.id}>
                       <Store className="h-3 w-3 mr-1 inline" />

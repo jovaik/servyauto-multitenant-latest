@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
 import { Store, ChevronDown, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,14 +20,17 @@ interface Local {
   colorPrimario: string | null;
 }
 
-export function LocalSelector() {
-  const { data: session } = useSession() || {};
+interface LocalSelectorProps {
+  userRole?: string;
+}
+
+export function LocalSelector({ userRole }: LocalSelectorProps) {
   const [locales, setLocales] = useState<Local[]>([]);
   const [loading, setLoading] = useState(true);
   const { selectedLocalId, selectedLocalName, setSelectedLocal, clearSelectedLocal } = useLocalStore();
 
   // Solo mostrar para SUPER_ADMIN
-  const isSuperAdmin = (session?.user as any)?.role === 'SUPER_ADMIN';
+  const isSuperAdmin = userRole === 'SUPER_ADMIN';
 
   useEffect(() => {
     if (isSuperAdmin) {

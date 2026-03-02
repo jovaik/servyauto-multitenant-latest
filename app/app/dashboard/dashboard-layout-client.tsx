@@ -406,7 +406,7 @@ export function DashboardLayoutClient({ children, session }: DashboardLayoutClie
 
           <div className="flex items-center space-x-4">
             {/* Selector de local para superadmin */}
-            <LocalSelector />
+            <LocalSelector userRole={(session?.user as any)?.role} />
             
             <div className="text-sm text-gray-600">
               <span className="font-medium">{session?.user?.name}</span>
