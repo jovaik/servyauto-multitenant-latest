@@ -166,8 +166,24 @@ export async function GET(req: NextRequest) {
       },
     })
 
-    // Facturación total = facturas pagadas + citas completadas sin factura (evita duplicados)
-    const facturacionTotal = (facturasDelPeriodo._sum?.total || 0) + (citasCompletadasSinFactura._sum?.total || 0)
+    // Ingresos adicionales del período (parking, máquinas, etc.)
+    const ingresosAdicionalesPeriodo = await prisma.ingresoAdicional.aggregate({
+      where: {
+        fecha: {
+          gte: startDate,
+          lte: endDate,
+        },
+        ...localFilter
+      },
+      _sum: {
+        importe: true,
+      },
+    })
+
+    // Facturación total = facturas pagadas + citas completadas sin factura + ingresos adicionales
+    const facturacionTotal = (facturasDelPeriodo._sum?.total || 0) + 
+                             (citasCompletadasSinFactura._sum?.total || 0) + 
+                             (ingresosAdicionalesPeriodo._sum?.importe || 0)
     const gastosTotal = gastosPeriodo._sum?.importe || 0
     const balancePeriodo = facturacionTotal - gastosTotal
 
@@ -179,7 +195,7 @@ export async function GET(req: NextRequest) {
       const startDateMonth = new Date(currentYear, month, 1)
       const endDateMonth = new Date(currentYear, month + 1, 0, 23, 59, 59)
 
-      const [facturasDelMes, citasDelMes, gastos] = await Promise.all([
+      const [facturasDelMes, citasDelMes, ingresosAdicionalesDelMes, gastos] = await Promise.all([
         prisma.factura.aggregate({
           where: {
             fecha: {
@@ -207,6 +223,18 @@ export async function GET(req: NextRequest) {
             total: true,
           },
         }),
+        prisma.ingresoAdicional.aggregate({
+          where: {
+            fecha: {
+              gte: startDateMonth,
+              lte: endDateMonth,
+            },
+            ...localFilter
+          },
+          _sum: {
+            importe: true,
+          },
+        }),
         prisma.gasto.aggregate({
           where: {
             fecha: {
@@ -221,7 +249,9 @@ export async function GET(req: NextRequest) {
         }),
       ])
 
-      const ingresosDelMes = (facturasDelMes._sum?.total || 0) + (citasDelMes._sum?.total || 0)
+      const ingresosDelMes = (facturasDelMes._sum?.total || 0) + 
+                             (citasDelMes._sum?.total || 0) + 
+                             (ingresosAdicionalesDelMes._sum?.importe || 0)
 
       monthlyData.push({
         mes: new Date(currentYear, month, 1).toLocaleDateString('es-ES', { month: 'short' }).toUpperCase(),

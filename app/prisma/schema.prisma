@@ -72,12 +72,13 @@ model Local {
   updatedAt        DateTime  @updatedAt
   
   // Relaciones
-  usuarios         User[]
-  clientes         Cliente[]
-  vehiculos        Vehiculo[]
-  citas            Cita[]
-  facturas         Factura[]
-  gastos           Gasto[]
+  usuarios            User[]
+  clientes            Cliente[]
+  vehiculos           Vehiculo[]
+  citas               Cita[]
+  facturas            Factura[]
+  gastos              Gasto[]
+  ingresosAdicionales IngresoAdicional[]
 
   @@map("locales")
 }
@@ -396,6 +397,30 @@ enum TipoMovimientoTicket {
   COMPRA      // Compra de tickets
   CONSUMO     // Uso de tickets en una cita
   AJUSTE      // Ajuste manual del inventario
+}
+
+// ========================================
+// INGRESOS ADICIONALES (Parking, máquinas, etc.)
+// ========================================
+
+model IngresoAdicional {
+  id              String      @id @default(cuid())
+  concepto        String      // Ej: "Recaudación parking", "Máquina expendedora"
+  descripcion     String?     // Detalles opcionales
+  importe         Float
+  fecha           DateTime    @default(now())
+  metodoPago      MetodoPago  @default(EFECTIVO)
+  observaciones   String?
+  // Trazabilidad
+  creadoPorId     String?
+  creadoPorNombre String?
+  // Multi-local
+  localId         String?
+  local           Local?      @relation(fields: [localId], references: [id])
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@map("ingresos_adicionales")
 }
 
 model GaleriaAntesDespues {

@@ -62,6 +62,10 @@ export default function DiarioCajaView() {
       const resGastos = await fetch('/api/gastos')
       const gastos = await resGastos.json()
 
+      // Cargar ingresos adicionales (parking, máquinas, etc.)
+      const resIngresosAdicionales = await fetch('/api/ingresos-adicionales')
+      const ingresosAdicionales = await resIngresosAdicionales.json()
+
       // Transformar facturas a movimientos (solo pagadas)
       const ingresosFacturas = (facturas || []).filter((f: any) => f.estado === 'PAGADA').map((f: any) => ({
         id: `FAC-${f.id}`,
@@ -77,6 +81,21 @@ export default function DiarioCajaView() {
         // Trazabilidad
         creadoPor: f.creadoPorNombre || null,
         creadoEn: f.createdAt ? new Date(f.createdAt) : null
+      }))
+
+      // Transformar ingresos adicionales a movimientos
+      const movimientosIngresosAdicionales = (ingresosAdicionales || []).map((i: any) => ({
+        id: `ING-${i.id}`,
+        fecha: new Date(i.fecha),
+        tipo: 'INGRESO' as const,
+        concepto: i.concepto + (i.descripcion ? ` - ${i.descripcion}` : ''),
+        categoria: 'Ingreso Extra',
+        importe: i.importe,
+        metodoPago: i.metodoPago,
+        referencia: null,
+        // Trazabilidad
+        creadoPor: i.creadoPorNombre || null,
+        creadoEn: i.createdAt ? new Date(i.createdAt) : null
       }))
 
       // Transformar gastos a movimientos
@@ -95,7 +114,7 @@ export default function DiarioCajaView() {
       }))
 
       // Combinar y ordenar por fecha (más reciente primero)
-      const todoMovimientos = [...ingresosFacturas, ...movimientosGastos]
+      const todoMovimientos = [...ingresosFacturas, ...movimientosIngresosAdicionales, ...movimientosGastos]
         .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
 
       setMovimientos(todoMovimientos)
