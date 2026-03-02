@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { getLocalContext, buildLocalFilter } from '@/lib/local-context'
 
 export const dynamic = 'force-dynamic'
 
@@ -74,10 +75,15 @@ export async function GET(req: NextRequest) {
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
     const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59)
 
+    // Obtener contexto de local para filtrado
+    const localContext = await getLocalContext()
+    const localFilter = localContext ? buildLocalFilter(localContext) : {}
+
     // Obtener IDs de citas que ya tienen factura asociada (para evitar duplicados)
     const citasConFactura = await prisma.factura.findMany({
       where: {
-        citaId: { not: null }
+        citaId: { not: null },
+        ...localFilter
       },
       select: {
         citaId: true
@@ -95,6 +101,7 @@ export async function GET(req: NextRequest) {
             gte: startDate,
             lte: endDate,
           },
+          ...localFilter
         },
       }),
       prisma.cliente.count({
@@ -103,11 +110,13 @@ export async function GET(req: NextRequest) {
             gte: startDate,
             lte: endDate,
           },
+          ...localFilter
         },
       }),
       prisma.cita.count({
         where: {
           estado: 'PENDIENTE',
+          ...localFilter
         },
       }),
     ])
@@ -120,6 +129,7 @@ export async function GET(req: NextRequest) {
           lte: endDate,
         },
         estado: 'PAGADA',
+        ...localFilter
       },
       _sum: {
         total: true,
@@ -134,7 +144,8 @@ export async function GET(req: NextRequest) {
           lte: endDate,
         },
         estado: 'COMPLETADA',
-        id: { notIn: citasConFacturaIds }
+        id: { notIn: citasConFacturaIds },
+        ...localFilter
       },
       _sum: {
         total: true,
@@ -148,6 +159,7 @@ export async function GET(req: NextRequest) {
           gte: startDate,
           lte: endDate,
         },
+        ...localFilter
       },
       _sum: {
         importe: true,
@@ -175,6 +187,7 @@ export async function GET(req: NextRequest) {
               lte: endDateMonth,
             },
             estado: 'PAGADA',
+            ...localFilter
           },
           _sum: {
             total: true,
@@ -187,7 +200,8 @@ export async function GET(req: NextRequest) {
               lte: endDateMonth,
             },
             estado: 'COMPLETADA',
-            id: { notIn: citasConFacturaIds }
+            id: { notIn: citasConFacturaIds },
+            ...localFilter
           },
           _sum: {
             total: true,
@@ -199,6 +213,7 @@ export async function GET(req: NextRequest) {
               gte: startDateMonth,
               lte: endDateMonth,
             },
+            ...localFilter
           },
           _sum: {
             importe: true,
@@ -228,6 +243,7 @@ export async function GET(req: NextRequest) {
           gte: startOfYear,
           lte: endOfYear,
         },
+        ...localFilter
       },
       select: {
         id: true,

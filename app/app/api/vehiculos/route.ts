@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { getLocalContext, buildLocalFilter, getLocalIdForCreate } from '@/lib/local-context'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,7 +15,12 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
+    // Obtener contexto de local para filtrado
+    const localContext = await getLocalContext()
+    const localFilter = localContext ? buildLocalFilter(localContext) : {}
+
     const vehiculos = await prisma.vehiculo.findMany({
+      where: localFilter,
       include: {
         cliente: {
           select: {
@@ -24,6 +30,7 @@ export async function GET(req: NextRequest) {
             telefono: true,
           }
         },
+        local: true,
       },
       orderBy: [
         { marca: 'asc' },
@@ -97,6 +104,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Obtener localId para asignar al nuevo vehículo
+    const localContext = await getLocalContext()
+    const localIdParaVehiculo = localContext ? getLocalIdForCreate(localContext) : null
+
     const vehiculo = await prisma.vehiculo.create({
       data: {
         marca,
@@ -106,6 +117,7 @@ export async function POST(request: NextRequest) {
         color: color || null,
         kilometraje: kilometraje || null,
         clienteId,
+        localId: localIdParaVehiculo,
       },
       include: {
         cliente: {
@@ -116,6 +128,7 @@ export async function POST(request: NextRequest) {
             telefono: true,
           }
         },
+        local: true,
       }
     })
 

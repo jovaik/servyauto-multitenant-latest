@@ -36,6 +36,7 @@ import {
 import { RolUsuario } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { LocalSelector } from '@/components/local-selector'
 
 interface DashboardLayoutClientProps {
   children: React.ReactNode
@@ -402,6 +403,9 @@ export function DashboardLayoutClient({ children, session }: DashboardLayoutClie
           </div>
 
           <div className="flex items-center space-x-4">
+            {/* Selector de local para superadmin */}
+            <LocalSelector />
+            
             <div className="text-sm text-gray-600">
               <span className="font-medium">{session?.user?.name}</span>
               <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">

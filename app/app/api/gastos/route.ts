@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { notificarCreacionGSControl, mapearCategoriaGasto } from '@/lib/gscontrol-sync'
+import { getLocalContext, buildLocalFilter, getLocalIdForCreate } from '@/lib/local-context'
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,7 +13,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
+    // Obtener contexto de local para filtrado
+    const localContext = await getLocalContext()
+    const localFilter = localContext ? buildLocalFilter(localContext) : {}
+
     const gastos = await prisma.gasto.findMany({
+      where: localFilter,
+      include: {
+        local: true,
+      },
       orderBy: {
         fecha: 'desc'
       }
@@ -163,10 +172,20 @@ export async function POST(request: NextRequest) {
       gastoData.proveedorId = proveedorIdFinal
     }
 
+    // Obtener localId para asignar al nuevo gasto
+    const localContext = await getLocalContext()
+    const localIdParaGasto = localContext ? getLocalIdForCreate(localContext) : null
+    if (localIdParaGasto) {
+      gastoData.localId = localIdParaGasto
+    }
+
     console.log('Datos preparados para Prisma:', JSON.stringify(gastoData, null, 2))
 
     const gasto = await prisma.gasto.create({
-      data: gastoData
+      data: gastoData,
+      include: {
+        local: true
+      }
     })
 
     console.log('Gasto creado exitosamente:', gasto.id)

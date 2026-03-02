@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { getLocalContext, buildLocalFilter, getLocalIdForCreate } from '@/lib/local-context'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,10 +15,16 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
+    // Obtener contexto de local para filtrado
+    const localContext = await getLocalContext()
+    const localFilter = localContext ? buildLocalFilter(localContext) : {}
+
     const { searchParams } = new URL(req.url)
     const fecha = searchParams.get('fecha')
 
-    let whereClause: any = {}
+    let whereClause: any = {
+      ...localFilter // Aplicar filtro de local
+    }
 
     if (fecha) {
       const fechaInicio = new Date(fecha)
@@ -35,6 +42,7 @@ export async function GET(req: NextRequest) {
       include: {
         cliente: true,
         vehiculo: true,
+        local: true, // Incluir info del local
         cita_servicios: {
           include: {
             servicios: true
@@ -185,6 +193,10 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Obtener localId para asignar a la nueva cita
+    const localContext = await getLocalContext()
+    const localIdParaCita = localContext ? getLocalIdForCreate(localContext) : null
+
     // Crear la cita con sus servicios asociados
     const cita = await prisma.cita.create({
       data: {
@@ -199,6 +211,7 @@ export async function POST(req: NextRequest) {
         observaciones,
         metodoPago,
         total: precioTotal,
+        localId: localIdParaCita, // Asignar local
         cita_servicios: serviciosData.length > 0 ? {
           create: serviciosData
         } : undefined
@@ -206,6 +219,7 @@ export async function POST(req: NextRequest) {
       include: {
         cliente: true,
         vehiculo: true,
+        local: true,
         cita_servicios: {
           include: {
             servicios: true

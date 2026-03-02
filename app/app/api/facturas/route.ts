@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { notificarCreacionGSControl } from '@/lib/gscontrol-sync'
+import { getLocalContext, buildLocalFilter, getLocalIdForCreate } from '@/lib/local-context'
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,7 +13,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
+    // Obtener contexto de local para filtrado
+    const localContext = await getLocalContext()
+    const localFilter = localContext ? buildLocalFilter(localContext) : {}
+
     const facturas = await prisma.factura.findMany({
+      where: localFilter,
       include: {
         cliente: {
           select: {
@@ -22,6 +28,7 @@ export async function GET(request: NextRequest) {
             telefono: true
           }
         },
+        local: true,
       },
       orderBy: {
         createdAt: 'desc'
@@ -133,6 +140,10 @@ export async function POST(request: NextRequest) {
       datosFacturacionString = JSON.stringify(datosFacturacion)
     }
 
+    // Obtener localId para asignar a la nueva factura
+    const localContext = await getLocalContext()
+    const localIdParaFactura = localContext ? getLocalIdForCreate(localContext) : null
+
     // Crear factura con items
     const factura = await prisma.factura.create({
       data: {
@@ -147,6 +158,7 @@ export async function POST(request: NextRequest) {
         citaId: citaId || null,
         estado: 'PAGADA', // Al crear se marca como pagada
         fechaPago: new Date(),
+        localId: localIdParaFactura, // Asignar local
         // Trazabilidad - quién creó este ingreso
         creadoPorId: (session.user as any)?.id || null,
         creadoPorNombre: session.user?.name || session.user?.email || 'Sistema',
@@ -162,7 +174,8 @@ export async function POST(request: NextRequest) {
       },
       include: {
         cliente: true,
-        factura_items: true
+        factura_items: true,
+        local: true
       }
     })
 
