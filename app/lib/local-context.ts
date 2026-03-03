@@ -39,6 +39,7 @@ export async function getLocalContext(): Promise<LocalFilter | null> {
     if (isSuperAdmin) {
       const headersList = headers();
       const headerValue = headersList.get('x-selected-local-id');
+      console.log('🔍 Local Context - Header x-selected-local-id:', headerValue);
       if (headerValue && headerValue !== 'null') {
         selectedLocalId = headerValue;
       }

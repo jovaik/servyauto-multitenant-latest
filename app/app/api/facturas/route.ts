@@ -16,6 +16,9 @@ export async function GET(request: NextRequest) {
     // Obtener contexto de local para filtrado
     const localContext = await getLocalContext()
     const localFilter = localContext ? buildLocalFilter(localContext) : {}
+    
+    console.log('📊 Facturas API - localContext:', JSON.stringify(localContext))
+    console.log('📊 Facturas API - localFilter:', JSON.stringify(localFilter))
 
     const facturas = await prisma.factura.findMany({
       where: localFilter,
