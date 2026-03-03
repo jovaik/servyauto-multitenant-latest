@@ -104,6 +104,9 @@ model Cliente {
   clienteEmpresa Boolean    @default(false) // Cliente empresa con descuento
   localId        String?    // Local al que pertenece el cliente
   local          Local?     @relation(fields: [localId], references: [id])
+  // Trazabilidad
+  creadoPorId      String?
+  creadoPorNombre  String?
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
   citas           Cita[]
@@ -128,6 +131,9 @@ model Vehiculo {
   clienteId     String
   localId       String?  // Local al que pertenece el vehículo
   local         Local?   @relation(fields: [localId], references: [id])
+  // Trazabilidad
+  creadoPorId      String?
+  creadoPorNombre  String?
   createdAt     DateTime @default(now())
   updatedAt         DateTime @updatedAt
   citas             Cita[]
@@ -167,6 +173,11 @@ model Cita {
   vehiculoId     String
   localId        String?          // Local donde se realiza la cita
   local          Local?           @relation(fields: [localId], references: [id])
+  // Trazabilidad
+  creadoPorId      String?
+  creadoPorNombre  String?
+  completadoPorId     String?      // Quién completó/cobró la cita
+  completadoPorNombre String?
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
   cita_servicios cita_servicios[]

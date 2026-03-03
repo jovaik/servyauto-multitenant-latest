@@ -142,6 +142,17 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     
     if (precioFinal !== undefined) updateData.total = precioFinal
 
+    // Trazabilidad: guardar quién completó la cita
+    if (estado === 'COMPLETADA' || estado === 'LISTO_PARA_RECOGER') {
+      const userEmail = session?.user?.email || ''
+      const user = await prisma.user.findUnique({
+        where: { email: userEmail },
+        select: { id: true, name: true }
+      })
+      updateData.completadoPorId = user?.id || null
+      updateData.completadoPorNombre = user?.name || session?.user?.name || userEmail
+    }
+
     console.log('=== DATOS PREPARADOS PARA PRISMA ===')
     console.log('Update data:', JSON.stringify(updateData, null, 2))
     console.log('Cantidad de campos:', Object.keys(updateData).length)

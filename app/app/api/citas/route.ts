@@ -202,6 +202,14 @@ export async function POST(req: NextRequest) {
     const localContext = await getLocalContext()
     const localIdParaCita = localContext ? getLocalIdForCreate(localContext) : null
 
+    // Obtener información del usuario para trazabilidad
+    const userEmail = session?.user?.email || ''
+    const userName = session?.user?.name || userEmail
+    const user = await prisma.user.findUnique({
+      where: { email: userEmail },
+      select: { id: true, name: true }
+    })
+
     // Crear la cita con sus servicios asociados
     const cita = await prisma.cita.create({
       data: {
@@ -217,6 +225,9 @@ export async function POST(req: NextRequest) {
         metodoPago,
         total: precioTotal,
         localId: localIdParaCita, // Asignar local
+        // Trazabilidad
+        creadoPorId: user?.id || null,
+        creadoPorNombre: user?.name || userName,
         cita_servicios: serviciosData.length > 0 ? {
           create: serviciosData
         } : undefined
