@@ -77,7 +77,16 @@ export async function GET(req: NextRequest) {
 
     // Obtener contexto de local para filtrado
     const localContext = await getLocalContext()
-    const localFilter = localContext ? buildLocalFilter(localContext) : {}
+    
+    if (!localContext) {
+      return NextResponse.json({ 
+        totalClientes: 0, totalVehiculos: 0, citasHoy: 0, ingresosMes: 0,
+        citasPendientes: 0, citasEnProceso: 0, citasCompletadas: 0,
+        ingresosDia: 0, ticketsVendidosMes: 0, ticketsUsadosMes: 0
+      })
+    }
+    
+    const localFilter = buildLocalFilter(localContext)
 
     // Obtener IDs de citas que ya tienen factura asociada (para evitar duplicados)
     const citasConFactura = await prisma.factura.findMany({

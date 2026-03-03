@@ -23,14 +23,22 @@ export interface LocalFilter {
 export async function getLocalContext(): Promise<LocalFilter | null> {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email) return null;
+    if (!session?.user?.email) {
+      console.log('⚠️ getLocalContext: No hay sesión o email');
+      return null;
+    }
 
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
       select: { id: true, localId: true, role: true }
     });
 
-    if (!user) return null;
+    if (!user) {
+      console.log('⚠️ getLocalContext: Usuario no encontrado para:', session.user.email);
+      return null;
+    }
+    
+    console.log('✅ getLocalContext: Usuario', session.user.email, '| Rol:', user.role, '| LocalId:', user.localId);
 
     const isSuperAdmin = user.role === 'SUPER_ADMIN';
     

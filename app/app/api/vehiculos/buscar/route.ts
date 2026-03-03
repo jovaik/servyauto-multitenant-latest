@@ -28,7 +28,12 @@ export async function GET(request: NextRequest) {
 
     // Obtener contexto de local para filtrado
     const localContext = await getLocalContext()
-    const localFilter = localContext ? buildLocalFilter(localContext) : {}
+    
+    if (!localContext) {
+      return NextResponse.json({ vehiculos: [] })
+    }
+    
+    const localFilter = buildLocalFilter(localContext)
 
     console.log('🔍 Buscando vehículos por:', query, 'con filtro local:', localFilter)
 

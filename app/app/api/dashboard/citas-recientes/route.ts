@@ -17,7 +17,12 @@ export async function GET(req: NextRequest) {
 
     // Obtener contexto de local y filtro
     const localContext = await getLocalContext()
-    const localFilter = localContext ? buildLocalFilter(localContext) : {}
+    
+    if (!localContext) {
+      return NextResponse.json([])
+    }
+    
+    const localFilter = buildLocalFilter(localContext)
 
     const citas = await prisma.cita.findMany({
       where: localFilter,

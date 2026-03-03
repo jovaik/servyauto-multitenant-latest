@@ -17,7 +17,12 @@ export async function GET(req: NextRequest) {
 
     // Obtener contexto de local para filtrado
     const localContext = await getLocalContext()
-    const localFilter = localContext ? buildLocalFilter(localContext) : {}
+    
+    if (!localContext) {
+      return NextResponse.json([])
+    }
+    
+    const localFilter = buildLocalFilter(localContext)
 
     const { searchParams } = new URL(req.url)
     const fecha = searchParams.get('fecha')

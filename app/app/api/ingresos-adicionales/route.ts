@@ -12,7 +12,12 @@ export async function GET(request: NextRequest) {
     }
 
     const localContext = await getLocalContext();
-    const localFilter = localContext ? buildLocalFilter(localContext) : {};
+    
+    if (!localContext) {
+      return NextResponse.json([]);
+    }
+    
+    const localFilter = buildLocalFilter(localContext);
 
     // Parámetros de filtro por fecha
     const searchParams = request.nextUrl.searchParams;

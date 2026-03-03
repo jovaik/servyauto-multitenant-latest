@@ -17,7 +17,13 @@ export async function GET(req: NextRequest) {
 
     // Obtener contexto de local para filtrado
     const localContext = await getLocalContext()
-    const localFilter = localContext ? buildLocalFilter(localContext) : {}
+    
+    // Si no hay contexto, devolver vacío por seguridad
+    if (!localContext) {
+      return NextResponse.json([])
+    }
+    
+    const localFilter = buildLocalFilter(localContext)
 
     const clientes = await prisma.cliente.findMany({
       where: localFilter,
