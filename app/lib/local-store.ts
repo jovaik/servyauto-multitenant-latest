@@ -50,3 +50,33 @@ export function fetchWithLocal(url: string, options: RequestInit = {}): Promise<
 export function getSelectedLocalId(): string | null {
   return useLocalStore.getState().selectedLocalId;
 }
+
+/**
+ * Instala un interceptor global de fetch que automáticamente añade
+ * el header x-selected-local-id a todas las peticiones a /api/
+ */
+export function installFetchInterceptor() {
+  if (typeof window === 'undefined') return;
+  
+  // Evitar instalar múltiples veces
+  if ((window as any).__localFetchInterceptorInstalled) return;
+  (window as any).__localFetchInterceptorInstalled = true;
+  
+  const originalFetch = window.fetch;
+  
+  window.fetch = function(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+    
+    // Solo interceptar llamadas a /api/
+    if (url.startsWith('/api/')) {
+      const state = useLocalStore.getState();
+      if (state.selectedLocalId) {
+        const headers = new Headers(init?.headers);
+        headers.set('x-selected-local-id', state.selectedLocalId);
+        return originalFetch(input, { ...init, headers });
+      }
+    }
+    
+    return originalFetch(input, init);
+  };
+}

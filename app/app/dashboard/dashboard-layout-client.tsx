@@ -38,6 +38,7 @@ import { RolUsuario } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { LocalSelector } from '@/components/local-selector'
+import { installFetchInterceptor } from '@/lib/local-store'
 
 interface DashboardLayoutClientProps {
   children: React.ReactNode
@@ -117,6 +118,11 @@ export function DashboardLayoutClient({ children, session }: DashboardLayoutClie
   const [gestionOpen, setGestionOpen] = useState(true) // Sección Gestión abierta por defecto
   const pathname = usePathname()
   const userMenuRef = useRef<HTMLDivElement>(null)
+
+  // Instalar interceptor de fetch para enviar x-selected-local-id automáticamente
+  useEffect(() => {
+    installFetchInterceptor();
+  }, []);
   
   // Obtener rol del usuario
   const userRole = (session?.user as any)?.role as RolUsuario || RolUsuario.OPERADOR
