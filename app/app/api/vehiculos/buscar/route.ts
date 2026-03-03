@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { getLocalContext, buildLocalFilter } from '@/lib/local-context'
 
 /**
  * Endpoint para buscar vehículos por matrícula parcial (autocomplete)
@@ -25,15 +26,20 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ vehiculos: [] })
     }
 
-    console.log('🔍 Buscando vehículos por:', query)
+    // Obtener contexto de local para filtrado
+    const localContext = await getLocalContext()
+    const localFilter = localContext ? buildLocalFilter(localContext) : {}
 
-    // Buscar vehículos que coincidan con la matrícula
+    console.log('🔍 Buscando vehículos por:', query, 'con filtro local:', localFilter)
+
+    // Buscar vehículos que coincidan con la matrícula Y pertenezcan al local
     const vehiculos = await prisma.vehiculo.findMany({
       where: {
         matricula: {
           contains: query,
           mode: 'insensitive'
-        }
+        },
+        ...localFilter
       },
       include: {
         cliente: {
