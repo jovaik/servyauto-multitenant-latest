@@ -377,6 +377,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
           metodoPago: cita.metodoPago,
           clienteId: cita.clienteId,
           citaId: cita.id,
+          localId: cita.localId, // ✅ Asignar el local de la cita a la factura
         }
       })
       
