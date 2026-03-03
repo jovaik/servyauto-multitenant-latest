@@ -59,26 +59,26 @@ interface NavSection {
   items: NavItem[]
 }
 
-// Items de navegación simples (sin submenú)
+// Items de navegación simples (sin submenú) - OPERADOR tiene acceso a todo lo operativo
 const simpleNavigation: NavItem[] = [
-  { name: 'Agenda', href: '/dashboard/agenda', icon: Calendar },
-  { name: 'Reservas', href: '/dashboard/reservas', icon: Clock },
+  { name: 'Agenda', href: '/dashboard/agenda', icon: Calendar, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
+  { name: 'Reservas', href: '/dashboard/reservas', icon: Clock, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
   { name: 'Clientes', href: '/dashboard/clientes', icon: Users, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
   { name: 'Vehículos', href: '/dashboard/vehiculos', icon: Car, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
 ]
 
-// Sección GESTIÓN (con submenú desplegable)
+// Sección GESTIÓN (con submenú desplegable) - OPERADOR ve lo necesario para su trabajo diario
 const gestionSection: NavSection = {
   name: 'Gestión',
   icon: BarChart3,
-  roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN],
+  roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR],
   items: [
-    { name: 'Dashboard', href: '/dashboard', icon: BarChart3 },
-    { name: 'Diario de Caja', href: '/dashboard/diario-caja', icon: BookOpen },
-    { name: 'Facturación', href: '/dashboard/facturacion', icon: CreditCard },
-    { name: 'Gastos', href: '/dashboard/gastos', icon: TrendingDown },
-    { name: 'Ingresos Extra', href: '/dashboard/ingresos-adicionales', icon: ParkingCircle },
-    { name: 'Proveedores', href: '/dashboard/proveedores', icon: Building2 },
+    { name: 'Dashboard', href: '/dashboard', icon: BarChart3, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
+    { name: 'Diario de Caja', href: '/dashboard/diario-caja', icon: BookOpen, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
+    { name: 'Facturación', href: '/dashboard/facturacion', icon: CreditCard, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN] },
+    { name: 'Gastos', href: '/dashboard/gastos', icon: TrendingDown, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
+    { name: 'Ingresos Extra', href: '/dashboard/ingresos-adicionales', icon: ParkingCircle, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN] },
+    { name: 'Proveedores', href: '/dashboard/proveedores', icon: Building2, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN] },
   ]
 }
 
@@ -261,10 +261,12 @@ export function DashboardLayoutClient({ children, session }: DashboardLayoutClie
                 <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${gestionOpen ? 'rotate-180' : ''}`} />
               </button>
 
-              {/* Subitems de Gestión */}
+              {/* Subitems de Gestión - filtrados por rol */}
               {gestionOpen && (
                 <div className="ml-4 mt-1 space-y-1 border-l-2 border-orange-200 pl-2">
-                  {gestionSection.items.map((item) => {
+                  {gestionSection.items
+                    .filter(item => !item.roles || item.roles.includes(userRole))
+                    .map((item) => {
                     const Icon = item.icon
                     const isActive = pathname === item.href
                     
