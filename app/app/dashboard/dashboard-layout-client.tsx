@@ -83,11 +83,12 @@ const gestionSection: NavSection = {
 }
 
 // Items adicionales después de Gestión
+// OPERADOR = trabajo diario (cierres, tickets parking para gestión de estacionamiento)
 const additionalNavigation: NavItem[] = [
   { name: 'Servicios Taller', href: '/dashboard/servicios-taller', icon: Wrench, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
-  { name: 'Cierres de Caja', href: '/dashboard/cierres-caja', icon: Archive, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN] },
-  { name: 'Tickets Parking', href: '/dashboard/tickets', icon: Download, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN] },
-  { name: 'Importador', href: '/dashboard/importador', icon: Upload, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN] },
+  { name: 'Cierres de Caja', href: '/dashboard/cierres-caja', icon: Archive, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
+  { name: 'Tickets Parking', href: '/dashboard/tickets', icon: Download, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
+  { name: 'Importador', href: '/dashboard/importador', icon: Upload, roles: [RolUsuario.SUPER_ADMIN] },
   { name: 'Exportar IVA', href: '/dashboard/exportar-iva', icon: Download, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN] },
   { name: 'Usuarios', href: '/dashboard/usuarios', icon: UserCheck, roles: [RolUsuario.SUPER_ADMIN] },
   { name: 'Locales', href: '/dashboard/locales', icon: Store, roles: [RolUsuario.SUPER_ADMIN] },
