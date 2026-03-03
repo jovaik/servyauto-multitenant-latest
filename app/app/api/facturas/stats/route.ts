@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { getLocalContext, buildLocalFilter } from '@/lib/local-context'
 
 // Mark this route as dynamic
 export const dynamic = 'force-dynamic'
@@ -13,6 +14,19 @@ export async function GET(request: NextRequest) {
     if (!session) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
+
+    // Obtener contexto de local para filtrado
+    const localContext = await getLocalContext()
+    
+    if (!localContext) {
+      return NextResponse.json({
+        totalFacturas: 0, totalTickets: 0, ingresosMes: 0, pendientesCobro: 0,
+        totalVentas: 0, ventasEfectivo: 0, ventasTPVSumup: 0, ventasTPVUnicaja: 0,
+        gastosEfectivo: 0, efectivoEnCaja: 0, totalCitasCompletadasSinFactura: 0
+      })
+    }
+    
+    const localFilter = buildLocalFilter(localContext)
 
     // Obtener parámetros de fecha de la query string
     const { searchParams } = new URL(request.url)
@@ -111,9 +125,12 @@ export async function GET(request: NextRequest) {
     const dateFilterCitas = buildDateFilterCitas()
     const dateFilterGastos = buildDateFilterGastos()
 
-    // Obtener todas las facturas (incluyendo tickets) con filtro de fecha
+    // Obtener todas las facturas (incluyendo tickets) con filtro de fecha Y local
     const todasFacturas = await prisma.factura.findMany({
-      where: dateFilterFacturas,
+      where: {
+        ...dateFilterFacturas,
+        ...localFilter
+      },
       select: {
         tipo: true,
         total: true,
@@ -123,10 +140,11 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Obtener IDs de citas que ya tienen factura asociada (para evitar duplicados)
+    // Obtener IDs de citas que ya tienen factura asociada (para evitar duplicados) - filtrado por local
     const citasConFactura = await prisma.factura.findMany({
       where: {
-        citaId: { not: null }
+        citaId: { not: null },
+        ...localFilter
       },
       select: {
         citaId: true
@@ -136,10 +154,11 @@ export async function GET(request: NextRequest) {
       .map(f => f.citaId)
       .filter((id): id is string => id !== null && id !== undefined)
 
-    // Obtener todas las citas COMPLETADAS que NO tienen factura (para evitar duplicación)
+    // Obtener todas las citas COMPLETADAS que NO tienen factura (para evitar duplicación) - filtrado por local
     const citasCompletadasSinFactura = await prisma.cita.findMany({
       where: {
         ...dateFilterCitas,
+        ...localFilter,
         estado: 'COMPLETADA',
         total: { not: null },
         metodoPago: { not: null },
@@ -209,9 +228,12 @@ export async function GET(request: NextRequest) {
     const ventasTPVUnicaja = ventasTPVUnicajaFacturas + ventasTPVUnicajaCitas
     const totalVentas = ventasEfectivo + ventasTPVSumup + ventasTPVUnicaja
 
-    // ====== OBTENER GASTOS PARA RESTAR DEL EFECTIVO ======
+    // ====== OBTENER GASTOS PARA RESTAR DEL EFECTIVO ====== (filtrado por local)
     const todosGastos = await prisma.gasto.findMany({
-      where: dateFilterGastos,
+      where: {
+        ...dateFilterGastos,
+        ...localFilter
+      },
       select: {
         importe: true,
         metodoPago: true
