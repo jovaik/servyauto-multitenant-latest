@@ -10,6 +10,9 @@ export interface Cliente {
   clienteParking?: boolean;
   clienteVIP?: boolean;
   clienteEmpresa?: boolean;
+  // Trazabilidad
+  creadoPorId?: string;
+  creadoPorNombre?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -27,6 +30,9 @@ export interface Vehiculo {
   observaciones?: string;
   clienteId: string;
   cliente?: Cliente;
+  // Trazabilidad
+  creadoPorId?: string;
+  creadoPorNombre?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -61,6 +67,11 @@ export interface Cita {
   vehiculo?: Vehiculo;
   servicios?: CitaServicio[];
   factura?: Factura;
+  // Trazabilidad
+  creadoPorId?: string;
+  creadoPorNombre?: string;
+  completadoPorId?: string;
+  completadoPorNombre?: string;
   createdAt: Date;
   updatedAt: Date;
 }

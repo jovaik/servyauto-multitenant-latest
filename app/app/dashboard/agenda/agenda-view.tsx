@@ -450,6 +450,12 @@ export function AgendaView() {
                                   <div className="text-xs font-medium">
                                     {cita.horaInicio} - {cita.horaFin}
                                   </div>
+                                  {/* Trazabilidad */}
+                                  {(cita.creadoPorNombre || cita.completadoPorNombre) && (
+                                    <div className="text-[10px] text-gray-400 truncate" title={`Creada por: ${cita.creadoPorNombre || 'N/A'}${cita.completadoPorNombre ? ` | Completada por: ${cita.completadoPorNombre}` : ''}`}>
+                                      👤 {cita.completadoPorNombre || cita.creadoPorNombre}
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             ) : (

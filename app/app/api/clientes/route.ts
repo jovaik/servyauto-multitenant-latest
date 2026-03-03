@@ -111,6 +111,9 @@ export async function POST(request: NextRequest) {
         clienteVIP: clienteVIP || false,
         clienteEmpresa: clienteEmpresa || false,
         localId: localIdParaCliente,
+        // Trazabilidad - quién creó este cliente
+        creadoPorId: (session.user as any)?.id || null,
+        creadoPorNombre: session.user?.name || session.user?.email || 'Sistema',
       },
       include: {
         vehiculos: true,

@@ -40,6 +40,9 @@ interface Vehiculo {
     apellido: string
     telefono: string
   }
+  // Trazabilidad
+  creadoPorId?: string
+  creadoPorNombre?: string
   createdAt: Date
 }
 
@@ -457,6 +460,11 @@ export function VehiculosView() {
                     {vehiculo.observaciones && (
                       <div className="pt-2">
                         <strong>Observaciones:</strong> {vehiculo.observaciones}
+                      </div>
+                    )}
+                    {vehiculo.creadoPorNombre && (
+                      <div className="pt-2 text-xs text-gray-400">
+                        👤 Registrado por: {vehiculo.creadoPorNombre}
                       </div>
                     )}
                   </div>

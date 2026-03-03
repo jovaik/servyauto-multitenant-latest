@@ -24,6 +24,9 @@ interface Cliente {
   clienteParking?: boolean
   vehiculos?: Vehiculo[]
   totalVisitas?: number
+  // Trazabilidad
+  creadoPorId?: string
+  creadoPorNombre?: string
   createdAt: Date
 }
 
@@ -362,6 +365,11 @@ export function ClientesView() {
                     {cliente.direccion && (
                       <div className="col-span-2">
                         <strong>Dirección:</strong> {cliente.direccion}
+                      </div>
+                    )}
+                    {cliente.creadoPorNombre && (
+                      <div className="col-span-2 text-xs text-gray-400">
+                        👤 Registrado por: {cliente.creadoPorNombre}
                       </div>
                     )}
                   </div>

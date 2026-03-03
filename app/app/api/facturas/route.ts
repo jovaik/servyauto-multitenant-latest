@@ -23,9 +23,8 @@ export async function GET(request: NextRequest) {
     }
     
     const localFilter = buildLocalFilter(localContext)
-    console.log('📊 Facturas API - localContext:', JSON.stringify(localContext))
-    console.log('📊 Facturas API - localFilter:', JSON.stringify(localFilter))
 
+    // 1. Obtener facturas formales
     const facturas = await prisma.factura.findMany({
       where: localFilter,
       include: {
@@ -44,7 +43,98 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    return NextResponse.json(facturas)
+    // 2. Obtener IDs de citas que ya tienen factura asociada (para evitar duplicados)
+    const citasConFactura = await prisma.factura.findMany({
+      where: {
+        citaId: { not: null },
+        ...localFilter
+      },
+      select: {
+        citaId: true
+      }
+    })
+    const citasConFacturaIds = citasConFactura
+      .map(f => f.citaId)
+      .filter((id): id is string => id !== null && id !== undefined)
+
+    // 3. Obtener citas COMPLETADAS que NO tienen factura formal (pagadas con Cash/Sumup informales)
+    const citasCompletadasSinFactura = await prisma.cita.findMany({
+      where: {
+        ...localFilter,
+        estado: 'COMPLETADA',
+        total: { not: null },
+        metodoPago: { not: null },
+        id: { notIn: citasConFacturaIds }
+      },
+      include: {
+        cliente: {
+          select: {
+            nombre: true,
+            apellido: true,
+            email: true,
+            telefono: true
+          }
+        },
+        vehiculo: {
+          select: {
+            marca: true,
+            modelo: true,
+            matricula: true
+          }
+        },
+        cita_servicios: {
+          include: {
+            servicios: true
+          }
+        },
+        local: true,
+      },
+      orderBy: {
+        fecha: 'desc'
+      }
+    })
+
+    // 4. Convertir las citas sin factura a formato de "ticket virtual" para la lista
+    const ticketsVirtuales = citasCompletadasSinFactura.map((cita: any) => {
+      // Generar un número de ticket virtual basado en la fecha de la cita
+      const fechaCita = new Date(cita.fecha)
+      const año = fechaCita.getFullYear()
+      // Descripción de servicios
+      const serviciosDescripcion = cita.cita_servicios.map((cs: any) => cs.servicios.nombre).join(', ')
+      
+      return {
+        id: `cita-${cita.id}`, // Prefijo para identificar que es de una cita
+        numero: `CITA-${año}-${cita.id.substring(0, 6).toUpperCase()}`,
+        tipo: 'TICKET' as const,
+        fecha: cita.fecha,
+        cliente: cita.cliente,
+        total: cita.total || 0,
+        estado: 'PAGADA' as const, // Las citas completadas están cobradas
+        metodoPago: cita.metodoPago,
+        pdfPath: null,
+        // Campos adicionales para identificar que es una cita
+        esCitaSinFactura: true,
+        citaId: cita.id,
+        vehiculo: cita.vehiculo,
+        servicios: serviciosDescripcion,
+        // Trazabilidad
+        creadoPorId: cita.creadoPorId,
+        creadoPorNombre: cita.creadoPorNombre,
+        completadoPorId: cita.completadoPorId,
+        completadoPorNombre: cita.completadoPorNombre,
+        local: cita.local,
+        createdAt: cita.createdAt
+      }
+    })
+
+    // 5. Combinar facturas reales y tickets virtuales, ordenar por fecha
+    const todosLosRegistros = [...facturas, ...ticketsVirtuales].sort((a: any, b: any) => {
+      const fechaA = new Date(a.fecha || a.createdAt)
+      const fechaB = new Date(b.fecha || b.createdAt)
+      return fechaB.getTime() - fechaA.getTime() // Más recientes primero
+    })
+
+    return NextResponse.json(todosLosRegistros)
   } catch (error) {
     console.error('Error fetching facturas:', error)
     return NextResponse.json(

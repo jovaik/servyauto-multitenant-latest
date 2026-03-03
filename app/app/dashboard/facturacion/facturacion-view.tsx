@@ -67,6 +67,20 @@ interface Factura {
   estado: 'PENDIENTE' | 'PAGADA' | 'VENCIDA' | 'CANCELADA'
   metodoPago?: string
   pdfPath?: string
+  // Campos adicionales para citas sin factura
+  esCitaSinFactura?: boolean
+  citaId?: string
+  vehiculo?: {
+    marca: string
+    modelo: string
+    matricula: string
+  }
+  servicios?: string
+  // Trazabilidad
+  creadoPorId?: string
+  creadoPorNombre?: string
+  completadoPorId?: string
+  completadoPorNombre?: string
 }
 
 export function FacturacionView() {
@@ -208,10 +222,20 @@ export function FacturacionView() {
     }
   }
 
-  const getTipoColor = (tipo: string) => {
+  const getTipoColor = (tipo: string, esCitaSinFactura?: boolean) => {
+    if (esCitaSinFactura) {
+      return 'bg-amber-100 text-amber-800 border-amber-200' // Citas cobradas sin factura
+    }
     return tipo === 'FACTURA' 
       ? 'bg-blue-100 text-blue-800 border-blue-200'
       : 'bg-purple-100 text-purple-800 border-purple-200'
+  }
+
+  const getTipoLabel = (factura: Factura) => {
+    if (factura.esCitaSinFactura) {
+      return 'CITA COBRADA'
+    }
+    return factura.tipo
   }
 
   const formatMetodoPago = (metodoPago: string) => {
@@ -700,17 +724,31 @@ export function FacturacionView() {
               </TableHeader>
               <TableBody>
                 {filteredFacturas.map((factura) => (
-                  <TableRow key={factura.id}>
+                  <TableRow key={factura.id} className={factura.esCitaSinFactura ? 'bg-amber-50/50' : ''}>
                     <TableCell className="font-medium">
-                      {factura.numero}
+                      <div className="flex flex-col">
+                        <span>{factura.numero}</span>
+                        {factura.esCitaSinFactura && factura.vehiculo && (
+                          <span className="text-xs text-gray-500">
+                            🚗 {factura.vehiculo.matricula}
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
-                      <Badge className={getTipoColor(factura.tipo)}>
-                        {factura.tipo}
+                      <Badge className={getTipoColor(factura.tipo, factura.esCitaSinFactura)}>
+                        {getTipoLabel(factura)}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {factura.cliente.nombre} {factura.cliente.apellido || ''}
+                      <div className="flex flex-col">
+                        <span>{factura.cliente.nombre} {factura.cliente.apellido || ''}</span>
+                        {factura.esCitaSinFactura && factura.servicios && (
+                          <span className="text-xs text-gray-500 truncate max-w-[150px]" title={factura.servicios}>
+                            {factura.servicios}
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       {format(new Date(factura.fecha), 'dd/MM/yyyy', { locale: es })}
@@ -722,55 +760,82 @@ export function FacturacionView() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {factura.metodoPago ? formatMetodoPago(factura.metodoPago) : '-'}
+                      <div className="flex flex-col">
+                        <span>{factura.metodoPago ? formatMetodoPago(factura.metodoPago) : '-'}</span>
+                        {(factura.completadoPorNombre || factura.creadoPorNombre) && (
+                          <span className="text-xs text-gray-400" title={`Por: ${factura.completadoPorNombre || factura.creadoPorNombre}`}>
+                            👤 {factura.completadoPorNombre || factura.creadoPorNombre}
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => descargarPDF(factura.id)}>
-                            <Download className="mr-2 h-4 w-4" />
-                            Descargar Documento
-                          </DropdownMenuItem>
-                          <DropdownMenuItem asChild>
-                            <EnviarFacturaDialog 
+                      {factura.esCitaSinFactura ? (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => verDetalles(factura)}>
+                              <Eye className="mr-2 h-4 w-4" />
+                              Ver Detalles
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-blue-600">
+                              <FileText className="mr-2 h-4 w-4" />
+                              Generar Factura Formal
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      ) : (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => descargarPDF(factura.id)}>
+                              <Download className="mr-2 h-4 w-4" />
+                              Descargar Documento
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                              <EnviarFacturaDialog 
+                                facturaId={factura.id}
+                                facturaNumero={factura.numero}
+                                clienteNombre={`${factura.cliente.nombre} ${factura.cliente.apellido || ''}`}
+                                clienteEmail={factura.cliente.email}
+                                clienteTelefono={factura.cliente.telefono}
+                                tipo={factura.tipo}
+                              />
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => verDetalles(factura)}>
+                              <Eye className="mr-2 h-4 w-4" />
+                              Ver Detalles
+                            </DropdownMenuItem>
+                            <EditarFacturaDialog 
                               facturaId={factura.id}
                               facturaNumero={factura.numero}
-                              clienteNombre={`${factura.cliente.nombre} ${factura.cliente.apellido || ''}`}
-                              clienteEmail={factura.cliente.email}
-                              clienteTelefono={factura.cliente.telefono}
-                              tipo={factura.tipo}
+                              onFacturaActualizada={loadFacturas}
                             />
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => verDetalles(factura)}>
-                            <Eye className="mr-2 h-4 w-4" />
-                            Ver Detalles
-                          </DropdownMenuItem>
-                          <EditarFacturaDialog 
-                            facturaId={factura.id}
-                            facturaNumero={factura.numero}
-                            onFacturaActualizada={loadFacturas}
-                          />
-                          {factura.tipo === 'TICKET' && (
-                            <ConvertirTicketDialog 
-                              ticketId={factura.id}
-                              ticketNumero={factura.numero}
-                              onConvertido={loadFacturas}
-                            />
-                          )}
-                          <DropdownMenuItem 
-                            onClick={() => eliminarFactura(factura.id, factura.numero)}
-                            className="text-red-600 focus:text-red-600 focus:bg-red-50"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Eliminar Documento
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                            {factura.tipo === 'TICKET' && !factura.esCitaSinFactura && (
+                              <ConvertirTicketDialog 
+                                ticketId={factura.id}
+                                ticketNumero={factura.numero}
+                                onConvertido={loadFacturas}
+                              />
+                            )}
+                            <DropdownMenuItem 
+                              onClick={() => eliminarFactura(factura.id, factura.numero)}
+                              className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Eliminar Documento
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
