@@ -80,8 +80,8 @@ export async function POST(request: NextRequest) {
         // Limpiar matrícula (quitar espacios)
         const matriculaLimpia = matricula.trim();
 
-        // Verificar si el vehículo ya existe por matrícula
-        const existingVehiculo = await prisma.vehiculo.findUnique({
+        // Verificar si el vehículo ya existe por matrícula (en cualquier local)
+        const existingVehiculo = await prisma.vehiculo.findFirst({
           where: { matricula: matriculaLimpia },
         });
 

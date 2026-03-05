@@ -3,15 +3,51 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 
-// GET - Listar todos los locales
+// GET - Listar locales según permisos del usuario
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    if (!session) {
+    if (!session?.user?.email) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
+    // Obtener usuario con sus locales asignados
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { 
+        id: true, 
+        localId: true, 
+        role: true,
+        localesAsignados: {
+          select: { localId: true }
+        }
+      }
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
+    }
+
+    // Construir filtro según rol
+    let whereFilter: any = { activo: true };
+    
+    if (user.role === 'SUPER_ADMIN') {
+      // SUPER_ADMIN: ve todos los locales
+      // No añadimos filtro adicional
+    } else if (user.role === 'GRUPO_ADMIN' && user.localesAsignados.length > 0) {
+      // GRUPO_ADMIN: ve solo sus locales asignados
+      const allowedIds = user.localesAsignados.map(ul => ul.localId);
+      whereFilter.id = { in: allowedIds };
+    } else if (user.localId) {
+      // ADMIN/OPERADOR: ve solo su local
+      whereFilter.id = user.localId;
+    } else {
+      // Sin acceso a ningún local
+      return NextResponse.json([]);
+    }
+
     const locales = await prisma.local.findMany({
+      where: whereFilter,
       orderBy: { nombre: 'asc' },
       include: {
         _count: {
@@ -33,16 +69,31 @@ export async function GET() {
   }
 }
 
-// POST - Crear nuevo local
+// POST - Crear nuevo local (solo SUPER_ADMIN)
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session) {
+    if (!session?.user?.email) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
+    // Verificar que sea SUPER_ADMIN
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { role: true }
+    });
+
+    if (user?.role !== 'SUPER_ADMIN') {
+      return NextResponse.json({ error: 'Solo SUPER_ADMIN puede crear locales' }, { status: 403 });
+    }
+
     const data = await request.json();
-    const { nombre, nombreComercial, logo, direccion, ciudad, codigoPostal, telefono, email, colorPrimario } = data;
+    const { 
+      nombre, nombreComercial, logo, direccion, ciudad, codigoPostal, 
+      telefono, email, colorPrimario,
+      // Campos fiscales
+      cifNif, razonSocial, direccionFiscal, codigoPostalFiscal, ciudadFiscal
+    } = data;
 
     if (!nombre) {
       return NextResponse.json({ error: 'El nombre es obligatorio' }, { status: 400 });
@@ -59,6 +110,12 @@ export async function POST(request: NextRequest) {
         telefono: telefono || null,
         email: email || null,
         colorPrimario: colorPrimario || null,
+        // Campos fiscales
+        cifNif: cifNif || null,
+        razonSocial: razonSocial || null,
+        direccionFiscal: direccionFiscal || null,
+        codigoPostalFiscal: codigoPostalFiscal || null,
+        ciudadFiscal: ciudadFiscal || null,
       }
     });
 

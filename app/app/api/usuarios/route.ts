@@ -38,6 +38,18 @@ export async function GET(request: NextRequest) {
             nombreComercial: true,
           }
         },
+        localesAsignados: {
+          select: {
+            localId: true,
+            local: {
+              select: {
+                id: true,
+                nombre: true,
+                nombreComercial: true,
+              }
+            }
+          }
+        },
         createdAt: true,
         updatedAt: true,
       },

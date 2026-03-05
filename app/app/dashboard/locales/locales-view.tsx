@@ -33,6 +33,12 @@ interface Local {
   email: string | null;
   colorPrimario: string | null;
   activo: boolean;
+  // Datos fiscales
+  cifNif: string | null;
+  razonSocial: string | null;
+  direccionFiscal: string | null;
+  codigoPostalFiscal: string | null;
+  ciudadFiscal: string | null;
   _count: {
     usuarios: number;
     clientes: number;
@@ -78,6 +84,12 @@ export default function LocalesView() {
     email: '',
     colorPrimario: '#3b82f6',
     activo: true,
+    // Datos fiscales
+    cifNif: '',
+    razonSocial: '',
+    direccionFiscal: '',
+    codigoPostalFiscal: '',
+    ciudadFiscal: '',
   });
 
   useEffect(() => {
@@ -319,6 +331,12 @@ export default function LocalesView() {
       email: local.email || '',
       colorPrimario: local.colorPrimario || '#3b82f6',
       activo: local.activo,
+      // Datos fiscales
+      cifNif: local.cifNif || '',
+      razonSocial: local.razonSocial || '',
+      direccionFiscal: local.direccionFiscal || '',
+      codigoPostalFiscal: local.codigoPostalFiscal || '',
+      ciudadFiscal: local.ciudadFiscal || '',
     });
     setDialogOpen(true);
   };
@@ -354,6 +372,12 @@ export default function LocalesView() {
       email: '',
       colorPrimario: '#3b82f6',
       activo: true,
+      // Datos fiscales
+      cifNif: '',
+      razonSocial: '',
+      direccionFiscal: '',
+      codigoPostalFiscal: '',
+      ciudadFiscal: '',
     });
   };
 
@@ -509,9 +533,74 @@ export default function LocalesView() {
                 </div>
               </div>
 
+              {/* Separador Datos Fiscales */}
+              <div className="border-t pt-4 mt-4">
+                <h3 className="font-semibold text-sm text-gray-700 mb-3 flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Datos Fiscales (para facturas)
+                </h3>
+                <p className="text-xs text-gray-500 mb-4">Estos datos aparecerán en las facturas emitidas por este local</p>
+              </div>
+
+              {/* CIF/NIF y Razón Social */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="cifNif">CIF / NIF</Label>
+                  <Input
+                    id="cifNif"
+                    placeholder="B12345678"
+                    value={formData.cifNif}
+                    onChange={(e) => setFormData({ ...formData, cifNif: e.target.value.toUpperCase() })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="razonSocial">Razón Social</Label>
+                  <Input
+                    id="razonSocial"
+                    placeholder="Empresa S.L."
+                    value={formData.razonSocial}
+                    onChange={(e) => setFormData({ ...formData, razonSocial: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              {/* Dirección Fiscal */}
+              <div className="space-y-2">
+                <Label htmlFor="direccionFiscal">Dirección Fiscal</Label>
+                <Input
+                  id="direccionFiscal"
+                  placeholder="Calle fiscal, número..."
+                  value={formData.direccionFiscal}
+                  onChange={(e) => setFormData({ ...formData, direccionFiscal: e.target.value })}
+                />
+                <p className="text-xs text-gray-500">Si es diferente de la dirección operativa</p>
+              </div>
+
+              {/* Ciudad Fiscal y CP Fiscal */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="ciudadFiscal">Ciudad Fiscal</Label>
+                  <Input
+                    id="ciudadFiscal"
+                    placeholder="Ciudad"
+                    value={formData.ciudadFiscal}
+                    onChange={(e) => setFormData({ ...formData, ciudadFiscal: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="codigoPostalFiscal">CP Fiscal</Label>
+                  <Input
+                    id="codigoPostalFiscal"
+                    placeholder="29001"
+                    value={formData.codigoPostalFiscal}
+                    onChange={(e) => setFormData({ ...formData, codigoPostalFiscal: e.target.value })}
+                  />
+                </div>
+              </div>
+
               {/* Activo */}
               {editingLocal && (
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 pt-4 border-t">
                   <Switch
                     checked={formData.activo}
                     onCheckedChange={(checked) => setFormData({ ...formData, activo: checked })}

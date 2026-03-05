@@ -44,8 +44,9 @@ model User {
   password      String?
   role          RolUsuario @default(ADMIN)
   activo        Boolean    @default(true)
-  localId       String?    // null = ve todos los locales (superadmin)
+  localId       String?    // null + sin localesAsignados = SUPER_ADMIN (ve todo)
   local         Local?     @relation(fields: [localId], references: [id])
+  localesAsignados UserLocal[]  // Locales a los que tiene acceso (para GRUPO_ADMIN)
   createdAt         DateTime   @default(now())
   updatedAt         DateTime   @updatedAt
   accounts          Account[]
@@ -68,11 +69,20 @@ model Local {
   email            String?
   activo           Boolean   @default(true)
   colorPrimario    String?   // Color corporativo para personalización
+  
+  // Datos fiscales (cada local puede tener su propia entidad fiscal)
+  cifNif             String?   // CIF/NIF de la empresa
+  razonSocial        String?   // Razón social para facturas
+  direccionFiscal    String?   // Dirección fiscal completa
+  codigoPostalFiscal String?   // CP fiscal si difiere del operativo
+  ciudadFiscal       String?   // Ciudad fiscal
+  
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
   
   // Relaciones
   usuarios            User[]
+  usuariosAsignados   UserLocal[]  // Usuarios con acceso a este local (N:N)
   clientes            Cliente[]
   vehiculos           Vehiculo[]
   citas               Cita[]
@@ -81,6 +91,19 @@ model Local {
   ingresosAdicionales IngresoAdicional[]
 
   @@map("locales")
+}
+
+// Relación N:N entre usuarios y locales (para GRUPO_ADMIN que gestiona múltiples locales)
+model UserLocal {
+  id        String   @id @default(cuid())
+  userId    String
+  localId   String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  local     Local    @relation(fields: [localId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  
+  @@unique([userId, localId])
+  @@map("user_locales")
 }
 
 model VerificationToken {
@@ -123,7 +146,7 @@ model Vehiculo {
   modelo        String
   anio          Int
   color         String?
-  matricula     String   @unique
+  matricula     String   // Ya no es único global, ahora es único por local
   kilometraje   Int?
   motor         String?
   combustible   String?
@@ -140,6 +163,7 @@ model Vehiculo {
   cliente           Cliente  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
   serviciosRapidos  ServicioTaller[]
 
+  @@unique([matricula, localId])  // Matrícula única por local (permite misma matrícula en distintos locales)
   @@map("vehiculos")
 }
 
@@ -319,10 +343,11 @@ model Gasto {
 }
 
 enum RolUsuario {
-  SUPER_ADMIN
-  ADMIN
-  OPERADOR
-  CLIENTE
+  SUPER_ADMIN    // Ve TODO (tú)
+  GRUPO_ADMIN    // Ve solo sus locales asignados (dueños de Marbella)
+  ADMIN          // Ve solo su local asignado
+  OPERADOR       // Ve solo su local (permisos limitados)
+  CLIENTE        // Portal cliente (si existe)
 }
 
 enum EstadoCita {

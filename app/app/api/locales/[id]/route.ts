@@ -54,7 +54,12 @@ export async function PUT(
     }
 
     const data = await request.json();
-    const { nombre, nombreComercial, logo, direccion, ciudad, codigoPostal, telefono, email, colorPrimario, activo } = data;
+    const { 
+      nombre, nombreComercial, logo, direccion, ciudad, codigoPostal, 
+      telefono, email, colorPrimario, activo,
+      // Campos fiscales
+      cifNif, razonSocial, direccionFiscal, codigoPostalFiscal, ciudadFiscal
+    } = data;
 
     const local = await prisma.local.update({
       where: { id: params.id },
@@ -69,6 +74,12 @@ export async function PUT(
         ...(email !== undefined && { email }),
         ...(colorPrimario !== undefined && { colorPrimario }),
         ...(activo !== undefined && { activo }),
+        // Campos fiscales
+        ...(cifNif !== undefined && { cifNif }),
+        ...(razonSocial !== undefined && { razonSocial }),
+        ...(direccionFiscal !== undefined && { direccionFiscal }),
+        ...(codigoPostalFiscal !== undefined && { codigoPostalFiscal }),
+        ...(ciudadFiscal !== undefined && { ciudadFiscal }),
       }
     });
 

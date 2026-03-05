@@ -97,21 +97,24 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Verificar si ya existe un vehículo con la misma matrícula
+    // Obtener localId para asignar al nuevo vehículo
+    const localContext = await getLocalContext()
+    const localIdParaVehiculo = localContext ? getLocalIdForCreate(localContext) : null
+
+    // Verificar si ya existe un vehículo con la misma matrícula EN ESTE LOCAL
     const existingVehicle = await prisma.vehiculo.findFirst({
-      where: { matricula: matricula.toUpperCase() }
+      where: { 
+        matricula: matricula.toUpperCase(),
+        localId: localIdParaVehiculo
+      }
     })
 
     if (existingVehicle) {
       return NextResponse.json(
-        { error: 'Ya existe un vehículo con esta matrícula' },
+        { error: 'Ya existe un vehículo con esta matrícula en este local' },
         { status: 400 }
       )
     }
-
-    // Obtener localId para asignar al nuevo vehículo
-    const localContext = await getLocalContext()
-    const localIdParaVehiculo = localContext ? getLocalIdForCreate(localContext) : null
 
     const vehiculo = await prisma.vehiculo.create({
       data: {

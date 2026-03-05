@@ -2,7 +2,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { UserPlus, Search, Edit, Trash2, Shield, Users as UsersIcon, Store } from 'lucide-react'
+import { UserPlus, Search, Edit, Trash2, Shield, Users as UsersIcon, Store, Check } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
 
 interface Local {
   id: string
@@ -46,6 +47,7 @@ interface Usuario {
   activo: boolean
   localId: string | null
   local?: Local | null
+  localesAsignados?: { localId: string, local: Local }[]
   createdAt: string
   updatedAt: string
 }
@@ -65,7 +67,8 @@ export function UsuariosView() {
     password: '',
     role: 'ADMIN',
     activo: true,
-    localId: 'ALL' // ALL = todos los locales (superadmin)
+    localId: 'ALL', // ALL = todos los locales (superadmin)
+    localesAsignados: [] as string[] // Para GRUPO_ADMIN: IDs de locales asignados
   })
 
   useEffect(() => {
@@ -102,16 +105,32 @@ export function UsuariosView() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
+      // Crear el usuario
       const response = await fetch('/api/usuarios', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...formData,
-          localId: formData.localId === 'ALL' ? null : formData.localId // null = superadmin
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+          role: formData.role,
+          activo: formData.activo,
+          localId: formData.role === 'GRUPO_ADMIN' ? null : (formData.localId === 'ALL' ? null : formData.localId)
         })
       })
 
       if (response.ok) {
+        const newUser = await response.json()
+        
+        // Si es GRUPO_ADMIN, asignar los locales seleccionados
+        if (formData.role === 'GRUPO_ADMIN' && formData.localesAsignados.length > 0) {
+          await fetch(`/api/usuarios/${newUser.id}/locales`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ localIds: formData.localesAsignados })
+          })
+        }
+        
         alert('Usuario creado correctamente')
         setOpenNew(false)
         setFormData({
@@ -120,7 +139,8 @@ export function UsuariosView() {
           password: '',
           role: 'ADMIN',
           activo: true,
-          localId: 'ALL'
+          localId: 'ALL',
+          localesAsignados: []
         })
         fetchUsuarios()
       } else {
@@ -143,7 +163,7 @@ export function UsuariosView() {
         email: formData.email,
         role: formData.role,
         activo: formData.activo,
-        localId: formData.localId === 'ALL' ? null : formData.localId // null = superadmin
+        localId: formData.role === 'GRUPO_ADMIN' ? null : (formData.localId === 'ALL' ? null : formData.localId)
       }
 
       // Solo incluir password si se proporcionó uno nuevo
@@ -158,6 +178,22 @@ export function UsuariosView() {
       })
 
       if (response.ok) {
+        // Si es GRUPO_ADMIN, actualizar los locales asignados
+        if (formData.role === 'GRUPO_ADMIN') {
+          await fetch(`/api/usuarios/${selectedUsuario.id}/locales`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ localIds: formData.localesAsignados })
+          })
+        } else {
+          // Si cambió de GRUPO_ADMIN a otro rol, eliminar locales asignados
+          await fetch(`/api/usuarios/${selectedUsuario.id}/locales`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ localIds: [] })
+          })
+        }
+        
         alert('Usuario actualizado correctamente')
         setOpenEdit(false)
         setSelectedUsuario(null)
@@ -167,7 +203,8 @@ export function UsuariosView() {
           password: '',
           role: 'ADMIN',
           activo: true,
-          localId: 'ALL'
+          localId: 'ALL',
+          localesAsignados: []
         })
         fetchUsuarios()
       } else {
@@ -201,15 +238,31 @@ export function UsuariosView() {
     }
   }
 
-  const openEditDialog = (usuario: Usuario) => {
+  const openEditDialog = async (usuario: Usuario) => {
     setSelectedUsuario(usuario)
+    
+    // Cargar locales asignados si es GRUPO_ADMIN
+    let localesAsignados: string[] = []
+    if (usuario.role === 'GRUPO_ADMIN') {
+      try {
+        const res = await fetch(`/api/usuarios/${usuario.id}/locales`)
+        if (res.ok) {
+          const data = await res.json()
+          localesAsignados = data.map((l: Local) => l.id)
+        }
+      } catch (err) {
+        console.error('Error cargando locales asignados:', err)
+      }
+    }
+    
     setFormData({
       name: usuario.name || '',
       email: usuario.email,
       password: '',
       role: usuario.role,
       activo: usuario.activo,
-      localId: usuario.localId || 'ALL'
+      localId: usuario.localId || 'ALL',
+      localesAsignados
     })
     setOpenEdit(true)
   }
@@ -217,8 +270,9 @@ export function UsuariosView() {
   const getRoleBadge = (role: string) => {
     const roles: { [key: string]: { label: string, variant: 'default' | 'secondary' | 'destructive' | 'outline' } } = {
       SUPER_ADMIN: { label: 'Super Admin', variant: 'destructive' },
-      ADMIN: { label: 'Admin', variant: 'default' },
-      MECANICO: { label: 'Mecánico', variant: 'secondary' },
+      GRUPO_ADMIN: { label: 'Grupo Admin', variant: 'default' },
+      ADMIN: { label: 'Admin', variant: 'secondary' },
+      MECANICO: { label: 'Mecánico', variant: 'outline' },
       OPERADOR: { label: 'Operador', variant: 'outline' }
     }
     const roleInfo = roles[role] || { label: role, variant: 'outline' as const }
@@ -226,11 +280,24 @@ export function UsuariosView() {
   }
 
   const getLocalBadge = (usuario: Usuario) => {
-    if (!usuario.localId) {
-      return <Badge variant="destructive" className="bg-purple-600">🌐 Todos (SuperAdmin)</Badge>
+    if (usuario.role === 'SUPER_ADMIN' || (!usuario.localId && usuario.role !== 'GRUPO_ADMIN')) {
+      return <Badge variant="destructive" className="bg-purple-600">🌐 Todos</Badge>
+    }
+    if (usuario.role === 'GRUPO_ADMIN') {
+      const count = usuario.localesAsignados?.length || 0
+      return <Badge variant="default" className="bg-blue-600">🏢 {count} locales</Badge>
     }
     const localName = usuario.local?.nombreComercial || usuario.local?.nombre || 'Desconocido'
     return <Badge variant="outline"><Store className="h-3 w-3 mr-1 inline" />{localName}</Badge>
+  }
+  
+  const toggleLocalAsignado = (localId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      localesAsignados: prev.localesAsignados.includes(localId)
+        ? prev.localesAsignados.filter(id => id !== localId)
+        : [...prev.localesAsignados, localId]
+    }))
   }
 
   const filteredUsuarios = usuarios.filter(u =>
@@ -296,17 +363,22 @@ export function UsuariosView() {
                 <Label htmlFor="role">Rol</Label>
                 <Select
                   value={formData.role}
-                  onValueChange={(value) => setFormData({ ...formData, role: value })}
+                  onValueChange={(value) => setFormData({ ...formData, role: value, localesAsignados: [] })}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ADMIN">Admin</SelectItem>
-                    <SelectItem value="MECANICO">Mecánico</SelectItem>
+                    <SelectItem value="GRUPO_ADMIN">👥 Grupo Admin (múltiples locales)</SelectItem>
+                    <SelectItem value="ADMIN">Admin (un local)</SelectItem>
                     <SelectItem value="OPERADOR">Operador</SelectItem>
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground">
+                  {formData.role === 'GRUPO_ADMIN' 
+                    ? 'Ve y gestiona los locales que le asignes' 
+                    : 'Asigna a un único local'}
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="activo">Estado</Label>
@@ -323,29 +395,54 @@ export function UsuariosView() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="local">Local Asignado</Label>
-                <Select
-                  value={formData.localId}
-                  onValueChange={(value) => setFormData({ ...formData, localId: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar local..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">🌐 Todos los locales (SuperAdmin)</SelectItem>
+              
+              {/* Selector de locales según rol */}
+              {formData.role === 'GRUPO_ADMIN' ? (
+                <div className="space-y-2">
+                  <Label>Locales Asignados</Label>
+                  <div className="border rounded-md p-3 max-h-40 overflow-y-auto space-y-2">
                     {locales.map((local) => (
-                      <SelectItem key={local.id} value={local.id}>
-                        <Store className="h-3 w-3 mr-1 inline" />
-                        {local.nombreComercial || local.nombre}
-                      </SelectItem>
+                      <div key={local.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`local-new-${local.id}`}
+                          checked={formData.localesAsignados.includes(local.id)}
+                          onCheckedChange={() => toggleLocalAsignado(local.id)}
+                        />
+                        <label htmlFor={`local-new-${local.id}`} className="text-sm cursor-pointer">
+                          {local.nombreComercial || local.nombre}
+                        </label>
+                      </div>
                     ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  Sin local asignado = ve todos los datos (SuperAdmin)
-                </p>
-              </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {formData.localesAsignados.length} local(es) seleccionado(s)
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label htmlFor="local">Local Asignado</Label>
+                  <Select
+                    value={formData.localId}
+                    onValueChange={(value) => setFormData({ ...formData, localId: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar local..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL">🌐 Todos los locales (SuperAdmin)</SelectItem>
+                      {locales.map((local) => (
+                        <SelectItem key={local.id} value={local.id}>
+                          <Store className="h-3 w-3 mr-1 inline" />
+                          {local.nombreComercial || local.nombre}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Sin local asignado = ve todos los datos (SuperAdmin)
+                  </p>
+                </div>
+              )}
               <div className="flex justify-end space-x-2 pt-4">
                 <Button type="button" variant="outline" onClick={() => setOpenNew(false)}>
                   Cancelar
@@ -511,17 +608,23 @@ export function UsuariosView() {
               <Label htmlFor="edit-role">Rol</Label>
               <Select
                 value={formData.role}
-                onValueChange={(value) => setFormData({ ...formData, role: value })}
+                onValueChange={(value) => setFormData({ ...formData, role: value, localesAsignados: value !== 'GRUPO_ADMIN' ? [] : formData.localesAsignados })}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ADMIN">Admin</SelectItem>
-                  <SelectItem value="MECANICO">Mecánico</SelectItem>
+                  <SelectItem value="SUPER_ADMIN">🌐 Super Admin (todos)</SelectItem>
+                  <SelectItem value="GRUPO_ADMIN">👥 Grupo Admin (múltiples locales)</SelectItem>
+                  <SelectItem value="ADMIN">Admin (un local)</SelectItem>
                   <SelectItem value="OPERADOR">Operador</SelectItem>
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground">
+                {formData.role === 'SUPER_ADMIN' && 'Ve y gestiona TODOS los locales'}
+                {formData.role === 'GRUPO_ADMIN' && 'Ve y gestiona los locales que le asignes'}
+                {(formData.role === 'ADMIN' || formData.role === 'OPERADOR') && 'Ve solo su local asignado'}
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-activo">Estado</Label>
@@ -538,29 +641,50 @@ export function UsuariosView() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-local">Local Asignado</Label>
-              <Select
-                value={formData.localId}
-                onValueChange={(value) => setFormData({ ...formData, localId: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar local..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">🌐 Todos los locales (SuperAdmin)</SelectItem>
+            
+            {/* Selector de locales según rol */}
+            {formData.role === 'GRUPO_ADMIN' ? (
+              <div className="space-y-2">
+                <Label>Locales Asignados</Label>
+                <div className="border rounded-md p-3 max-h-40 overflow-y-auto space-y-2">
                   {locales.map((local) => (
-                    <SelectItem key={local.id} value={local.id}>
-                      <Store className="h-3 w-3 mr-1 inline" />
-                      {local.nombreComercial || local.nombre}
-                    </SelectItem>
+                    <div key={local.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`local-edit-${local.id}`}
+                        checked={formData.localesAsignados.includes(local.id)}
+                        onCheckedChange={() => toggleLocalAsignado(local.id)}
+                      />
+                      <label htmlFor={`local-edit-${local.id}`} className="text-sm cursor-pointer">
+                        {local.nombreComercial || local.nombre}
+                      </label>
+                    </div>
                   ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                Sin local asignado = ve todos los datos (SuperAdmin)
-              </p>
-            </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {formData.localesAsignados.length} local(es) seleccionado(s)
+                </p>
+              </div>
+            ) : formData.role !== 'SUPER_ADMIN' ? (
+              <div className="space-y-2">
+                <Label htmlFor="edit-local">Local Asignado</Label>
+                <Select
+                  value={formData.localId}
+                  onValueChange={(value) => setFormData({ ...formData, localId: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar local..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {locales.map((local) => (
+                      <SelectItem key={local.id} value={local.id}>
+                        <Store className="h-3 w-3 mr-1 inline" />
+                        {local.nombreComercial || local.nombre}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
             <div className="flex justify-end space-x-2 pt-4">
               <Button type="button" variant="outline" onClick={() => setOpenEdit(false)}>
                 Cancelar
