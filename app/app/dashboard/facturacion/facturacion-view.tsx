@@ -149,16 +149,25 @@ export function FacturacionView() {
     try {
       const response = await fetch(`/api/facturas/${facturaId}/pdf`)
       if (response.ok) {
-        // Obtener el documento como HTML y abrirlo en nueva ventana para imprimir
-        const htmlContent = await response.text()
-        const newWindow = window.open('', '_blank')
-        if (newWindow) {
-          newWindow.document.write(htmlContent)
-          newWindow.document.close()
-          
-          // Auto-imprimir cuando la página cargue
-          newWindow.onload = () => {
-            newWindow.print()
+        const contentType = response.headers.get('content-type') || ''
+        
+        if (contentType.includes('application/pdf')) {
+          // Es un PDF real - abrir en nueva pestaña
+          const blob = await response.blob()
+          const url = URL.createObjectURL(blob)
+          window.open(url, '_blank')
+          // Limpiar URL después de un tiempo
+          setTimeout(() => URL.revokeObjectURL(url), 60000)
+        } else {
+          // Fallback a HTML (para imprimir)
+          const htmlContent = await response.text()
+          const newWindow = window.open('', '_blank')
+          if (newWindow) {
+            newWindow.document.write(htmlContent)
+            newWindow.document.close()
+            newWindow.onload = () => {
+              newWindow.print()
+            }
           }
         }
       } else {
