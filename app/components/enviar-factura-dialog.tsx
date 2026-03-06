@@ -108,19 +108,22 @@ export function EnviarFacturaDialog({
       // 1. Primero descargar automáticamente el PDF
       toast({
         title: 'Preparando documento...',
-        description: 'Descargando el PDF para compartir',
+        description: 'Generando el PDF para compartir',
       })
       
-      const response = await fetch(`/api/facturas/${facturaId}/pdf?download=true`)
+      const response = await fetch(`/api/facturas/${facturaId}/pdf`)
       if (response.ok) {
-        // Generar el blob del documento HTML
+        const contentType = response.headers.get('content-type') || ''
         const blob = await response.blob()
         const url = window.URL.createObjectURL(blob)
+        
+        // Determinar extensión según tipo de contenido
+        const extension = contentType.includes('application/pdf') ? 'pdf' : 'html'
         
         // Crear un link temporal y hacer click para descargar
         const a = document.createElement('a')
         a.href = url
-        a.download = `${tipo}_${facturaNumero}.html`
+        a.download = `${tipo}_${facturaNumero}.${extension}`
         document.body.appendChild(a)
         a.click()
         document.body.removeChild(a)
@@ -128,7 +131,7 @@ export function EnviarFacturaDialog({
         
         toast({
           title: '✅ Documento descargado',
-          description: 'El documento se ha descargado. Abriendo WhatsApp...',
+          description: `El ${extension.toUpperCase()} se ha descargado. Abriendo WhatsApp...`,
         })
         
         // 2. Esperar un momento para que el usuario vea la descarga
@@ -140,7 +143,7 @@ export function EnviarFacturaDialog({
         
         // Mensaje mejorado con instrucciones
         const mensajeWhatsApp = encodeURIComponent(
-          `${mensaje}\n\n📎 El documento ${tipo}_${facturaNumero}.html se ha descargado automáticamente. Solo tienes que adjuntarlo en este chat (puedes imprimirlo como PDF desde el navegador si lo prefieres).`
+          `${mensaje}\n\n📎 El ${tipo.toLowerCase()} ${facturaNumero}.${extension} se ha descargado. Adjúntalo en este chat.`
         )
         
         const whatsappUrl = `https://wa.me/${numeroCompleto}?text=${mensajeWhatsApp}`
@@ -152,7 +155,7 @@ export function EnviarFacturaDialog({
           duration: 6000
         })
       } else {
-        throw new Error('Error al generar el PDF')
+        throw new Error('Error al generar el documento')
       }
       
       setOpen(false)
