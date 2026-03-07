@@ -60,7 +60,9 @@ export async function getMerchantInfo() {
     throw new Error(`Error obteniendo info del merchant: ${error}`)
   }
   
-  return response.json()
+  const data = await response.json()
+  console.log('SumUp Merchant Info:', JSON.stringify(data, null, 2))
+  return data
 }
 
 /**
@@ -133,17 +135,27 @@ export async function createCheckout(
 
   // Primero obtener el merchant_code
   const merchantInfo = await getMerchantInfo()
-  const merchantCode = merchantInfo.merchant_code
+  
+  // El merchant_code puede estar en diferentes lugares según la respuesta de SumUp
+  const merchantCode = merchantInfo.merchant_code || 
+                       merchantInfo.merchant_profile?.merchant_code ||
+                       merchantInfo.account?.merchant_code
+  
+  // El email también puede estar en diferentes lugares
+  const merchantEmail = merchantInfo.email || 
+                        merchantInfo.merchant_profile?.email ||
+                        merchantInfo.account?.email
   
   if (!merchantCode) {
-    throw new Error('No se pudo obtener el merchant_code')
+    console.error('Estructura de merchantInfo:', Object.keys(merchantInfo))
+    throw new Error(`No se pudo obtener el merchant_code. Campos disponibles: ${Object.keys(merchantInfo).join(', ')}`)
   }
 
   const checkoutData = {
     checkout_reference: reference || `SERVY-${Date.now()}`,
     amount: amount,
     currency: 'EUR',
-    pay_to_email: merchantInfo.email,
+    pay_to_email: merchantEmail,
     merchant_code: merchantCode,
     description: description,
   }
