@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { format } from 'date-fns'
-import { Calendar, Clock, User, Car, CreditCard, Trash2 } from 'lucide-react'
+import { Calendar, Clock, User, Car, CreditCard, Trash2, Smartphone, Banknote } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -27,6 +27,7 @@ import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/use-toast'
 import { Cita, EstadoCita, MetodoPago } from '@/lib/types'
 import { Checkbox } from '@/components/ui/checkbox'
+import { CobrarSumUpDialog } from '@/components/cobrar-sumup-dialog'
 
 interface Servicio {
   id: string
@@ -84,6 +85,7 @@ export function EditarCitaDialog({
   const [deleting, setDeleting] = useState(false)
   const [servicios, setServicios] = useState<Servicio[]>([])
   const [serviciosSeleccionados, setServiciosSeleccionados] = useState<string[]>([])
+  const [showSumUpDialog, setShowSumUpDialog] = useState(false)
   
   const [formData, setFormData] = useState({
     fecha: '',
@@ -589,36 +591,66 @@ export function EditarCitaDialog({
             )}
           </div>
 
-          {/* Método de Pago */}
-          <div className="space-y-2">
-            <Label>Método de pago</Label>
-            <Select value={formData.metodoPago || ""} onValueChange={(value) => 
-              setFormData(prev => ({ ...prev, metodoPago: value }))
-            }>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecciona método de pago" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="EFECTIVO">
-                  <div className="flex items-center">
-                    <CreditCard className="mr-2 h-4 w-4" />
-                    Efectivo
-                  </div>
-                </SelectItem>
-                <SelectItem value="TPV_SUMUP">
-                  <div className="flex items-center">
-                    <CreditCard className="mr-2 h-4 w-4" />
-                    TPV SUMUP
-                  </div>
-                </SelectItem>
-                <SelectItem value="TPV_UNICAJA">
-                  <div className="flex items-center">
-                    <CreditCard className="mr-2 h-4 w-4" />
-                    TPV UNICAJA
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
+          {/* Método de Pago - Botones de Cobro */}
+          <div className="space-y-3">
+            <Label>💳 Cobrar ({cita?.total ? `${cita.total.toFixed(2)}€` : 'Sin total'})</Label>
+            
+            {formData.metodoPago && (
+              <div className="flex items-center gap-2 p-2 bg-green-50 rounded-lg border border-green-200">
+                <Badge variant="outline" className="bg-green-100 text-green-800">
+                  ✅ Pagado: {formData.metodoPago === 'EFECTIVO' ? 'Efectivo' : formData.metodoPago === 'TPV_SUMUP' ? 'SumUp' : 'TPV Unicaja'}
+                </Badge>
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => setFormData(prev => ({ ...prev, metodoPago: '' }))}
+                  className="text-gray-500 h-6"
+                >
+                  Cambiar
+                </Button>
+              </div>
+            )}
+            
+            {!formData.metodoPago && (
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-14 flex flex-col items-center justify-center gap-1 border-2 hover:bg-green-50 hover:border-green-500"
+                  onClick={() => setFormData(prev => ({ ...prev, metodoPago: 'EFECTIVO' }))}
+                >
+                  <Banknote className="h-5 w-5 text-green-600" />
+                  <span className="text-sm font-medium">Efectivo</span>
+                </Button>
+                
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-14 flex flex-col items-center justify-center gap-1 border-2 hover:bg-blue-50 hover:border-blue-500"
+                  onClick={() => setShowSumUpDialog(true)}
+                  disabled={!cita?.total || cita.total <= 0}
+                >
+                  <Smartphone className="h-5 w-5 text-blue-600" />
+                  <span className="text-sm font-medium">SumUp</span>
+                </Button>
+              </div>
+            )}
+            
+            {!formData.metodoPago && (
+              <div className="pt-2">
+                <Select value="" onValueChange={(value) => 
+                  setFormData(prev => ({ ...prev, metodoPago: value }))
+                }>
+                  <SelectTrigger className="text-sm h-9">
+                    <SelectValue placeholder="Otro método de pago..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="TPV_UNICAJA">TPV Unicaja</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
 
           {/* Observaciones */}
@@ -657,6 +689,29 @@ export function EditarCitaDialog({
         </form>
       </DialogContent>
     </Dialog>
+    
+    {/* Dialog de Cobro SumUp */}
+    <CobrarSumUpDialog
+      open={showSumUpDialog}
+      onOpenChange={setShowSumUpDialog}
+      amount={cita?.total || 0}
+      description={`${cita?.cliente?.nombre || 'Cliente'} - ${cita?.vehiculo?.matricula || 'Vehículo'}`}
+      citaId={cita?.id}
+      onPaymentComplete={(transactionCode) => {
+        setFormData(prev => ({ ...prev, metodoPago: 'TPV_SUMUP' }))
+        toast({
+          title: '✅ Pago completado',
+          description: `Cobro de ${cita?.total?.toFixed(2)}€ realizado con SumUp`,
+        })
+      }}
+      onPaymentFailed={() => {
+        toast({
+          title: 'Pago fallido',
+          description: 'El pago no se pudo completar',
+          variant: 'destructive',
+        })
+      }}
+    />
     </>
   )
 }
