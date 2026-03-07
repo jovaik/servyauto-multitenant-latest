@@ -29,13 +29,45 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Obtener contexto del local
-    const localContext = await getLocalContext()
-    const localId = localContext?.selectedLocalId
+    // Determinar localId: primero de la cita, luego del contexto
+    let localId: string | null = null
+    
+    // Si hay citaId, obtener el localId de la cita
+    if (citaId) {
+      const cita = await prisma.cita.findUnique({
+        where: { id: citaId },
+        select: { localId: true }
+      })
+      localId = cita?.localId || null
+    }
+    
+    // Si hay facturaId, obtener el localId de la factura
+    if (!localId && facturaId) {
+      const factura = await prisma.factura.findUnique({
+        where: { id: facturaId },
+        select: { localId: true }
+      })
+      localId = factura?.localId || null
+    }
+    
+    // Si no se encontró, usar el contexto del usuario
+    if (!localId) {
+      const localContext = await getLocalContext()
+      localId = localContext?.selectedLocalId || null
+    }
+    
+    // Si aún no hay localId, usar el local del usuario
+    if (!localId) {
+      const user = await prisma.user.findUnique({
+        where: { email: session.user?.email || '' },
+        select: { localId: true }
+      })
+      localId = user?.localId || null
+    }
 
     if (!localId) {
       return NextResponse.json(
-        { error: 'No se pudo determinar el local' },
+        { error: 'No se pudo determinar el local. Contacte al administrador.' },
         { status: 400 }
       )
     }
