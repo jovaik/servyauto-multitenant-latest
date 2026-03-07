@@ -32,6 +32,7 @@ export interface SumUpCheckout {
   checkout_reference?: string
   transaction_code?: string
   transaction_id?: string
+  hosted_checkout_url?: string  // URL de pago hospedada por SumUp
 }
 
 // Headers comunes para todas las peticiones
@@ -158,6 +159,8 @@ export async function createCheckout(
     pay_to_email: merchantEmail,
     merchant_code: merchantCode,
     description: description,
+    // Activar hosted checkout para obtener URL de pago
+    hosted_checkout: { enabled: true },
   }
 
   console.log('Creando checkout SumUp:', checkoutData)
@@ -284,11 +287,13 @@ export async function createPaymentLink(
   const apiKey = process.env.SUMUP_API_KEY
   if (!apiKey) throw new Error('SUMUP_API_KEY no configurada')
 
-  // Crear checkout usando la misma función que ya funciona
+  // Crear checkout - ahora incluye hosted_checkout habilitado
   const checkout = await createCheckout(amount, description, reference)
   
-  // Construir la URL de pago
-  const paymentUrl = `https://pay.sumup.com/b2c/Q${checkout.id}`
+  // Usar la URL que devuelve SumUp
+  const paymentUrl = checkout.hosted_checkout_url || `https://checkout.sumup.com/pay/${checkout.id}`
+  
+  console.log('Payment Link creado:', paymentUrl)
   
   return {
     id: checkout.id,
