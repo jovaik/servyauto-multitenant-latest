@@ -1,15 +1,23 @@
 /**
  * SumUp Cloud API Integration
  * Permite cobrar directamente en el terminal Solo sin pasar por la app de SumUp
+ * 
+ * Modos de asignación:
+ * - COMPARTIDO: Todos los terminales son accesibles desde cualquier local
+ * - POR_LOCAL: Cada terminal está asignado a un local específico
  */
 
 const SUMUP_API_BASE = 'https://api.sumup.com'
+
+export type ModoAsignacion = 'COMPARTIDO' | 'POR_LOCAL'
 
 export interface SumUpReader {
   id: string
   name: string
   status: 'paired' | 'unpaired' | 'unknown'
   pairedAt?: string
+  localId?: string | null
+  localNombre?: string | null
 }
 
 export interface SumUpCheckout {

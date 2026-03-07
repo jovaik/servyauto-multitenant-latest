@@ -89,6 +89,8 @@ model Local {
   facturas            Factura[]
   gastos              Gasto[]
   ingresosAdicionales IngresoAdicional[]
+  sumupReaders        SumUpReader[]
+  sumupTransactions   SumUpTransaction[]
 
   @@map("locales")
 }
@@ -556,4 +558,57 @@ model ServicioTaller {
   updatedAt             DateTime    @updatedAt
 
   @@map("servicios_taller")
+}
+
+
+// ==================== SUMUP INTEGRATION ====================
+
+// Configuración global de SumUp para el grupo
+model SumUpConfig {
+  id                String   @id @default(cuid())
+  modoAsignacion    String   @default("COMPARTIDO") // COMPARTIDO o POR_LOCAL
+  trackingPorLocal  Boolean  @default(true)         // Siempre registrar qué local hace cada cobro
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("sumup_config")
+}
+
+// Lectores/Terminales SumUp registrados
+model SumUpReader {
+  id            String   @id @default(cuid())
+  sumupReaderId String   @unique // ID del lector en la API de SumUp
+  nombre        String            // Nombre descriptivo (ej: "Terminal Marbella 1")
+  localId       String?           // null = compartido entre todos los locales
+  local         Local?   @relation(fields: [localId], references: [id])
+  activo        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  transacciones SumUpTransaction[]
+
+  @@map("sumup_readers")
+}
+
+// Historial de transacciones SumUp (tracking por local)
+model SumUpTransaction {
+  id              String       @id @default(cuid())
+  checkoutId      String       @unique // ID del checkout en SumUp
+  readerId        String
+  reader          SumUpReader  @relation(fields: [readerId], references: [id])
+  localId         String                // Local que generó el cobro
+  local           Local        @relation(fields: [localId], references: [id])
+  amount          Float
+  status          String       // PENDING, PAID, FAILED, CANCELLED
+  transactionCode String?      // Código de transacción de SumUp
+  description     String?
+  reference       String?      // Referencia interna (ej: SERVY-MARBELLA-12345)
+  facturaId       String?      // Referencia a factura si existe
+  citaId          String?      // Referencia a cita si existe
+  creadoPorId     String?
+  creadoPorNombre String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@map("sumup_transactions")
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { CreditCard, Plus, Trash2, RefreshCw, Wifi, WifiOff } from 'lucide-react'
+import { CreditCard, Plus, Trash2, RefreshCw, Wifi, Building2, Settings2, BarChart3 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -14,42 +14,137 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/use-toast'
+import { useSession } from 'next-auth/react'
 
 interface SumUpReader {
   id: string
   name: string
   status: string
-  pairedAt?: string
+  localId?: string | null
+  localNombre?: string | null
+}
+
+interface Local {
+  id: string
+  nombre: string
+}
+
+interface SumUpConfigData {
+  modoAsignacion: 'COMPARTIDO' | 'POR_LOCAL'
+  trackingPorLocal: boolean
+}
+
+interface Transaction {
+  id: string
+  amount: number
+  status: string
+  localNombre: string
+  readerNombre: string
+  creadoPorNombre: string
+  createdAt: string
+  description?: string
 }
 
 export function SumUpConfig() {
+  const { data: session } = useSession()
   const [readers, setReaders] = useState<SumUpReader[]>([])
+  const [locales, setLocales] = useState<Local[]>([])
+  const [config, setConfig] = useState<SumUpConfigData>({ modoAsignacion: 'COMPARTIDO', trackingPorLocal: true })
+  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [totales, setTotales] = useState({ total: 0, pagadas: 0, pendientes: 0 })
   const [loading, setLoading] = useState(true)
+  const [savingConfig, setSavingConfig] = useState(false)
   const [pairing, setPairing] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [pairingCode, setPairingCode] = useState('')
   const [readerName, setReaderName] = useState('')
+  const [selectedLocalForReader, setSelectedLocalForReader] = useState<string>('')
   const { toast } = useToast()
+  
+  const isSuperAdmin = (session?.user as any)?.role === 'SUPER_ADMIN'
 
-  const loadReaders = async () => {
+  const loadData = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/sumup/readers')
-      if (response.ok) {
-        const data = await response.json()
+      
+      // Cargar lectores y config
+      const readersRes = await fetch('/api/sumup/readers')
+      if (readersRes.ok) {
+        const data = await readersRes.json()
         setReaders(data.readers || [])
+        if (data.config) {
+          setConfig(data.config)
+        }
+      }
+
+      // Cargar locales
+      const localesRes = await fetch('/api/locales')
+      if (localesRes.ok) {
+        const data = await localesRes.json()
+        setLocales(data || [])
+      }
+
+      // Cargar transacciones recientes
+      const transRes = await fetch('/api/sumup/transactions')
+      if (transRes.ok) {
+        const data = await transRes.json()
+        setTransactions(data.transactions || [])
+        setTotales(data.totales || { total: 0, pagadas: 0, pendientes: 0 })
       }
     } catch (error) {
-      console.error('Error cargando lectores:', error)
+      console.error('Error cargando datos:', error)
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    loadReaders()
+    loadData()
   }, [])
+
+  const handleSaveConfig = async () => {
+    try {
+      setSavingConfig(true)
+      const response = await fetch('/api/sumup/config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config),
+      })
+
+      if (response.ok) {
+        toast({
+          title: '✅ Configuración guardada',
+          description: 'Los cambios se han aplicado correctamente',
+        })
+      } else {
+        const error = await response.json()
+        toast({
+          title: 'Error',
+          description: error.error || 'No se pudo guardar la configuración',
+          variant: 'destructive',
+        })
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Error de conexión',
+        variant: 'destructive',
+      })
+    } finally {
+      setSavingConfig(false)
+    }
+  }
 
   const handlePairReader = async () => {
     if (!pairingCode) {
@@ -69,6 +164,7 @@ export function SumUpConfig() {
         body: JSON.stringify({
           pairingCode,
           name: readerName || 'ServyAuto Terminal',
+          localId: config.modoAsignacion === 'POR_LOCAL' ? selectedLocalForReader || null : null,
         }),
       })
 
@@ -80,7 +176,8 @@ export function SumUpConfig() {
         setDialogOpen(false)
         setPairingCode('')
         setReaderName('')
-        loadReaders()
+        setSelectedLocalForReader('')
+        loadData()
       } else {
         const error = await response.json()
         toast({
@@ -100,6 +197,29 @@ export function SumUpConfig() {
     }
   }
 
+  const handleAssignLocal = async (readerId: string, localId: string | null) => {
+    try {
+      const response = await fetch(`/api/sumup/readers/${readerId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ localId }),
+      })
+
+      if (response.ok) {
+        toast({
+          title: '✅ Asignación actualizada',
+        })
+        loadData()
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'No se pudo actualizar la asignación',
+        variant: 'destructive',
+      })
+    }
+  }
+
   const handleUnpairReader = async (readerId: string, readerName: string) => {
     if (!confirm(`¿Desemparejar el terminal "${readerName}"?`)) return
 
@@ -109,18 +229,8 @@ export function SumUpConfig() {
       })
 
       if (response.ok) {
-        toast({
-          title: 'Terminal desemparejado',
-          description: 'El terminal ya no está conectado',
-        })
-        loadReaders()
-      } else {
-        const error = await response.json()
-        toast({
-          title: 'Error',
-          description: error.error || 'No se pudo desemparejar',
-          variant: 'destructive',
-        })
+        toast({ title: 'Terminal desemparejado' })
+        loadData()
       }
     } catch (error) {
       toast({
@@ -131,124 +241,334 @@ export function SumUpConfig() {
     }
   }
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'PAID': return 'bg-green-100 text-green-800'
+      case 'PENDING': return 'bg-yellow-100 text-yellow-800'
+      case 'FAILED': return 'bg-red-100 text-red-800'
+      case 'CANCELLED': return 'bg-gray-100 text-gray-800'
+      default: return 'bg-gray-100 text-gray-800'
+    }
+  }
+
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <CreditCard className="h-5 w-5" />
-              Terminales SumUp
-            </CardTitle>
-            <CardDescription>
-              Configura los terminales TPV para cobrar directamente desde la app
-            </CardDescription>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={loadReaders} disabled={loading}>
-              <RefreshCw className={`h-4 w-4 mr-1 ${loading ? 'animate-spin' : ''}`} />
-              Actualizar
-            </Button>
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm">
-                  <Plus className="h-4 w-4 mr-1" />
-                  Emparejar Terminal
+    <Tabs defaultValue="terminales" className="space-y-4">
+      <TabsList>
+        <TabsTrigger value="terminales" className="flex items-center gap-2">
+          <CreditCard className="h-4 w-4" />
+          Terminales
+        </TabsTrigger>
+        {isSuperAdmin && (
+          <TabsTrigger value="configuracion" className="flex items-center gap-2">
+            <Settings2 className="h-4 w-4" />
+            Configuración
+          </TabsTrigger>
+        )}
+        <TabsTrigger value="transacciones" className="flex items-center gap-2">
+          <BarChart3 className="h-4 w-4" />
+          Transacciones
+        </TabsTrigger>
+      </TabsList>
+
+      {/* TAB: Terminales */}
+      <TabsContent value="terminales">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <CreditCard className="h-5 w-5" />
+                  Terminales SumUp
+                </CardTitle>
+                <CardDescription>
+                  {config.modoAsignacion === 'POR_LOCAL' 
+                    ? 'Cada terminal está asignado a un local específico'
+                    : 'Todos los terminales son accesibles desde cualquier local'
+                  }
+                </CardDescription>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={loadData} disabled={loading}>
+                  <RefreshCw className={`h-4 w-4 mr-1 ${loading ? 'animate-spin' : ''}`} />
+                  Actualizar
                 </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Emparejar Terminal SumUp Solo</DialogTitle>
-                  <DialogDescription>
-                    En el terminal Solo, ve a Conexiones → API → Conectar para obtener el código
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 pt-4">
-                  <div className="space-y-2">
-                    <Label>Código de emparejamiento</Label>
-                    <Input
-                      value={pairingCode}
-                      onChange={(e) => setPairingCode(e.target.value)}
-                      placeholder="Ej: ABC123"
-                      className="text-lg font-mono text-center"
-                    />
-                    <p className="text-xs text-gray-500">
-                      El código aparece en la pantalla del terminal Solo
+                <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm">
+                      <Plus className="h-4 w-4 mr-1" />
+                      Emparejar Terminal
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Emparejar Terminal SumUp Solo</DialogTitle>
+                      <DialogDescription>
+                        En el terminal Solo, ve a Conexiones → API → Conectar para obtener el código
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 pt-4">
+                      <div className="space-y-2">
+                        <Label>Código de emparejamiento</Label>
+                        <Input
+                          value={pairingCode}
+                          onChange={(e) => setPairingCode(e.target.value)}
+                          placeholder="Ej: ABC123"
+                          className="text-lg font-mono text-center"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Nombre del terminal</Label>
+                        <Input
+                          value={readerName}
+                          onChange={(e) => setReaderName(e.target.value)}
+                          placeholder="Ej: Terminal Marbella"
+                        />
+                      </div>
+                      {config.modoAsignacion === 'POR_LOCAL' && (
+                        <div className="space-y-2">
+                          <Label>Asignar a local</Label>
+                          <Select value={selectedLocalForReader} onValueChange={setSelectedLocalForReader}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Compartido (todos los locales)" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="">Compartido (todos los locales)</SelectItem>
+                              {locales.map((local) => (
+                                <SelectItem key={local.id} value={local.id}>
+                                  {local.nombre}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                      <Button
+                        onClick={handlePairReader}
+                        disabled={pairing || !pairingCode}
+                        className="w-full"
+                      >
+                        {pairing ? 'Emparejando...' : 'Emparejar Terminal'}
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="text-center py-8 text-gray-500">Cargando terminales...</div>
+            ) : readers.length === 0 ? (
+              <div className="text-center py-8">
+                <CreditCard className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+                <p className="text-gray-500">No hay terminales emparejados</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {readers.map((reader) => (
+                  <div key={reader.id} className="flex items-center justify-between p-4 border rounded-lg bg-gray-50">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-green-100 rounded-full">
+                        <Wifi className="h-5 w-5 text-green-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium">{reader.name}</p>
+                        {reader.localNombre ? (
+                          <Badge variant="outline" className="mt-1">
+                            <Building2 className="h-3 w-3 mr-1" />
+                            {reader.localNombre}
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="mt-1">Compartido</Badge>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {config.modoAsignacion === 'POR_LOCAL' && isSuperAdmin && (
+                        <Select
+                          value={reader.localId || ''}
+                          onValueChange={(value) => handleAssignLocal(reader.id, value || null)}
+                        >
+                          <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Asignar local" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">Compartido</SelectItem>
+                            {locales.map((local) => (
+                              <SelectItem key={local.id} value={local.id}>
+                                {local.nombre}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleUnpairReader(reader.id, reader.name)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <h4 className="font-medium text-blue-900 mb-2">¿Cómo funciona?</h4>
+              <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
+                <li>En el terminal Solo, ve a <strong>Conexiones → API → Conectar</strong></li>
+                <li>Copia el código que aparece en pantalla</li>
+                <li>Introdúcelo aquí y pulsa "Emparejar Terminal"</li>
+              </ol>
+            </div>
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      {/* TAB: Configuración (solo SUPER_ADMIN) */}
+      {isSuperAdmin && (
+        <TabsContent value="configuracion">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Settings2 className="h-5 w-5" />
+                Configuración de SumUp
+              </CardTitle>
+              <CardDescription>
+                Define cómo se gestionan los terminales entre locales
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-base font-medium">Modo de asignación de terminales</Label>
+                  <p className="text-sm text-gray-500 mb-3">
+                    Define si cada terminal pertenece a un local o si todos son compartidos
+                  </p>
+                  <Select
+                    value={config.modoAsignacion}
+                    onValueChange={(value: 'COMPARTIDO' | 'POR_LOCAL') => 
+                      setConfig({ ...config, modoAsignacion: value })
+                    }
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="COMPARTIDO">
+                        <div className="flex flex-col">
+                          <span className="font-medium">🌐 Compartido</span>
+                          <span className="text-xs text-gray-500">Todos los terminales accesibles desde cualquier local</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="POR_LOCAL">
+                        <div className="flex flex-col">
+                          <span className="font-medium">🏢 Por Local</span>
+                          <span className="text-xs text-gray-500">Cada terminal asignado a un local específico</span>
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div>
+                    <Label className="text-base font-medium">Tracking por local</Label>
+                    <p className="text-sm text-gray-500">
+                      Registrar qué local genera cada cobro (recomendado)
                     </p>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Nombre del terminal (opcional)</Label>
-                    <Input
-                      value={readerName}
-                      onChange={(e) => setReaderName(e.target.value)}
-                      placeholder="Ej: Terminal Marbella"
-                    />
-                  </div>
-                  <Button
-                    onClick={handlePairReader}
-                    disabled={pairing || !pairingCode}
-                    className="w-full"
-                  >
-                    {pairing ? 'Emparejando...' : 'Emparejar Terminal'}
-                  </Button>
+                  <Switch
+                    checked={config.trackingPorLocal}
+                    onCheckedChange={(checked) => setConfig({ ...config, trackingPorLocal: checked })}
+                  />
                 </div>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        {loading ? (
-          <div className="text-center py-8 text-gray-500">
-            Cargando terminales...
-          </div>
-        ) : readers.length === 0 ? (
-          <div className="text-center py-8">
-            <CreditCard className="h-12 w-12 mx-auto text-gray-300 mb-3" />
-            <p className="text-gray-500">No hay terminales emparejados</p>
-            <p className="text-sm text-gray-400 mt-1">
-              Empareja un terminal SumUp Solo para empezar a cobrar
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {readers.map((reader) => (
-              <div
-                key={reader.id}
-                className="flex items-center justify-between p-4 border rounded-lg bg-gray-50"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-green-100 rounded-full">
-                    <Wifi className="h-5 w-5 text-green-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium">{reader.name}</p>
-                    <p className="text-xs text-gray-500">ID: {reader.id}</p>
-                  </div>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleUnpairReader(reader.id, reader.name)}
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
               </div>
-            ))}
-          </div>
-        )}
 
-        <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <h4 className="font-medium text-blue-900 mb-2">¿Cómo funciona?</h4>
-          <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
-            <li>En el terminal Solo, ve a <strong>Conexiones → API → Conectar</strong></li>
-            <li>Copia el código que aparece en pantalla</li>
-            <li>Introdúcelo aquí y pulsa "Emparejar Terminal"</li>
-            <li>Una vez emparejado, podrás cobrar directamente desde la app</li>
-          </ol>
-        </div>
-      </CardContent>
-    </Card>
+              <Button onClick={handleSaveConfig} disabled={savingConfig} className="w-full">
+                {savingConfig ? 'Guardando...' : 'Guardar Configuración'}
+              </Button>
+
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                <h4 className="font-medium text-amber-900 mb-2">⚠️ Nota importante</h4>
+                <p className="text-sm text-amber-800">
+                  Independientemente del modo, siempre se registra qué local genera cada cobro 
+                  para tener un control de facturación por local en el TPV.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      )}
+
+      {/* TAB: Transacciones */}
+      <TabsContent value="transacciones">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5" />
+              Transacciones SumUp
+            </CardTitle>
+            <CardDescription>
+              Historial de cobros realizados con los terminales
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {/* Totales */}
+            <div className="grid grid-cols-3 gap-4 mb-6">
+              <div className="p-4 bg-green-50 rounded-lg text-center">
+                <p className="text-2xl font-bold text-green-700">{totales.pagadas.toFixed(2)} €</p>
+                <p className="text-sm text-green-600">Cobrados</p>
+              </div>
+              <div className="p-4 bg-yellow-50 rounded-lg text-center">
+                <p className="text-2xl font-bold text-yellow-700">{totales.pendientes.toFixed(2)} €</p>
+                <p className="text-sm text-yellow-600">Pendientes</p>
+              </div>
+              <div className="p-4 bg-blue-50 rounded-lg text-center">
+                <p className="text-2xl font-bold text-blue-700">{totales.total.toFixed(2)} €</p>
+                <p className="text-sm text-blue-600">Total</p>
+              </div>
+            </div>
+
+            {/* Lista de transacciones */}
+            {transactions.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                No hay transacciones registradas
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {transactions.slice(0, 20).map((t) => (
+                  <div key={t.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <Badge className={getStatusColor(t.status)}>
+                        {t.status === 'PAID' ? 'Pagado' : t.status === 'PENDING' ? 'Pendiente' : t.status}
+                      </Badge>
+                      <div>
+                        <p className="font-medium">{t.amount.toFixed(2)} €</p>
+                        <p className="text-xs text-gray-500">{t.description || 'Sin descripción'}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-medium">{t.localNombre}</p>
+                      <p className="text-xs text-gray-500">
+                        {new Date(t.createdAt).toLocaleDateString('es-ES', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </TabsContent>
+    </Tabs>
   )
 }

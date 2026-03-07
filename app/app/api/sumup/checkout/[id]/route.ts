@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { getCheckoutStatus, cancelCheckout } from '@/lib/sumup'
+import { prisma } from '@/lib/db'
 
 // GET - Consultar estado del checkout
 export async function GET(
@@ -16,6 +17,17 @@ export async function GET(
 
     const checkout = await getCheckoutStatus(params.id)
     
+    // Actualizar estado en nuestra BD
+    if (checkout.status === 'PAID' || checkout.status === 'FAILED' || checkout.status === 'CANCELLED') {
+      await prisma.sumUpTransaction.updateMany({
+        where: { checkoutId: params.id },
+        data: {
+          status: checkout.status,
+          transactionCode: checkout.transaction_code || checkout.transaction_id || null,
+        },
+      })
+    }
+
     return NextResponse.json({
       id: checkout.id,
       status: checkout.status,
@@ -44,6 +56,13 @@ export async function DELETE(
     }
 
     await cancelCheckout(params.id)
+    
+    // Actualizar estado en nuestra BD
+    await prisma.sumUpTransaction.updateMany({
+      where: { checkoutId: params.id },
+      data: { status: 'CANCELLED' },
+    })
+
     return NextResponse.json({ success: true })
   } catch (error: any) {
     console.error('Error cancelando checkout SumUp:', error)
