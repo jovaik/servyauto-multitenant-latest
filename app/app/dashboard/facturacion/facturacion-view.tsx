@@ -16,7 +16,8 @@ import {
   ArrowUpDown,
   Eye,
   Trash2,
-  X
+  X,
+  Smartphone
 } from 'lucide-react'
 import { generarPDFFacturacion } from '@/lib/pdf-generator'
 import { exportarFacturacionExcel } from '@/lib/excel-generator'
@@ -26,6 +27,7 @@ import { NuevaFacturaDialog } from '@/components/nueva-factura-dialog'
 import { ConvertirTicketDialog } from '@/components/convertir-ticket-dialog'
 import { EditarFacturaDialog } from '@/components/editar-factura-dialog'
 import { EnviarFacturaDialog } from '@/components/enviar-factura-dialog'
+import { CobrarSumUpDialog } from '@/components/cobrar-sumup-dialog'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { 
@@ -78,6 +80,8 @@ export function FacturacionView() {
   const [filterFechaHasta, setFilterFechaHasta] = useState('')
   const [selectedFactura, setSelectedFactura] = useState<Factura | null>(null)
   const [showDetalles, setShowDetalles] = useState(false)
+  const [showSumUpDialog, setShowSumUpDialog] = useState(false)
+  const [sumUpFactura, setSumUpFactura] = useState<Factura | null>(null)
   const [stats, setStats] = useState({
     totalFacturas: 0,
     totalTickets: 0,
@@ -745,6 +749,18 @@ export function FacturacionView() {
                             <Download className="mr-2 h-4 w-4" />
                             Descargar Documento
                           </DropdownMenuItem>
+                          {factura.estado === 'PENDIENTE' && (
+                            <DropdownMenuItem 
+                              onClick={() => {
+                                setSumUpFactura(factura)
+                                setShowSumUpDialog(true)
+                              }}
+                              className="text-green-600 focus:text-green-600 focus:bg-green-50"
+                            >
+                              <Smartphone className="mr-2 h-4 w-4" />
+                              Cobrar con SumUp
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuItem asChild>
                             <EnviarFacturaDialog 
                               facturaId={factura.id}
