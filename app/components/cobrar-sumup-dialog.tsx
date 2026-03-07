@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { CreditCard, Loader2, CheckCircle, XCircle, RefreshCw } from 'lucide-react'
+import { CreditCard, Loader2, CheckCircle, XCircle, RefreshCw, Link2, QrCode, Smartphone } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/hooks/use-toast'
 
 interface CobrarSumUpDialogProps {
@@ -26,6 +27,8 @@ interface CobrarSumUpDialogProps {
   amount: number
   description: string
   reference?: string
+  citaId?: string
+  facturaId?: string
   onPaymentComplete?: (transactionCode: string) => void
   onPaymentFailed?: () => void
 }
@@ -43,6 +46,8 @@ export function CobrarSumUpDialog({
   amount,
   description,
   reference,
+  citaId,
+  facturaId,
   onPaymentComplete,
   onPaymentFailed,
 }: CobrarSumUpDialogProps) {
@@ -50,8 +55,10 @@ export function CobrarSumUpDialog({
   const [readers, setReaders] = useState<SumUpReader[]>([])
   const [selectedReader, setSelectedReader] = useState<string>('')
   const [checkoutId, setCheckoutId] = useState<string | null>(null)
+  const [paymentUrl, setPaymentUrl] = useState<string>('')
   const [errorMessage, setErrorMessage] = useState<string>('')
   const [transactionCode, setTransactionCode] = useState<string>('')
+  const [activeTab, setActiveTab] = useState<'terminal' | 'link'>('terminal')
   const pollingRef = useRef<NodeJS.Timeout | null>(null)
   const { toast } = useToast()
 
@@ -60,17 +67,21 @@ export function CobrarSumUpDialog({
     if (open) {
       loadReaders()
     } else {
-      // Limpiar estado al cerrar
-      setStatus('idle')
-      setCheckoutId(null)
-      setErrorMessage('')
-      setTransactionCode('')
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current)
-        pollingRef.current = null
-      }
+      resetState()
     }
   }, [open])
+
+  const resetState = () => {
+    setStatus('idle')
+    setCheckoutId(null)
+    setPaymentUrl('')
+    setErrorMessage('')
+    setTransactionCode('')
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current)
+      pollingRef.current = null
+    }
+  }
 
   const loadReaders = async () => {
     try {
@@ -78,23 +89,28 @@ export function CobrarSumUpDialog({
       const response = await fetch('/api/sumup/readers')
       if (response.ok) {
         const data = await response.json()
-        const readerList = data.readers || []
+        const readerList = (data.readers || []).filter((r: any) => r.id !== 'PAYMENT_LINK')
         setReaders(readerList)
         if (readerList.length === 1) {
           setSelectedReader(readerList[0].id)
         }
-        setStatus(readerList.length > 0 ? 'ready' : 'idle')
+        // Si no hay terminales, cambiar a tab de link
+        if (readerList.length === 0) {
+          setActiveTab('link')
+        }
+        setStatus('ready')
       } else {
-        setStatus('idle')
-        setErrorMessage('Error al cargar los terminales')
+        setStatus('ready')
+        setActiveTab('link') // Sin terminales, usar link
       }
     } catch (error) {
-      setStatus('idle')
-      setErrorMessage('Error de conexión')
+      setStatus('ready')
+      setActiveTab('link')
     }
   }
 
-  const startPayment = async () => {
+  // ============ COBRO CON TERMINAL (Cloud API) ============
+  const startTerminalPayment = async () => {
     if (!selectedReader) {
       toast({
         title: 'Error',
@@ -116,6 +132,8 @@ export function CobrarSumUpDialog({
           description,
           reference,
           readerId: selectedReader,
+          citaId,
+          facturaId,
         }),
       })
 
@@ -127,225 +145,283 @@ export function CobrarSumUpDialog({
       } else {
         const error = await response.json()
         setStatus('failed')
-        setErrorMessage(error.error || 'Error al procesar el cobro')
+        setErrorMessage(error.error || 'Error al iniciar el cobro')
       }
     } catch (error) {
       setStatus('failed')
-      setErrorMessage('Error de conexión con SumUp')
+      setErrorMessage('Error de conexión')
     }
   }
 
-  const startPolling = (checkoutId: string) => {
-    // Consultar estado cada 2 segundos
+  // ============ COBRO CON LINK DE PAGO ============
+  const createPaymentLink = async () => {
+    try {
+      setStatus('processing')
+      setErrorMessage('')
+
+      const response = await fetch('/api/sumup/payment-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount,
+          description,
+          citaId,
+          facturaId,
+        }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setCheckoutId(data.checkoutId)
+        setPaymentUrl(data.paymentUrl)
+        setStatus('polling')
+        startPolling(data.checkoutId)
+      } else {
+        const error = await response.json()
+        setStatus('failed')
+        setErrorMessage(error.error || 'Error al crear el link de pago')
+      }
+    } catch (error) {
+      setStatus('failed')
+      setErrorMessage('Error de conexión')
+    }
+  }
+
+  // ============ POLLING DE ESTADO ============
+  const startPolling = (id: string) => {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current)
+    }
+
     pollingRef.current = setInterval(async () => {
       try {
-        const response = await fetch(`/api/sumup/checkout/${checkoutId}`)
+        const response = await fetch(`/api/sumup/checkout/${id}`)
         if (response.ok) {
           const data = await response.json()
-          console.log('Estado checkout:', data.status)
-
+          
           if (data.status === 'PAID') {
             clearInterval(pollingRef.current!)
             pollingRef.current = null
-            setTransactionCode(data.transactionCode || data.transactionId || '')
             setStatus('success')
+            setTransactionCode(data.transactionCode || data.transactionId || '')
             toast({
               title: '✅ Pago completado',
-              description: `Cobro de ${amount.toFixed(2)}€ realizado correctamente`,
+              description: `Cobro de ${amount.toFixed(2)}€ realizado con éxito`,
             })
-            if (onPaymentComplete) {
-              onPaymentComplete(data.transactionCode || data.transactionId || '')
-            }
+            onPaymentComplete?.(data.transactionCode || data.transactionId || '')
           } else if (data.status === 'FAILED') {
             clearInterval(pollingRef.current!)
             pollingRef.current = null
             setStatus('failed')
             setErrorMessage('El pago fue rechazado')
-            if (onPaymentFailed) {
-              onPaymentFailed()
-            }
-          } else if (data.status === 'CANCELLED' || data.status === 'EXPIRED') {
+            onPaymentFailed?.()
+          } else if (data.status === 'CANCELLED') {
             clearInterval(pollingRef.current!)
             pollingRef.current = null
             setStatus('cancelled')
-            setErrorMessage('El cobro fue cancelado')
           }
         }
       } catch (error) {
-        console.error('Error polling checkout:', error)
+        console.error('Error polling:', error)
       }
     }, 2000)
+
+    // Timeout de 5 minutos
+    setTimeout(() => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current)
+        pollingRef.current = null
+        if (status === 'polling') {
+          setStatus('failed')
+          setErrorMessage('Tiempo de espera agotado')
+        }
+      }
+    }, 300000)
   }
 
   const cancelPayment = async () => {
-    if (pollingRef.current) {
-      clearInterval(pollingRef.current)
-      pollingRef.current = null
-    }
-
     if (checkoutId) {
       try {
         await fetch(`/api/sumup/checkout/${checkoutId}`, { method: 'DELETE' })
       } catch (error) {
-        console.error('Error cancelando checkout:', error)
+        console.error('Error cancelando:', error)
       }
     }
-
-    setStatus('cancelled')
-    setErrorMessage('Cobro cancelado')
+    resetState()
+    setStatus('ready')
   }
 
-  const renderContent = () => {
-    switch (status) {
-      case 'loading_readers':
-        return (
-          <div className="text-center py-8">
-            <Loader2 className="h-12 w-12 animate-spin mx-auto text-blue-600 mb-4" />
-            <p className="text-gray-600">Conectando con SumUp...</p>
-          </div>
-        )
+  const copyLink = () => {
+    navigator.clipboard.writeText(paymentUrl)
+    toast({ title: 'Link copiado', description: 'Envíaselo al cliente por WhatsApp o SMS' })
+  }
 
-      case 'idle':
-        return (
-          <div className="text-center py-8">
-            <CreditCard className="h-12 w-12 mx-auto text-gray-300 mb-4" />
-            <p className="text-gray-600 mb-4">No hay terminales configurados</p>
-            <p className="text-sm text-gray-500">
-              Ve a Configuración → Terminales SumUp para emparejar un terminal
-            </p>
-          </div>
-        )
-
-      case 'ready':
-        return (
-          <div className="space-y-6">
-            <div className="text-center py-4 bg-gray-50 rounded-lg">
-              <p className="text-sm text-gray-500">Importe a cobrar</p>
-              <p className="text-4xl font-bold text-gray-900">{amount.toFixed(2)} €</p>
-              <p className="text-sm text-gray-500 mt-1">{description}</p>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Selecciona terminal</Label>
-              <Select value={selectedReader} onValueChange={setSelectedReader}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona un terminal" />
-                </SelectTrigger>
-                <SelectContent>
-                  {readers.map((reader) => (
-                    <SelectItem key={reader.id} value={reader.id}>
-                      {reader.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <Button
-              onClick={startPayment}
-              disabled={!selectedReader}
-              className="w-full h-12 text-lg bg-green-600 hover:bg-green-700"
-            >
-              <CreditCard className="mr-2 h-5 w-5" />
-              Enviar al terminal
-            </Button>
-          </div>
-        )
-
-      case 'processing':
-        return (
-          <div className="text-center py-8">
-            <Loader2 className="h-12 w-12 animate-spin mx-auto text-blue-600 mb-4" />
-            <p className="text-gray-600">Enviando cobro al terminal...</p>
-          </div>
-        )
-
-      case 'polling':
-        return (
-          <div className="text-center py-8">
-            <div className="relative">
-              <div className="w-20 h-20 mx-auto border-4 border-blue-200 rounded-full"></div>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <CreditCard className="h-8 w-8 text-blue-600 animate-pulse" />
-              </div>
-              <div className="absolute inset-0">
-                <div className="w-20 h-20 mx-auto border-4 border-blue-600 rounded-full border-t-transparent animate-spin"></div>
-              </div>
-            </div>
-            <p className="text-xl font-semibold text-gray-900 mt-6">
-              {amount.toFixed(2)} €
-            </p>
-            <p className="text-gray-600 mt-2">Esperando pago en el terminal...</p>
-            <p className="text-sm text-gray-500 mt-1">El cliente puede pagar con tarjeta</p>
-            <Button
-              variant="outline"
-              onClick={cancelPayment}
-              className="mt-6"
-            >
-              Cancelar cobro
-            </Button>
-          </div>
-        )
-
-      case 'success':
-        return (
-          <div className="text-center py-8">
-            <div className="w-20 h-20 mx-auto bg-green-100 rounded-full flex items-center justify-center mb-4">
-              <CheckCircle className="h-12 w-12 text-green-600" />
-            </div>
-            <p className="text-xl font-semibold text-green-700">Pago completado</p>
-            <p className="text-3xl font-bold text-gray-900 mt-2">{amount.toFixed(2)} €</p>
-            {transactionCode && (
-              <p className="text-sm text-gray-500 mt-2">Ref: {transactionCode}</p>
-            )}
-            <Button onClick={() => onOpenChange(false)} className="mt-6">
-              Cerrar
-            </Button>
-          </div>
-        )
-
-      case 'failed':
-      case 'cancelled':
-        return (
-          <div className="text-center py-8">
-            <div className="w-20 h-20 mx-auto bg-red-100 rounded-full flex items-center justify-center mb-4">
-              <XCircle className="h-12 w-12 text-red-600" />
-            </div>
-            <p className="text-xl font-semibold text-red-700">
-              {status === 'failed' ? 'Pago fallido' : 'Cobro cancelado'}
-            </p>
-            {errorMessage && (
-              <p className="text-gray-600 mt-2">{errorMessage}</p>
-            )}
-            <div className="flex gap-3 justify-center mt-6">
-              <Button variant="outline" onClick={() => onOpenChange(false)}>
-                Cerrar
-              </Button>
-              <Button onClick={() => setStatus('ready')}>
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Reintentar
-              </Button>
-            </div>
-          </div>
-        )
-    }
+  const openLink = () => {
+    window.open(paymentUrl, '_blank')
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CreditCard className="h-5 w-5" />
             Cobrar con SumUp
           </DialogTitle>
-          {status === 'ready' && (
-            <DialogDescription>
-              El importe se enviará al terminal seleccionado
-            </DialogDescription>
-          )}
+          <DialogDescription>
+            Importe: <span className="font-bold text-lg text-black">{amount.toFixed(2)} €</span>
+          </DialogDescription>
         </DialogHeader>
-        {renderContent()}
+
+        {status === 'loading_readers' && (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+          </div>
+        )}
+
+        {status === 'ready' && (
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'terminal' | 'link')}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="terminal" disabled={readers.length === 0}>
+                <CreditCard className="h-4 w-4 mr-2" />
+                Terminal
+              </TabsTrigger>
+              <TabsTrigger value="link">
+                <Link2 className="h-4 w-4 mr-2" />
+                Link de pago
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="terminal" className="space-y-4 pt-4">
+              {readers.length === 0 ? (
+                <div className="text-center py-4 text-gray-500">
+                  <p>No hay terminales Solo emparejados</p>
+                  <p className="text-sm">Usa "Link de pago" para Solo Lite/Air</p>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <Label>Selecciona terminal</Label>
+                    <Select value={selectedReader} onValueChange={setSelectedReader}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar terminal" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {readers.map((reader) => (
+                          <SelectItem key={reader.id} value={reader.id}>
+                            {reader.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button onClick={startTerminalPayment} className="w-full" disabled={!selectedReader}>
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    Enviar al terminal
+                  </Button>
+                  <p className="text-xs text-gray-500 text-center">
+                    El cobro aparecerá en la pantalla del terminal Solo
+                  </p>
+                </>
+              )}
+            </TabsContent>
+
+            <TabsContent value="link" className="space-y-4 pt-4">
+              <div className="p-4 bg-blue-50 rounded-lg text-center">
+                <Smartphone className="h-8 w-8 mx-auto text-blue-600 mb-2" />
+                <p className="text-sm text-blue-800">
+                  Genera un link de pago que el cliente abre en su móvil.
+                  Funciona con <strong>Solo Lite</strong>, <strong>Air</strong> o <strong>sin terminal</strong>.
+                </p>
+              </div>
+              <Button onClick={createPaymentLink} className="w-full">
+                <Link2 className="h-4 w-4 mr-2" />
+                Generar link de pago
+              </Button>
+            </TabsContent>
+          </Tabs>
+        )}
+
+        {status === 'processing' && (
+          <div className="flex flex-col items-center justify-center py-8">
+            <Loader2 className="h-12 w-12 animate-spin text-blue-500 mb-4" />
+            <p className="text-gray-600">Procesando...</p>
+          </div>
+        )}
+
+        {status === 'polling' && activeTab === 'terminal' && (
+          <div className="flex flex-col items-center justify-center py-8">
+            <div className="relative">
+              <div className="absolute inset-0 animate-ping rounded-full bg-green-200 opacity-75" />
+              <CreditCard className="relative h-16 w-16 text-green-600" />
+            </div>
+            <p className="mt-4 text-lg font-medium">Esperando pago en terminal...</p>
+            <p className="text-sm text-gray-500">El cliente puede acercar su tarjeta</p>
+            <Button variant="outline" onClick={cancelPayment} className="mt-4">
+              Cancelar
+            </Button>
+          </div>
+        )}
+
+        {status === 'polling' && activeTab === 'link' && paymentUrl && (
+          <div className="flex flex-col items-center py-4 space-y-4">
+            <div className="p-4 bg-gray-100 rounded-lg w-full">
+              <p className="text-xs text-gray-500 mb-1">Link de pago:</p>
+              <p className="text-sm font-mono break-all">{paymentUrl}</p>
+            </div>
+            <div className="flex gap-2 w-full">
+              <Button onClick={copyLink} variant="outline" className="flex-1">
+                Copiar link
+              </Button>
+              <Button onClick={openLink} className="flex-1">
+                Abrir link
+              </Button>
+            </div>
+            <div className="flex items-center gap-2 text-amber-600">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <p className="text-sm">Esperando confirmación de pago...</p>
+            </div>
+            <Button variant="outline" onClick={cancelPayment} size="sm">
+              Cancelar
+            </Button>
+          </div>
+        )}
+
+        {status === 'success' && (
+          <div className="flex flex-col items-center justify-center py-8">
+            <CheckCircle className="h-16 w-16 text-green-500 mb-4" />
+            <p className="text-xl font-bold text-green-600">¡Pago completado!</p>
+            <p className="text-gray-600">{amount.toFixed(2)} € cobrados</p>
+            {transactionCode && (
+              <p className="text-xs text-gray-400 mt-2">Cód: {transactionCode}</p>
+            )}
+            <Button onClick={() => onOpenChange(false)} className="mt-4">
+              Cerrar
+            </Button>
+          </div>
+        )}
+
+        {status === 'failed' && (
+          <div className="flex flex-col items-center justify-center py-8">
+            <XCircle className="h-16 w-16 text-red-500 mb-4" />
+            <p className="text-xl font-bold text-red-600">Pago fallido</p>
+            <p className="text-gray-600 text-center">{errorMessage}</p>
+            <Button onClick={() => setStatus('ready')} className="mt-4">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Reintentar
+            </Button>
+          </div>
+        )}
+
+        {status === 'cancelled' && (
+          <div className="flex flex-col items-center justify-center py-8">
+            <XCircle className="h-16 w-16 text-gray-400 mb-4" />
+            <p className="text-xl font-medium text-gray-600">Pago cancelado</p>
+            <Button onClick={() => setStatus('ready')} className="mt-4">
+              Reintentar
+            </Button>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   )

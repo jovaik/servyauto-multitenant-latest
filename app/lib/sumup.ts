@@ -1,15 +1,19 @@
 /**
- * SumUp Cloud API Integration
- * Permite cobrar directamente en el terminal Solo sin pasar por la app de SumUp
+ * SumUp Integration - Cloud API + Payment Links
  * 
- * Modos de asignación:
- * - COMPARTIDO: Todos los terminales son accesibles desde cualquier local
- * - POR_LOCAL: Cada terminal está asignado a un local específico
+ * Soporta dos modos de cobro:
+ * 1. Cloud API: Para SumUp Solo (pantalla táctil) - cobro directo al terminal
+ * 2. Payment Links: Para Solo Lite y Air - genera link que el cliente paga en su móvil
+ * 
+ * Modos de asignación de terminales:
+ * - COMPARTIDO: Todos los terminales accesibles desde cualquier local
+ * - POR_LOCAL: Cada terminal asignado a un local específico
  */
 
 const SUMUP_API_BASE = 'https://api.sumup.com'
 
 export type ModoAsignacion = 'COMPARTIDO' | 'POR_LOCAL'
+export type MetodoCobro = 'TERMINAL' | 'LINK'
 
 export interface SumUpReader {
   id: string
@@ -238,3 +242,66 @@ export async function terminateReaderTransaction(readerId: string): Promise<void
     console.error('Error terminando transacción:', error)
   }
 }
+
+
+// ==================== PAYMENT LINKS ====================
+// Para Solo Lite, Air y otros terminales que no soportan Cloud API
+
+export interface PaymentLink {
+  id: string
+  checkout_reference: string
+  amount: number
+  currency: string
+  pay_to_email: string
+  description: string
+  status: 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED'
+  payment_url?: string
+  valid_until?: string
+}
+
+/**
+ * Crear un Payment Link (para Solo Lite/Air)
+ * El cliente recibe un link y paga en su móvil
+ */
+export async function createPaymentLink(
+  amount: number,
+  description: string,
+  reference: string,
+  redirectUrl?: string
+): Promise<PaymentLink> {
+  const apiKey = process.env.SUMUP_API_KEY
+  if (!apiKey) throw new Error('SUMUP_API_KEY no configurada')
+
+  // Primero obtenemos el merchant email
+  const merchantInfo = await getMerchantInfo()
+  
+  const response = await fetch(`${SUMUP_API_BASE}/v0.1/checkouts`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({
+      checkout_reference: reference,
+      amount: amount,
+      currency: 'EUR',
+      pay_to_email: merchantInfo.merchant_profile?.email || '',
+      description: description,
+      redirect_url: redirectUrl,
+      return_url: redirectUrl,
+    }),
+  })
+
+  if (!response.ok) {
+    const error = await response.text()
+    throw new Error(`Error creando payment link: ${error}`)
+  }
+
+  const checkout = await response.json()
+  
+  // Construir la URL de pago
+  const paymentUrl = `https://pay.sumup.com/b2c/Q${checkout.id}`
+  
+  return {
+    ...checkout,
+    payment_url: paymentUrl,
+  }
+}
+
