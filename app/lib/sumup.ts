@@ -249,11 +249,11 @@ export async function terminateReaderTransaction(readerId: string): Promise<void
 
 export interface PaymentLink {
   id: string
-  checkout_reference: string
+  checkout_reference?: string
   amount: number
   currency: string
-  pay_to_email: string
-  description: string
+  pay_to_email?: string
+  description?: string
   status: 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED'
   payment_url?: string
   valid_until?: string
@@ -272,35 +272,19 @@ export async function createPaymentLink(
   const apiKey = process.env.SUMUP_API_KEY
   if (!apiKey) throw new Error('SUMUP_API_KEY no configurada')
 
-  // Primero obtenemos el merchant email
-  const merchantInfo = await getMerchantInfo()
-  
-  const response = await fetch(`${SUMUP_API_BASE}/v0.1/checkouts`, {
-    method: 'POST',
-    headers: getHeaders(),
-    body: JSON.stringify({
-      checkout_reference: reference,
-      amount: amount,
-      currency: 'EUR',
-      pay_to_email: merchantInfo.merchant_profile?.email || '',
-      description: description,
-      redirect_url: redirectUrl,
-      return_url: redirectUrl,
-    }),
-  })
-
-  if (!response.ok) {
-    const error = await response.text()
-    throw new Error(`Error creando payment link: ${error}`)
-  }
-
-  const checkout = await response.json()
+  // Crear checkout usando la misma función que ya funciona
+  const checkout = await createCheckout(amount, description, reference)
   
   // Construir la URL de pago
   const paymentUrl = `https://pay.sumup.com/b2c/Q${checkout.id}`
   
   return {
-    ...checkout,
+    id: checkout.id,
+    checkout_reference: checkout.checkout_reference,
+    amount: checkout.amount,
+    currency: checkout.currency,
+    description: description,
+    status: checkout.status,
     payment_url: paymentUrl,
   }
 }
