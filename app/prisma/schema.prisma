@@ -36,75 +36,65 @@ model Session {
 }
 
 model User {
-  id            String     @id @default(cuid())
-  name          String?
-  email         String     @unique
-  emailVerified DateTime?
-  image         String?
-  password      String?
-  role          RolUsuario @default(ADMIN)
-  activo        Boolean    @default(true)
-  localId       String?    // null + sin localesAsignados = SUPER_ADMIN (ve todo)
-  local         Local?     @relation(fields: [localId], references: [id])
-  localesAsignados UserLocal[]  // Locales a los que tiene acceso (para GRUPO_ADMIN)
-  createdAt         DateTime   @default(now())
-  updatedAt         DateTime   @updatedAt
-  accounts          Account[]
-  sessions          Session[]
+  id               String      @id @default(cuid())
+  name             String?
+  email            String      @unique
+  emailVerified    DateTime?
+  image            String?
+  password         String?
+  role             RolUsuario  @default(ADMIN)
+  activo           Boolean     @default(true)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  localId          String?
+  accounts         Account[]
+  sessions         Session[]
+  local            Local?      @relation(fields: [localId], references: [id])
+  localesAsignados UserLocal[]
 }
 
-// ========================================
-// SISTEMA MULTI-LOCAL
-// ========================================
-
 model Local {
-  id               String    @id @default(cuid())
-  nombre           String    // Nombre interno del local (ej: "Local Centro")
-  nombreComercial  String?   // Marca comercial si es diferente
-  logo             String?   // URL del logo
-  direccion        String?
-  ciudad           String?
-  codigoPostal     String?
-  telefono         String?
-  email            String?
-  activo           Boolean   @default(true)
-  colorPrimario    String?   // Color corporativo para personalización
-  
-  // Datos fiscales (cada local puede tener su propia entidad fiscal)
-  cifNif             String?   // CIF/NIF de la empresa
-  razonSocial        String?   // Razón social para facturas
-  direccionFiscal    String?   // Dirección fiscal completa
-  codigoPostalFiscal String?   // CP fiscal si difiere del operativo
-  ciudadFiscal       String?   // Ciudad fiscal
-  
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-  
-  // Relaciones
+  id                  String             @id @default(cuid())
+  nombre              String
+  nombreComercial     String?
+  logo                String?
+  direccion           String?
+  ciudad              String?
+  codigoPostal        String?
+  telefono            String?
+  email               String?
+  activo              Boolean            @default(true)
+  colorPrimario       String?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  cifNif              String?
+  ciudadFiscal        String?
+  codigoPostalFiscal  String?
+  direccionFiscal     String?
+  razonSocial         String?
   usuarios            User[]
-  usuariosAsignados   UserLocal[]  // Usuarios con acceso a este local (N:N)
-  clientes            Cliente[]
-  vehiculos           Vehiculo[]
   citas               Cita[]
+  clientes            Cliente[]
   facturas            Factura[]
   gastos              Gasto[]
   ingresosAdicionales IngresoAdicional[]
+  reservas            reservas[]
   sumupReaders        SumUpReader[]
   sumupTransactions   SumUpTransaction[]
-  reservas            reservas[]
+  usuariosAsignados   UserLocal[]
+  vehiculos           Vehiculo[]
 
   @@map("locales")
 }
 
-// Relación N:N entre usuarios y locales (para GRUPO_ADMIN que gestiona múltiples locales)
 model UserLocal {
   id        String   @id @default(cuid())
   userId    String
   localId   String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  local     Local    @relation(fields: [localId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
-  
+  local     Local    @relation(fields: [localId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([userId, localId])
   @@map("user_locales")
 }
@@ -118,55 +108,53 @@ model VerificationToken {
 }
 
 model Cliente {
-  id             String     @id @default(cuid())
-  nombre         String
-  apellido       String?
-  email          String?    @unique
-  telefono       String
-  direccion      String?
-  documento      String?    @map("dni")
-  clienteParking Boolean    @default(false) // Indica si el cliente es abonado del parking
-  clienteVIP     Boolean    @default(false) // Cliente VIP con descuento especial
-  clienteEmpresa Boolean    @default(false) // Cliente empresa con descuento
-  localId        String?    // Local al que pertenece el cliente
-  local          Local?     @relation(fields: [localId], references: [id])
-  // Trazabilidad
+  id               String           @id @default(cuid())
+  nombre           String
+  apellido         String?
+  email            String?          @unique
+  telefono         String
+  direccion        String?
+  documento        String?          @map("dni")
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  clienteParking   Boolean          @default(false)
+  clienteEmpresa   Boolean          @default(false)
+  clienteVIP       Boolean          @default(false)
+  localId          String?
   creadoPorId      String?
   creadoPorNombre  String?
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
-  citas           Cita[]
-  facturas        Factura[]
-  vehiculos       Vehiculo[]
+  citas            Cita[]
+  local            Local?           @relation(fields: [localId], references: [id])
+  facturas         Factura[]
   serviciosRapidos ServicioTaller[]
+  vehiculos        Vehiculo[]
 
   @@map("clientes")
 }
 
 model Vehiculo {
-  id            String   @id @default(cuid())
-  marca         String
-  modelo        String
-  anio          Int
-  color         String?
-  matricula     String   // Ya no es único global, ahora es único por local
-  kilometraje   Int?
-  motor         String?
-  combustible   String?
-  observaciones String?
-  clienteId     String
-  localId       String?  // Local al que pertenece el vehículo
-  local         Local?   @relation(fields: [localId], references: [id])
-  // Trazabilidad
+  id               String           @id @default(cuid())
+  marca            String
+  modelo           String
+  anio             Int
+  color            String?
+  matricula        String
+  kilometraje      Int?
+  motor            String?
+  combustible      String?
+  observaciones    String?
+  clienteId        String
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  localId          String?
   creadoPorId      String?
   creadoPorNombre  String?
-  createdAt     DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  citas             Cita[]
-  cliente           Cliente  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
-  serviciosRapidos  ServicioTaller[]
+  citas            Cita[]
+  serviciosRapidos ServicioTaller[]
+  cliente          Cliente          @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  local            Local?           @relation(fields: [localId], references: [id])
 
-  @@unique([matricula, localId])  // Matrícula única por local (permite misma matrícula en distintos locales)
+  @@unique([matricula, localId])
   @@map("vehiculos")
 }
 
@@ -177,41 +165,40 @@ model Servicio {
   precio           Float
   duracion         Int
   activo           Boolean          @default(true)
-  ordenPreferencia Int              @default(999)
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
+  ordenPreferencia Int              @default(999)
   cita_servicios   cita_servicios[]
 
   @@map("servicios")
 }
 
 model Cita {
-  id             String           @id @default(cuid())
-  fecha          DateTime
-  horaInicio     String
-  horaFin        String
-  box            String
-  estado         EstadoCita       @default(PENDIENTE)
-  observaciones  String?
-  metodoPago     MetodoPago?
-  total          Float?
-  ticketsUsados  Int              @default(0) // Número de tickets de parking utilizados
-  clienteId      String
-  vehiculoId     String
-  localId        String?          // Local donde se realiza la cita
-  local          Local?           @relation(fields: [localId], references: [id])
-  // Trazabilidad
-  creadoPorId      String?
-  creadoPorNombre  String?
-  completadoPorId     String?      // Quién completó/cobró la cita
+  id                  String           @id @default(cuid())
+  fecha               DateTime
+  horaInicio          String
+  horaFin             String
+  box                 String
+  estado              EstadoCita       @default(PENDIENTE)
+  observaciones       String?
+  metodoPago          MetodoPago?
+  total               Float?
+  clienteId           String
+  vehiculoId          String
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  ticketsUsados       Int              @default(0)
+  localId             String?
+  completadoPorId     String?
   completadoPorNombre String?
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  cita_servicios cita_servicios[]
-  cliente        Cliente          @relation(fields: [clienteId], references: [id])
-  vehiculo       Vehiculo         @relation(fields: [vehiculoId], references: [id])
-  facturas       Factura?
-  servicioTaller ServicioTaller?
+  creadoPorId         String?
+  creadoPorNombre     String?
+  cita_servicios      cita_servicios[]
+  cliente             Cliente          @relation(fields: [clienteId], references: [id])
+  local               Local?           @relation(fields: [localId], references: [id])
+  vehiculo            Vehiculo         @relation(fields: [vehiculoId], references: [id])
+  facturas            Factura?
+  servicioTaller      ServicioTaller?
 
   @@map("citas")
 }
@@ -230,18 +217,17 @@ model Factura {
   citaId           String?         @unique
   datosFacturacion String?
   pdfPath          String?
-  // Trazabilidad
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
   creadoPorId      String?
   creadoPorNombre  String?
   fechaPago        DateTime?
-  localId          String?         // Local que generó la factura
+  localId          String?
+  factura_items    factura_items[]
+  citas            Cita?           @relation(fields: [citaId], references: [id])
+  cliente          Cliente         @relation(fields: [clienteId], references: [id])
   local            Local?          @relation(fields: [localId], references: [id])
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
-  factura_items     factura_items[]
-  citas             Cita?           @relation(fields: [citaId], references: [id])
-  cliente           Cliente         @relation(fields: [clienteId], references: [id])
-  servicioRapido    ServicioTaller?
+  servicioRapido   ServicioTaller?
 
   @@map("facturas")
 }
@@ -294,8 +280,6 @@ model reservas {
   estado    EstadoReserva @default(PENDIENTE)
   createdAt DateTime      @default(now())
   updatedAt DateTime
-  
-  // Multi-local
   localId   String?
   local     Local?        @relation(fields: [localId], references: [id])
 }
@@ -310,9 +294,9 @@ model Proveedor {
   provincia    String?
   telefono     String?
   email        String?
-  gastos       Gasto[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  gastos       Gasto[]
 
   @@map("proveedores")
 }
@@ -321,50 +305,223 @@ model Gasto {
   id                    String      @id @default(cuid())
   concepto              String
   fecha                 DateTime
-  proveedor             String?     // Nombre del proveedor (legacy)
-  proveedorId           String?     // Relación con modelo Proveedor
-  proveedorRef          Proveedor?  @relation(fields: [proveedorId], references: [id])
-  beneficiario          String?     // 📌 Para gastos internos: nombre empleado, propietario, etc.
+  proveedor             String?
   tipoGasto             String
   importe               Float
-  metodoPago            MetodoPago? // Método de pago del gasto
   tipo                  TipoFactura @default(TICKET)
   iva                   Float       @default(21)
   adjunto               Boolean     @default(false)
-  // Campos fiscales para facturas
-  numeroFactura         String?
-  proveedorCIF          String?
-  proveedorDireccion    String?
-  proveedorCodigoPostal String?
-  proveedorCiudad       String?
-  proveedorProvincia    String?
-  // Trazabilidad
-  creadoPorId           String?
-  creadoPorNombre       String?
-  localId               String?     // Local que registró el gasto
-  local                 Local?      @relation(fields: [localId], references: [id])
   createdAt             DateTime    @default(now())
   updatedAt             DateTime    @updatedAt
+  numeroFactura         String?
+  proveedorCIF          String?
+  proveedorCiudad       String?
+  proveedorCodigoPostal String?
+  proveedorDireccion    String?
+  proveedorProvincia    String?
+  metodoPago            MetodoPago?
+  creadoPorId           String?
+  creadoPorNombre       String?
+  proveedorId           String?
+  beneficiario          String?
+  localId               String?
+  local                 Local?      @relation(fields: [localId], references: [id])
+  proveedorRef          Proveedor?  @relation(fields: [proveedorId], references: [id])
 
   @@map("gastos")
 }
 
+model CierreCaja {
+  id              String   @id @default(cuid())
+  fechaInicio     DateTime
+  fechaFin        DateTime
+  totalEfectivo   Float
+  totalTPVSumup   Float
+  totalTPVUnicaja Float
+  gastosEfectivo  Float
+  gastosTarjeta   Float
+  efectivoFinal   Float
+  observaciones   String?
+  usuarioId       String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("cierres_caja")
+}
+
+model InventarioTickets {
+  id            String               @id @default(cuid())
+  fecha         DateTime             @default(now())
+  tipo          TipoMovimientoTicket @default(COMPRA)
+  cantidad      Int
+  saldoAnterior Int
+  saldoActual   Int
+  concepto      String?
+  usuarioId     String?
+  citaId        String?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  @@map("inventario_tickets")
+}
+
+model IngresoAdicional {
+  id              String     @id @default(cuid())
+  concepto        String
+  descripcion     String?
+  importe         Float
+  fecha           DateTime   @default(now())
+  metodoPago      MetodoPago @default(EFECTIVO)
+  observaciones   String?
+  creadoPorId     String?
+  creadoPorNombre String?
+  localId         String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  local           Local?     @relation(fields: [localId], references: [id])
+
+  @@map("ingresos_adicionales")
+}
+
+model GaleriaAntesDespues {
+  id            Int      @id @default(autoincrement())
+  titulo        String
+  servicio      String
+  vehiculo      String
+  imagenAntes   String
+  imagenDespues String
+  descripcion   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("galeria_antes_despues")
+}
+
+model Portfolio {
+  id          Int      @id @default(autoincrement())
+  titulo      String
+  servicio    String
+  vehiculo    String?
+  categoria   String   @default("MEDIO")
+  imagenes    String[]
+  descripcion String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("portfolio")
+}
+
+model TipoServicio {
+  id            Int      @id @default(autoincrement())
+  nombre        String   @unique
+  codigo        String   @unique
+  margenDefecto Float    @default(30)
+  categoria     String   @default("OTROS")
+  descripcion   String?
+  activo        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("tipos_servicio")
+}
+
+model ServicioTaller {
+  id                  String      @id @default(cuid())
+  concepto            String
+  fecha               DateTime    @default(now())
+  clienteId           String
+  vehiculoId          String
+  tipoGasto           String
+  costeProducto       Float       @default(0)
+  costeManoObra       Float       @default(0)
+  precioProducto      Float
+  precioManoObra      Float
+  importe             Float
+  margen              Float
+  metodoPago          MetodoPago?
+  tipo                TipoFactura @default(TICKET)
+  iva                 Float       @default(21)
+  adjunto             Boolean     @default(false)
+  numeroFactura       String?
+  clienteCIF          String?
+  clienteDireccion    String?
+  clienteCodigoPostal String?
+  clienteCiudad       String?
+  clienteProvincia    String?
+  facturaId           String?     @unique
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+  citaId              String?     @unique
+  cita                Cita?       @relation(fields: [citaId], references: [id])
+  cliente             Cliente     @relation(fields: [clienteId], references: [id])
+  factura             Factura?    @relation(fields: [facturaId], references: [id])
+  vehiculo            Vehiculo    @relation(fields: [vehiculoId], references: [id])
+
+  @@map("servicios_taller")
+}
+
+model SumUpConfig {
+  id               String   @id @default(cuid())
+  modoAsignacion   String   @default("COMPARTIDO")
+  trackingPorLocal Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("sumup_config")
+}
+
+model SumUpReader {
+  id            String             @id @default(cuid())
+  sumupReaderId String             @unique
+  nombre        String
+  localId       String?
+  activo        Boolean            @default(true)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  local         Local?             @relation(fields: [localId], references: [id])
+  transacciones SumUpTransaction[]
+
+  @@map("sumup_readers")
+}
+
+model SumUpTransaction {
+  id              String      @id @default(cuid())
+  checkoutId      String      @unique
+  readerId        String
+  localId         String
+  amount          Float
+  status          String
+  transactionCode String?
+  description     String?
+  reference       String?
+  facturaId       String?
+  citaId          String?
+  creadoPorId     String?
+  creadoPorNombre String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  local           Local       @relation(fields: [localId], references: [id])
+  reader          SumUpReader @relation(fields: [readerId], references: [id])
+
+  @@map("sumup_transactions")
+}
+
 enum RolUsuario {
-  SUPER_ADMIN    // Ve TODO (tú)
-  GRUPO_ADMIN    // Ve solo sus locales asignados (dueños de Marbella)
-  ADMIN          // Ve solo su local asignado
-  OPERADOR       // Ve solo su local (permisos limitados)
-  CLIENTE        // Portal cliente (si existe)
+  SUPER_ADMIN
+  ADMIN
+  OPERADOR
+  CLIENTE
+  GRUPO_ADMIN
 }
 
 enum EstadoCita {
   PENDIENTE
   CONFIRMADA
   EN_PROCESO
-  LISTO_PARA_RECOGER
   COMPLETADA
   CANCELADA
   NO_SHOW
+  LISTO_PARA_RECOGER
 }
 
 enum MetodoPago {
@@ -402,218 +559,8 @@ enum TipoFactura {
   FACTURA
 }
 
-model CierreCaja {
-  id                  String   @id @default(cuid())
-  fechaInicio         DateTime
-  fechaFin            DateTime
-  totalEfectivo       Float    // Total de ventas en efectivo
-  totalTPVSumup       Float    // Total de ventas con TPV SUMUP
-  totalTPVUnicaja     Float    // Total de ventas con TPV UNICAJA
-  gastosEfectivo      Float    // Total de gastos en efectivo
-  gastosTarjeta       Float    // Total de gastos con tarjeta
-  efectivoFinal       Float    // Efectivo final (total efectivo - gastos efectivo)
-  observaciones       String?
-  usuarioId           String   // Usuario que realizó el cierre
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-
-  @@map("cierres_caja")
-}
-
-model InventarioTickets {
-  id            String                  @id @default(cuid())
-  fecha         DateTime                @default(now())
-  tipo          TipoMovimientoTicket    @default(COMPRA)
-  cantidad      Int                     // Cantidad de tickets (positivo para compra, negativo para uso)
-  saldoAnterior Int                     // Saldo antes del movimiento
-  saldoActual   Int                     // Saldo después del movimiento
-  concepto      String?                 // Descripción del movimiento
-  usuarioId     String?                 // Usuario que realizó el movimiento
-  citaId        String?                 // ID de la cita si es un consumo
-  createdAt     DateTime                @default(now())
-  updatedAt     DateTime                @updatedAt
-
-  @@map("inventario_tickets")
-}
-
 enum TipoMovimientoTicket {
-  COMPRA      // Compra de tickets
-  CONSUMO     // Uso de tickets en una cita
-  AJUSTE      // Ajuste manual del inventario
-}
-
-// ========================================
-// INGRESOS ADICIONALES (Parking, máquinas, etc.)
-// ========================================
-
-model IngresoAdicional {
-  id              String      @id @default(cuid())
-  concepto        String      // Ej: "Recaudación parking", "Máquina expendedora"
-  descripcion     String?     // Detalles opcionales
-  importe         Float
-  fecha           DateTime    @default(now())
-  metodoPago      MetodoPago  @default(EFECTIVO)
-  observaciones   String?
-  // Trazabilidad
-  creadoPorId     String?
-  creadoPorNombre String?
-  // Multi-local
-  localId         String?
-  local           Local?      @relation(fields: [localId], references: [id])
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-
-  @@map("ingresos_adicionales")
-}
-
-model GaleriaAntesDespues {
-  id             Int      @id @default(autoincrement())
-  titulo         String
-  servicio       String
-  vehiculo       String
-  imagenAntes    String   // URL de la imagen "antes"
-  imagenDespues  String   // URL de la imagen "después"
-  descripcion    String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  @@map("galeria_antes_despues")
-}
-
-model Portfolio {
-  id          Int      @id @default(autoincrement())
-  titulo      String
-  servicio    String
-  vehiculo    String?
-  categoria   String   @default("MEDIO") // PEQUENO, MEDIO, GRANDE, SUPER_GRANDE
-  imagenes    String[] // Array de URLs de imágenes
-  descripcion String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@map("portfolio")
-}
-
-// ========================================
-// MÓDULO SERVICIOS RÁPIDOS / TALLER
-// ========================================
-
-// Tipos de servicio predefinidos con márgenes
-model TipoServicio {
-  id              Int              @id @default(autoincrement())
-  nombre          String           @unique // "Cambio de Batería", "Pastillas de Freno", etc.
-  codigo          String           @unique // "BAT", "FRE", "ACE", etc.
-  margenDefecto   Float            @default(30) // Margen en porcentaje
-  categoria       String           @default("OTROS") // BATERIAS, FRENOS, ACEITE, NEUMATICOS, ELECTRICA, OTROS
-  descripcion     String?
-  activo          Boolean          @default(true)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-
-  @@map("tipos_servicio")
-}
-
-// Servicios rápidos de taller (baterías, frenos, aceite, etc.)
-model ServicioTaller {
-  id                    String      @id @default(cuid())
-  concepto              String      // Ej: "Cambio de batería", "Reparación frenos"
-  fecha                 DateTime    @default(now())
-  
-  // Cliente y vehículo (en vez de proveedor como en gastos)
-  clienteId             String
-  cliente               Cliente     @relation(fields: [clienteId], references: [id])
-  vehiculoId            String
-  vehiculo              Vehiculo    @relation(fields: [vehiculoId], references: [id])
-  
-  // Cita asociada (para que aparezca en la agenda)
-  citaId                String?     @unique
-  cita                  Cita?       @relation(fields: [citaId], references: [id])
-  
-  // Categoría del servicio
-  tipoGasto             String      // Reutilizamos este campo para "tipo de servicio"
-  
-  // Costes y precios
-  costeProducto         Float       @default(0) // Coste interno del producto
-  costeManoObra         Float       @default(0) // Coste interno mano de obra
-  precioProducto        Float       // Precio de venta del producto al cliente
-  precioManoObra        Float       // Precio de mano de obra al cliente
-  importe               Float       // Total = precioProducto + precioManoObra
-  margen                Float       // Margen = (precioProducto - costeProducto)
-  
-  // Documento y pago
-  metodoPago            MetodoPago?
-  tipo                  TipoFactura @default(TICKET)
-  iva                   Float       @default(21)
-  adjunto               Boolean     @default(false)
-  
-  // Campos fiscales para facturas (cuando tipo=FACTURA)
-  numeroFactura         String?
-  clienteCIF            String?     // CIF del cliente
-  clienteDireccion      String?
-  clienteCodigoPostal   String?
-  clienteCiudad         String?
-  clienteProvincia      String?
-  
-  // Factura generada automáticamente
-  facturaId             String?     @unique
-  factura               Factura?    @relation(fields: [facturaId], references: [id])
-  
-  // Timestamps
-  createdAt             DateTime    @default(now())
-  updatedAt             DateTime    @updatedAt
-
-  @@map("servicios_taller")
-}
-
-
-// ==================== SUMUP INTEGRATION ====================
-
-// Configuración global de SumUp para el grupo
-model SumUpConfig {
-  id                String   @id @default(cuid())
-  modoAsignacion    String   @default("COMPARTIDO") // COMPARTIDO o POR_LOCAL
-  trackingPorLocal  Boolean  @default(true)         // Siempre registrar qué local hace cada cobro
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  @@map("sumup_config")
-}
-
-// Lectores/Terminales SumUp registrados
-model SumUpReader {
-  id            String   @id @default(cuid())
-  sumupReaderId String   @unique // ID del lector en la API de SumUp
-  nombre        String            // Nombre descriptivo (ej: "Terminal Marbella 1")
-  localId       String?           // null = compartido entre todos los locales
-  local         Local?   @relation(fields: [localId], references: [id])
-  activo        Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  
-  transacciones SumUpTransaction[]
-
-  @@map("sumup_readers")
-}
-
-// Historial de transacciones SumUp (tracking por local)
-model SumUpTransaction {
-  id              String       @id @default(cuid())
-  checkoutId      String       @unique // ID del checkout en SumUp
-  readerId        String
-  reader          SumUpReader  @relation(fields: [readerId], references: [id])
-  localId         String                // Local que generó el cobro
-  local           Local        @relation(fields: [localId], references: [id])
-  amount          Float
-  status          String       // PENDING, PAID, FAILED, CANCELLED
-  transactionCode String?      // Código de transacción de SumUp
-  description     String?
-  reference       String?      // Referencia interna (ej: SERVY-MARBELLA-12345)
-  facturaId       String?      // Referencia a factura si existe
-  citaId          String?      // Referencia a cita si existe
-  creadoPorId     String?
-  creadoPorNombre String?
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-
-  @@map("sumup_transactions")
+  COMPRA
+  CONSUMO
+  AJUSTE
 }

@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { format } from 'date-fns'
-import { Calendar, Clock, User, Car, CreditCard, Trash2, Smartphone, Banknote } from 'lucide-react'
+import { Calendar, Clock, User, Car, CreditCard, Trash2, Smartphone, Banknote, Building2 } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -34,6 +34,12 @@ interface Servicio {
   nombre: string
   precio: number
   activo: boolean
+}
+
+interface Local {
+  id: string
+  nombre: string
+  nombreComercial?: string
 }
 
 interface EditarCitaDialogProps {
@@ -86,6 +92,8 @@ export function EditarCitaDialog({
   const [servicios, setServicios] = useState<Servicio[]>([])
   const [serviciosSeleccionados, setServiciosSeleccionados] = useState<string[]>([])
   const [showSumUpDialog, setShowSumUpDialog] = useState(false)
+  const [locales, setLocales] = useState<Local[]>([])
+  const [localIdSeleccionado, setLocalIdSeleccionado] = useState<string>('')
   
   const [formData, setFormData] = useState({
     fecha: '',
@@ -122,7 +130,25 @@ export function EditarCitaDialog({
     }
   }, [open])
 
-  // Cargar datos de la cita incluyendo servicios seleccionados
+  // Cargar locales disponibles
+  useEffect(() => {
+    const cargarLocales = async () => {
+      try {
+        const response = await fetch('/api/locales')
+        if (response.ok) {
+          const data = await response.json()
+          setLocales(data.filter((l: Local) => l.nombre))
+        }
+      } catch (error) {
+        console.error('Error cargando locales:', error)
+      }
+    }
+    if (open) {
+      cargarLocales()
+    }
+  }, [open])
+
+  // Cargar datos de la cita incluyendo servicios seleccionados y local
   useEffect(() => {
     const cargarCitaCompleta = async () => {
       if (open && cita) {
@@ -137,6 +163,9 @@ export function EditarCitaDialog({
           ticketsUsados: cita.ticketsUsados || 0,
         })
         
+        // Establecer el local actual de la cita
+        setLocalIdSeleccionado((cita as any).localId || '')
+        
         // Cargar servicios asociados a la cita
         try {
           const response = await fetch(`/api/citas/${cita.id}`)
@@ -146,6 +175,10 @@ export function EditarCitaDialog({
               setServiciosSeleccionados(citaCompleta.cita_servicios.map((cs: any) => cs.servicioId))
             } else {
               setServiciosSeleccionados([])
+            }
+            // Actualizar localId desde la cita completa si está disponible
+            if (citaCompleta.localId) {
+              setLocalIdSeleccionado(citaCompleta.localId)
             }
           }
         } catch (error) {
@@ -201,6 +234,7 @@ export function EditarCitaDialog({
         observaciones: formData.observaciones && formData.observaciones.trim() !== '' ? formData.observaciones : undefined,
         servicios: serviciosData,
         total: calcularPrecioTotal(),
+        localId: localIdSeleccionado || undefined,
       }
 
       console.log('Enviando datos:', dataToSend)
@@ -456,6 +490,36 @@ export function EditarCitaDialog({
               </Select>
             </div>
           </div>
+
+          {/* Selector de Local */}
+          {locales.length > 0 && (
+            <div className="space-y-2">
+              <Label htmlFor="local" className="flex items-center gap-2">
+                <Building2 className="h-4 w-4" />
+                Local asignado
+              </Label>
+              <Select 
+                value={localIdSeleccionado || ""} 
+                onValueChange={(value) => setLocalIdSeleccionado(value)}
+              >
+                <SelectTrigger className={localIdSeleccionado !== (cita as any).localId ? "border-orange-400 bg-orange-50" : ""}>
+                  <SelectValue placeholder="Selecciona un local" />
+                </SelectTrigger>
+                <SelectContent>
+                  {locales.map((local) => (
+                    <SelectItem key={local.id} value={local.id}>
+                      {local.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {localIdSeleccionado && localIdSeleccionado !== (cita as any).localId && (
+                <p className="text-xs text-orange-600 font-medium">
+                  ⚠️ Se cambiará el local de esta cita
+                </p>
+              )}
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">

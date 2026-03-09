@@ -60,6 +60,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       metodoPago,
       servicios,
       ticketsUsados,
+      localId,
     } = body
 
     console.log('=== INICIO ACTUALIZACIÓN CITA ===')
@@ -134,6 +135,12 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     if (estado) updateData.estado = estado
     if (observaciones !== undefined) updateData.observaciones = observaciones
     if (ticketsUsados !== undefined) updateData.ticketsUsados = parseInt(ticketsUsados) || 0
+    
+    // Manejar cambio de local
+    if (localId !== undefined) {
+      updateData.localId = localId || null
+      console.log('Cambiando local de la cita a:', localId)
+    }
     
     // Manejar metodoPago: si es undefined se envía como null a Prisma
     if (metodoPago !== undefined) {
