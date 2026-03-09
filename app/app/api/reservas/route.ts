@@ -1,12 +1,16 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { getLocalContext, buildLocalFilter } from '@/lib/local-context'
 
 export const dynamic = 'force-dynamic'
 
 /**
- * GET /api/reservas?fecha=YYYY-MM-DD&hora=HH:MM
- * Verifica disponibilidad de un horario específico
+ * GET /api/reservas
+ * - Sin parámetros: Lista todas las reservas (filtradas por local)
+ * - Con fecha y hora: Verifica disponibilidad
  */
 export async function GET(req: NextRequest) {
   try {
@@ -14,35 +18,54 @@ export async function GET(req: NextRequest) {
     const fecha = searchParams.get('fecha')
     const hora = searchParams.get('hora')
 
-    if (!fecha || !hora) {
-      return NextResponse.json(
-        { error: 'Fecha y hora son requeridas' },
-        { status: 400 }
-      )
+    // Si hay fecha y hora, verificar disponibilidad (endpoint público)
+    if (fecha && hora) {
+      const fechaCita = new Date(fecha)
+      const citaExistente = await prisma.cita.findFirst({
+        where: {
+          fecha: {
+            gte: new Date(fechaCita.getFullYear(), fechaCita.getMonth(), fechaCita.getDate()),
+            lt: new Date(fechaCita.getFullYear(), fechaCita.getMonth(), fechaCita.getDate() + 1),
+          },
+          horaInicio: hora,
+        },
+      })
+
+      return NextResponse.json({
+        disponible: !citaExistente,
+        mensaje: citaExistente 
+          ? 'Este horario ya está ocupado. Por favor elige otra hora.' 
+          : 'Horario disponible'
+      })
     }
 
-    // Verificar si existe alguna cita en la misma fecha y hora
-    const fechaCita = new Date(fecha)
-    const citaExistente = await prisma.cita.findFirst({
-      where: {
-        fecha: {
-          gte: new Date(fechaCita.getFullYear(), fechaCita.getMonth(), fechaCita.getDate()),
-          lt: new Date(fechaCita.getFullYear(), fechaCita.getMonth(), fechaCita.getDate() + 1),
-        },
-        horaInicio: hora,
+    // Sin parámetros: listar reservas (requiere sesión)
+    const session = await getServerSession(authOptions)
+    if (!session) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
+    // Obtener contexto multi-local
+    const localContext = await getLocalContext()
+    if (!localContext) {
+      return NextResponse.json([])
+    }
+    
+    const localFilter = buildLocalFilter(localContext)
+
+    const reservas = await prisma.reservas.findMany({
+      where: localFilter,
+      include: {
+        local: true,
       },
+      orderBy: { createdAt: 'desc' },
     })
 
-    return NextResponse.json({
-      disponible: !citaExistente,
-      mensaje: citaExistente 
-        ? 'Este horario ya está ocupado. Por favor elige otra hora.' 
-        : 'Horario disponible'
-    })
+    return NextResponse.json(reservas)
   } catch (error) {
-    console.error('Error checking availability:', error)
+    console.error('Error en reservas:', error)
     return NextResponse.json(
-      { error: 'Error al verificar disponibilidad' },
+      { error: 'Error al procesar solicitud' },
       { status: 500 }
     )
   }
@@ -61,7 +84,8 @@ export async function POST(req: NextRequest) {
       marcaModelo,
       matricula,
       servicio,
-      mensaje
+      mensaje,
+      localId  // Nuevo: local seleccionado
     } = body
 
     // Validar campos requeridos
@@ -170,7 +194,7 @@ export async function POST(req: NextRequest) {
     const [horaInicio, minutos] = hora.split(':').map(Number)
     let horaFin = `${(horaInicio + 1).toString().padStart(2, '0')}:${minutos.toString().padStart(2, '0')}`
 
-    // Crear la reserva (cita)
+    // Crear la reserva (cita) con localId
     const cita = await prisma.cita.create({
       data: {
         fecha: fechaCita,
@@ -178,9 +202,10 @@ export async function POST(req: NextRequest) {
         horaFin,
         clienteId: cliente.id,
         vehiculoId: vehiculo.id,
-        box: primerBox, // Usa el primer box de la configuración
+        box: primerBox,
         estado: 'PENDIENTE',
         observaciones: mensaje || `Reserva online - ${servicio}`,
+        ...(localId && { localId }), // Asignar local si se proporcionó
         cita_servicios: {
           create: [
             {
@@ -194,11 +219,31 @@ export async function POST(req: NextRequest) {
       include: {
         cliente: true,
         vehiculo: true,
+        local: true,
         cita_servicios: {
           include: {
             servicios: true
           }
         }
+      }
+    })
+    
+    // También guardar en el modelo reservas para tracking
+    await prisma.reservas.create({
+      data: {
+        id: `res_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
+        nombre,
+        apellido: apellido || null,
+        email: email || '',
+        telefono,
+        fecha: fechaCita,
+        hora,
+        vehiculo: `${marcaModelo} - ${matricula}`,
+        servicio,
+        mensaje: mensaje || null,
+        estado: 'PENDIENTE',
+        localId: localId || null,
+        updatedAt: new Date(),
       }
     })
 

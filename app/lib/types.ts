@@ -134,6 +134,7 @@ export enum MetodoPago {
 
 export enum RolUsuario {
   SUPER_ADMIN = "SUPER_ADMIN",
+  GRUPO_ADMIN = "GRUPO_ADMIN",
   ADMIN = "ADMIN",
   OPERADOR = "OPERADOR",
   CLIENTE = "CLIENTE",

@@ -59,37 +59,37 @@ interface NavSection {
   items: NavItem[]
 }
 
-// Items de navegación simples (sin submenú) - OPERADOR tiene acceso a todo lo operativo
+// Items de navegación simples (sin submenú) - OPERADOR y GRUPO_ADMIN tienen acceso a lo operativo
 const simpleNavigation: NavItem[] = [
-  { name: 'Agenda', href: '/dashboard/agenda', icon: Calendar, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
-  { name: 'Reservas', href: '/dashboard/reservas', icon: Clock, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
-  { name: 'Clientes', href: '/dashboard/clientes', icon: Users, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
-  { name: 'Vehículos', href: '/dashboard/vehiculos', icon: Car, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
+  { name: 'Agenda', href: '/dashboard/agenda', icon: Calendar, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.GRUPO_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
+  { name: 'Reservas', href: '/dashboard/reservas', icon: Clock, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.GRUPO_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
+  { name: 'Clientes', href: '/dashboard/clientes', icon: Users, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.GRUPO_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
+  { name: 'Vehículos', href: '/dashboard/vehiculos', icon: Car, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.GRUPO_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
 ]
 
-// Sección GESTIÓN (con submenú desplegable) - OPERADOR ve lo necesario para su trabajo diario
+// Sección GESTIÓN (con submenú desplegable) - GRUPO_ADMIN ve gestión pero no configuración
 const gestionSection: NavSection = {
   name: 'Gestión',
   icon: BarChart3,
-  roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR],
+  roles: [RolUsuario.SUPER_ADMIN, RolUsuario.GRUPO_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR],
   items: [
-    { name: 'Dashboard', href: '/dashboard', icon: BarChart3, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
-    { name: 'Diario de Caja', href: '/dashboard/diario-caja', icon: BookOpen, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
-    { name: 'Facturación', href: '/dashboard/facturacion', icon: CreditCard, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN] },
-    { name: 'Gastos', href: '/dashboard/gastos', icon: TrendingDown, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
-    { name: 'Ingresos Extra', href: '/dashboard/ingresos-adicionales', icon: ParkingCircle, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN] },
-    { name: 'Proveedores', href: '/dashboard/proveedores', icon: Building2, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN] },
+    { name: 'Dashboard', href: '/dashboard', icon: BarChart3, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.GRUPO_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
+    { name: 'Diario de Caja', href: '/dashboard/diario-caja', icon: BookOpen, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.GRUPO_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
+    { name: 'Facturación', href: '/dashboard/facturacion', icon: CreditCard, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.GRUPO_ADMIN, RolUsuario.ADMIN] },
+    { name: 'Gastos', href: '/dashboard/gastos', icon: TrendingDown, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.GRUPO_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
+    { name: 'Ingresos Extra', href: '/dashboard/ingresos-adicionales', icon: ParkingCircle, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.GRUPO_ADMIN, RolUsuario.ADMIN] },
+    { name: 'Proveedores', href: '/dashboard/proveedores', icon: Building2, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.GRUPO_ADMIN, RolUsuario.ADMIN] },
   ]
 }
 
 // Items adicionales después de Gestión
-// OPERADOR = trabajo diario (cierres, tickets parking para gestión de estacionamiento)
+// GRUPO_ADMIN = encargado de zona, ve operativa pero NO configuración/usuarios/locales
 const additionalNavigation: NavItem[] = [
-  { name: 'Servicios Taller', href: '/dashboard/servicios-taller', icon: Wrench, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
-  { name: 'Cierres de Caja', href: '/dashboard/cierres-caja', icon: Archive, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
-  { name: 'Tickets Parking', href: '/dashboard/tickets', icon: Download, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
+  { name: 'Servicios Taller', href: '/dashboard/servicios-taller', icon: Wrench, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.GRUPO_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
+  { name: 'Cierres de Caja', href: '/dashboard/cierres-caja', icon: Archive, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.GRUPO_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
+  { name: 'Tickets Parking', href: '/dashboard/tickets', icon: Download, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.GRUPO_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
   { name: 'Importador', href: '/dashboard/importador', icon: Upload, roles: [RolUsuario.SUPER_ADMIN] },
-  { name: 'Exportar IVA', href: '/dashboard/exportar-iva', icon: Download, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN] },
+  { name: 'Exportar IVA', href: '/dashboard/exportar-iva', icon: Download, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.GRUPO_ADMIN, RolUsuario.ADMIN] },
   { name: 'Usuarios', href: '/dashboard/usuarios', icon: UserCheck, roles: [RolUsuario.SUPER_ADMIN] },
   { name: 'Locales', href: '/dashboard/locales', icon: Store, roles: [RolUsuario.SUPER_ADMIN] },
   { name: 'Configuración', href: '/dashboard/configuracion', icon: Settings, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN] },
@@ -106,6 +106,7 @@ const allNavItems: NavItem[] = [
 const getRoleLabel = (role: string): string => {
   const roleLabels: { [key: string]: string } = {
     [RolUsuario.SUPER_ADMIN]: 'Super Admin',
+    [RolUsuario.GRUPO_ADMIN]: 'Encargado de Zona',
     [RolUsuario.ADMIN]: 'Admin',
     [RolUsuario.OPERADOR]: 'Operador',
     [RolUsuario.CLIENTE]: 'Cliente',

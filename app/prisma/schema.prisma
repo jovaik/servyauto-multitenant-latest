@@ -91,6 +91,7 @@ model Local {
   ingresosAdicionales IngresoAdicional[]
   sumupReaders        SumUpReader[]
   sumupTransactions   SumUpTransaction[]
+  reservas            reservas[]
 
   @@map("locales")
 }
@@ -293,6 +294,10 @@ model reservas {
   estado    EstadoReserva @default(PENDIENTE)
   createdAt DateTime      @default(now())
   updatedAt DateTime
+  
+  // Multi-local
+  localId   String?
+  local     Local?        @relation(fields: [localId], references: [id])
 }
 
 model Proveedor {

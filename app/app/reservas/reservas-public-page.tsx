@@ -29,6 +29,14 @@ import {
 } from '@/components/ui/select'
 import { Card, CardContent } from '@/components/ui/card'
 
+interface Local {
+  id: string
+  nombre: string
+  nombreComercial: string | null
+  direccion: string | null
+  ciudad: string | null
+}
+
 export function ReservasPublicPage() {
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
@@ -39,6 +47,7 @@ export function ReservasPublicPage() {
   const [currentSlide, setCurrentSlide] = useState(0)
   const [disponibilidad, setDisponibilidad] = useState<{mensaje: string, disponible: boolean} | null>(null)
   const [checkingAvailability, setCheckingAvailability] = useState(false)
+  const [locales, setLocales] = useState<Local[]>([])
   const [configPublica, setConfigPublica] = useState<Record<string, string>>({
     'publica.nombre': 'ServyAuto',
     'publica.subtitulo': 'Lavado & Detailing',
@@ -56,7 +65,8 @@ export function ReservasPublicPage() {
     marcaModelo: '',
     matricula: '',
     servicio: '',
-    mensaje: ''
+    mensaje: '',
+    localId: ''
   })
 
   // Imágenes y textos de categorías (con fallbacks por defecto) - se recalculan cuando cambia la configuración
@@ -86,7 +96,24 @@ export function ReservasPublicPage() {
     loadConfiguracionPublica()
     loadServicios()
     loadGaleria()
+    loadLocales()
   }, [])
+
+  const loadLocales = async () => {
+    try {
+      const res = await fetch('/api/locales/publicos')
+      if (res.ok) {
+        const data = await res.json()
+        setLocales(data)
+        // Si solo hay un local, seleccionarlo automáticamente
+        if (data.length === 1) {
+          setFormData(prev => ({ ...prev, localId: data[0].id }))
+        }
+      }
+    } catch (error) {
+      console.error('Error cargando locales:', error)
+    }
+  }
 
   // Auto-avanzar el carrusel cada 5 segundos
   useEffect(() => {
@@ -224,6 +251,12 @@ export function ReservasPublicPage() {
       alert('Por favor completa todos los campos obligatorios marcados con *')
       return
     }
+    
+    // Validar local si hay más de uno
+    if (locales.length > 1 && !formData.localId) {
+      alert('Por favor selecciona el local donde quieres reservar')
+      return
+    }
 
     // Validar disponibilidad
     if (disponibilidad && !disponibilidad.disponible) {
@@ -255,7 +288,8 @@ export function ReservasPublicPage() {
           marcaModelo: '',
           matricula: '',
           servicio: '',
-          mensaje: ''
+          mensaje: '',
+          localId: locales.length === 1 ? locales[0].id : ''
         })
         setSelectedCategory('')
         setDisponibilidad(null)
@@ -490,6 +524,30 @@ export function ReservasPublicPage() {
         <Card className="max-w-2xl mx-auto">
           <CardContent className="p-8">
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Selector de Local (solo si hay más de uno) */}
+              {locales.length > 1 && (
+                <div className="space-y-2">
+                  <Label htmlFor="local">
+                    📍 Selecciona el Local *
+                  </Label>
+                  <Select 
+                    value={formData.localId} 
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, localId: value }))}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="¿Dónde quieres reservar?" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {locales.map((local) => (
+                        <SelectItem key={local.id} value={local.id}>
+                          {local.nombre} {local.ciudad ? `- ${local.ciudad}` : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              
               {/* Selector de Servicio */}
               <div className="space-y-2">
                 <Label htmlFor="servicio">

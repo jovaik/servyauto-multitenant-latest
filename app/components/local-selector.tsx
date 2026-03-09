@@ -29,17 +29,18 @@ export function LocalSelector({ userRole }: LocalSelectorProps) {
   const [loading, setLoading] = useState(true);
   const { selectedLocalId, selectedLocalName, setSelectedLocal, clearSelectedLocal } = useLocalStore();
 
-  // Solo mostrar para SUPER_ADMIN
-  const isSuperAdmin = userRole === 'SUPER_ADMIN';
+  // Mostrar para SUPER_ADMIN y GRUPO_ADMIN (encargados de zona)
+  const canSelectLocal = userRole === 'SUPER_ADMIN' || userRole === 'GRUPO_ADMIN';
 
   useEffect(() => {
-    if (isSuperAdmin) {
+    if (canSelectLocal) {
       loadLocales();
     }
-  }, [isSuperAdmin]);
+  }, [canSelectLocal]);
 
   const loadLocales = async () => {
     try {
+      // El API ya filtra automáticamente según el rol del usuario
       const res = await fetch('/api/locales');
       if (res.ok) {
         const data = await res.json();
@@ -52,8 +53,8 @@ export function LocalSelector({ userRole }: LocalSelectorProps) {
     }
   };
 
-  // No mostrar si no es superadmin o no hay locales
-  if (!isSuperAdmin || loading) return null;
+  // No mostrar si no tiene permiso o no hay locales
+  if (!canSelectLocal || loading) return null;
   if (locales.length === 0) return null;
 
   const selectedLocal = locales.find(l => l.id === selectedLocalId);
@@ -62,38 +63,43 @@ export function LocalSelector({ userRole }: LocalSelectorProps) {
     <div className="flex items-center gap-2">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" className="gap-2">
-            <Store className="h-4 w-4" />
+          <Button variant="outline" size="sm" className="gap-2 min-w-[200px] max-w-[350px]">
+            <Store className="h-4 w-4 flex-shrink-0" />
             {selectedLocalName ? (
-              <span className="max-w-[150px] truncate">{selectedLocalName}</span>
+              <span className="truncate text-left flex-1">{selectedLocalName}</span>
             ) : (
-              <span className="text-gray-500">Todos los locales</span>
+              <span className="text-gray-500 flex-1 text-left">Todos los locales</span>
             )}
-            <ChevronDown className="h-3 w-3" />
+            <ChevronDown className="h-3 w-3 flex-shrink-0" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuContent align="end" className="w-[350px]">
           <DropdownMenuItem 
             onClick={() => clearSelectedLocal()}
             className={!selectedLocalId ? 'bg-blue-50' : ''}
           >
-            <Store className="h-4 w-4 mr-2 text-gray-500" />
-            <span>Todos los locales</span>
-            {!selectedLocalId && <Badge variant="secondary" className="ml-auto">Actual</Badge>}
+            <Store className="h-4 w-4 mr-2 text-gray-500 flex-shrink-0" />
+            <span className="flex-1">Todos los locales</span>
+            {!selectedLocalId && <Badge variant="secondary" className="ml-2 flex-shrink-0">Actual</Badge>}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           {locales.map((local) => (
             <DropdownMenuItem
               key={local.id}
-              onClick={() => setSelectedLocal(local.id, local.nombreComercial || local.nombre)}
+              onClick={() => setSelectedLocal(local.id, local.nombre)}
               className={selectedLocalId === local.id ? 'bg-blue-50' : ''}
             >
               <div 
-                className="w-3 h-3 rounded-full mr-2"
+                className="w-3 h-3 rounded-full mr-2 flex-shrink-0"
                 style={{ backgroundColor: local.colorPrimario || '#3b82f6' }}
               />
-              <span className="truncate">{local.nombreComercial || local.nombre}</span>
-              {selectedLocalId === local.id && <Badge variant="secondary" className="ml-auto">Actual</Badge>}
+              <div className="flex-1 min-w-0">
+                <span className="block font-medium truncate">{local.nombre}</span>
+                {local.nombreComercial && local.nombreComercial !== local.nombre && (
+                  <span className="block text-xs text-gray-500 truncate">{local.nombreComercial}</span>
+                )}
+              </div>
+              {selectedLocalId === local.id && <Badge variant="secondary" className="ml-2 flex-shrink-0">Actual</Badge>}
             </DropdownMenuItem>
           ))}
         </DropdownMenuContent>
@@ -104,7 +110,7 @@ export function LocalSelector({ userRole }: LocalSelectorProps) {
           variant="ghost" 
           size="sm" 
           onClick={() => clearSelectedLocal()}
-          className="h-8 w-8 p-0"
+          className="h-8 w-8 p-0 flex-shrink-0"
           title="Ver todos los locales"
         >
           <X className="h-4 w-4" />
