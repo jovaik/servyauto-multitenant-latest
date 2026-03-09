@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'react-hot-toast'
+import { LOCAL_CHANGE_EVENT } from '@/lib/local-store'
 
 interface Cliente {
   id: string
@@ -70,6 +71,18 @@ export function VehiculosView() {
   useEffect(() => {
     loadVehiculos()
     loadClientes()
+  }, [])
+
+  // Escuchar cambios de local para recargar datos
+  useEffect(() => {
+    const handleLocalChange = () => {
+      console.log('🔄 Vehículos: Local cambiado, recargando datos...')
+      loadVehiculos()
+      loadClientes()
+    }
+    
+    window.addEventListener(LOCAL_CHANGE_EVENT, handleLocalChange)
+    return () => window.removeEventListener(LOCAL_CHANGE_EVENT, handleLocalChange)
   }, [])
 
   const loadVehiculos = async () => {

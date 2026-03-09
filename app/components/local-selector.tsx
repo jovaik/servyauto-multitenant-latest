@@ -47,9 +47,20 @@ export function LocalSelector({ userRole }: LocalSelectorProps) {
       const res = await fetch('/api/locales');
       if (res.ok) {
         const data = await res.json();
+        console.log('🏪 Respuesta API locales:', data);
+        
+        // Asegurar que data es un array
+        if (!Array.isArray(data)) {
+          console.error('🏪 Error: La respuesta no es un array:', data);
+          setLocales([]);
+          return;
+        }
+        
         const activeLocales = data.filter((l: any) => l.activo);
-        console.log('🏪 Locales cargados:', activeLocales.length);
+        console.log('🏪 Locales activos:', activeLocales.length, activeLocales.map((l: any) => l.nombre));
         setLocales(activeLocales);
+      } else {
+        console.error('🏪 Error en respuesta:', res.status, await res.text());
       }
     } catch (error) {
       console.error('Error cargando locales:', error);
@@ -72,9 +83,33 @@ export function LocalSelector({ userRole }: LocalSelectorProps) {
     }, 100);
   };
 
-  // No mostrar si no tiene permiso o no hay locales
-  if (!canSelectLocal || loading) return null;
-  if (locales.length === 0) return null;
+  // No mostrar si no tiene permiso
+  if (!canSelectLocal) return null;
+  
+  // Mostrar loading mientras carga
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2">
+        <Button variant="outline" size="sm" disabled className="gap-2 min-w-[200px]">
+          <Store className="h-4 w-4" />
+          <span className="text-gray-400">Cargando locales...</span>
+        </Button>
+      </div>
+    );
+  }
+  
+  // Si no hay locales asignados, mostrar mensaje
+  if (locales.length === 0) {
+    console.log('🏪 No hay locales para mostrar en selector');
+    return (
+      <div className="flex items-center gap-2">
+        <Badge variant="outline" className="text-orange-600 border-orange-300">
+          <Store className="h-3 w-3 mr-1" />
+          Sin locales asignados
+        </Badge>
+      </div>
+    );
+  }
 
   const selectedLocal = locales.find(l => l.id === selectedLocalId);
 

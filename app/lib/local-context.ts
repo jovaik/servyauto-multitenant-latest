@@ -98,25 +98,34 @@ export async function getLocalContext(): Promise<LocalFilter | null> {
 /**
  * Construye el filtro de Prisma para localId
  * @param context - Contexto de local del usuario
+ * @param options - Opciones adicionales
  * @returns Objeto de filtro para usar en where de Prisma
+ * 
+ * IMPORTANTE: Los datos sin localId (legacy, antes del 1 de marzo) solo son visibles para SUPER_ADMIN.
+ * GRUPO_ADMIN, ADMIN y OPERADOR solo ven datos con localId asignado a sus locales.
  */
-export function buildLocalFilter(context: LocalFilter): { localId?: string | { in: string[] } } | {} {
+export function buildLocalFilter(
+  context: LocalFilter, 
+  options?: { includeLegacy?: boolean }
+): { localId?: string | { in: string[] } | null } | { OR?: any[] } | {} {
   // Si ha seleccionado un local específico y tiene acceso, filtrar por ese
   if (context.selectedLocalId) {
     return { localId: context.selectedLocalId };
   }
   
-  // SUPER_ADMIN sin selección: ve todo
+  // SUPER_ADMIN sin selección: ve todo (incluyendo datos legacy sin localId)
   if (context.canSeeAll) {
     return {};
   }
   
   // GRUPO_ADMIN sin selección: filtrar por sus locales permitidos
+  // NO incluye datos sin localId (legacy) - esos pertenecen a "central"
   if (context.userRole === 'GRUPO_ADMIN' && context.allowedLocalIds?.length) {
     return { localId: { in: context.allowedLocalIds } };
   }
   
   // ADMIN/OPERADOR: filtrar por su local asignado
+  // NO incluye datos sin localId (legacy)
   if (context.localId) {
     return { localId: context.localId };
   }

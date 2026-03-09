@@ -23,6 +23,7 @@ import EnviarResenaDialog from '@/components/enviar-resena-dialog'
 import EnviarDepositoDialog from '@/components/enviar-deposito-dialog'
 import { EnviarConfirmacionICSDialog } from '@/components/enviar-confirmacion-ics-dialog'
 import EnviarNotificacionListoDialog from '@/components/enviar-notificacion-listo-dialog'
+import { LOCAL_CHANGE_EVENT } from '@/lib/local-store'
 
 interface AgendaSlot {
   time: string
@@ -91,6 +92,17 @@ export function AgendaView() {
   useEffect(() => {
     loadCitas()
     loadConfiguration()
+  }, [selectedDate])
+
+  // Escuchar cambios de local para recargar datos
+  useEffect(() => {
+    const handleLocalChange = () => {
+      console.log('🔄 Agenda: Local cambiado, recargando datos...')
+      loadCitas()
+    }
+    
+    window.addEventListener(LOCAL_CHANGE_EVENT, handleLocalChange)
+    return () => window.removeEventListener(LOCAL_CHANGE_EVENT, handleLocalChange)
   }, [selectedDate])
 
   // ❌ FUNCIÓN DESHABILITADA: Ya no se usan franjas horarias fijas

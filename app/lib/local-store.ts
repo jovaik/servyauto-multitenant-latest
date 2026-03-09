@@ -6,23 +6,43 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+// Evento personalizado para notificar cambios de local
+export const LOCAL_CHANGE_EVENT = 'servyauto-local-changed';
+
 interface LocalStore {
   selectedLocalId: string | null;
   selectedLocalName: string | null;
+  version: number; // Contador para forzar re-renders
   setSelectedLocal: (id: string | null, name: string | null) => void;
   clearSelectedLocal: () => void;
 }
 
 export const useLocalStore = create<LocalStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       selectedLocalId: null,
       selectedLocalName: null,
-      setSelectedLocal: (id, name) => set({ selectedLocalId: id, selectedLocalName: name }),
-      clearSelectedLocal: () => set({ selectedLocalId: null, selectedLocalName: null }),
+      version: 0,
+      setSelectedLocal: (id, name) => {
+        set({ selectedLocalId: id, selectedLocalName: name, version: get().version + 1 });
+        // Disparar evento para que los componentes se recarguen
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent(LOCAL_CHANGE_EVENT, { detail: { localId: id, localName: name } }));
+        }
+      },
+      clearSelectedLocal: () => {
+        set({ selectedLocalId: null, selectedLocalName: null, version: get().version + 1 });
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent(LOCAL_CHANGE_EVENT, { detail: { localId: null, localName: null } }));
+        }
+      },
     }),
     {
       name: 'servyauto-local-store',
+      partialize: (state) => ({ 
+        selectedLocalId: state.selectedLocalId, 
+        selectedLocalName: state.selectedLocalName 
+      }),
     }
   )
 );
@@ -49,6 +69,25 @@ export function fetchWithLocal(url: string, options: RequestInit = {}): Promise<
  */
 export function getSelectedLocalId(): string | null {
   return useLocalStore.getState().selectedLocalId;
+}
+
+/**
+ * Hook para escuchar cambios de local y ejecutar una callback
+ * Útil para recargar datos cuando el usuario cambia de local
+ */
+export function useLocalChangeListener(callback: (localId: string | null) => void) {
+  if (typeof window === 'undefined') return;
+  
+  const { useEffect } = require('react');
+  
+  useEffect(() => {
+    const handler = (event: CustomEvent) => {
+      callback(event.detail?.localId ?? null);
+    };
+    
+    window.addEventListener(LOCAL_CHANGE_EVENT, handler as EventListener);
+    return () => window.removeEventListener(LOCAL_CHANGE_EVENT, handler as EventListener);
+  }, [callback]);
 }
 
 /**

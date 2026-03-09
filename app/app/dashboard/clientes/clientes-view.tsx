@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'react-hot-toast'
+import { LOCAL_CHANGE_EVENT } from '@/lib/local-store'
 
 interface Cliente {
   id: string
@@ -59,6 +60,17 @@ export function ClientesView() {
 
   useEffect(() => {
     loadClientes()
+  }, [])
+
+  // Escuchar cambios de local para recargar datos
+  useEffect(() => {
+    const handleLocalChange = () => {
+      console.log('🔄 Clientes: Local cambiado, recargando datos...')
+      loadClientes()
+    }
+    
+    window.addEventListener(LOCAL_CHANGE_EVENT, handleLocalChange)
+    return () => window.removeEventListener(LOCAL_CHANGE_EVENT, handleLocalChange)
   }, [])
 
   const loadClientes = async () => {
