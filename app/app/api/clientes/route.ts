@@ -82,22 +82,40 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Verificar si ya existe un cliente con el mismo email o teléfono
+    // Obtener contexto de local
+    const localContext = await getLocalContext()
+    const localIdParaCliente = localContext ? getLocalIdForCreate(localContext) : null
+    
+    console.log('👤 Creando cliente - Nombre:', nombre, apellido || '')
+    console.log('   LocalContext:', localContext?.userRole, '| LocalId para cliente:', localIdParaCliente)
+
+    // Si es GRUPO_ADMIN con múltiples locales y no ha seleccionado uno, requerir selección
+    if (localContext?.userRole === 'GRUPO_ADMIN' && 
+        localContext.allowedLocalIds && 
+        localContext.allowedLocalIds.length > 1 && 
+        !localContext.selectedLocalId) {
+      console.log('   ⚠️ GRUPO_ADMIN sin local seleccionado, rechazando')
+      return NextResponse.json(
+        { error: 'Por favor seleccione un local antes de crear el cliente' },
+        { status: 400 }
+      )
+    }
+
+    // Verificar si ya existe un cliente con el mismo email (solo si tiene email)
     if (email) {
       const existingClient = await prisma.cliente.findFirst({
         where: { email }
       })
       if (existingClient) {
+        console.log('   ❌ Cliente con email duplicado encontrado:', existingClient.id)
         return NextResponse.json(
           { error: 'Ya existe un cliente con este email' },
           { status: 400 }
         )
       }
     }
-
-    // Obtener localId para asignar al nuevo cliente
-    const localContext = await getLocalContext()
-    const localIdParaCliente = localContext ? getLocalIdForCreate(localContext) : null
+    
+    console.log('   ✅ Validaciones OK, procediendo a crear cliente')
 
     const cliente = await prisma.cliente.create({
       data: {

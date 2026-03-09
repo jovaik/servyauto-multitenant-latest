@@ -100,21 +100,48 @@ export async function POST(request: NextRequest) {
     // Obtener localId para asignar al nuevo vehículo
     const localContext = await getLocalContext()
     const localIdParaVehiculo = localContext ? getLocalIdForCreate(localContext) : null
+    
+    console.log('🚗 Creando vehículo - Matrícula:', matricula.toUpperCase())
+    console.log('   LocalContext:', localContext?.userRole, '| LocalId para vehículo:', localIdParaVehiculo)
 
-    // Verificar si ya existe un vehículo con la misma matrícula EN ESTE LOCAL
-    const existingVehicle = await prisma.vehiculo.findFirst({
-      where: { 
-        matricula: matricula.toUpperCase(),
-        localId: localIdParaVehiculo
-      }
-    })
-
-    if (existingVehicle) {
+    // Si es GRUPO_ADMIN con múltiples locales y no ha seleccionado uno, requerir selección
+    if (localContext?.userRole === 'GRUPO_ADMIN' && 
+        localContext.allowedLocalIds && 
+        localContext.allowedLocalIds.length > 1 && 
+        !localContext.selectedLocalId) {
       return NextResponse.json(
-        { error: 'Ya existe un vehículo con esta matrícula en este local' },
+        { error: 'Por favor seleccione un local antes de crear el vehículo' },
         { status: 400 }
       )
     }
+
+    // Verificar si ya existe un vehículo con la misma matrícula
+    // Buscar en TODOS los locales del usuario, no solo en el seleccionado (evitar duplicados globales)
+    let whereFilter: any = { matricula: matricula.toUpperCase() }
+    
+    // Si tiene locales asignados, buscar solo en esos locales
+    if (localContext?.allowedLocalIds && localContext.allowedLocalIds.length > 0) {
+      whereFilter.localId = { in: localContext.allowedLocalIds }
+    } else if (localIdParaVehiculo) {
+      whereFilter.localId = localIdParaVehiculo
+    }
+    // Si es SUPER_ADMIN sin local seleccionado, buscar en todos (sin filtro de localId)
+    
+    console.log('   Buscando duplicados con filtro:', JSON.stringify(whereFilter))
+    
+    const existingVehicle = await prisma.vehiculo.findFirst({
+      where: whereFilter
+    })
+
+    if (existingVehicle) {
+      console.log('   ❌ Vehículo duplicado encontrado:', existingVehicle.id, '| LocalId:', existingVehicle.localId)
+      return NextResponse.json(
+        { error: 'Ya existe un vehículo con esta matrícula' },
+        { status: 400 }
+      )
+    }
+    
+    console.log('   ✅ No hay duplicados, procediendo a crear')
 
     const vehiculo = await prisma.vehiculo.create({
       data: {

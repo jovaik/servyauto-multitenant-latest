@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Store, ChevronDown, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -25,6 +26,7 @@ interface LocalSelectorProps {
 }
 
 export function LocalSelector({ userRole }: LocalSelectorProps) {
+  const router = useRouter();
   const [locales, setLocales] = useState<Local[]>([]);
   const [loading, setLoading] = useState(true);
   const { selectedLocalId, selectedLocalName, setSelectedLocal, clearSelectedLocal } = useLocalStore();
@@ -33,10 +35,11 @@ export function LocalSelector({ userRole }: LocalSelectorProps) {
   const canSelectLocal = userRole === 'SUPER_ADMIN' || userRole === 'GRUPO_ADMIN';
 
   useEffect(() => {
+    console.log('🏪 LocalSelector - userRole:', userRole, '| canSelectLocal:', canSelectLocal);
     if (canSelectLocal) {
       loadLocales();
     }
-  }, [canSelectLocal]);
+  }, [canSelectLocal, userRole]);
 
   const loadLocales = async () => {
     try {
@@ -44,13 +47,29 @@ export function LocalSelector({ userRole }: LocalSelectorProps) {
       const res = await fetch('/api/locales');
       if (res.ok) {
         const data = await res.json();
-        setLocales(data.filter((l: any) => l.activo));
+        const activeLocales = data.filter((l: any) => l.activo);
+        console.log('🏪 Locales cargados:', activeLocales.length);
+        setLocales(activeLocales);
       }
     } catch (error) {
       console.error('Error cargando locales:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Función para cambiar local y refrescar datos
+  const handleSelectLocal = (id: string | null, name: string | null) => {
+    console.log('🔄 Cambiando local a:', name || 'Todos');
+    if (id) {
+      setSelectedLocal(id, name);
+    } else {
+      clearSelectedLocal();
+    }
+    // Pequeño delay para que el store se actualice antes del refresh
+    setTimeout(() => {
+      router.refresh();
+    }, 100);
   };
 
   // No mostrar si no tiene permiso o no hay locales
@@ -75,7 +94,7 @@ export function LocalSelector({ userRole }: LocalSelectorProps) {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-[350px]">
           <DropdownMenuItem 
-            onClick={() => clearSelectedLocal()}
+            onClick={() => handleSelectLocal(null, null)}
             className={!selectedLocalId ? 'bg-blue-50' : ''}
           >
             <Store className="h-4 w-4 mr-2 text-gray-500 flex-shrink-0" />
@@ -86,7 +105,7 @@ export function LocalSelector({ userRole }: LocalSelectorProps) {
           {locales.map((local) => (
             <DropdownMenuItem
               key={local.id}
-              onClick={() => setSelectedLocal(local.id, local.nombre)}
+              onClick={() => handleSelectLocal(local.id, local.nombre)}
               className={selectedLocalId === local.id ? 'bg-blue-50' : ''}
             >
               <div 
@@ -109,7 +128,7 @@ export function LocalSelector({ userRole }: LocalSelectorProps) {
         <Button 
           variant="ghost" 
           size="sm" 
-          onClick={() => clearSelectedLocal()}
+          onClick={() => handleSelectLocal(null, null)}
           className="h-8 w-8 p-0 flex-shrink-0"
           title="Ver todos los locales"
         >
