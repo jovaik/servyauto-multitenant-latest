@@ -11,7 +11,8 @@ import {
   Plus,
   Clock,
   User,
-  Car
+  Car,
+  Building2
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -462,6 +463,13 @@ export function AgendaView() {
                                   <div className="text-xs font-medium">
                                     {cita.horaInicio} - {cita.horaFin}
                                   </div>
+                                  {/* Indicador de Local */}
+                                  {(cita as any).local?.nombre && (
+                                    <div className="flex items-center text-[10px] text-blue-600 truncate" title={(cita as any).local.nombre}>
+                                      <Building2 className="mr-1 h-2.5 w-2.5" />
+                                      <span className="truncate">{(cita as any).local.nombre.replace('SERVYAUTO ', '')}</span>
+                                    </div>
+                                  )}
                                   {/* Trazabilidad */}
                                   {(cita.creadoPorNombre || cita.completadoPorNombre) && (
                                     <div className="text-[10px] text-gray-400 truncate" title={`Creada por: ${cita.creadoPorNombre || 'N/A'}${cita.completadoPorNombre ? ` | Completada por: ${cita.completadoPorNombre}` : ''}`}>

@@ -347,6 +347,11 @@ export function ClientesView() {
                           Parking
                         </Badge>
                       )}
+                      {(cliente as any).local?.nombre && (
+                        <Badge variant="outline" className="text-blue-600 border-blue-300">
+                          📍 {(cliente as any).local.nombre.replace('SERVYAUTO ', '')}
+                        </Badge>
+                      )}
                       <Button
                         size="sm"
                         variant="outline"

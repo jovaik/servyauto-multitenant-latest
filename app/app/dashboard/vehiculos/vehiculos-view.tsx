@@ -440,6 +440,15 @@ export function VehiculosView() {
                       </Button>
                     </div>
                   </div>
+                  
+                  {/* Indicador de Local */}
+                  {(vehiculo as any).local?.nombre && (
+                    <div className="mb-3">
+                      <Badge variant="outline" className="text-blue-600 border-blue-300 text-xs">
+                        📍 {(vehiculo as any).local.nombre.replace('SERVYAUTO ', '')}
+                      </Badge>
+                    </div>
+                  )}
 
                   <div className="space-y-2 text-sm text-gray-600">
                     {vehiculo.color && (
