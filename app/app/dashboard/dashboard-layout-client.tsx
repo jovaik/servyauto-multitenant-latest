@@ -386,49 +386,64 @@ export function DashboardLayoutClient({ children, session }: DashboardLayoutClie
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top header */}
-        <div className="bg-white shadow-sm border-b h-16 flex items-center justify-between px-6 flex-shrink-0">
-          <div className="flex items-center space-x-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="lg:hidden"
-              onClick={() => setSidebarOpen(true)}
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
-            
-            <div className="flex items-center space-x-6">
-              <div className="relative h-20 w-80 flex-shrink-0">
-                <Image
-                  src="/servyauto-logo.jpg"
-                  alt="ServyAuto Logo"
-                  fill
-                  className="object-contain"
-                  priority
-                />
+        <div className="bg-white shadow-sm border-b flex flex-col lg:flex-row lg:items-center lg:justify-between px-4 lg:px-6 py-2 lg:h-16 flex-shrink-0">
+          {/* Primera fila: Menu hamburguesa + Logo + Usuario */}
+          <div className="flex items-center justify-between w-full lg:w-auto">
+            <div className="flex items-center space-x-2 lg:space-x-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="lg:hidden"
+                onClick={() => setSidebarOpen(true)}
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+              
+              <div className="flex items-center space-x-2 lg:space-x-6">
+                <div className="relative h-12 w-32 lg:h-20 lg:w-80 flex-shrink-0">
+                  <Image
+                    src="/servyauto-logo.jpg"
+                    alt="ServyAuto Logo"
+                    fill
+                    className="object-contain"
+                    priority
+                  />
+                </div>
+                <div className="hidden lg:block h-14 w-px bg-gray-300"></div>
+                <h2 className="hidden lg:block text-xl font-semibold text-gray-900">
+                  {allNavItems.find(item => item.href === pathname)?.name || 'ServyAuto Manager'}
+                </h2>
               </div>
-              <div className="h-14 w-px bg-gray-300"></div>
-              <h2 className="text-xl font-semibold text-gray-900">
-                {allNavItems.find(item => item.href === pathname)?.name || 'ServyAuto Manager'}
-              </h2>
             </div>
-          </div>
 
-          <div className="flex items-center space-x-4">
-            {/* Selector de local para superadmin */}
-            <LocalSelector userRole={(session?.user as any)?.role} />
-            
-            <div className="text-sm text-gray-600">
-              <span className="font-medium">{session?.user?.name}</span>
-              <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
+            {/* Usuario - visible en desktop */}
+            <div className="hidden lg:flex items-center space-x-4">
+              <LocalSelector userRole={(session?.user as any)?.role} />
+              <div className="text-sm text-gray-600">
+                <span className="font-medium">{session?.user?.name}</span>
+                <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
+                  {(session?.user as any)?.role || 'Admin'}
+                </span>
+              </div>
+            </div>
+
+            {/* Usuario compacto - visible en móvil */}
+            <div className="lg:hidden text-sm text-gray-600 flex items-center">
+              <span className="font-medium truncate max-w-[100px]">{session?.user?.name}</span>
+              <span className="ml-1 px-1 py-0.5 bg-blue-100 text-blue-800 rounded text-[10px]">
                 {(session?.user as any)?.role || 'Admin'}
               </span>
             </div>
           </div>
+
+          {/* Segunda fila: Selector de local - SIEMPRE VISIBLE EN MÓVIL para GRUPO_ADMIN */}
+          <div className="lg:hidden mt-2 pb-1">
+            <LocalSelector userRole={(session?.user as any)?.role} />
+          </div>
         </div>
 
         {/* Page content */}
-        <main className="flex-1 overflow-auto p-6">
+        <main className="flex-1 overflow-auto p-4 lg:p-6">
           {children}
         </main>
       </div>
