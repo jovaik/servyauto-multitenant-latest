@@ -89,6 +89,7 @@ export async function POST(req: NextRequest) {
       ticketsUsados,
       observaciones,
       metodoPago,
+      descuentoManual,
     } = body
 
     // Validar campos requeridos
@@ -165,37 +166,64 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Aplicar descuento de parking si el cliente es abonado
+    // Aplicar descuentos automáticos según tipo de cliente
     const cliente = await prisma.cliente.findUnique({
       where: { id: clienteId },
-      select: { clienteParking: true }
+      select: { clienteParking: true, clienteVIP: true, clienteEmpresa: true }
     })
 
+    let totalDescuentos = 0
+
+    // Helper para aplicar descuento
+    const aplicarDescuento = (subtotal: number, valor: number, tipo: string): number => {
+      if (tipo === 'FIJO') return valor
+      return (subtotal * valor) / 100
+    }
+
+    // Descuento Parking
     if (cliente?.clienteParking) {
-      // Obtener el descuento configurado
-      const descuentoConfig = await prisma.configuracion.findUnique({
-        where: { clave: 'precios.descuentoParking' }
-      })
-      
-      const tipoDescuentoConfig = await prisma.configuracion.findUnique({
-        where: { clave: 'precios.descuentoParkingTipo' }
-      })
-
-      if (descuentoConfig) {
-        const valorDescuento = parseFloat(descuentoConfig.valor) || 0
-        const tipoDescuento = tipoDescuentoConfig?.valor || 'FIJO'
-
-        if (tipoDescuento === 'FIJO') {
-          // Descuento fijo en euros
-          precioTotal = Math.max(0, precioTotal - valorDescuento)
-        } else {
-          // Descuento porcentual
-          const descuento = (precioTotal * valorDescuento) / 100
-          precioTotal = Math.max(0, precioTotal - descuento)
-        }
-        
-        console.log(`Descuento de parking aplicado: ${tipoDescuento === 'FIJO' ? valorDescuento + '€' : valorDescuento + '%'} - Total final: €${precioTotal}`)
+      const descConfig = await prisma.configuracion.findUnique({ where: { clave: 'precios.descuentoParking' } })
+      const tipoConfig = await prisma.configuracion.findUnique({ where: { clave: 'precios.descuentoParkingTipo' } })
+      if (descConfig) {
+        const dto = aplicarDescuento(precioTotal, parseFloat(descConfig.valor) || 0, tipoConfig?.valor || 'FIJO')
+        totalDescuentos += dto
+        console.log(`Descuento Parking: ${dto.toFixed(2)}€`)
       }
+    }
+
+    // Descuento VIP
+    if (cliente?.clienteVIP) {
+      const descConfig = await prisma.configuracion.findUnique({ where: { clave: 'precios.descuentoVIP' } })
+      const tipoConfig = await prisma.configuracion.findUnique({ where: { clave: 'precios.descuentoVIPTipo' } })
+      if (descConfig) {
+        const dto = aplicarDescuento(precioTotal, parseFloat(descConfig.valor) || 0, tipoConfig?.valor || 'PORCENTAJE')
+        totalDescuentos += dto
+        console.log(`Descuento VIP: ${dto.toFixed(2)}€`)
+      }
+    }
+
+    // Descuento Empresa
+    if (cliente?.clienteEmpresa) {
+      const descConfig = await prisma.configuracion.findUnique({ where: { clave: 'precios.descuentoEmpresa' } })
+      const tipoConfig = await prisma.configuracion.findUnique({ where: { clave: 'precios.descuentoEmpresaTipo' } })
+      if (descConfig) {
+        const dto = aplicarDescuento(precioTotal, parseFloat(descConfig.valor) || 0, tipoConfig?.valor || 'PORCENTAJE')
+        totalDescuentos += dto
+        console.log(`Descuento Empresa: ${dto.toFixed(2)}€`)
+      }
+    }
+
+    // Descuento manual (enviado desde el frontend)
+    const descManual = parseFloat(descuentoManual) || 0
+    if (descManual > 0) {
+      totalDescuentos += descManual
+      console.log(`Descuento manual: ${descManual.toFixed(2)}€`)
+    }
+
+    // Aplicar todos los descuentos
+    if (totalDescuentos > 0) {
+      precioTotal = Math.max(0, precioTotal - totalDescuentos)
+      console.log(`Total descuentos: ${totalDescuentos.toFixed(2)}€ - Precio final: €${precioTotal.toFixed(2)}`)
     }
 
     // Obtener localId para asignar a la nueva cita

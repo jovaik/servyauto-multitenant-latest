@@ -81,46 +81,59 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     }
 
     // Calcular nuevo precio final si hay servicios
-    let precioFinal = citaExistente.total
+    let precioFinal = body.total !== undefined ? body.total : citaExistente.total
     if (servicios && servicios.length > 0) {
-      const serviciosData = await prisma.servicio.findMany({
-        where: {
-          id: { in: servicios.map((s: any) => s.servicioId) },
-        },
-      })
-      
-      precioFinal = serviciosData.reduce((sum: number, servicio: any) => sum + servicio.precio, 0)
-      
-      // Aplicar descuento de parking si el cliente es abonado
-      const cliente = await prisma.cliente.findUnique({
-        where: { id: citaExistente.clienteId },
-        select: { clienteParking: true }
-      })
-
-      if (cliente?.clienteParking) {
-        // Obtener el descuento configurado
-        const descuentoConfig = await prisma.configuracion.findUnique({
-          where: { clave: 'precios.descuentoParking' }
+      // Si el frontend envía el total directamente (ya incluye descuentos), usarlo
+      // Si no, recalcular desde los servicios con descuentos
+      if (body.total === undefined) {
+        const serviciosData = await prisma.servicio.findMany({
+          where: {
+            id: { in: servicios.map((s: any) => s.servicioId) },
+          },
         })
         
-        const tipoDescuentoConfig = await prisma.configuracion.findUnique({
-          where: { clave: 'precios.descuentoParkingTipo' }
+        precioFinal = serviciosData.reduce((sum: number, servicio: any) => sum + servicio.precio, 0)
+        
+        // Aplicar descuentos automáticos según tipo de cliente
+        const cliente = await prisma.cliente.findUnique({
+          where: { id: citaExistente.clienteId },
+          select: { clienteParking: true, clienteVIP: true, clienteEmpresa: true }
         })
 
-        if (descuentoConfig) {
-          const valorDescuento = parseFloat(descuentoConfig.valor) || 0
-          const tipoDescuento = tipoDescuentoConfig?.valor || 'FIJO'
+        let totalDescuentosUpdate = 0
 
-          if (tipoDescuento === 'FIJO') {
-            // Descuento fijo en euros
-            precioFinal = Math.max(0, precioFinal - valorDescuento)
-          } else {
-            // Descuento porcentual
-            const descuento = (precioFinal * valorDescuento) / 100
-            precioFinal = Math.max(0, precioFinal - descuento)
+        const aplicarDescuentoUpdate = (subtotal: number, valor: number, tipo: string): number => {
+          if (tipo === 'FIJO') return valor
+          return (subtotal * valor) / 100
+        }
+
+        if (cliente?.clienteParking) {
+          const descConfig = await prisma.configuracion.findUnique({ where: { clave: 'precios.descuentoParking' } })
+          const tipoConfig = await prisma.configuracion.findUnique({ where: { clave: 'precios.descuentoParkingTipo' } })
+          if (descConfig) {
+            totalDescuentosUpdate += aplicarDescuentoUpdate(precioFinal, parseFloat(descConfig.valor) || 0, tipoConfig?.valor || 'FIJO')
           }
-          
-          console.log(`Descuento de parking aplicado en actualización: ${tipoDescuento === 'FIJO' ? valorDescuento + '€' : valorDescuento + '%'} - Total final: €${precioFinal}`)
+        }
+
+        if (cliente?.clienteVIP) {
+          const descConfig = await prisma.configuracion.findUnique({ where: { clave: 'precios.descuentoVIP' } })
+          const tipoConfig = await prisma.configuracion.findUnique({ where: { clave: 'precios.descuentoVIPTipo' } })
+          if (descConfig) {
+            totalDescuentosUpdate += aplicarDescuentoUpdate(precioFinal, parseFloat(descConfig.valor) || 0, tipoConfig?.valor || 'PORCENTAJE')
+          }
+        }
+
+        if (cliente?.clienteEmpresa) {
+          const descConfig = await prisma.configuracion.findUnique({ where: { clave: 'precios.descuentoEmpresa' } })
+          const tipoConfig = await prisma.configuracion.findUnique({ where: { clave: 'precios.descuentoEmpresaTipo' } })
+          if (descConfig) {
+            totalDescuentosUpdate += aplicarDescuentoUpdate(precioFinal, parseFloat(descConfig.valor) || 0, tipoConfig?.valor || 'PORCENTAJE')
+          }
+        }
+
+        if (totalDescuentosUpdate > 0) {
+          precioFinal = Math.max(0, precioFinal - totalDescuentosUpdate)
+          console.log(`Descuentos aplicados en actualización: ${totalDescuentosUpdate.toFixed(2)}€ - Total final: €${precioFinal.toFixed(2)}`)
         }
       }
     }
@@ -234,10 +247,28 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
           })
         }
         
-        // Calcular totales - PRECIOS YA INCLUYEN IVA
-        const total = servicios.reduce((sum: number, s: any) => sum + s.precio, 0)
-        const subtotal = total / 1.21  // Base imponible
-        const iva = total - subtotal   // IVA incluido en el precio
+        // Calcular totales - usar el total de la cita (ya con descuentos) si está disponible
+        const sumaServiciosFactura = servicios.reduce((sum: number, s: any) => sum + s.precio, 0)
+        const totalFactura = precioFinal !== undefined && precioFinal !== null ? precioFinal : sumaServiciosFactura
+        const subtotal = totalFactura / 1.21  // Base imponible
+        const iva = totalFactura - subtotal   // IVA incluido en el precio
+        
+        // Añadir línea de descuento si aplica
+        const descuentoFactura = sumaServiciosFactura - totalFactura
+        if (descuentoFactura > 0.01) {
+          const dtoItemId = `fi_${Date.now()}_dto_${Math.random().toString(36).substring(2, 9)}`
+          await prisma.factura_items.create({
+            data: {
+              id: dtoItemId,
+              facturaId: facturaExistente.id,
+              descripcion: 'Descuento aplicado',
+              cantidad: 1,
+              precio: -descuentoFactura,
+              total: -descuentoFactura,
+            }
+          })
+          console.log(`Línea de descuento añadida: -${descuentoFactura.toFixed(2)}€`)
+        }
         
         // Actualizar factura
         await prisma.factura.update({
@@ -245,11 +276,11 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
           data: {
             subtotal,
             iva,
-            total
+            total: totalFactura
           }
         })
         
-        console.log(`Factura ${facturaExistente.numero} actualizada: Total ${total}€`)
+        console.log(`Factura ${facturaExistente.numero} actualizada: Total ${totalFactura}€`)
       }
     } else if (servicios && servicios.length === 0) {
       // Si se envía un array vacío, eliminar todos los servicios
@@ -398,6 +429,22 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
           precio: cs.servicios.precio,
           total: cs.servicios.precio,
         }))
+        
+        // Calcular si hay descuento (diferencia entre suma de servicios y total de la cita)
+        const sumaServicios = cita.cita_servicios.reduce((sum: number, cs: any) => sum + (cs.servicios?.precio || cs.precio || 0), 0)
+        const descuentoAplicado = sumaServicios - total
+        
+        if (descuentoAplicado > 0.01) {
+          facturaItems.push({
+            id: `${factura.id}_item_dto`,
+            facturaId: factura.id,
+            descripcion: 'Descuento aplicado',
+            cantidad: 1,
+            precio: -descuentoAplicado,
+            total: -descuentoAplicado,
+          })
+          console.log(`Línea de descuento añadida a factura: -${descuentoAplicado.toFixed(2)}€`)
+        }
         
         await prisma.factura_items.createMany({
           data: facturaItems

@@ -662,7 +662,7 @@ export function EditarCitaDialog({
             {formData.metodoPago && (
               <div className="flex items-center gap-2 p-2 bg-green-50 rounded-lg border border-green-200">
                 <Badge variant="outline" className="bg-green-100 text-green-800">
-                  ✅ Pagado: {formData.metodoPago === 'EFECTIVO' ? 'Efectivo' : formData.metodoPago === 'TPV_SUMUP' ? 'SumUp' : 'TPV Unicaja'}
+                  ✅ Pagado: {formData.metodoPago === 'EFECTIVO' ? 'Efectivo' : formData.metodoPago === 'TPV_SUMUP' ? 'TPV SumUp' : 'TPV Unicaja'}
                 </Badge>
                 <Button 
                   type="button" 
@@ -692,27 +692,32 @@ export function EditarCitaDialog({
                   type="button"
                   variant="outline"
                   className="h-14 flex flex-col items-center justify-center gap-1 border-2 hover:bg-blue-50 hover:border-blue-500"
+                  onClick={() => setFormData(prev => ({ ...prev, metodoPago: 'TPV_SUMUP' }))}
+                >
+                  <CreditCard className="h-5 w-5 text-blue-600" />
+                  <span className="text-sm font-medium">TPV SumUp</span>
+                </Button>
+                
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-14 flex flex-col items-center justify-center gap-1 border-2 hover:bg-purple-50 hover:border-purple-500"
+                  onClick={() => setFormData(prev => ({ ...prev, metodoPago: 'TPV_UNICAJA' }))}
+                >
+                  <Building2 className="h-5 w-5 text-purple-600" />
+                  <span className="text-sm font-medium">TPV Unicaja</span>
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-14 flex flex-col items-center justify-center gap-1 border-2 hover:bg-cyan-50 hover:border-cyan-500"
                   onClick={() => setShowSumUpDialog(true)}
                   disabled={!cita?.total || cita.total <= 0}
                 >
-                  <Smartphone className="h-5 w-5 text-blue-600" />
-                  <span className="text-sm font-medium">SumUp</span>
+                  <Smartphone className="h-5 w-5 text-cyan-600" />
+                  <span className="text-xs font-medium text-center leading-tight">Generar Link SumUp</span>
                 </Button>
-              </div>
-            )}
-            
-            {!formData.metodoPago && (
-              <div className="pt-2">
-                <Select value="" onValueChange={(value) => 
-                  setFormData(prev => ({ ...prev, metodoPago: value }))
-                }>
-                  <SelectTrigger className="text-sm h-9">
-                    <SelectValue placeholder="Otro método de pago..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="TPV_UNICAJA">TPV Unicaja</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
             )}
           </div>

@@ -549,6 +549,7 @@ export function NuevaCitaDialog({
     try {
       const payload = {
         ...formData,
+        descuentoManual: descuentoManual || 0,
         servicios: formData.servicios.map(servicioId => ({
           servicioId,
           precio: servicios?.find(s => s.id === servicioId)?.precio || 0
