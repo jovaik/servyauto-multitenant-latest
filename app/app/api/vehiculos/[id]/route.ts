@@ -112,9 +112,9 @@ export async function PUT(
     const vehiculo = await prisma.vehiculo.update({
       where: { id: params.id },
       data: {
-        marca,
-        modelo,
-        matricula: matricula.toUpperCase(),
+        marca: marca.trim().toUpperCase(),
+        modelo: modelo.trim().toUpperCase(),
+        matricula: matricula.trim().toUpperCase(),
         anio: anio || existingVehicle.anio,
         color: color || null,
         kilometraje: kilometraje || null,

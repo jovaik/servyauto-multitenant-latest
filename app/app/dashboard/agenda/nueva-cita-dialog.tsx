@@ -1181,8 +1181,8 @@ export function NuevaCitaDialog({
                         <Label>Marca *</Label>
                         <Input
                           value={newVehiculo.marca}
-                          onChange={(e) => setNewVehiculo(prev => ({ ...prev, marca: e.target.value }))}
-                          placeholder="Ej: Ford, Toyota, BMW"
+                          onChange={(e) => setNewVehiculo(prev => ({ ...prev, marca: e.target.value.toUpperCase() }))}
+                          placeholder="MERCEDES"
                           required
                         />
                       </div>
@@ -1190,8 +1190,8 @@ export function NuevaCitaDialog({
                         <Label>Modelo *</Label>
                         <Input
                           value={newVehiculo.modelo}
-                          onChange={(e) => setNewVehiculo(prev => ({ ...prev, modelo: e.target.value }))}
-                          placeholder="Ej: Focus, Corolla, X3"
+                          onChange={(e) => setNewVehiculo(prev => ({ ...prev, modelo: e.target.value.toUpperCase() }))}
+                          placeholder="GLE"
                           required
                         />
                       </div>

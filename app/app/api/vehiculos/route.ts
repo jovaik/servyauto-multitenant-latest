@@ -152,9 +152,9 @@ export async function POST(request: NextRequest) {
 
     const vehiculo = await prisma.vehiculo.create({
       data: {
-        marca,
-        modelo,
-        matricula: matricula.toUpperCase(),
+        marca: marca.trim().toUpperCase(),
+        modelo: modelo.trim().toUpperCase(),
+        matricula: matricula.trim().toUpperCase(),
         anio: anio || new Date().getFullYear(),
         color: color || null,
         kilometraje: kilometraje || null,
@@ -257,9 +257,9 @@ export async function PUT(request: NextRequest) {
     const vehiculo = await prisma.vehiculo.update({
       where: { id },
       data: {
-        marca,
-        modelo,
-        matricula: matricula.toUpperCase(),
+        marca: marca.trim().toUpperCase(),
+        modelo: modelo.trim().toUpperCase(),
+        matricula: matricula.trim().toUpperCase(),
         anio: anio || new Date().getFullYear(),
         color: color || null,
         kilometraje: kilometraje || null,

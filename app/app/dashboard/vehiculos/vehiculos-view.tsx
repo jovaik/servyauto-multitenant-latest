@@ -554,8 +554,8 @@ export function VehiculosView() {
                 <Input
                   id="marca"
                   value={formData.marca}
-                  onChange={(e) => setFormData({ ...formData, marca: e.target.value })}
-                  placeholder="Toyota"
+                  onChange={(e) => setFormData({ ...formData, marca: e.target.value.toUpperCase() })}
+                  placeholder="MERCEDES"
                 />
               </div>
               <div className="space-y-2">
@@ -563,8 +563,8 @@ export function VehiculosView() {
                 <Input
                   id="modelo"
                   value={formData.modelo}
-                  onChange={(e) => setFormData({ ...formData, modelo: e.target.value })}
-                  placeholder="Corolla"
+                  onChange={(e) => setFormData({ ...formData, modelo: e.target.value.toUpperCase() })}
+                  placeholder="GLE"
                 />
               </div>
             </div>
