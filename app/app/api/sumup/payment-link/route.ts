@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { createPaymentLink, getCheckoutStatus } from '@/lib/sumup'
+import { createPaymentLink, getCheckoutStatus, getLocalSumUpKeys } from '@/lib/sumup'
 import { prisma } from '@/lib/db'
 import { getLocalContext } from '@/lib/local-context'
 
@@ -79,12 +79,17 @@ export async function POST(request: NextRequest) {
 
     console.log(`Creando payment link: ${amount}€ - ${description} - Local: ${local?.nombre}`)
     
+    // Obtener API keys del local (si tiene propias)
+    const localKeys = await getLocalSumUpKeys(localId)
+    
     // Crear payment link en SumUp
     const paymentLink = await createPaymentLink(
       amount,
       description || `Pago ServyAuto - ${local?.nombre}`,
       reference,
-      returnUrl
+      returnUrl,
+      localKeys.apiKey,
+      localKeys.affiliateKey
     )
 
     console.log('Payment link creado:', paymentLink.id, paymentLink.payment_url)

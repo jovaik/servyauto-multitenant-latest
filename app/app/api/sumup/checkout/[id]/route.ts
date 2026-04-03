@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { getCheckoutStatus, cancelCheckout } from '@/lib/sumup'
+import { getCheckoutStatus, cancelCheckout, getLocalSumUpKeys } from '@/lib/sumup'
 import { prisma } from '@/lib/db'
 
 // GET - Consultar estado del checkout
@@ -15,7 +15,14 @@ export async function GET(
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
-    const checkout = await getCheckoutStatus(params.id)
+    // Buscar la transacción para saber qué local (y qué API key) usar
+    const txn = await prisma.sumUpTransaction.findFirst({
+      where: { checkoutId: params.id },
+      select: { localId: true },
+    })
+    const localKeys = await getLocalSumUpKeys(txn?.localId)
+    
+    const checkout = await getCheckoutStatus(params.id, localKeys.apiKey)
     
     // Actualizar estado en nuestra BD
     if (checkout.status === 'PAID' || checkout.status === 'FAILED' || checkout.status === 'CANCELLED') {
@@ -55,7 +62,14 @@ export async function DELETE(
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
-    await cancelCheckout(params.id)
+    // Buscar la transacción para saber qué API key usar
+    const txnCancel = await prisma.sumUpTransaction.findFirst({
+      where: { checkoutId: params.id },
+      select: { localId: true },
+    })
+    const localKeysCancel = await getLocalSumUpKeys(txnCancel?.localId)
+    
+    await cancelCheckout(params.id, localKeysCancel.apiKey)
     
     // Actualizar estado en nuestra BD
     await prisma.sumUpTransaction.updateMany({

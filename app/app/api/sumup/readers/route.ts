@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { listReaders, pairReader } from '@/lib/sumup'
+import { listReaders, pairReader, getLocalSumUpKeys } from '@/lib/sumup'
 import { prisma } from '@/lib/db'
 import { getLocalContext } from '@/lib/local-context'
 
@@ -17,8 +17,12 @@ export async function GET() {
     const config = await prisma.sumUpConfig.findFirst()
     const modoAsignacion = config?.modoAsignacion || 'COMPARTIDO'
 
-    // Obtener lectores de SumUp API
-    const sumupReaders = await listReaders()
+    // Obtener contexto local para determinar qué API key usar
+    const localContextForKey = await getLocalContext()
+    const localKeysForReaders = await getLocalSumUpKeys(localContextForKey?.selectedLocalId)
+
+    // Obtener lectores de SumUp API (usando la key del local si tiene)
+    const sumupReaders = await listReaders(localKeysForReaders.apiKey)
 
     // Obtener lectores registrados en nuestra BD
     const dbReaders = await prisma.sumUpReader.findMany({
@@ -79,8 +83,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Obtener API key del local si se especifica
+    const localKeysForPair = await getLocalSumUpKeys(localId)
+
     // Emparejar en SumUp
-    const reader = await pairReader(pairingCode, name || 'ServyAuto Terminal')
+    const reader = await pairReader(pairingCode, name || 'ServyAuto Terminal', localKeysForPair.apiKey)
 
     // Registrar en nuestra BD
     const dbReader = await prisma.sumUpReader.create({

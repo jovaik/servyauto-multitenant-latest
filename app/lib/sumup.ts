@@ -10,7 +10,38 @@
  * - POR_LOCAL: Cada terminal asignado a un local específico
  */
 
+import { prisma } from '@/lib/db'
+
 const SUMUP_API_BASE = 'https://api.sumup.com'
+
+/**
+ * Obtener las API keys de SumUp para un local específico.
+ * Si el local tiene su propia key, la devuelve. Si no, devuelve undefined (usa la central del .env).
+ */
+export async function getLocalSumUpKeys(localId: string | null | undefined): Promise<{
+  apiKey?: string
+  affiliateKey?: string
+}> {
+  if (!localId) return {}
+  
+  const local = await prisma.local.findUnique({
+    where: { id: localId },
+    select: { sumupApiKey: true, sumupAffiliateKey: true, nombre: true },
+  })
+  
+  if (!local) return {}
+  
+  const result: { apiKey?: string; affiliateKey?: string } = {}
+  if (local.sumupApiKey) {
+    result.apiKey = local.sumupApiKey
+    console.log(`[SumUp] Usando API key del local: ${local.nombre}`)
+  }
+  if (local.sumupAffiliateKey) {
+    result.affiliateKey = local.sumupAffiliateKey
+  }
+  
+  return result
+}
 
 export type ModoAsignacion = 'COMPARTIDO' | 'POR_LOCAL'
 export type MetodoCobro = 'TERMINAL' | 'LINK'
@@ -36,8 +67,9 @@ export interface SumUpCheckout {
 }
 
 // Headers comunes para todas las peticiones
-function getHeaders() {
-  const apiKey = process.env.SUMUP_API_KEY
+// Si se pasa overrideApiKey (key del local), se usa esa. Si no, la central del .env
+function getHeaders(overrideApiKey?: string) {
+  const apiKey = overrideApiKey || process.env.SUMUP_API_KEY
   if (!apiKey) {
     throw new Error('SUMUP_API_KEY no configurada')
   }
@@ -50,10 +82,10 @@ function getHeaders() {
 /**
  * Obtener información del merchant actual
  */
-export async function getMerchantInfo() {
+export async function getMerchantInfo(overrideApiKey?: string) {
   const response = await fetch(`${SUMUP_API_BASE}/v0.1/me`, {
     method: 'GET',
-    headers: getHeaders(),
+    headers: getHeaders(overrideApiKey),
   })
   
   if (!response.ok) {
@@ -69,10 +101,10 @@ export async function getMerchantInfo() {
 /**
  * Listar lectores emparejados
  */
-export async function listReaders(): Promise<SumUpReader[]> {
+export async function listReaders(overrideApiKey?: string): Promise<SumUpReader[]> {
   const response = await fetch(`${SUMUP_API_BASE}/v0.1/merchants/me/readers`, {
     method: 'GET',
-    headers: getHeaders(),
+    headers: getHeaders(overrideApiKey),
   })
   
   if (!response.ok) {
@@ -88,10 +120,10 @@ export async function listReaders(): Promise<SumUpReader[]> {
 /**
  * Emparejar un nuevo lector usando código de emparejamiento
  */
-export async function pairReader(pairingCode: string, readerName: string): Promise<SumUpReader> {
+export async function pairReader(pairingCode: string, readerName: string, overrideApiKey?: string): Promise<SumUpReader> {
   const response = await fetch(`${SUMUP_API_BASE}/v0.1/merchants/me/readers`, {
     method: 'POST',
-    headers: getHeaders(),
+    headers: getHeaders(overrideApiKey),
     body: JSON.stringify({
       pairing_code: pairingCode,
       name: readerName,
@@ -109,10 +141,10 @@ export async function pairReader(pairingCode: string, readerName: string): Promi
 /**
  * Eliminar/desemparejar un lector
  */
-export async function unpairReader(readerId: string): Promise<void> {
+export async function unpairReader(readerId: string, overrideApiKey?: string): Promise<void> {
   const response = await fetch(`${SUMUP_API_BASE}/v0.1/merchants/me/readers/${readerId}`, {
     method: 'DELETE',
-    headers: getHeaders(),
+    headers: getHeaders(overrideApiKey),
   })
   
   if (!response.ok) {
@@ -127,15 +159,17 @@ export async function unpairReader(readerId: string): Promise<void> {
 export async function createCheckout(
   amount: number,
   description: string,
-  reference?: string
+  reference?: string,
+  overrideApiKey?: string,
+  overrideAffiliateKey?: string
 ): Promise<SumUpCheckout> {
-  const affiliateKey = process.env.SUMUP_AFFILIATE_KEY
+  const affiliateKey = overrideAffiliateKey || process.env.SUMUP_AFFILIATE_KEY
   if (!affiliateKey) {
     throw new Error('SUMUP_AFFILIATE_KEY no configurada')
   }
 
   // Primero obtener el merchant_code
-  const merchantInfo = await getMerchantInfo()
+  const merchantInfo = await getMerchantInfo(overrideApiKey)
   
   // El merchant_code puede estar en diferentes lugares según la respuesta de SumUp
   const merchantCode = merchantInfo.merchant_code || 
@@ -168,7 +202,7 @@ export async function createCheckout(
   const response = await fetch(`${SUMUP_API_BASE}/v0.1/checkouts`, {
     method: 'POST',
     headers: {
-      ...getHeaders(),
+      ...getHeaders(overrideApiKey),
       'X-Affiliate-Key': affiliateKey,
     },
     body: JSON.stringify(checkoutData),
@@ -187,13 +221,14 @@ export async function createCheckout(
  */
 export async function initiateReaderPayment(
   readerId: string,
-  checkoutId: string
+  checkoutId: string,
+  overrideApiKey?: string
 ): Promise<{ status: string }> {
   const response = await fetch(
     `${SUMUP_API_BASE}/v0.1/merchants/me/readers/${readerId}/checkout`,
     {
       method: 'POST',
-      headers: getHeaders(),
+      headers: getHeaders(overrideApiKey),
       body: JSON.stringify({
         checkout_id: checkoutId,
       }),
@@ -211,10 +246,10 @@ export async function initiateReaderPayment(
 /**
  * Consultar estado de un checkout
  */
-export async function getCheckoutStatus(checkoutId: string): Promise<SumUpCheckout> {
+export async function getCheckoutStatus(checkoutId: string, overrideApiKey?: string): Promise<SumUpCheckout> {
   const response = await fetch(`${SUMUP_API_BASE}/v0.1/checkouts/${checkoutId}`, {
     method: 'GET',
-    headers: getHeaders(),
+    headers: getHeaders(overrideApiKey),
   })
   
   if (!response.ok) {
@@ -228,10 +263,10 @@ export async function getCheckoutStatus(checkoutId: string): Promise<SumUpChecko
 /**
  * Cancelar un checkout/cobro pendiente
  */
-export async function cancelCheckout(checkoutId: string): Promise<void> {
+export async function cancelCheckout(checkoutId: string, overrideApiKey?: string): Promise<void> {
   const response = await fetch(`${SUMUP_API_BASE}/v0.1/checkouts/${checkoutId}`, {
     method: 'DELETE',
-    headers: getHeaders(),
+    headers: getHeaders(overrideApiKey),
   })
   
   if (!response.ok) {
@@ -243,12 +278,12 @@ export async function cancelCheckout(checkoutId: string): Promise<void> {
 /**
  * Terminar transacción en curso en un lector
  */
-export async function terminateReaderTransaction(readerId: string): Promise<void> {
+export async function terminateReaderTransaction(readerId: string, overrideApiKey?: string): Promise<void> {
   const response = await fetch(
     `${SUMUP_API_BASE}/v0.1/merchants/me/readers/${readerId}/terminate`,
     {
       method: 'POST',
-      headers: getHeaders(),
+      headers: getHeaders(overrideApiKey),
     }
   )
   
@@ -282,13 +317,15 @@ export async function createPaymentLink(
   amount: number,
   description: string,
   reference: string,
-  redirectUrl?: string
+  redirectUrl?: string,
+  overrideApiKey?: string,
+  overrideAffiliateKey?: string
 ): Promise<PaymentLink> {
-  const apiKey = process.env.SUMUP_API_KEY
+  const apiKey = overrideApiKey || process.env.SUMUP_API_KEY
   if (!apiKey) throw new Error('SUMUP_API_KEY no configurada')
 
   // Crear checkout - ahora incluye hosted_checkout habilitado
-  const checkout = await createCheckout(amount, description, reference)
+  const checkout = await createCheckout(amount, description, reference, overrideApiKey, overrideAffiliateKey)
   
   // Usar la URL que devuelve SumUp
   const paymentUrl = checkout.hosted_checkout_url || `https://checkout.sumup.com/pay/${checkout.id}`

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { createCheckout, initiateReaderPayment } from '@/lib/sumup'
+import { createCheckout, initiateReaderPayment, getLocalSumUpKeys } from '@/lib/sumup'
 import { prisma } from '@/lib/db'
 import { getLocalContext } from '@/lib/local-context'
 
@@ -89,9 +89,12 @@ export async function POST(request: NextRequest) {
       where: { sumupReaderId: readerId },
     })
 
+    // Obtener API keys del local (si tiene propias)
+    const localKeys = await getLocalSumUpKeys(localId)
+
     // 1. Crear checkout en SumUp
     console.log(`Creando checkout SumUp: ${amount}€ - ${description} - Local: ${local?.nombre}`)
-    const checkout = await createCheckout(amount, description, fullReference)
+    const checkout = await createCheckout(amount, description, fullReference, localKeys.apiKey, localKeys.affiliateKey)
     console.log('Checkout creado:', checkout.id)
 
     // 2. Registrar transacción en nuestra BD (para tracking)
@@ -113,7 +116,7 @@ export async function POST(request: NextRequest) {
 
     // 3. Enviar al lector
     console.log(`Enviando a lector ${readerId}`)
-    await initiateReaderPayment(readerId, checkout.id)
+    await initiateReaderPayment(readerId, checkout.id, localKeys.apiKey)
 
     return NextResponse.json({
       checkoutId: checkout.id,

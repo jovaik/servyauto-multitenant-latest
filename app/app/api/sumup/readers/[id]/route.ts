@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { unpairReader } from '@/lib/sumup'
+import { unpairReader, getLocalSumUpKeys } from '@/lib/sumup'
 import { prisma } from '@/lib/db'
 
 // PUT - Actualizar lector (asignar/desasignar local)
@@ -77,8 +77,15 @@ export async function DELETE(
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
+    // Buscar el local del reader para usar su API key
+    const dbReaderForUnpair = await prisma.sumUpReader.findUnique({
+      where: { sumupReaderId: params.id },
+      select: { localId: true },
+    })
+    const localKeysUnpair = await getLocalSumUpKeys(dbReaderForUnpair?.localId)
+
     // Desemparejar en SumUp
-    await unpairReader(params.id)
+    await unpairReader(params.id, localKeysUnpair.apiKey)
 
     // Eliminar de nuestra BD
     await prisma.sumUpReader.deleteMany({
