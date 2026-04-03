@@ -72,6 +72,8 @@ model Local {
   codigoPostalFiscal  String?
   direccionFiscal     String?
   razonSocial         String?
+  sumupApiKey         String?
+  sumupAffiliateKey   String?
   usuarios            User[]
   citas               Cita[]
   clientes            Cliente[]
