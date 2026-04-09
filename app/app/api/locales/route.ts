@@ -63,8 +63,12 @@ export async function GET() {
     });
 
     return NextResponse.json(locales);
-  } catch (error) {
-    console.error('Error al obtener locales:', error);
+  } catch (error: any) {
+    console.error('Error al obtener locales:', error?.message || error);
+    // Si es error de conexión a DB, devolver 503 para que el cliente reintente
+    if (error?.message?.includes("Can't reach database") || error?.message?.includes('connect')) {
+      return NextResponse.json({ error: 'Base de datos temporalmente no disponible' }, { status: 503 });
+    }
     return NextResponse.json({ error: 'Error al obtener locales' }, { status: 500 });
   }
 }

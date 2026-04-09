@@ -37,11 +37,12 @@ export function LocalSelector({ userRole }: LocalSelectorProps) {
   useEffect(() => {
     console.log('🏪 LocalSelector - userRole:', userRole, '| canSelectLocal:', canSelectLocal);
     if (canSelectLocal) {
-      loadLocales();
+      loadLocales(0);
     }
   }, [canSelectLocal, userRole]);
 
-  const loadLocales = async () => {
+  const loadLocales = async (attempt: number) => {
+    const maxRetries = 3;
     try {
       // El API ya filtra automáticamente según el rol del usuario
       const res = await fetch('/api/locales');
@@ -52,6 +53,11 @@ export function LocalSelector({ userRole }: LocalSelectorProps) {
         // Asegurar que data es un array
         if (!Array.isArray(data)) {
           console.error('🏪 Error: La respuesta no es un array:', data);
+          if (attempt < maxRetries) {
+            console.log(`🏪 Reintentando (${attempt + 1}/${maxRetries})...`);
+            setTimeout(() => loadLocales(attempt + 1), 2000 * (attempt + 1));
+            return;
+          }
           setLocales([]);
           return;
         }
@@ -59,12 +65,23 @@ export function LocalSelector({ userRole }: LocalSelectorProps) {
         const activeLocales = data.filter((l: any) => l.activo);
         console.log('🏪 Locales activos:', activeLocales.length, activeLocales.map((l: any) => l.nombre));
         setLocales(activeLocales);
+        setLoading(false);
       } else {
-        console.error('🏪 Error en respuesta:', res.status, await res.text());
+        console.error('🏪 Error en respuesta:', res.status);
+        if (attempt < maxRetries) {
+          console.log(`🏪 Reintentando (${attempt + 1}/${maxRetries})...`);
+          setTimeout(() => loadLocales(attempt + 1), 2000 * (attempt + 1));
+          return;
+        }
+        setLoading(false);
       }
     } catch (error) {
       console.error('Error cargando locales:', error);
-    } finally {
+      if (attempt < maxRetries) {
+        console.log(`🏪 Reintentando (${attempt + 1}/${maxRetries})...`);
+        setTimeout(() => loadLocales(attempt + 1), 2000 * (attempt + 1));
+        return;
+      }
       setLoading(false);
     }
   };
@@ -98,14 +115,15 @@ export function LocalSelector({ userRole }: LocalSelectorProps) {
     );
   }
   
-  // Si no hay locales asignados, mostrar mensaje
+  // Si no hay locales asignados, mostrar mensaje con opción de reintentar
   if (locales.length === 0) {
     console.log('🏪 No hay locales para mostrar en selector');
     return (
       <div className="flex items-center gap-2">
-        <Badge variant="outline" className="text-orange-600 border-orange-300">
+        <Badge variant="outline" className="text-orange-600 border-orange-300 cursor-pointer hover:bg-orange-50"
+          onClick={() => { setLoading(true); loadLocales(0); }}>
           <Store className="h-3 w-3 mr-1" />
-          Sin locales asignados
+          Sin locales — Toca para reintentar
         </Badge>
       </div>
     );
