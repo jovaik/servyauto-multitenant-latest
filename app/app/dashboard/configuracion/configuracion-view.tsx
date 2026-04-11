@@ -28,7 +28,8 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { TwilioConfig } from '@/components/twilio-config'
 import { SumUpConfig } from '@/components/sumup-config'
-import { CreditCard } from 'lucide-react'
+import { ReportesConfig } from '@/components/reportes-config'
+import { CreditCard, Mail } from 'lucide-react'
 
 interface ConfigValue {
   clave: string
@@ -354,7 +355,7 @@ export function ConfiguracionView() {
 
       {/* Configuration Tabs */}
       <Tabs defaultValue="empresa" className="space-y-6">
-        <TabsList className="grid grid-cols-7 w-fit">
+        <TabsList className="flex flex-wrap w-fit gap-1">
           <TabsTrigger value="empresa" className="flex items-center">
             <Building className="mr-2 h-4 w-4" />
             Empresa
@@ -374,6 +375,10 @@ export function ConfiguracionView() {
           <TabsTrigger value="tpv" className="flex items-center">
             <CreditCard className="mr-2 h-4 w-4" />
             TPV SumUp
+          </TabsTrigger>
+          <TabsTrigger value="reportes" className="flex items-center">
+            <Mail className="mr-2 h-4 w-4" />
+            Reportes
           </TabsTrigger>
           <TabsTrigger value="notificaciones" className="flex items-center">
             <Bell className="mr-2 h-4 w-4" />
@@ -918,6 +923,10 @@ export function ConfiguracionView() {
         </TabsContent>
 
         {/* Notificaciones Tab */}
+        <TabsContent value="reportes">
+          <ReportesConfig />
+        </TabsContent>
+
         <TabsContent value="notificaciones">
           <TwilioConfig />
         </TabsContent>

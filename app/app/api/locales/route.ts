@@ -36,7 +36,7 @@ export async function GET() {
       // No añadimos filtro adicional
     } else if (user.role === 'GRUPO_ADMIN' && user.localesAsignados.length > 0) {
       // GRUPO_ADMIN: ve solo sus locales asignados
-      const allowedIds = user.localesAsignados.map(ul => ul.localId);
+      const allowedIds = user.localesAsignados.map((ul: any) => ul.localId);
       whereFilter.id = { in: allowedIds };
     } else if (user.localId) {
       // ADMIN/OPERADOR: ve solo su local

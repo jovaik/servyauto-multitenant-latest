@@ -33,7 +33,7 @@ export async function GET(
       }
     });
 
-    return NextResponse.json(userLocales.map(ul => ul.local));
+    return NextResponse.json(userLocales.map((ul: any) => ul.local));
   } catch (error) {
     console.error('Error al obtener locales del usuario:', error);
     return NextResponse.json({ error: 'Error al obtener locales' }, { status: 500 });
@@ -94,7 +94,7 @@ export async function PUT(
 
     console.log(`✅ Locales actualizados para usuario ${params.id}:`, localIds);
 
-    return NextResponse.json(userLocales.map(ul => ul.local));
+    return NextResponse.json(userLocales.map((ul: any) => ul.local));
   } catch (error) {
     console.error('Error al actualizar locales del usuario:', error);
     return NextResponse.json({ error: 'Error al actualizar locales' }, { status: 500 });

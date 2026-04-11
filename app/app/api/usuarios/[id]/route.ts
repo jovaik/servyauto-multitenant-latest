@@ -4,7 +4,7 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import bcrypt from 'bcryptjs'
-import { RolUsuario } from '@prisma/client'
+import { RolUsuario } from '@/lib/types'
 
 export async function GET(
   request: NextRequest,

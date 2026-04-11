@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/db'
-import { RolUsuario } from '@prisma/client'
+import { RolUsuario } from '@/lib/types'
 
 export async function POST(req: NextRequest) {
   try {

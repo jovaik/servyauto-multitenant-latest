@@ -151,8 +151,8 @@ export async function GET(request: NextRequest) {
       }
     })
     const citasConFacturaIds = citasConFactura
-      .map(f => f.citaId)
-      .filter((id): id is string => id !== null && id !== undefined)
+      .map((f: any) => f.citaId)
+      .filter((id: any): id is string => id !== null && id !== undefined)
 
     // Obtener todas las citas COMPLETADAS que NO tienen factura (para evitar duplicación) - filtrado por local
     const citasCompletadasSinFactura = await prisma.cita.findMany({

@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
       canceladas: 0,
     }
 
-    transactions.forEach((t) => {
+    transactions.forEach((t: any) => {
       if (t.status === 'PAID') {
         totales.pagadas += t.amount
         totales.total += t.amount
@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
     })
 
     return NextResponse.json({
-      transactions: transactions.map((t) => ({
+      transactions: transactions.map((t: any) => ({
         id: t.id,
         checkoutId: t.checkoutId,
         amount: t.amount,

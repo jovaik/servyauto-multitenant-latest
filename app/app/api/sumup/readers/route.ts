@@ -31,7 +31,7 @@ export async function GET() {
 
     // Mapear y enriquecer con datos locales
     const readers = sumupReaders.map((sr: any) => {
-      const dbReader = dbReaders.find((r) => r.sumupReaderId === sr.id)
+      const dbReader = dbReaders.find((r: any) => r.sumupReaderId === sr.id)
       return {
         id: sr.id,
         name: dbReader?.nombre || sr.name || `Terminal ${sr.id.slice(-4)}`,

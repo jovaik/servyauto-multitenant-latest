@@ -100,7 +100,7 @@ export async function GET(req: NextRequest) {
     })
     const citasConFacturaIds = citasConFactura
       .map((f: any) => f.citaId)
-      .filter((id): id is string => id !== null && id !== undefined)
+      .filter((id: any): id is string => id !== null && id !== undefined)
 
     // Obtener estadísticas básicas según el período seleccionado
     const [citasPeriodo, clientesPeriodo, citasPendientes] = await Promise.all([
@@ -328,7 +328,7 @@ export async function GET(req: NextRequest) {
       })
 
       // Convertir a formato del gráfico
-      topConceptos = serviciosFacturados.map(item => ({
+      topConceptos = serviciosFacturados.map((item: any) => ({
         concepto: item.descripcion,
         total: item._sum.total || 0,
       }))

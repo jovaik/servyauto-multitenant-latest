@@ -56,7 +56,7 @@ export async function getLocalContext(): Promise<LocalFilter | null> {
     // Obtener IDs de locales permitidos para GRUPO_ADMIN
     let allowedLocalIds: string[] | undefined;
     if (isGrupoAdmin && user.localesAsignados.length > 0) {
-      allowedLocalIds = user.localesAsignados.map(ul => ul.localId);
+      allowedLocalIds = user.localesAsignados.map((ul: any) => ul.localId);
     }
     
     console.log('✅ getLocalContext: Usuario', session.user.email, 
