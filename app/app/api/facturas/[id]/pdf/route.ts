@@ -199,7 +199,7 @@ function generateTicketHTML(factura: any, local: any, items: any[]): string {
   `
 }
 
-// Generar HTML para FACTURA (formato A4 completo)
+// Generar HTML para FACTURA — Diseño corporativo ServyAuto
 function generateFacturaHTML(factura: any, local: any, items: any[]): string {
   const formatMetodoPago = (metodoPago: string) => {
     const metodos: { [key: string]: string } = {
@@ -210,222 +210,390 @@ function generateFacturaHTML(factura: any, local: any, items: any[]): string {
     return metodos[metodoPago] || metodoPago
   }
 
-  // Datos del local
-  const nombreLocal = local?.razonSocial || local?.nombre || 'SERVYAUTO'
-  const cifLocal = local?.cifNif || ''
-  const direccionLocal = local?.direccionFiscal || local?.direccion || ''
-  const cpCiudad = [local?.codigoPostalFiscal, local?.ciudadFiscal].filter(Boolean).join(' ')
-  const telefonoLocal = local?.telefono || ''
+  // Datos fiscales del propietario/emisor (JOSE M. MILLAN FERNÁNDEZ)
+  const emisorNombre = 'JOSE M. MILLAN FERNÁNDEZ'
+  const emisorCIF = '54322040L'
+  const emisorDireccion = 'AVDA ARIAS MALDONADO S/N PARKING OCCIDENTAL -1'
+  const emisorCPCiudad = '29602 - MARBELLA (MALAGA)'
+  const emisorTelefono = '610543228'
+  const emisorEmail = 'info@servyauto.com'
 
-  // Datos de facturación del cliente (si existen)
+  // Datos del cliente
   let datosFacturacion: any = {}
   if (factura.datosFacturacion) {
-    try {
-      datosFacturacion = JSON.parse(factura.datosFacturacion)
-    } catch (e) {}
+    try { datosFacturacion = JSON.parse(factura.datosFacturacion) } catch (e) {}
   }
+  const clienteNombre = datosFacturacion.razonSocial || `${factura.cliente?.nombre || ''} ${factura.cliente?.apellido || ''}`.trim()
+  const clienteCIF = datosFacturacion.nifCif || factura.cliente?.documento || ''
+  const clienteDireccion = datosFacturacion.direccion || factura.cliente?.direccion || ''
+  const clienteCP = datosFacturacion.codigoPostal || ''
+  const clienteCiudad = datosFacturacion.ciudad || ''
+  const clienteTelefono = factura.cliente?.telefono || ''
 
-  // Generar filas de items
-  const itemsRows = items.length > 0 
-    ? items.map(item => `
-        <tr>
-          <td>${item.descripcion}</td>
-          <td class="center">${item.cantidad}</td>
-          <td class="right">€${item.precio.toFixed(2)}</td>
-          <td class="right">€${item.total.toFixed(2)}</td>
-        </tr>
-      `).join('')
-    : `<tr><td>Servicio de lavado</td><td class="center">1</td><td class="right">€${factura.subtotal.toFixed(2)}</td><td class="right">€${factura.subtotal.toFixed(2)}</td></tr>`
+  // Calcular totales por item (precio = base sin IVA, importe = con IVA)
+  const itemsRows = items.length > 0
+    ? items.map((item: any) => {
+        const precioBase = item.precio / 1.21
+        const importeConIVA = item.total
+        return `
+          <tr>
+            <td class="desc">${item.descripcion.toUpperCase()}</td>
+            <td class="center">${item.cantidad}</td>
+            <td class="right">${precioBase.toFixed(2)} €</td>
+            <td class="center">21,0%</td>
+            <td class="right">${importeConIVA.toFixed(2)} €</td>
+          </tr>`
+      }).join('')
+    : `<tr>
+        <td class="desc">SERVICIO DE LAVADO</td>
+        <td class="center">1</td>
+        <td class="right">${factura.subtotal.toFixed(2)} €</td>
+        <td class="center">21,0%</td>
+        <td class="right">${factura.total.toFixed(2)} €</td>
+      </tr>`
+
+  // Añadir filas vacías para mantener aspecto de tabla
+  const emptyRows = Math.max(0, 8 - (items.length || 1))
+  const emptyRowsHTML = Array(emptyRows).fill('<tr><td class="desc">&nbsp;</td><td></td><td></td><td></td><td></td></tr>').join('')
+
+  const fechaStr = format(new Date(factura.fecha), 'dd-MM-yyyy', { locale: es })
+  const logoUrl = '/servyauto-logo.jpg'
 
   return `
     <!DOCTYPE html>
     <html>
     <head>
       <meta charset="UTF-8">
-      <title>Factura ${factura.numero}</title>
+      <title>Factura: ${factura.numero}</title>
       <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-          font-family: Arial, sans-serif;
-          font-size: 11px;
-          color: #333;
-          line-height: 1.5;
-          padding: 15mm;
+        body {
+          font-family: Arial, Helvetica, sans-serif;
+          font-size: 10px;
+          color: #000;
+          line-height: 1.4;
+          padding: 12mm 15mm;
+          position: relative;
+          min-height: 297mm;
         }
+        /* === HEADER === */
         .header {
           display: flex;
           justify-content: space-between;
-          margin-bottom: 10mm;
-          padding-bottom: 5mm;
-          border-bottom: 2px solid #2563eb;
+          align-items: flex-start;
+          margin-bottom: 6mm;
         }
-        .empresa {
-          max-width: 50%;
+        .emisor-box {
+          background: #F5A623;
+          color: #000;
+          padding: 3mm 4mm;
+          font-size: 9px;
+          line-height: 1.5;
+          width: 55%;
         }
-        .empresa-nombre {
-          font-size: 20px;
-          font-weight: bold;
-          color: #2563eb;
-          margin-bottom: 2mm;
-        }
-        .empresa-datos {
-          font-size: 10px;
-          color: #666;
-        }
-        .factura-info {
-          text-align: right;
-        }
-        .factura-titulo {
-          font-size: 24px;
-          font-weight: bold;
-          color: #1e40af;
-          margin-bottom: 2mm;
-        }
-        .factura-numero {
+        .emisor-box .nombre {
           font-size: 12px;
+          font-weight: bold;
           margin-bottom: 1mm;
         }
-        .info-boxes {
-          display: flex;
-          gap: 10mm;
-          margin-bottom: 8mm;
+        .factura-num-box {
+          border: 2px solid #F5A623;
+          text-align: center;
+          width: 42%;
         }
-        .info-box {
-          flex: 1;
-          background: #f8fafc;
-          padding: 4mm;
-          border-radius: 2mm;
-          border: 1px solid #e2e8f0;
-        }
-        .info-box-title {
-          font-weight: bold;
-          font-size: 10px;
-          color: #64748b;
-          margin-bottom: 2mm;
-          text-transform: uppercase;
-        }
-        table {
-          width: 100%;
-          border-collapse: collapse;
-          margin-bottom: 5mm;
-        }
-        th {
-          background: #2563eb;
-          color: white;
-          padding: 3mm 2mm;
-          text-align: left;
-          font-size: 10px;
-        }
-        td {
-          padding: 2mm;
-          border-bottom: 1px solid #e2e8f0;
-        }
-        .center { text-align: center; }
-        .right { text-align: right; }
-        .totales {
-          margin-left: auto;
-          width: 50%;
-          margin-top: 5mm;
-        }
-        .total-row {
-          display: flex;
-          justify-content: space-between;
-          padding: 2mm 0;
-          border-bottom: 1px solid #e2e8f0;
-        }
-        .total-final {
+        .factura-num-box .titulo {
           font-size: 14px;
           font-weight: bold;
-          background: #f0f9ff;
-          padding: 3mm;
-          border-radius: 2mm;
-          color: #1e40af;
+          padding: 2mm;
+          border-bottom: 1px solid #F5A623;
         }
-        .footer {
-          margin-top: 10mm;
-          padding-top: 5mm;
-          border-top: 1px solid #e2e8f0;
-          text-align: center;
+        .factura-num-box .titulo span {
+          font-size: 16px;
+        }
+        .factura-num-box .meta {
+          display: flex;
+        }
+        .factura-num-box .meta-cell {
+          flex: 1;
+          padding: 2mm;
+          border-right: 1px solid #F5A623;
           font-size: 9px;
-          color: #94a3b8;
         }
-        .estado-pagado {
-          display: inline-block;
-          background: #22c55e;
-          color: white;
-          padding: 1mm 3mm;
-          border-radius: 1mm;
-          font-size: 10px;
+        .factura-num-box .meta-cell:last-child { border-right: none; }
+        .factura-num-box .meta-cell .label { font-weight: bold; font-size: 8px; }
+        .factura-num-box .meta-cell .value { font-size: 10px; margin-top: 1mm; }
+
+        /* === MIDDLE: LOGO + CLIENTE === */
+        .middle {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 4mm;
+        }
+        .logo-box {
+          width: 42%;
+          background: #F5A623;
+          padding: 3mm;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .logo-box img {
+          max-width: 100%;
+          max-height: 25mm;
+        }
+        .cliente-section {
+          width: 55%;
+        }
+        .cliente-header {
+          background: #F5A623;
+          text-align: center;
           font-weight: bold;
+          font-size: 10px;
+          padding: 1.5mm;
+        }
+        .cliente-box {
+          border: 1px solid #000;
+          padding: 2mm 3mm;
+          font-size: 9px;
+          line-height: 1.5;
+          min-height: 20mm;
+        }
+        .cliente-box .nombre { font-weight: bold; font-size: 10px; }
+
+        /* === EMAIL + FORMA PAGO === */
+        .email-pago-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 4mm;
+        }
+        .email-info {
+          font-size: 9px;
+          color: #333;
+        }
+        .email-info a { color: #0066cc; text-decoration: none; }
+        .forma-pago-box {
+          width: 42%;
+          border: 1px solid #000;
+          min-height: 12mm;
+        }
+        .forma-pago-header {
+          text-align: center;
+          font-weight: bold;
+          font-size: 9px;
+          padding: 1mm;
+          border-bottom: 1px solid #000;
+          background: #f0f0f0;
+        }
+        .forma-pago-content {
+          padding: 2mm;
+          font-size: 9px;
+          text-align: center;
+        }
+
+        /* === TABLE === */
+        .items-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-bottom: 4mm;
+        }
+        .items-table thead th {
+          background: #F5A623;
+          color: #000;
+          font-weight: bold;
+          font-size: 9px;
+          padding: 2mm 1.5mm;
+          text-align: center;
+          border: 1px solid #F5A623;
+        }
+        .items-table thead th.desc-col { text-align: center; }
+        .items-table tbody td {
+          padding: 1.5mm 2mm;
+          border-bottom: 1px solid #ddd;
+          font-size: 9px;
+          vertical-align: middle;
+        }
+        .items-table tbody td.desc { text-align: left; }
+        .center { text-align: center; }
+        .right { text-align: right; }
+
+        /* === OBSERVACIONES === */
+        .observaciones {
+          font-size: 9px;
+          font-weight: bold;
+          margin-bottom: 2mm;
+        }
+
+        /* === FOOTER TOTALS === */
+        .footer-totals {
+          position: absolute;
+          bottom: 15mm;
+          left: 15mm;
+          right: 15mm;
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-end;
+        }
+        .desglose-table {
+          border-collapse: collapse;
+          font-size: 9px;
+        }
+        .desglose-table th,
+        .desglose-table td {
+          border: 1px solid #000;
+          padding: 1.5mm 3mm;
+          text-align: center;
+        }
+        .desglose-table th {
+          background: #e8e8e8;
+          font-weight: bold;
+          font-size: 8px;
+        }
+        .total-box {
+          border: 2px solid #000;
+          text-align: center;
+        }
+        .total-box .total-header {
+          font-size: 8px;
+          font-weight: bold;
+          padding: 1mm 5mm;
+          border-bottom: 2px solid #000;
+          background: #e8e8e8;
+        }
+        .total-box .total-row {
+          display: flex;
+        }
+        .total-box .total-label {
+          font-weight: bold;
+          font-size: 10px;
+          padding: 2mm 4mm;
+          border-right: 2px solid #000;
+        }
+        .total-box .total-value {
+          font-size: 12px;
+          font-weight: bold;
+          padding: 2mm 5mm;
+          color: #003399;
         }
       </style>
     </head>
     <body>
+      <!-- HEADER: Emisor + Factura Nº -->
       <div class="header">
-        <div class="empresa">
-          <div class="empresa-nombre">${nombreLocal}</div>
-          <div class="empresa-datos">
-            ${cifLocal ? `CIF: ${cifLocal}<br>` : ''}
-            ${direccionLocal ? `${direccionLocal}<br>` : ''}
-            ${cpCiudad ? `${cpCiudad}<br>` : ''}
-            ${telefonoLocal ? `Tel: ${telefonoLocal}` : ''}
+        <div class="emisor-box">
+          <div class="nombre">${emisorNombre}</div>
+          CIF/NIF: ${emisorCIF}<br>
+          ${emisorDireccion}<br>
+          ${emisorCPCiudad}<br>
+          Teléfono: ${emisorTelefono}
+        </div>
+        <div class="factura-num-box">
+          <div class="titulo">FACTURA Nº: <span>${factura.numero}</span></div>
+          <div class="meta">
+            <div class="meta-cell">
+              <div class="label">PÁGINA</div>
+              <div class="value">1/1</div>
+            </div>
+            <div class="meta-cell">
+              <div class="label">FECHA</div>
+              <div class="value">${fechaStr}</div>
+            </div>
+            <div class="meta-cell">
+              <div class="label">&nbsp;</div>
+              <div class="value">&nbsp;</div>
+            </div>
           </div>
         </div>
-        <div class="factura-info">
-          <div class="factura-titulo">FACTURA</div>
-          <div class="factura-numero"><strong>Nº:</strong> ${factura.numero}</div>
-          <div><strong>Fecha:</strong> ${format(new Date(factura.fecha), 'dd/MM/yyyy', { locale: es })}</div>
-          ${factura.estado === 'PAGADA' ? '<div style="margin-top: 2mm;"><span class="estado-pagado">✓ PAGADA</span></div>' : ''}
+      </div>
+
+      <!-- MIDDLE: Logo + Cliente -->
+      <div class="middle">
+        <div class="logo-box">
+          <img src="${logoUrl}" alt="SERVYAUTO" />
+        </div>
+        <div class="cliente-section">
+          <div class="cliente-header">CLIENTE</div>
+          <div class="cliente-box">
+            <div class="nombre">${clienteNombre}</div>
+            ${clienteCIF ? `CIF/NIF: ${clienteCIF}<br>` : ''}
+            ${clienteDireccion ? `${clienteDireccion}<br>` : ''}
+            ${clienteCP ? `${clienteCP}<br>` : ''}
+            ${clienteCiudad ? `${clienteCiudad}<br>` : ''}
+            ${clienteTelefono ? `Telef: ${clienteTelefono}` : ''}
+          </div>
         </div>
       </div>
 
-      <div class="info-boxes">
-        <div class="info-box">
-          <div class="info-box-title">Datos del Cliente</div>
-          <strong>${datosFacturacion.razonSocial || `${factura.cliente?.nombre || ''} ${factura.cliente?.apellido || ''}`}</strong><br>
-          ${datosFacturacion.nifCif || factura.cliente?.documento ? `NIF/CIF: ${datosFacturacion.nifCif || factura.cliente?.documento}<br>` : ''}
-          ${datosFacturacion.direccion || factura.cliente?.direccion || ''}<br>
-          ${datosFacturacion.codigoPostal ? `${datosFacturacion.codigoPostal} ` : ''}${datosFacturacion.ciudad || ''}
+      <!-- EMAIL + FORMA DE PAGO -->
+      <div class="email-pago-row">
+        <div class="email-info">
+          Email: <a href="mailto:${emisorEmail}">${emisorEmail}</a>
         </div>
-        <div class="info-box">
-          <div class="info-box-title">Información de Pago</div>
-          <strong>Forma de pago:</strong> ${formatMetodoPago(factura.metodoPago || 'EFECTIVO')}<br>
-          ${factura.fechaPago ? `<strong>Fecha de pago:</strong> ${format(new Date(factura.fechaPago), 'dd/MM/yyyy', { locale: es })}` : ''}
+        <div class="forma-pago-box">
+          <div class="forma-pago-header">FORMA DE PAGO</div>
+          <div class="forma-pago-content">${formatMetodoPago(factura.metodoPago || 'EFECTIVO')}</div>
         </div>
       </div>
 
-      <table>
+      <!-- TABLA DE ITEMS -->
+      <table class="items-table">
         <thead>
           <tr>
-            <th style="width: 50%;">Descripción</th>
-            <th class="center" style="width: 15%;">Cantidad</th>
-            <th class="right" style="width: 17%;">Precio Unit.</th>
-            <th class="right" style="width: 18%;">Total</th>
+            <th class="desc-col" style="width:55%;">DESCRIPCIÓN</th>
+            <th style="width:8%;">CANT</th>
+            <th style="width:13%;">PRECIO</th>
+            <th style="width:10%;">IVA</th>
+            <th style="width:14%;">IMPORTE</th>
           </tr>
         </thead>
         <tbody>
           ${itemsRows}
+          ${emptyRowsHTML}
         </tbody>
       </table>
 
-      <div class="totales">
-        <div class="total-row">
-          <span>Base Imponible:</span>
-          <span>€${factura.subtotal.toFixed(2)}</span>
-        </div>
-        <div class="total-row">
-          <span>IVA (21%):</span>
-          <span>€${factura.iva.toFixed(2)}</span>
-        </div>
-        <div class="total-row total-final">
-          <span>TOTAL:</span>
-          <span>€${factura.total.toFixed(2)}</span>
-        </div>
+      <!-- OBSERVACIONES -->
+      <div class="observaciones">
+        Observaciones:
       </div>
 
-      <div class="footer">
-        <p>Documento generado el ${format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: es })}</p>
-        <p>${nombreLocal}${cifLocal ? ` - CIF: ${cifLocal}` : ''}</p>
+      <!-- FOOTER TOTALS -->
+      <div class="footer-totals">
+        <table class="desglose-table">
+          <thead>
+            <tr>
+              <th>NETO</th>
+              <th></th>
+              <th>IVA</th>
+              <th>REC. EQUIV.</th>
+              <th></th>
+              <th>IRPF</th>
+              <th></th>
+              <th>IMPORTES</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>${factura.subtotal.toFixed(2)}</td>
+              <td>21%</td>
+              <td>${factura.iva.toFixed(2)}</td>
+              <td></td>
+              <td>0 %</td>
+              <td></td>
+              <td>0,00</td>
+              <td>${factura.total.toFixed(2)} €</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="total-box">
+          <div class="total-header">EUROS</div>
+          <div class="total-row">
+            <div class="total-label">TOTAL</div>
+            <div class="total-value">${factura.total.toFixed(2)} €</div>
+          </div>
+        </div>
       </div>
     </body>
     </html>
