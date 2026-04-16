@@ -52,22 +52,25 @@ export async function PUT(
     console.log('Fecha original del ticket:', fechaOriginal.toISOString())
     console.log('Año para la factura:', año)
     
-    const ultimaFactura = await prisma.factura.findFirst({
+    // Buscar el número más alto por el propio número (NO por createdAt)
+    // para garantizar secuencia correcta según normativa fiscal española
+    const facturasDelAño = await prisma.factura.findMany({
       where: { 
         numero: {
           startsWith: `${prefijo}-${año}-`
         }
       },
-      orderBy: { createdAt: 'desc' }
+      select: { numero: true }
     })
 
     let numeroSecuencia = 1
-    if (ultimaFactura) {
-      const partes = ultimaFactura.numero.split('-')
-      if (partes.length === 3 && partes[0] === prefijo) {
-        const ultimoNumero = parseInt(partes[2]) || 0
-        numeroSecuencia = ultimoNumero + 1
-      }
+    if (facturasDelAño.length > 0) {
+      const numeros = facturasDelAño.map((d: any) => {
+        const partes = d.numero.split('-')
+        return partes.length === 3 ? (parseInt(partes[2]) || 0) : 0
+      })
+      const maxNumero = Math.max(...numeros)
+      numeroSecuencia = maxNumero + 1
     }
 
     const numeroFactura = `${prefijo}-${año}-${numeroSecuencia.toString().padStart(4, '0')}`
@@ -78,49 +81,11 @@ export async function PUT(
     const body = await request.json().catch(() => ({}))
     const { datosFacturacion } = body
 
-    // Determinar la fecha de la factura
-    // Buscar si hay facturas con fecha posterior al ticket en el mismo año
-    const fechaTicket = new Date(documentoActual.createdAt)
-    
-    const facturasPosteriores = await prisma.factura.findMany({
-      where: {
-        tipo: 'FACTURA',
-        createdAt: {
-          gt: fechaTicket // Facturas con fecha posterior al ticket
-        },
-        numero: {
-          startsWith: `FAC-${año}-` // Del mismo ejercicio
-        }
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 1
-    })
-
-    let fechaFactura: Date
-    
-    if (facturasPosteriores.length === 0) {
-      // No hay facturas posteriores, usar la fecha original del ticket
-      fechaFactura = fechaTicket
-      console.log('No hay facturas posteriores, usando fecha del ticket:', fechaFactura.toISOString())
-    } else {
-      // Hay facturas posteriores, la nueva debe ir justo después de la última factura del ejercicio
-      const ultimaFacturaDelAño = await prisma.factura.findFirst({
-        where: {
-          tipo: 'FACTURA',
-          numero: { startsWith: `FAC-${año}-` }
-        },
-        orderBy: { createdAt: 'desc' }
-      })
-      
-      if (ultimaFacturaDelAño) {
-        // Poner fecha 1 segundo después de la última factura
-        fechaFactura = new Date(ultimaFacturaDelAño.createdAt)
-        fechaFactura.setSeconds(fechaFactura.getSeconds() + 1)
-        console.log('Hay facturas posteriores, usando fecha después de la última:', fechaFactura.toISOString())
-      } else {
-        fechaFactura = fechaTicket
-      }
-    }
+    // La fecha de la factura convertida es HOY (fecha de emisión real)
+    // La normativa fiscal española exige que la fecha sea la de emisión,
+    // y el número debe ser correlativo con la fecha
+    const fechaFactura = new Date()
+    console.log('Fecha de la factura (hoy):', fechaFactura.toISOString())
 
     // Actualizar el documento a FACTURA
     const facturaConvertida = await prisma.factura.update({
@@ -129,6 +94,7 @@ export async function PUT(
         tipo: 'FACTURA',
         numero: numeroFactura,
         datosFacturacion: datosFacturacion || documentoActual.datosFacturacion,
+        fecha: fechaFactura,
         createdAt: fechaFactura,
       },
       include: {
