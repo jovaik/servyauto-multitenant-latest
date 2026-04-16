@@ -373,22 +373,25 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       // Generar número de documento
       const año = new Date().getFullYear()
       
-      const ultimoDocumento = await prisma.factura.findFirst({
+      // Buscar el número más alto por orden del propio número (NO por createdAt)
+      // para garantizar secuencia correcta según normativa fiscal española
+      const documentosDelAño = await prisma.factura.findMany({
         where: { 
           numero: {
             startsWith: `${prefijo}-${año}-`
           }
         },
-        orderBy: { createdAt: 'desc' }
+        select: { numero: true }
       })
 
       let numeroSecuencia = 1
-      if (ultimoDocumento) {
-        const partes = ultimoDocumento.numero.split('-')
-        if (partes.length === 3 && partes[0] === prefijo) {
-          const ultimoNumero = parseInt(partes[2]) || 0
-          numeroSecuencia = ultimoNumero + 1
-        }
+      if (documentosDelAño.length > 0) {
+        const numeros = documentosDelAño.map((d: any) => {
+          const partes = d.numero.split('-')
+          return partes.length === 3 ? (parseInt(partes[2]) || 0) : 0
+        })
+        const maxNumero = Math.max(...numeros)
+        numeroSecuencia = maxNumero + 1
       }
 
       const numeroDocumento = `${prefijo}-${año}-${numeroSecuencia.toString().padStart(4, '0')}`
