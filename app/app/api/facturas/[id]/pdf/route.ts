@@ -199,23 +199,23 @@ function generateTicketHTML(factura: any, local: any, items: any[]): string {
   `
 }
 
-// Generar HTML para FACTURA (formato A4 profesional)
+// Generar HTML para FACTURA (formato corporativo ServyAuto - réplica exacta)
 function generateFacturaHTML(factura: any, local: any, items: any[]): string {
   const formatMetodoPago = (metodoPago: string) => {
     const metodos: { [key: string]: string } = {
       'EFECTIVO': 'Efectivo',
-      'TPV_SUMUP': 'Tarjeta (TPV)',
-      'TPV_UNICAJA': 'Tarjeta (TPV)',
+      'TPV_SUMUP': 'Tarjeta (TPV SumUp)',
+      'TPV_UNICAJA': 'Tarjeta (TPV Unicaja)',
     }
     return metodos[metodoPago] || metodoPago
   }
 
-  // Datos del emisor (local)
-  const nombreEmisor = local?.razonSocial || local?.nombre || 'SERVYAUTO'
-  const cifEmisor = local?.cifNif || ''
-  const direccionEmisor = local?.direccionFiscal || local?.direccion || ''
-  const cpCiudadEmisor = [local?.codigoPostalFiscal, local?.ciudadFiscal].filter(Boolean).join(' ')
-  const telefonoEmisor = local?.telefono || ''
+  // Datos fiscales del emisor (FIJOS - propietario del negocio)
+  const emisorNombre = 'JOSE M. MILLAN FERN\u00c1NDEZ'
+  const emisorCif = '54322040L'
+  const emisorDireccion = 'AVDA ARIAS MALDONADO S/N PARKING OCCIDENTAL -1'
+  const emisorCpCiudad = '29602 - MARBELLA (MALAGA)'
+  const emisorTelefono = '610543228'
 
   // Datos de facturación del cliente
   let datosFacturacion: any = {}
@@ -228,29 +228,34 @@ function generateFacturaHTML(factura: any, local: any, items: any[]): string {
   const clienteNombre = datosFacturacion.razonSocial || `${factura.cliente?.nombre || ''} ${factura.cliente?.apellido || ''}`.trim()
   const clienteNif = datosFacturacion.nifCif || factura.cliente?.documento || ''
   const clienteDireccion = datosFacturacion.direccion || factura.cliente?.direccion || ''
-  const clienteCpCiudad = [datosFacturacion.codigoPostal, datosFacturacion.ciudad].filter(Boolean).join(' ')
+  const clienteCp = datosFacturacion.codigoPostal || ''
+  const clienteCiudad = datosFacturacion.ciudad || ''
   const clienteTelefono = factura.cliente?.telefono || ''
 
-  // Filas de items
+  const fechaFactura = format(new Date(factura.fecha), 'dd-MM-yyyy', { locale: es })
+
+  // Filas de items con columna IVA
   const itemsRows = items.length > 0 
-    ? items.map((item: any) => `
-        <tr>
-          <td style="padding:10px 12px;border-bottom:1px solid #eee;font-size:13px;">${item.descripcion}</td>
-          <td style="padding:10px 12px;border-bottom:1px solid #eee;text-align:center;font-size:13px;">${item.cantidad}</td>
-          <td style="padding:10px 12px;border-bottom:1px solid #eee;text-align:right;font-size:13px;">${item.precio.toFixed(2)} &euro;</td>
-          <td style="padding:10px 12px;border-bottom:1px solid #eee;text-align:right;font-size:13px;font-weight:600;">${item.total.toFixed(2)} &euro;</td>
-        </tr>
-      `).join('')
+    ? items.map((item: any) => {
+        const precioNeto = item.precio / 1.21
+        return `<tr>
+          <td style="padding:5px 8px;border-bottom:1px solid #ddd;font-size:11px;">${item.descripcion}</td>
+          <td style="padding:5px 8px;border-bottom:1px solid #ddd;text-align:center;font-size:11px;">${item.cantidad}</td>
+          <td style="padding:5px 8px;border-bottom:1px solid #ddd;text-align:right;font-size:11px;">${precioNeto.toFixed(2)} &euro;</td>
+          <td style="padding:5px 8px;border-bottom:1px solid #ddd;text-align:center;font-size:11px;">21,0%</td>
+          <td style="padding:5px 8px;border-bottom:1px solid #ddd;text-align:right;font-size:11px;font-weight:600;">${item.total.toFixed(2)} &euro;</td>
+        </tr>`
+      }).join('')
     : `<tr>
-        <td style="padding:10px 12px;border-bottom:1px solid #eee;font-size:13px;">Servicio de lavado</td>
-        <td style="padding:10px 12px;border-bottom:1px solid #eee;text-align:center;font-size:13px;">1</td>
-        <td style="padding:10px 12px;border-bottom:1px solid #eee;text-align:right;font-size:13px;">${factura.subtotal.toFixed(2)} &euro;</td>
-        <td style="padding:10px 12px;border-bottom:1px solid #eee;text-align:right;font-size:13px;font-weight:600;">${factura.subtotal.toFixed(2)} &euro;</td>
+        <td style="padding:5px 8px;border-bottom:1px solid #ddd;font-size:11px;">Servicio de lavado</td>
+        <td style="padding:5px 8px;border-bottom:1px solid #ddd;text-align:center;font-size:11px;">1</td>
+        <td style="padding:5px 8px;border-bottom:1px solid #ddd;text-align:right;font-size:11px;">${factura.subtotal.toFixed(2)} &euro;</td>
+        <td style="padding:5px 8px;border-bottom:1px solid #ddd;text-align:center;font-size:11px;">21,0%</td>
+        <td style="padding:5px 8px;border-bottom:1px solid #ddd;text-align:right;font-size:11px;font-weight:600;">${factura.total.toFixed(2)} &euro;</td>
       </tr>`
 
-  // Separar items de descuento de items normales para estilo diferente  
-  const fechaFactura = format(new Date(factura.fecha), 'dd/MM/yyyy', { locale: es })
-  const fechaPago = factura.fechaPago ? format(new Date(factura.fechaPago), 'dd/MM/yyyy', { locale: es }) : ''
+  const naranja = '#F5A623'
+  const naranjaOscuro = '#E8961E'
 
   return `<!DOCTYPE html>
 <html>
@@ -258,115 +263,147 @@ function generateFacturaHTML(factura: any, local: any, items: any[]): string {
   <meta charset="UTF-8">
   <title>Factura ${factura.numero}</title>
 </head>
-<body style="margin:0;padding:0;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;color:#1a1a2e;background:#fff;">
-  <div style="max-width:210mm;margin:0 auto;padding:20mm 18mm 15mm 18mm;">
-    
-    <!-- CABECERA -->
-    <table style="width:100%;border-collapse:collapse;margin-bottom:8mm;">
+<body style="margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;color:#000;background:#fff;">
+  <div style="max-width:210mm;margin:0 auto;padding:12mm 15mm 10mm 15mm;">
+
+    <!-- FILA SUPERIOR: EMISOR + FACTURA Nº -->
+    <table style="width:100%;border-collapse:collapse;margin-bottom:0;">
       <tr>
-        <td style="vertical-align:top;width:55%;">
-          <div style="font-size:26px;font-weight:800;color:#0f172a;letter-spacing:-0.5px;margin-bottom:4px;">${nombreEmisor}</div>
-          <div style="font-size:11px;color:#64748b;line-height:1.6;">
-            ${cifEmisor ? `CIF: ${cifEmisor}<br>` : ''}${direccionEmisor ? `${direccionEmisor}<br>` : ''}${cpCiudadEmisor ? `${cpCiudadEmisor}<br>` : ''}${telefonoEmisor ? `Tel: ${telefonoEmisor}` : ''}
+        <!-- DATOS EMISOR (fondo naranja) -->
+        <td style="vertical-align:top;width:60%;background:${naranja};padding:10px 14px;border:2px solid ${naranjaOscuro};">
+          <div style="font-size:14px;font-weight:bold;color:#000;">${emisorNombre}</div>
+          <div style="font-size:10px;color:#000;line-height:1.5;margin-top:2px;">
+            CIF/NIF: ${emisorCif}<br>
+            ${emisorDireccion}<br>
+            ${emisorCpCiudad}<br>
+            Tel&eacute;fono: ${emisorTelefono}
           </div>
         </td>
-        <td style="vertical-align:top;text-align:right;">
-          <div style="font-size:32px;font-weight:800;color:#0f172a;letter-spacing:1px;margin-bottom:6px;">FACTURA</div>
-          <table style="margin-left:auto;border-collapse:collapse;">
+        <!-- FACTURA Nº -->
+        <td style="vertical-align:top;width:40%;padding-left:8px;">
+          <table style="width:100%;border-collapse:collapse;border:2px solid ${naranjaOscuro};">
             <tr>
-              <td style="padding:3px 10px 3px 0;font-size:11px;color:#64748b;text-align:right;">N&ordm; Factura:</td>
-              <td style="padding:3px 0;font-size:12px;font-weight:700;color:#0f172a;">${factura.numero}</td>
-            </tr>
-            <tr>
-              <td style="padding:3px 10px 3px 0;font-size:11px;color:#64748b;text-align:right;">Fecha:</td>
-              <td style="padding:3px 0;font-size:12px;font-weight:600;color:#0f172a;">${fechaFactura}</td>
-            </tr>
-            <tr>
-              <td style="padding:3px 10px 3px 0;font-size:11px;color:#64748b;text-align:right;">Estado:</td>
-              <td style="padding:3px 0;">
-                ${factura.estado === 'PAGADA' 
-                  ? '<span style="display:inline-block;background:#059669;color:#fff;padding:2px 10px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:0.5px;">PAGADA</span>' 
-                  : `<span style="display:inline-block;background:#f59e0b;color:#fff;padding:2px 10px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:0.5px;">${factura.estado || 'PENDIENTE'}</span>`}
+              <td colspan="2" style="background:${naranja};padding:6px 10px;font-size:14px;font-weight:bold;text-align:center;border-bottom:2px solid ${naranjaOscuro};">
+                FACTURA N&ordm;: ${factura.numero}
               </td>
+            </tr>
+            <tr>
+              <td style="padding:4px 10px;font-size:10px;font-weight:bold;text-align:center;border-right:1px solid #ccc;border-bottom:1px solid #ccc;width:50%;">P&Aacute;GINA</td>
+              <td style="padding:4px 10px;font-size:10px;font-weight:bold;text-align:center;border-bottom:1px solid #ccc;">FECHA</td>
+            </tr>
+            <tr>
+              <td style="padding:4px 10px;font-size:11px;text-align:center;border-right:1px solid #ccc;">1/1</td>
+              <td style="padding:4px 10px;font-size:11px;text-align:center;">${fechaFactura}</td>
             </tr>
           </table>
         </td>
       </tr>
     </table>
 
-    <!-- LÍNEA SEPARADORA -->
-    <div style="height:3px;background:linear-gradient(90deg,#0f172a 0%,#334155 50%,#94a3b8 100%);border-radius:2px;margin-bottom:8mm;"></div>
-
-    <!-- DATOS CLIENTE + PAGO -->
-    <table style="width:100%;border-collapse:collapse;margin-bottom:8mm;">
+    <!-- FILA: LOGO + CLIENTE -->
+    <table style="width:100%;border-collapse:collapse;margin-top:6px;">
       <tr>
-        <td style="vertical-align:top;width:55%;padding-right:10mm;">
-          <div style="font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:4px;">Facturar a</div>
-          <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:12px 14px;">
-            <div style="font-size:14px;font-weight:700;color:#0f172a;margin-bottom:3px;">${clienteNombre || 'Cliente'}</div>
-            ${clienteNif ? `<div style="font-size:11px;color:#475569;margin-bottom:2px;">NIF/CIF: ${clienteNif}</div>` : ''}
-            ${clienteDireccion ? `<div style="font-size:11px;color:#475569;margin-bottom:2px;">${clienteDireccion}</div>` : ''}
-            ${clienteCpCiudad ? `<div style="font-size:11px;color:#475569;margin-bottom:2px;">${clienteCpCiudad}</div>` : ''}
-            ${clienteTelefono ? `<div style="font-size:11px;color:#475569;">Tel: ${clienteTelefono}</div>` : ''}
+        <!-- LOGO SERVYAUTO -->
+        <td style="vertical-align:middle;width:60%;padding-right:8px;">
+          <div style="background:${naranja};padding:12px 20px;text-align:center;border:2px solid ${naranjaOscuro};">
+            <div style="font-size:28px;font-weight:900;color:#000;letter-spacing:2px;font-family:Arial Black,Arial,sans-serif;">SERVY<span style="color:#cc0000;">AUTO</span></div>
+            <div style="font-size:10px;color:#000;margin-top:2px;font-style:italic;">servicios del autom&oacute;vil</div>
+          </div>
+          <div style="margin-top:6px;font-size:10px;">
+            Email: <a href="mailto:info@servyauto.com" style="color:#0066cc;">info@servyauto.com</a>
           </div>
         </td>
-        <td style="vertical-align:top;">
-          <div style="font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:4px;">Informaci&oacute;n de pago</div>
-          <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:12px 14px;">
-            <div style="font-size:12px;color:#475569;margin-bottom:4px;"><span style="color:#94a3b8;">Forma de pago:</span> <strong style="color:#0f172a;">${formatMetodoPago(factura.metodoPago || 'EFECTIVO')}</strong></div>
-            ${fechaPago ? `<div style="font-size:12px;color:#475569;"><span style="color:#94a3b8;">Fecha de pago:</span> <strong style="color:#0f172a;">${fechaPago}</strong></div>` : ''}
-          </div>
+        <!-- DATOS CLIENTE -->
+        <td style="vertical-align:top;width:40%;">
+          <table style="width:100%;border-collapse:collapse;border:2px solid ${naranjaOscuro};">
+            <tr>
+              <td style="background:${naranja};padding:4px 10px;font-size:10px;font-weight:bold;text-align:center;border-bottom:2px solid ${naranjaOscuro};">CLIENTE</td>
+            </tr>
+            <tr>
+              <td style="padding:8px 10px;font-size:10px;line-height:1.5;">
+                <strong>${clienteNombre || 'Cliente particular'}</strong><br>
+                ${clienteNif ? `CIF/NIF: ${clienteNif}<br>` : ''}${clienteDireccion ? `${clienteDireccion}<br>` : ''}${clienteCp ? `${clienteCp}<br>` : ''}${clienteCiudad ? `${clienteCiudad}<br>` : ''}${clienteTelefono ? `Telef: ${clienteTelefono}` : ''}
+              </td>
+            </tr>
+          </table>
+          <!-- FORMA DE PAGO -->
+          <table style="width:100%;border-collapse:collapse;border:2px solid ${naranjaOscuro};margin-top:6px;">
+            <tr>
+              <td style="background:${naranja};padding:4px 10px;font-size:10px;font-weight:bold;text-align:center;border-bottom:2px solid ${naranjaOscuro};">FORMA DE PAGO</td>
+            </tr>
+            <tr>
+              <td style="padding:8px 10px;font-size:10px;">${formatMetodoPago(factura.metodoPago || 'EFECTIVO')}</td>
+            </tr>
+          </table>
         </td>
       </tr>
     </table>
 
     <!-- TABLA DE CONCEPTOS -->
-    <table style="width:100%;border-collapse:collapse;margin-bottom:6mm;">
+    <table style="width:100%;border-collapse:collapse;margin-top:10px;border:2px solid ${naranjaOscuro};">
       <thead>
-        <tr>
-          <th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:700;color:#fff;background:#1e293b;text-transform:uppercase;letter-spacing:0.8px;border-radius:6px 0 0 0;">Descripci&oacute;n</th>
-          <th style="padding:10px 12px;text-align:center;font-size:10px;font-weight:700;color:#fff;background:#1e293b;text-transform:uppercase;letter-spacing:0.8px;width:12%;">Uds.</th>
-          <th style="padding:10px 12px;text-align:right;font-size:10px;font-weight:700;color:#fff;background:#1e293b;text-transform:uppercase;letter-spacing:0.8px;width:18%;">Precio Unit.</th>
-          <th style="padding:10px 12px;text-align:right;font-size:10px;font-weight:700;color:#fff;background:#1e293b;text-transform:uppercase;letter-spacing:0.8px;width:18%;border-radius:0 6px 0 0;">Importe</th>
+        <tr style="background:${naranja};">
+          <th style="padding:6px 8px;text-align:left;font-size:10px;font-weight:bold;border-right:1px solid ${naranjaOscuro};">DESCRIPCI&Oacute;N</th>
+          <th style="padding:6px 8px;text-align:center;font-size:10px;font-weight:bold;border-right:1px solid ${naranjaOscuro};width:8%;">CANT</th>
+          <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:bold;border-right:1px solid ${naranjaOscuro};width:14%;">PRECIO</th>
+          <th style="padding:6px 8px;text-align:center;font-size:10px;font-weight:bold;border-right:1px solid ${naranjaOscuro};width:10%;">IVA</th>
+          <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:bold;width:14%;">IMPORTE</th>
         </tr>
       </thead>
       <tbody>
         ${itemsRows}
+        <!-- Filas vacías para mantener estructura -->
+        <tr><td colspan="5" style="padding:40px 8px;border-bottom:1px solid #ddd;">&nbsp;</td></tr>
       </tbody>
     </table>
 
-    <!-- TOTALES -->
-    <table style="width:100%;border-collapse:collapse;margin-bottom:10mm;">
-      <tr>
-        <td style="width:55%;vertical-align:top;"></td>
-        <td style="vertical-align:top;">
-          <table style="width:100%;border-collapse:collapse;">
-            <tr>
-              <td style="padding:6px 12px;font-size:12px;color:#64748b;">Base Imponible</td>
-              <td style="padding:6px 12px;font-size:12px;text-align:right;color:#0f172a;font-weight:600;">${factura.subtotal.toFixed(2)} &euro;</td>
-            </tr>
-            <tr>
-              <td style="padding:6px 12px;font-size:12px;color:#64748b;border-bottom:1px solid #e2e8f0;">IVA (21%)</td>
-              <td style="padding:6px 12px;font-size:12px;text-align:right;color:#0f172a;font-weight:600;border-bottom:1px solid #e2e8f0;">${factura.iva.toFixed(2)} &euro;</td>
-            </tr>
-            <tr>
-              <td style="padding:10px 12px;font-size:16px;font-weight:800;color:#0f172a;">TOTAL</td>
-              <td style="padding:10px 12px;font-size:16px;font-weight:800;text-align:right;color:#0f172a;">${factura.total.toFixed(2)} &euro;</td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    </table>
-
-    <!-- PIE DE FACTURA -->
-    <div style="border-top:2px solid #e2e8f0;padding-top:6mm;text-align:center;">
-      <div style="font-size:10px;color:#94a3b8;line-height:1.6;">
-        ${nombreEmisor}${cifEmisor ? ` &bull; CIF: ${cifEmisor}` : ''}${direccionEmisor ? ` &bull; ${direccionEmisor}` : ''}${cpCiudadEmisor ? ` &bull; ${cpCiudadEmisor}` : ''}
-      </div>
-      <div style="font-size:9px;color:#cbd5e1;margin-top:3px;">
-        Documento generado el ${format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: es })}
-      </div>
+    <!-- OBSERVACIONES -->
+    <div style="margin-top:8px;font-size:10px;font-weight:bold;">Observaciones:</div>
+    <div style="border-bottom:1px solid #ccc;min-height:20px;margin-bottom:10px;font-size:10px;padding:4px 0;">
+      ${factura.observaciones || ''}
     </div>
+
+    <!-- TOTALES (formato corporativo) -->
+    <table style="width:100%;border-collapse:collapse;border:2px solid ${naranjaOscuro};">
+      <thead>
+        <tr style="background:${naranja};">
+          <th style="padding:5px 8px;font-size:9px;font-weight:bold;text-align:center;border-right:1px solid ${naranjaOscuro};">NETO</th>
+          <th style="padding:5px 8px;font-size:9px;font-weight:bold;text-align:center;border-right:1px solid ${naranjaOscuro};">IVA</th>
+          <th style="padding:5px 8px;font-size:9px;font-weight:bold;text-align:center;border-right:1px solid ${naranjaOscuro};">REC. EQUIV.</th>
+          <th style="padding:5px 8px;font-size:9px;font-weight:bold;text-align:center;border-right:1px solid ${naranjaOscuro};">IRPF</th>
+          <th style="padding:5px 8px;font-size:9px;font-weight:bold;text-align:center;border-right:1px solid ${naranjaOscuro};">IMPORTES</th>
+          <th style="padding:5px 8px;font-size:9px;font-weight:bold;text-align:center;">EUROS</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="padding:6px 8px;font-size:10px;text-align:center;border-right:1px solid #ccc;">
+            ${factura.subtotal.toFixed(2)}&euro; 21%
+          </td>
+          <td style="padding:6px 8px;font-size:10px;text-align:center;border-right:1px solid #ccc;">
+            ${factura.iva.toFixed(2)}&euro;
+          </td>
+          <td style="padding:6px 8px;font-size:10px;text-align:center;border-right:1px solid #ccc;">
+            &nbsp;
+          </td>
+          <td style="padding:6px 8px;font-size:10px;text-align:center;border-right:1px solid #ccc;">
+            0%
+          </td>
+          <td style="padding:6px 8px;font-size:10px;text-align:center;border-right:1px solid #ccc;">
+            0,00 &euro;
+          </td>
+          <td style="padding:6px 8px;text-align:center;border-right:1px solid #ccc;">
+            <div style="font-size:9px;font-weight:bold;">TOTAL</div>
+          </td>
+        </tr>
+        <tr>
+          <td colspan="5" style="border-top:1px solid #ccc;"></td>
+          <td style="padding:6px 8px;font-size:13px;font-weight:bold;text-align:center;border-top:1px solid #ccc;border-left:1px solid #ccc;">
+            ${factura.total.toFixed(2)} &euro;
+          </td>
+        </tr>
+      </tbody>
+    </table>
 
   </div>
 </body>
