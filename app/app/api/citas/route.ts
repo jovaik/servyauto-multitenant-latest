@@ -100,10 +100,13 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Validar disponibilidad de tickets si se solicitan
+    // Validar disponibilidad de tickets si se solicitan (por local)
     const ticketsASolicitar = parseInt(ticketsUsados) || 0
+    const localContextTickets = await getLocalContext()
+    const localIdTickets = localContextTickets ? getLocalIdForCreate(localContextTickets) : null
     if (ticketsASolicitar > 0) {
       const ultimoMovimiento = await prisma.inventarioTickets.findFirst({
+        where: localIdTickets ? { localId: localIdTickets } : {},
         orderBy: {
           createdAt: 'desc'
         }
@@ -113,7 +116,7 @@ export async function POST(req: NextRequest) {
       
       if (saldoActual < ticketsASolicitar) {
         return NextResponse.json(
-          { error: `No hay suficientes tickets disponibles. Saldo actual: ${saldoActual}` },
+          { error: `No hay suficientes tickets disponibles en este local. Saldo actual: ${saldoActual}` },
           { status: 400 }
         )
       }
@@ -272,9 +275,11 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    // Registrar el consumo de tickets en el inventario
+    // Registrar el consumo de tickets en el inventario (por local)
     if (ticketsASolicitar > 0) {
+      const localIdConsumo = cita.localId || localIdTickets || null
       const ultimoMovimiento = await prisma.inventarioTickets.findFirst({
+        where: localIdConsumo ? { localId: localIdConsumo } : {},
         orderBy: {
           createdAt: 'desc'
         }
@@ -291,7 +296,8 @@ export async function POST(req: NextRequest) {
           saldoActual: saldoNuevo,
           concepto: `Tickets entregados en cita #${cita.id.substring(0, 8)}`,
           usuarioId: (session.user as any).id || null,
-          citaId: cita.id
+          citaId: cita.id,
+          localId: localIdConsumo
         }
       })
     }

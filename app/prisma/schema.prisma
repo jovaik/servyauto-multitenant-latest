@@ -85,6 +85,7 @@ model Local {
   sumupTransactions   SumUpTransaction[]
   usuariosAsignados   UserLocal[]
   vehiculos           Vehiculo[]
+  inventarioTickets   InventarioTickets[] @relation("TicketsLocal")
 
   @@map("locales")
 }
@@ -361,6 +362,8 @@ model InventarioTickets {
   concepto      String?
   usuarioId     String?
   citaId        String?
+  localId       String?
+  local         Local?               @relation("TicketsLocal", fields: [localId], references: [id])
   createdAt     DateTime             @default(now())
   updatedAt     DateTime             @updatedAt
 
