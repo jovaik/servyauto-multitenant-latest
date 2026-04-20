@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/dialog'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { useLocalStore } from '@/lib/local-store'
 
 interface MovimientoTicket {
   id: string
@@ -66,10 +67,11 @@ export function TicketsView() {
   const [cantidadCompra, setCantidadCompra] = useState('')
   const [conceptoCompra, setConceptoCompra] = useState('')
   const [procesando, setProcesando] = useState(false)
+  const selectedLocalId = useLocalStore((s) => s.selectedLocalId)
 
   useEffect(() => {
     loadData()
-  }, [])
+  }, [selectedLocalId])
 
   const loadData = async () => {
     try {
@@ -95,7 +97,7 @@ export function TicketsView() {
 
   const handleCompra = async () => {
     if (!cantidadCompra || parseInt(cantidadCompra) <= 0) {
-      alert('Por favor ingresa una cantidad v\u00e1lida')
+      alert('Por favor ingresa una cantidad válida')
       return
     }
 
@@ -168,7 +170,7 @@ export function TicketsView() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight flex items-center">
             <Ticket className="mr-3 h-8 w-8" />
-            Gesti\u00f3n de Tickets de Parking
+            Gestión de Tickets de Parking
           </h1>
           <p className="text-gray-600">
             Control de inventario de tickets de descuento del parking por local
@@ -186,7 +188,7 @@ export function TicketsView() {
             <DialogHeader>
               <DialogTitle>Registrar Compra de Tickets</DialogTitle>
               <DialogDescription>
-                A\u00f1ade tickets nuevos al inventario del local seleccionado
+                Añade tickets nuevos al inventario del local seleccionado
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
@@ -211,7 +213,7 @@ export function TicketsView() {
                 />
               </div>
               <p className="text-sm text-gray-500">
-                \u2139\ufe0f Los tickets se registrar\u00e1n en el local que tengas seleccionado arriba.
+                ℹ️ Los tickets se registrarán en el local que tengas seleccionado arriba.
               </p>
             </div>
             <DialogFooter>
@@ -238,14 +240,14 @@ export function TicketsView() {
       {stats.alertaBajo && (
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>\u00a1Alerta de Stock Bajo!</AlertTitle>
+          <AlertTitle>¡Alerta de Stock Bajo!</AlertTitle>
           <AlertDescription>
             Quedan {stats.saldoActual} tickets en total. Es recomendable realizar una nueva compra.
           </AlertDescription>
         </Alert>
       )}
 
-      {/* Estad\u00edsticas globales */}
+      {/* Estadísticas globales */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card>
           <CardHeader className="pb-3">
@@ -353,7 +355,7 @@ export function TicketsView() {
               <Ticket className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <p className="text-gray-600">No hay movimientos registrados</p>
               <p className="text-sm text-gray-500">
-                Los movimientos aparecer\u00e1n aqu\u00ed cuando se registren compras o se usen tickets
+                Los movimientos aparecerán aquí cuando se registren compras o se usen tickets
               </p>
             </div>
           ) : (
