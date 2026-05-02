@@ -4,7 +4,7 @@
 import React, { useState, useEffect } from 'react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { Calendar, Clock, User, Car, CreditCard, Settings } from 'lucide-react'
+import { Calendar, Clock, User, Car, CreditCard, Settings, ToggleLeft, ToggleRight } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -26,6 +26,15 @@ import {
 } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { 
+  detectVehicleCategory, 
+  getVehicleCategoryInfo, 
+  filterServicesByCategory,
+  CATEGORY_LABELS,
+  CATEGORY_EMOJIS,
+  CATEGORY_COLORS,
+  type VehicleCategory 
+} from '@/lib/vehicle-categories'
 
 interface Cliente {
   id: string
@@ -118,6 +127,10 @@ export function NuevaCitaDialog({
     clienteVIP: boolean, 
     clienteEmpresa: boolean 
   } | null>(null)
+
+  // Categoría de vehículo auto-detectada
+  const [categoriaVehiculo, setCategoriaVehiculo] = useState<VehicleCategory | null>(null)
+  const [modoManualServicios, setModoManualServicios] = useState(false)
 
   // Autocomplete de matrícula
   const [matriculaBusqueda, setMatriculaBusqueda] = useState('')
@@ -326,7 +339,8 @@ export function NuevaCitaDialog({
     setFormData(prev => ({
       ...prev,
       clienteId: vehiculo.cliente.id,
-      vehiculoId: vehiculo.id
+      vehiculoId: vehiculo.id,
+      servicios: [], // Reset servicios al cambiar vehículo
     }))
     
     setClienteSeleccionadoInfo({ 
@@ -334,10 +348,20 @@ export function NuevaCitaDialog({
       clienteVIP: vehiculo.cliente.clienteVIP || false,
       clienteEmpresa: vehiculo.cliente.clienteEmpresa || false
     })
+
+    // Auto-detectar categoría del vehículo
+    const cat = detectVehicleCategory(vehiculo.marca, vehiculo.modelo)
+    setCategoriaVehiculo(cat)
+    setModoManualServicios(false)
+    if (cat) {
+      console.log(`🚗 Categoría detectada: ${vehiculo.marca} ${vehiculo.modelo} → ${CATEGORY_LABELS[cat]}`)
+    }
     
     toast({
       title: "¡Vehículo seleccionado!",
-      description: `${vehiculo.marca} ${vehiculo.modelo} - ${vehiculo.matricula}`
+      description: cat 
+        ? `${vehiculo.marca} ${vehiculo.modelo} - ${vehiculo.matricula} → ${CATEGORY_EMOJIS[cat]} ${CATEGORY_LABELS[cat]}`
+        : `${vehiculo.marca} ${vehiculo.modelo} - ${vehiculo.matricula}`
     })
     
     // Limpiar búsqueda y ocultar resultados
@@ -922,13 +946,16 @@ export function NuevaCitaDialog({
                 </div>
                 
                 {!showNewCliente ? (
-                  <Select value={formData.clienteId || ""} onValueChange={(value) => 
+                  <Select value={formData.clienteId || ""} onValueChange={(value) => {
                     setFormData(prev => ({ 
                       ...prev, 
                       clienteId: value, 
-                      vehiculoId: "" 
+                      vehiculoId: "",
+                      servicios: [],
                     }))
-                  }>
+                    setCategoriaVehiculo(null)
+                    setModoManualServicios(false)
+                  }}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecciona un cliente" />
                     </SelectTrigger>
@@ -1134,9 +1161,16 @@ export function NuevaCitaDialog({
                 
                 {!showNewVehiculo ? (
                   <>
-                    <Select value={formData.vehiculoId || ""} onValueChange={(value) => 
-                      setFormData(prev => ({ ...prev, vehiculoId: value }))
-                    }>
+                    <Select value={formData.vehiculoId || ""} onValueChange={(value) => {
+                      setFormData(prev => ({ ...prev, vehiculoId: value, servicios: [] }))
+                      // Auto-detectar categoría al seleccionar vehículo del dropdown
+                      const veh = getClienteVehiculos().find(v => v.id === value)
+                      if (veh) {
+                        const cat = detectVehicleCategory(veh.marca, veh.modelo)
+                        setCategoriaVehiculo(cat)
+                        setModoManualServicios(false)
+                      }
+                    }}>
                       <SelectTrigger>
                         <SelectValue placeholder={
                           !formData.clienteId 
@@ -1173,6 +1207,26 @@ export function NuevaCitaDialog({
                         ⚠️ Este cliente no tiene vehículos. Haz clic en "Nuevo Vehículo" para agregar uno.
                       </div>
                     )}
+                    {/* Badge de categoría auto-detectada */}
+                    {formData.vehiculoId && categoriaVehiculo && (
+                      <div className={`flex items-center gap-2 p-2 rounded-lg border ${CATEGORY_COLORS[categoriaVehiculo].bg} ${CATEGORY_COLORS[categoriaVehiculo].border}`}>
+                        <span className="text-lg">{CATEGORY_EMOJIS[categoriaVehiculo]}</span>
+                        <span className={`text-sm font-semibold ${CATEGORY_COLORS[categoriaVehiculo].text}`}>
+                          Categoría: {CATEGORY_LABELS[categoriaVehiculo]}
+                        </span>
+                        <span className={`text-xs ${CATEGORY_COLORS[categoriaVehiculo].text} opacity-75`}>
+                          (precio según tamaño)
+                        </span>
+                      </div>
+                    )}
+                    {formData.vehiculoId && !categoriaVehiculo && (
+                      <div className="flex items-center gap-2 p-2 rounded-lg border bg-yellow-50 border-yellow-300">
+                        <span className="text-lg">⚠️</span>
+                        <span className="text-sm font-medium text-yellow-800">
+                          Modelo no reconocido — selecciona los servicios manualmente
+                        </span>
+                      </div>
+                    )}
                   </>
                 ) : (
                   <div className="border rounded-lg p-4 space-y-3 bg-gray-50">
@@ -1181,7 +1235,13 @@ export function NuevaCitaDialog({
                         <Label>Marca *</Label>
                         <Input
                           value={newVehiculo.marca}
-                          onChange={(e) => setNewVehiculo(prev => ({ ...prev, marca: e.target.value.toUpperCase() }))}
+                          onChange={(e) => {
+                            const marca = e.target.value.toUpperCase()
+                            setNewVehiculo(prev => ({ ...prev, marca }))
+                            const cat = detectVehicleCategory(marca, newVehiculo.modelo)
+                            setCategoriaVehiculo(cat)
+                            if (cat) setModoManualServicios(false)
+                          }}
                           placeholder="MERCEDES"
                           required
                         />
@@ -1190,7 +1250,13 @@ export function NuevaCitaDialog({
                         <Label>Modelo *</Label>
                         <Input
                           value={newVehiculo.modelo}
-                          onChange={(e) => setNewVehiculo(prev => ({ ...prev, modelo: e.target.value.toUpperCase() }))}
+                          onChange={(e) => {
+                            const modelo = e.target.value.toUpperCase()
+                            setNewVehiculo(prev => ({ ...prev, modelo }))
+                            const cat = detectVehicleCategory(newVehiculo.marca, modelo)
+                            setCategoriaVehiculo(cat)
+                            if (cat) setModoManualServicios(false)
+                          }}
                           placeholder="GLE"
                           required
                         />
@@ -1217,6 +1283,20 @@ export function NuevaCitaDialog({
                         />
                       </div>
                     </div>
+                    {/* Badge de categoría para nuevo vehículo */}
+                    {newVehiculo.marca && newVehiculo.modelo && categoriaVehiculo && (
+                      <div className={`flex items-center gap-2 p-2 rounded-lg border ${CATEGORY_COLORS[categoriaVehiculo].bg} ${CATEGORY_COLORS[categoriaVehiculo].border}`}>
+                        <span className="text-lg">{CATEGORY_EMOJIS[categoriaVehiculo]}</span>
+                        <span className={`text-sm font-semibold ${CATEGORY_COLORS[categoriaVehiculo].text}`}>
+                          Categoría: {CATEGORY_LABELS[categoriaVehiculo]}
+                        </span>
+                      </div>
+                    )}
+                    {newVehiculo.marca && newVehiculo.modelo && !categoriaVehiculo && (
+                      <div className="flex items-center gap-2 p-2 rounded-lg border bg-yellow-50 border-yellow-300">
+                        <span className="text-sm text-yellow-800">⚠️ Modelo no reconocido — se podrá seleccionar servicio manualmente</span>
+                      </div>
+                    )}
                     <Button type="button" onClick={addNewVehiculo} size="sm" className="w-full">
                       Agregar Vehículo
                     </Button>
@@ -1226,11 +1306,43 @@ export function NuevaCitaDialog({
             </CardContent>
           </Card>
 
-          {/* Servicios */}
+          {/* Servicios - filtrados por categoría del vehículo */}
           <div className="space-y-2">
-            <Label>Servicios</Label>
-            <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto border rounded-lg p-3">
-              {servicios?.map((servicio) => (
+            <div className="flex items-center justify-between">
+              <Label>Servicios</Label>
+              {categoriaVehiculo && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setModoManualServicios(!modoManualServicios)
+                    setFormData(prev => ({ ...prev, servicios: [] }))
+                  }}
+                  className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                >
+                  {modoManualServicios ? (
+                    <ToggleRight className="h-4 w-4 text-orange-500" />
+                  ) : (
+                    <ToggleLeft className="h-4 w-4" />
+                  )}
+                  {modoManualServicios ? 'Modo manual (todos)' : 'Filtrado automático'}
+                </button>
+              )}
+            </div>
+            {categoriaVehiculo && !modoManualServicios && (
+              <div className={`text-xs px-2 py-1 rounded ${CATEGORY_COLORS[categoriaVehiculo].bg} ${CATEGORY_COLORS[categoriaVehiculo].text}`}>
+                {CATEGORY_EMOJIS[categoriaVehiculo]} Mostrando servicios para vehículo <strong>{CATEGORY_LABELS[categoriaVehiculo]}</strong>
+              </div>
+            )}
+            {modoManualServicios && (
+              <div className="text-xs px-2 py-1 rounded bg-orange-50 text-orange-700">
+                ⚠️ Modo manual: mostrando TODOS los servicios sin filtrar por tamaño
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto border rounded-lg p-3">
+              {((!categoriaVehiculo || modoManualServicios) 
+                ? servicios 
+                : filterServicesByCategory(servicios || [], categoriaVehiculo)
+              )?.map((servicio) => (
                 <label key={servicio.id} className="flex items-center space-x-2 cursor-pointer">
                   <input
                     type="checkbox"

@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { format } from 'date-fns'
-import { Calendar, Clock, User, Car, CreditCard, Trash2, Smartphone, Banknote, Building2 } from 'lucide-react'
+import { Calendar, Clock, User, Car, CreditCard, Trash2, Smartphone, Banknote, Building2, ToggleLeft, ToggleRight } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -28,11 +28,20 @@ import { useToast } from '@/hooks/use-toast'
 import { Cita, EstadoCita, MetodoPago } from '@/lib/types'
 import { Checkbox } from '@/components/ui/checkbox'
 import { CobrarSumUpDialog } from '@/components/cobrar-sumup-dialog'
+import { 
+  detectVehicleCategory, 
+  filterServicesByCategory,
+  CATEGORY_LABELS,
+  CATEGORY_EMOJIS,
+  CATEGORY_COLORS,
+  type VehicleCategory 
+} from '@/lib/vehicle-categories'
 
 interface Servicio {
   id: string
   nombre: string
   precio: number
+  duracion: number
   activo: boolean
 }
 
@@ -94,6 +103,8 @@ export function EditarCitaDialog({
   const [showSumUpDialog, setShowSumUpDialog] = useState(false)
   const [locales, setLocales] = useState<Local[]>([])
   const [localIdSeleccionado, setLocalIdSeleccionado] = useState<string>('')
+  const [categoriaVehiculo, setCategoriaVehiculo] = useState<VehicleCategory | null>(null)
+  const [modoManualServicios, setModoManualServicios] = useState(false)
   
   const [formData, setFormData] = useState({
     fecha: '',
@@ -165,6 +176,14 @@ export function EditarCitaDialog({
         
         // Establecer el local actual de la cita
         setLocalIdSeleccionado((cita as any).localId || '')
+
+        // Auto-detectar categoría del vehículo
+        if (cita.vehiculo?.marca && cita.vehiculo?.modelo) {
+          const cat = detectVehicleCategory(cita.vehiculo.marca, cita.vehiculo.modelo)
+          setCategoriaVehiculo(cat)
+          // Si ya tiene servicios seleccionados, activar modo manual para no perderlos
+          setModoManualServicios(true)
+        }
         
         // Cargar servicios asociados a la cita
         try {
@@ -440,11 +459,16 @@ export function EditarCitaDialog({
               {cita?.cliente?.nombre} {cita?.cliente?.apellido}
             </span>
           </div>
-          <div className="flex items-center">
+          <div className="flex items-center gap-2">
             <Car className="mr-2 h-4 w-4 text-gray-600" />
             <span>
               {cita?.vehiculo?.marca} {cita?.vehiculo?.modelo} - {cita?.vehiculo?.matricula}
             </span>
+            {categoriaVehiculo && (
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${CATEGORY_COLORS[categoriaVehiculo].bg} ${CATEGORY_COLORS[categoriaVehiculo].text}`}>
+                {CATEGORY_EMOJIS[categoriaVehiculo]} {CATEGORY_LABELS[categoriaVehiculo]}
+              </span>
+            )}
           </div>
           <div className="flex items-center">
             <Clock className="mr-2 h-4 w-4 text-gray-600" />
@@ -612,14 +636,38 @@ export function EditarCitaDialog({
             </div>
           )}
 
-          {/* Servicios */}
+          {/* Servicios - filtrados por categoría del vehículo */}
           <div className="space-y-2">
-            <Label>Servicios</Label>
+            <div className="flex items-center justify-between">
+              <Label>Servicios</Label>
+              {categoriaVehiculo && (
+                <button
+                  type="button"
+                  onClick={() => setModoManualServicios(!modoManualServicios)}
+                  className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                >
+                  {modoManualServicios ? (
+                    <ToggleRight className="h-4 w-4 text-orange-500" />
+                  ) : (
+                    <ToggleLeft className="h-4 w-4" />
+                  )}
+                  {modoManualServicios ? 'Manual (todos)' : 'Auto-filtrado'}
+                </button>
+              )}
+            </div>
+            {categoriaVehiculo && !modoManualServicios && (
+              <div className={`text-xs px-2 py-1 rounded ${CATEGORY_COLORS[categoriaVehiculo].bg} ${CATEGORY_COLORS[categoriaVehiculo].text}`}>
+                {CATEGORY_EMOJIS[categoriaVehiculo]} Filtrado para <strong>{CATEGORY_LABELS[categoriaVehiculo]}</strong>
+              </div>
+            )}
             <div className="border rounded-md p-3 space-y-2 max-h-48 overflow-y-auto">
               {servicios.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Cargando servicios...</p>
               ) : (
-                servicios.map((servicio) => (
+                ((!categoriaVehiculo || modoManualServicios)
+                  ? servicios
+                  : filterServicesByCategory(servicios, categoriaVehiculo)
+                ).map((servicio) => (
                   <div key={servicio.id} className="flex items-center space-x-2">
                     <Checkbox
                       id={`servicio-${servicio.id}`}
