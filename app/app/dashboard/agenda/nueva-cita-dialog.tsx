@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { VehicleBrandModelSelector } from '@/components/vehicle-brand-model-selector'
 import { 
   detectVehicleCategory, 
   getVehicleCategoryInfo, 
@@ -1230,38 +1231,17 @@ export function NuevaCitaDialog({
                   </>
                 ) : (
                   <div className="border rounded-lg p-4 space-y-3 bg-gray-50">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <Label>Marca *</Label>
-                        <Input
-                          value={newVehiculo.marca}
-                          onChange={(e) => {
-                            const marca = e.target.value.toUpperCase()
-                            setNewVehiculo(prev => ({ ...prev, marca }))
-                            const cat = detectVehicleCategory(marca, newVehiculo.modelo)
-                            setCategoriaVehiculo(cat)
-                            if (cat) setModoManualServicios(false)
-                          }}
-                          placeholder="MERCEDES"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <Label>Modelo *</Label>
-                        <Input
-                          value={newVehiculo.modelo}
-                          onChange={(e) => {
-                            const modelo = e.target.value.toUpperCase()
-                            setNewVehiculo(prev => ({ ...prev, modelo }))
-                            const cat = detectVehicleCategory(newVehiculo.marca, modelo)
-                            setCategoriaVehiculo(cat)
-                            if (cat) setModoManualServicios(false)
-                          }}
-                          placeholder="GLE"
-                          required
-                        />
-                      </div>
-                    </div>
+                    <VehicleBrandModelSelector
+                      marca={newVehiculo.marca}
+                      modelo={newVehiculo.modelo}
+                      onMarcaChange={(marca) => setNewVehiculo(prev => ({ ...prev, marca, modelo: marca !== prev.marca ? '' : prev.modelo }))}
+                      onModeloChange={(modelo) => setNewVehiculo(prev => ({ ...prev, modelo }))}
+                      onCategoryDetected={(cat) => {
+                        setCategoriaVehiculo(cat)
+                        if (cat) setModoManualServicios(false)
+                      }}
+                      compact
+                    />
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <Label>Matrícula *</Label>
@@ -1283,20 +1263,6 @@ export function NuevaCitaDialog({
                         />
                       </div>
                     </div>
-                    {/* Badge de categoría para nuevo vehículo */}
-                    {newVehiculo.marca && newVehiculo.modelo && categoriaVehiculo && (
-                      <div className={`flex items-center gap-2 p-2 rounded-lg border ${CATEGORY_COLORS[categoriaVehiculo].bg} ${CATEGORY_COLORS[categoriaVehiculo].border}`}>
-                        <span className="text-lg">{CATEGORY_EMOJIS[categoriaVehiculo]}</span>
-                        <span className={`text-sm font-semibold ${CATEGORY_COLORS[categoriaVehiculo].text}`}>
-                          Categoría: {CATEGORY_LABELS[categoriaVehiculo]}
-                        </span>
-                      </div>
-                    )}
-                    {newVehiculo.marca && newVehiculo.modelo && !categoriaVehiculo && (
-                      <div className="flex items-center gap-2 p-2 rounded-lg border bg-yellow-50 border-yellow-300">
-                        <span className="text-sm text-yellow-800">⚠️ Modelo no reconocido — se podrá seleccionar servicio manualmente</span>
-                      </div>
-                    )}
                     <Button type="button" onClick={addNewVehiculo} size="sm" className="w-full">
                       Agregar Vehículo
                     </Button>

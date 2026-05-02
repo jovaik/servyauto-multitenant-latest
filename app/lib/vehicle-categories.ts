@@ -879,27 +879,70 @@ export function filterServicesByCategory(
   })
 }
 
+// Marcas "limpias" para los desplegables (sin typos ni variantes con espacios)
+// IMPORTANTE: Solo las marcas canónicas. Los typos (HYUNDAY, MERCEDEA, etc.)
+// siguen funcionando para detección pero NO aparecen en los desplegables.
+const CANONICAL_BRANDS: string[] = [
+  'ABARTH', 'ALFA ROMEO', 'ASTON MARTIN', 'AUDI',
+  'BENTLEY', 'BMW',
+  'CHEVROLET', 'CITROEN', 'CUPRA',
+  'DACIA', 'DS',
+  'FERRARI', 'FIAT', 'FORD',
+  'HONDA', 'HYUNDAI',
+  'JAECOO', 'JAGUAR', 'JEEP',
+  'KIA',
+  'LAMBORGHINI', 'LAND ROVER', 'LEXUS', 'LINCOLN',
+  'MASERATI', 'MAZDA', 'MERCEDES', 'MG', 'MINI', 'MITSUBISHI',
+  'NISSAN',
+  'OPEL',
+  'PEUGEOT', 'PORSCHE',
+  'RANGE ROVER', 'RENAULT', 'ROLLS ROYCE',
+  'SEAT', 'SKODA', 'SMART', 'SUBARU', 'SUZUKI',
+  'TESLA', 'TOYOTA',
+  'VOLKSWAGEN', 'VOLVO', 'VW',
+]
+
 /**
- * Obtiene las marcas disponibles en la base de datos (para sugerencias)
+ * Obtiene las marcas disponibles para los desplegables.
+ * Lista limpia, sin typos ni duplicados.
  */
 export function getAvailableBrands(): string[] {
-  const brands = new Set<string>()
-  for (const key of Object.keys(VEHICLE_DATABASE)) {
-    brands.add(key.trim().toUpperCase())
-  }
-  return Array.from(brands).sort()
+  return [...CANONICAL_BRANDS].sort()
 }
 
 /**
- * Obtiene los modelos disponibles para una marca dada
+ * Obtiene los modelos disponibles para una marca dada.
+ * Devuelve modelos únicos (sin duplicados de pattern) ordenados por categoría.
  */
 export function getModelsForBrand(marca: string): { modelo: string; category: VehicleCategory }[] {
   const marcaClean = marca.trim().toUpperCase()
-  const models = VEHICLE_DATABASE[marcaClean] || VEHICLE_DATABASE[marca.trim()]
-  if (!models) return []
   
-  return models.map(m => ({
-    modelo: m.pattern,
-    category: m.category,
-  }))
+  // Buscar en todas las variantes de la marca (ej: VW y VOLKSWAGEN)
+  const allModels: ModelEntry[] = []
+  const seen = new Set<string>()
+  
+  for (const key of Object.keys(VEHICLE_DATABASE)) {
+    if (key.trim().toUpperCase() === marcaClean) {
+      for (const m of VEHICLE_DATABASE[key]) {
+        const modelUpper = m.pattern.toUpperCase()
+        if (!seen.has(modelUpper)) {
+          seen.add(modelUpper)
+          allModels.push(m)
+        }
+      }
+    }
+  }
+  
+  if (allModels.length === 0) return []
+  
+  // Ordenar: primero por categoría (PEQ → MED → GR → EXTGR), luego alfabético
+  const catOrder: Record<VehicleCategory, number> = { PEQ: 0, MED: 1, GR: 2, EXTGR: 3 }
+  
+  return allModels
+    .map(m => ({ modelo: m.pattern.toUpperCase(), category: m.category }))
+    .sort((a, b) => {
+      const catDiff = catOrder[a.category] - catOrder[b.category]
+      if (catDiff !== 0) return catDiff
+      return a.modelo.localeCompare(b.modelo)
+    })
 }

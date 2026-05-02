@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'react-hot-toast'
 import { LOCAL_CHANGE_EVENT } from '@/lib/local-store'
+import { VehicleBrandModelSelector } from '@/components/vehicle-brand-model-selector'
 
 interface Cliente {
   id: string
@@ -548,26 +549,12 @@ export function VehiculosView() {
               </Select>
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="marca">Marca *</Label>
-                <Input
-                  id="marca"
-                  value={formData.marca}
-                  onChange={(e) => setFormData({ ...formData, marca: e.target.value.toUpperCase() })}
-                  placeholder="MERCEDES"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="modelo">Modelo *</Label>
-                <Input
-                  id="modelo"
-                  value={formData.modelo}
-                  onChange={(e) => setFormData({ ...formData, modelo: e.target.value.toUpperCase() })}
-                  placeholder="GLE"
-                />
-              </div>
-            </div>
+            <VehicleBrandModelSelector
+              marca={formData.marca}
+              modelo={formData.modelo}
+              onMarcaChange={(marca) => setFormData(prev => ({ ...prev, marca, modelo: marca !== prev.marca ? '' : prev.modelo }))}
+              onModeloChange={(modelo) => setFormData(prev => ({ ...prev, modelo }))}
+            />
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
