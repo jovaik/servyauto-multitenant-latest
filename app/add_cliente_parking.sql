@@ -1,1 +1,0 @@
-ALTER TABLE clientes ADD COLUMN IF NOT EXISTS "clienteParking" BOOLEAN NOT NULL DEFAULT false;
