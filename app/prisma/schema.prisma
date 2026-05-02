@@ -86,8 +86,38 @@ model Local {
   usuariosAsignados   UserLocal[]
   vehiculos           Vehiculo[]
   inventarioTickets   InventarioTickets[] @relation("TicketsLocal")
+  categoriaOverrides  CategoriaOverrideLocal[]
+  precioOverrides     PrecioOverrideLocal[]
 
   @@map("locales")
+}
+
+model CategoriaOverrideLocal {
+  id        String   @id @default(cuid())
+  localId   String
+  marca     String
+  modelo    String
+  categoria String   // PEQ, MED, GR, EXTGR
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  local     Local    @relation(fields: [localId], references: [id], onDelete: Cascade)
+
+  @@unique([localId, marca, modelo])
+  @@map("categoria_override_local")
+}
+
+model PrecioOverrideLocal {
+  id         String   @id @default(cuid())
+  localId    String
+  servicioId String
+  precio     Float
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  local      Local    @relation(fields: [localId], references: [id], onDelete: Cascade)
+  servicio   Servicio @relation(fields: [servicioId], references: [id], onDelete: Cascade)
+
+  @@unique([localId, servicioId])
+  @@map("precio_override_local")
 }
 
 model UserLocal {
@@ -162,16 +192,17 @@ model Vehiculo {
 }
 
 model Servicio {
-  id               String           @id @default(cuid())
+  id               String                @id @default(cuid())
   nombre           String
   descripcion      String?
   precio           Float
   duracion         Int
-  activo           Boolean          @default(true)
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
-  ordenPreferencia Int              @default(999)
+  activo           Boolean               @default(true)
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  ordenPreferencia Int                   @default(999)
   cita_servicios   cita_servicios[]
+  precioOverrides  PrecioOverrideLocal[]
 
   @@map("servicios")
 }

@@ -28,6 +28,7 @@ import { useToast } from '@/hooks/use-toast'
 import { Cita, EstadoCita, MetodoPago } from '@/lib/types'
 import { Checkbox } from '@/components/ui/checkbox'
 import { CobrarSumUpDialog } from '@/components/cobrar-sumup-dialog'
+import { getSelectedLocalId } from '@/lib/local-store'
 import { 
   detectVehicleCategory, 
   filterServicesByCategory,
@@ -105,6 +106,8 @@ export function EditarCitaDialog({
   const [localIdSeleccionado, setLocalIdSeleccionado] = useState<string>('')
   const [categoriaVehiculo, setCategoriaVehiculo] = useState<VehicleCategory | null>(null)
   const [modoManualServicios, setModoManualServicios] = useState(false)
+  const [categoriaOverrides, setCategoriaOverrides] = useState<{ marca: string; modelo: string; categoria: string }[]>([])
+  const [precioOverrides, setPrecioOverrides] = useState<{ servicioId: string; precio: number }[]>([])
   
   const [formData, setFormData] = useState({
     fecha: '',
@@ -123,7 +126,23 @@ export function EditarCitaDialog({
   const estados = Object.values(EstadoCita)
   const metodosPago = ['EFECTIVO', 'TPV_SUMUP', 'TPV_UNICAJA']
 
-  // Cargar servicios disponibles
+  // Helper: detectar categoría con overrides del local
+  const detectCategoryWithOverrides = (marca: string, modelo: string): VehicleCategory | null => {
+    const m = marca.toUpperCase().trim()
+    const md = modelo.toUpperCase().trim()
+    const override = categoriaOverrides.find(o => o.marca === m && o.modelo === md)
+    if (override) return override.categoria as VehicleCategory
+    return detectVehicleCategory(marca, modelo)
+  }
+
+  // Helper: obtener precio efectivo (con override local si existe)
+  const getPrecioEfectivo = (servicioId: string): number => {
+    const po = precioOverrides.find(o => o.servicioId === servicioId)
+    if (po) return po.precio
+    return servicios?.find(s => s.id === servicioId)?.precio || 0
+  }
+
+  // Cargar servicios y overrides
   useEffect(() => {
     const cargarServicios = async () => {
       try {
@@ -136,8 +155,21 @@ export function EditarCitaDialog({
         console.error('Error cargando servicios:', error)
       }
     }
+    const cargarOverrides = async () => {
+      try {
+        const localId = getSelectedLocalId()
+        if (!localId) return
+        const res = await fetch(`/api/overrides-local?localId=${localId}`)
+        if (res.ok) {
+          const data = await res.json()
+          setCategoriaOverrides((data.categoriaOverrides || []).map((o: any) => ({ marca: o.marca, modelo: o.modelo, categoria: o.categoria })))
+          setPrecioOverrides((data.precioOverrides || []).map((o: any) => ({ servicioId: o.servicioId, precio: o.precio })))
+        }
+      } catch (e) { console.error('Error cargando overrides:', e) }
+    }
     if (open) {
       cargarServicios()
+      cargarOverrides()
     }
   }, [open])
 
@@ -177,9 +209,9 @@ export function EditarCitaDialog({
         // Establecer el local actual de la cita
         setLocalIdSeleccionado((cita as any).localId || '')
 
-        // Auto-detectar categoría del vehículo
+        // Auto-detectar categoría del vehículo (con override local)
         if (cita.vehiculo?.marca && cita.vehiculo?.modelo) {
-          const cat = detectVehicleCategory(cita.vehiculo.marca, cita.vehiculo.modelo)
+          const cat = detectCategoryWithOverrides(cita.vehiculo.marca, cita.vehiculo.modelo)
           setCategoriaVehiculo(cat)
           // Si ya tiene servicios seleccionados, activar modo manual para no perderlos
           setModoManualServicios(true)
@@ -227,11 +259,10 @@ export function EditarCitaDialog({
     )
   }
 
-  // Calcular precio total de los servicios seleccionados
+  // Calcular precio total de los servicios seleccionados (con override local)
   const calcularPrecioTotal = () => {
     return serviciosSeleccionados.reduce((sum, servicioId) => {
-      const servicio = servicios.find(s => s.id === servicioId)
-      return sum + (servicio?.precio || 0)
+      return sum + getPrecioEfectivo(servicioId)
     }, 0)
   }
 
@@ -243,7 +274,7 @@ export function EditarCitaDialog({
       // Preparar datos de servicios
       const serviciosData = serviciosSeleccionados.map(servicioId => ({
         servicioId,
-        precio: servicios.find(s => s.id === servicioId)?.precio || 0
+        precio: getPrecioEfectivo(servicioId)
       }))
 
       // Limpiar datos: convertir strings vacíos a undefined
@@ -687,7 +718,10 @@ export function EditarCitaDialog({
                       {servicio.nombre}
                     </label>
                     <span className="text-sm font-semibold text-green-600">
-                      {servicio.precio}€
+                      {getPrecioEfectivo(servicio.id).toFixed(2)}€
+                      {precioOverrides.some(po => po.servicioId === servicio.id) && (
+                        <span className="text-xs text-blue-600 ml-1" title="Precio especial de este local">📍</span>
+                      )}
                     </span>
                   </div>
                 ))

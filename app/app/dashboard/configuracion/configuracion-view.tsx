@@ -29,7 +29,8 @@ import { Badge } from '@/components/ui/badge'
 import { TwilioConfig } from '@/components/twilio-config'
 import { SumUpConfig } from '@/components/sumup-config'
 import { ReportesConfig } from '@/components/reportes-config'
-import { CreditCard, Mail } from 'lucide-react'
+import { CreditCard, Mail, MapPin } from 'lucide-react'
+import { TarifasLocalConfig } from '@/components/tarifas-local-config'
 
 interface ConfigValue {
   clave: string
@@ -367,6 +368,10 @@ export function ConfiguracionView() {
           <TabsTrigger value="precios" className="flex items-center">
             <Euro className="mr-2 h-4 w-4" />
             Precios
+          </TabsTrigger>
+          <TabsTrigger value="tarifas-local" className="flex items-center">
+            <MapPin className="mr-2 h-4 w-4" />
+            Tarifas por Local
           </TabsTrigger>
           <TabsTrigger value="boxes" className="flex items-center">
             <Car className="mr-2 h-4 w-4" />
@@ -868,6 +873,11 @@ export function ConfiguracionView() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        {/* Tarifas por Local Tab */}
+        <TabsContent value="tarifas-local">
+          <TarifasLocalConfig />
         </TabsContent>
 
         {/* Boxes Tab */}

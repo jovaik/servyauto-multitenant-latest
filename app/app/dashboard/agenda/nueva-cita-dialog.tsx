@@ -27,6 +27,7 @@ import {
 import { useToast } from '@/hooks/use-toast'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { VehicleBrandModelSelector } from '@/components/vehicle-brand-model-selector'
+import { getSelectedLocalId } from '@/lib/local-store'
 import { 
   detectVehicleCategory, 
   getVehicleCategoryInfo, 
@@ -133,6 +134,10 @@ export function NuevaCitaDialog({
   const [categoriaVehiculo, setCategoriaVehiculo] = useState<VehicleCategory | null>(null)
   const [modoManualServicios, setModoManualServicios] = useState(false)
 
+  // Overrides por local
+  const [categoriaOverrides, setCategoriaOverrides] = useState<{ marca: string; modelo: string; categoria: string }[]>([])
+  const [precioOverrides, setPrecioOverrides] = useState<{ servicioId: string; precio: number }[]>([])
+
   // Autocomplete de matrícula
   const [matriculaBusqueda, setMatriculaBusqueda] = useState('')
   const [resultadosBusqueda, setResultadosBusqueda] = useState<any[]>([])
@@ -164,6 +169,35 @@ export function NuevaCitaDialog({
 
   const metodosPago = ['EFECTIVO', 'TPV_SUMUP', 'TPV_UNICAJA']
 
+  const loadOverridesLocal = async () => {
+    try {
+      const localId = getSelectedLocalId()
+      if (!localId) { setCategoriaOverrides([]); setPrecioOverrides([]); return }
+      const res = await fetch(`/api/overrides-local?localId=${localId}`)
+      if (res.ok) {
+        const data = await res.json()
+        setCategoriaOverrides((data.categoriaOverrides || []).map((o: any) => ({ marca: o.marca, modelo: o.modelo, categoria: o.categoria })))
+        setPrecioOverrides((data.precioOverrides || []).map((o: any) => ({ servicioId: o.servicioId, precio: o.precio })))
+      }
+    } catch (e) { console.error('Error cargando overrides:', e) }
+  }
+
+  // Helper: detectar categoría considerando overrides del local
+  const detectCategoryWithOverrides = (marca: string, modelo: string): VehicleCategory | null => {
+    const m = marca.toUpperCase().trim()
+    const md = modelo.toUpperCase().trim()
+    const override = categoriaOverrides.find(o => o.marca === m && o.modelo === md)
+    if (override) return override.categoria as VehicleCategory
+    return detectVehicleCategory(marca, modelo)
+  }
+
+  // Helper: obtener precio efectivo (con override local si existe)
+  const getPrecioEfectivo = (servicioId: string): number => {
+    const po = precioOverrides.find(o => o.servicioId === servicioId)
+    if (po) return po.precio
+    return servicios?.find(s => s.id === servicioId)?.precio || 0
+  }
+
   useEffect(() => {
     if (open) {
       loadClientes()
@@ -171,6 +205,7 @@ export function NuevaCitaDialog({
       loadBoxes()
       loadDescuentos()
       loadTicketsDisponibles()
+      loadOverridesLocal()
       setFormData(prev => ({ 
         ...prev, 
         fecha: format(selectedDate, 'yyyy-MM-dd'),
@@ -350,8 +385,8 @@ export function NuevaCitaDialog({
       clienteEmpresa: vehiculo.cliente.clienteEmpresa || false
     })
 
-    // Auto-detectar categoría del vehículo
-    const cat = detectVehicleCategory(vehiculo.marca, vehiculo.modelo)
+    // Auto-detectar categoría del vehículo (con override local si existe)
+    const cat = detectCategoryWithOverrides(vehiculo.marca, vehiculo.modelo)
     setCategoriaVehiculo(cat)
     setModoManualServicios(false)
     if (cat) {
@@ -577,7 +612,7 @@ export function NuevaCitaDialog({
         descuentoManual: descuentoManual || 0,
         servicios: formData.servicios.map(servicioId => ({
           servicioId,
-          precio: servicios?.find(s => s.id === servicioId)?.precio || 0
+          precio: getPrecioEfectivo(servicioId)
         }))
       }
 
@@ -1164,10 +1199,10 @@ export function NuevaCitaDialog({
                   <>
                     <Select value={formData.vehiculoId || ""} onValueChange={(value) => {
                       setFormData(prev => ({ ...prev, vehiculoId: value, servicios: [] }))
-                      // Auto-detectar categoría al seleccionar vehículo del dropdown
+                      // Auto-detectar categoría al seleccionar vehículo del dropdown (con override local)
                       const veh = getClienteVehiculos().find(v => v.id === value)
                       if (veh) {
-                        const cat = detectVehicleCategory(veh.marca, veh.modelo)
+                        const cat = detectCategoryWithOverrides(veh.marca, veh.modelo)
                         setCategoriaVehiculo(cat)
                         setModoManualServicios(false)
                       }
@@ -1235,10 +1270,18 @@ export function NuevaCitaDialog({
                       marca={newVehiculo.marca}
                       modelo={newVehiculo.modelo}
                       onMarcaChange={(marca) => setNewVehiculo(prev => ({ ...prev, marca, modelo: marca !== prev.marca ? '' : prev.modelo }))}
-                      onModeloChange={(modelo) => setNewVehiculo(prev => ({ ...prev, modelo }))}
-                      onCategoryDetected={(cat) => {
+                      onModeloChange={(modelo) => {
+                        setNewVehiculo(prev => ({ ...prev, modelo }))
+                        // Re-detectar con overrides locales
+                        const cat = detectCategoryWithOverrides(newVehiculo.marca, modelo)
                         setCategoriaVehiculo(cat)
                         if (cat) setModoManualServicios(false)
+                      }}
+                      onCategoryDetected={(cat) => {
+                        // El componente detecta globalmente, pero nosotros re-chequeamos con overrides
+                        const effectiveCat = detectCategoryWithOverrides(newVehiculo.marca, newVehiculo.modelo)
+                        setCategoriaVehiculo(effectiveCat || cat)
+                        if (effectiveCat || cat) setModoManualServicios(false)
                       }}
                       compact
                     />
@@ -1328,7 +1371,11 @@ export function NuevaCitaDialog({
                     }}
                   />
                   <span className="text-sm">
-                    {servicio.nombre} (€{servicio.precio} - {servicio.duracion}min)
+                    {servicio.nombre} (€{getPrecioEfectivo(servicio.id).toFixed(2)}
+                    {precioOverrides.some(po => po.servicioId === servicio.id) && (
+                      <span className="text-xs text-blue-600 ml-1" title="Precio especial de este local">📍</span>
+                    )}
+                    {' '}- {servicio.duracion}min)
                   </span>
                 </label>
               ))}
@@ -1338,8 +1385,7 @@ export function NuevaCitaDialog({
           {/* Resumen de precios */}
           {formData.servicios.length > 0 && (() => {
             const subtotal = formData.servicios.reduce((sum, servicioId) => {
-              const servicio = servicios?.find(s => s.id === servicioId)
-              return sum + (servicio?.precio || 0)
+              return sum + getPrecioEfectivo(servicioId)
             }, 0)
             
             // Calcular descuentos automáticos
