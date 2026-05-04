@@ -27,13 +27,14 @@ export async function GET(request: NextRequest) {
 
     const localFilter = buildLocalFilter(localContext)
     const selectedLocalId = localContext ? getLocalIdForCreate(localContext) : null
+    const tenantIdStats = localContext?.tenantId || null
 
     // Si hay un local seleccionado, devolver stats de ese local
     // Si es "Todos", devolver desglose por local
     if (selectedLocalId) {
       // Stats del local seleccionado
       const ultimoMovimiento = await prisma.inventarioTickets.findFirst({
-        where: { localId: selectedLocalId },
+        where: { localId: selectedLocalId, ...(tenantIdStats ? { tenantId: tenantIdStats } : {}) },
         orderBy: { createdAt: 'desc' }
       })
       const saldoActual = ultimoMovimiento?.saldoActual || 0
@@ -42,7 +43,8 @@ export async function GET(request: NextRequest) {
         where: {
           localId: selectedLocalId,
           tipo: { in: ['COMPRA', 'AJUSTE'] },
-          cantidad: { gt: 0 }
+          cantidad: { gt: 0 },
+          ...(tenantIdStats ? { tenantId: tenantIdStats } : {})
         },
         _sum: { cantidad: true }
       })
@@ -50,7 +52,8 @@ export async function GET(request: NextRequest) {
       const consumos = await prisma.inventarioTickets.aggregate({
         where: {
           localId: selectedLocalId,
-          tipo: 'CONSUMO'
+          tipo: 'CONSUMO',
+          ...(tenantIdStats ? { tenantId: tenantIdStats } : {})
         },
         _sum: { cantidad: true }
       })
@@ -64,9 +67,9 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Vista "Todos los locales" - desglose por local
+    // Vista "Todos los locales" - desglose por local (dentro del tenant)
     const locales = await prisma.local.findMany({
-      where: { activo: true },
+      where: { activo: true, ...(tenantIdStats ? { tenantId: tenantIdStats } : {}) },
       select: { id: true, nombre: true }
     })
 
@@ -76,8 +79,9 @@ export async function GET(request: NextRequest) {
     let totalUsados = 0
 
     for (const loc of locales) {
+      const tenantFilter = tenantIdStats ? { tenantId: tenantIdStats } : {}
       const ultimo = await prisma.inventarioTickets.findFirst({
-        where: { localId: loc.id },
+        where: { localId: loc.id, ...tenantFilter },
         orderBy: { createdAt: 'desc' }
       })
       const saldo = ultimo?.saldoActual || 0
@@ -86,7 +90,8 @@ export async function GET(request: NextRequest) {
         where: {
           localId: loc.id,
           tipo: { in: ['COMPRA', 'AJUSTE'] },
-          cantidad: { gt: 0 }
+          cantidad: { gt: 0 },
+          ...tenantFilter
         },
         _sum: { cantidad: true }
       })
@@ -94,7 +99,8 @@ export async function GET(request: NextRequest) {
       const consumos = await prisma.inventarioTickets.aggregate({
         where: {
           localId: loc.id,
-          tipo: 'CONSUMO'
+          tipo: 'CONSUMO',
+          ...tenantFilter
         },
         _sum: { cantidad: true }
       })

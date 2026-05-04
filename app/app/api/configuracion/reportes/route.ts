@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { getLocalContext } from '@/lib/local-context';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,19 +20,15 @@ const DEFAULT_CONFIG = {
   horaAnual: '10:00',
 };
 
-// GET - Obtener configuración de reportes
-// Acceso público con token para daemons, o con sesión para la UI
 export async function GET(request: NextRequest) {
   const daemonToken = request.nextUrl.searchParams.get('token');
-  
-  // Si viene con token del daemon, verificar
+
   if (daemonToken) {
     const validToken = process.env.ABACUSAI_API_KEY;
     if (daemonToken !== validToken) {
       return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
     }
   } else {
-    // Si no hay token, requiere sesión
     const session = await getServerSession(authOptions);
     if (!session) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
@@ -39,9 +36,14 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    const localContext = await getLocalContext();
+    const tenantId = localContext?.tenantId || null;
+    const tenantFilter = tenantId ? { tenantId } : {};
+
     const configs = await prisma.configuracion.findMany({
       where: {
-        clave: { startsWith: 'reportes.' }
+        clave: { startsWith: 'reportes.' },
+        ...tenantFilter
       }
     });
 
@@ -62,7 +64,6 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - Guardar configuración de reportes (requiere sesión admin)
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -70,8 +71,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
+    const localContext = await getLocalContext();
+    const tenantId = localContext?.tenantId || null;
+
+    const user = await prisma.user.findFirst({
+      where: { email: session.user.email, ...(tenantId ? { tenantId } : {}) },
       select: { role: true }
     });
 
@@ -82,17 +86,17 @@ export async function POST(request: NextRequest) {
     const data = await request.json();
 
     const configItems = [
-      { clave: 'reportes.emailDestinatarios', valor: data.emailDestinatarios || DEFAULT_CONFIG.emailDestinatarios, tipo: 'TEXTO' as const, categoria: 'reportes', descripcion: 'Emails destinatarios de reportes (separados por coma)' },
-      { clave: 'reportes.reporteDiarioActivo', valor: String(data.reporteDiarioActivo ?? true), tipo: 'BOOLEANO' as const, categoria: 'reportes', descripcion: 'Reporte diario activo' },
-      { clave: 'reportes.reporteSemanalActivo', valor: String(data.reporteSemanalActivo ?? true), tipo: 'BOOLEANO' as const, categoria: 'reportes', descripcion: 'Reporte semanal activo' },
-      { clave: 'reportes.reporteMensualActivo', valor: String(data.reporteMensualActivo ?? true), tipo: 'BOOLEANO' as const, categoria: 'reportes', descripcion: 'Reporte mensual activo' },
-      { clave: 'reportes.reporteAnualActivo', valor: String(data.reporteAnualActivo ?? true), tipo: 'BOOLEANO' as const, categoria: 'reportes', descripcion: 'Reporte anual activo' },
+      { clave: 'reportes.emailDestinatarios', valor: data.emailDestinatarios || DEFAULT_CONFIG.emailDestinatarios, tipo: 'TEXTO' as const, categoria: 'reportes', descripcion: 'Emails destinatarios de reportes (separados por coma)', ...(tenantId ? { tenantId } : {}) },
+      { clave: 'reportes.reporteDiarioActivo', valor: String(data.reporteDiarioActivo ?? true), tipo: 'BOOLEANO' as const, categoria: 'reportes', descripcion: 'Reporte diario activo', ...(tenantId ? { tenantId } : {}) },
+      { clave: 'reportes.reporteSemanalActivo', valor: String(data.reporteSemanalActivo ?? true), tipo: 'BOOLEANO' as const, categoria: 'reportes', descripcion: 'Reporte semanal activo', ...(tenantId ? { tenantId } : {}) },
+      { clave: 'reportes.reporteMensualActivo', valor: String(data.reporteMensualActivo ?? true), tipo: 'BOOLEANO' as const, categoria: 'reportes', descripcion: 'Reporte mensual activo', ...(tenantId ? { tenantId } : {}) },
+      { clave: 'reportes.reporteAnualActivo', valor: String(data.reporteAnualActivo ?? true), tipo: 'BOOLEANO' as const, categoria: 'reportes', descripcion: 'Reporte anual activo', ...(tenantId ? { tenantId } : {}) },
     ];
 
     await Promise.all(
       configItems.map((item) =>
         prisma.configuracion.upsert({
-          where: { clave: item.clave },
+          where: { clave_tenantId: { clave: item.clave, tenantId: tenantId || '' } },
           update: { valor: item.valor },
           create: item,
         })

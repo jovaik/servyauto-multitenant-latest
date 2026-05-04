@@ -2,6 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { getLocalContext, canAccessRecord } from '@/lib/local-context';
+
+async function checkIngresoAccess(ingresoId: string): Promise<boolean> {
+  const localContext = await getLocalContext();
+  if (!localContext) return false;
+  const ingreso = await prisma.ingresoAdicional.findUnique({ where: { id: ingresoId } });
+  if (!ingreso) return false;
+  return true // TODO: add localId check when model supports it;
+}
 
 export async function GET(
   request: NextRequest,
@@ -11,6 +20,10 @@ export async function GET(
     const session = await getServerSession(authOptions);
     if (!session) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
+    if (!(await checkIngresoAccess(params.id))) {
+      return NextResponse.json({ error: 'Ingreso no encontrado' }, { status: 404 });
     }
 
     const ingreso = await prisma.ingresoAdicional.findUnique({
@@ -37,6 +50,10 @@ export async function PUT(
     const session = await getServerSession(authOptions);
     if (!session) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
+    if (!(await checkIngresoAccess(params.id))) {
+      return NextResponse.json({ error: 'Ingreso no encontrado' }, { status: 404 });
     }
 
     const body = await request.json();
@@ -72,6 +89,10 @@ export async function DELETE(
     const session = await getServerSession(authOptions);
     if (!session) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
+    if (!(await checkIngresoAccess(params.id))) {
+      return NextResponse.json({ error: 'Ingreso no encontrado' }, { status: 404 });
     }
 
     const ingreso = await prisma.ingresoAdicional.delete({

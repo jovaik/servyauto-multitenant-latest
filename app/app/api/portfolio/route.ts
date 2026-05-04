@@ -1,40 +1,41 @@
 
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { getLocalContext } from '@/lib/local-context'
 
-// GET - Obtener todos los trabajos del portfolio
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const localContext = await getLocalContext()
+    const tenantId = localContext?.tenantId || null
+    const tenantFilter = tenantId ? { tenantId } : {}
+
     const portfolio = await prisma.portfolio.findMany({
+      where: tenantFilter,
       orderBy: { createdAt: 'desc' }
     })
 
     return NextResponse.json(portfolio)
   } catch (error) {
     console.error('Error fetching portfolio:', error)
-    return NextResponse.json(
-      { error: 'Error al cargar portfolio' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Error al cargar portfolio' }, { status: 500 })
   }
 }
 
-// POST - Crear nuevo trabajo en portfolio
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user) {
-      return NextResponse.json(
-        { error: 'No autorizado' },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
+    const localContext = await getLocalContext()
+    const tenantId = localContext?.tenantId || null
+
     const data = await request.json()
-    
+
     const portfolio = await prisma.portfolio.create({
       data: {
         titulo: data.titulo,
@@ -42,39 +43,43 @@ export async function POST(request: Request) {
         vehiculo: data.vehiculo || '',
         categoria: data.categoria || 'MEDIO',
         imagenes: data.imagenes || [],
-        descripcion: data.descripcion || ''
+        descripcion: data.descripcion || '',
+        ...(tenantId ? { tenantId } : {})
       }
     })
 
     return NextResponse.json(portfolio)
   } catch (error) {
     console.error('Error creating portfolio:', error)
-    return NextResponse.json(
-      { error: 'Error al crear entrada de portfolio' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Error al crear entrada de portfolio' }, { status: 500 })
   }
 }
 
-// PUT - Actualizar trabajo de portfolio
 export async function PUT(request: Request) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user) {
-      return NextResponse.json(
-        { error: 'No autorizado' },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
+    const localContext = await getLocalContext()
+    const tenantId = localContext?.tenantId || null
+
     const data = await request.json()
-    
+
     if (!data.id) {
-      return NextResponse.json(
-        { error: 'ID requerido' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'ID requerido' }, { status: 400 })
+    }
+
+    const existing = await prisma.portfolio.findUnique({ where: { id: data.id } })
+    if (!existing) {
+      return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
+    }
+
+    // Validación de pertenencia al tenant (Grupo C)
+    if (tenantId && existing.tenantId && existing.tenantId !== tenantId) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
     }
 
     const portfolio = await prisma.portfolio.update({
@@ -92,45 +97,43 @@ export async function PUT(request: Request) {
     return NextResponse.json(portfolio)
   } catch (error) {
     console.error('Error updating portfolio:', error)
-    return NextResponse.json(
-      { error: 'Error al actualizar entrada de portfolio' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Error al actualizar entrada de portfolio' }, { status: 500 })
   }
 }
 
-// DELETE - Eliminar trabajo de portfolio
 export async function DELETE(request: Request) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user) {
-      return NextResponse.json(
-        { error: 'No autorizado' },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
+
+    const localContext = await getLocalContext()
+    const tenantId = localContext?.tenantId || null
 
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
-    
+
     if (!id) {
-      return NextResponse.json(
-        { error: 'ID requerido' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'ID requerido' }, { status: 400 })
     }
 
-    await prisma.portfolio.delete({
-      where: { id: parseInt(id) }
-    })
+    const existing = await prisma.portfolio.findUnique({ where: { id: parseInt(id) } })
+    if (!existing) {
+      return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
+    }
+
+    // Validación de pertenencia al tenant (Grupo C)
+    if (tenantId && existing.tenantId && existing.tenantId !== tenantId) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+    }
+
+    await prisma.portfolio.delete({ where: { id: parseInt(id) } })
 
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Error deleting portfolio:', error)
-    return NextResponse.json(
-      { error: 'Error al eliminar entrada de portfolio' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Error al eliminar entrada de portfolio' }, { status: 500 })
   }
 }

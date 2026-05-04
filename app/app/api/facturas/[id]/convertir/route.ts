@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { getLocalContext } from '@/lib/local-context'
 import { notificarCreacionGSControl } from '@/lib/gscontrol-sync'
 
 export async function PUT(
@@ -15,50 +16,36 @@ export async function PUT(
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
-    console.log('=== CONVERSIÓN DE TICKET A FACTURA ===')
-    console.log('ID del documento:', params.id)
+    const localContext = await getLocalContext()
+    const tenantId = localContext?.tenantId || null
+    const tenantFilter = tenantId ? { tenantId } : {}
 
-    // Buscar el documento actual
     const documentoActual = await prisma.factura.findUnique({
       where: { id: params.id },
-      include: {
-        factura_items: true,
-        cliente: true,
-      }
+      include: { factura_items: true, cliente: true }
     })
 
     if (!documentoActual) {
-      return NextResponse.json(
-        { error: 'Documento no encontrado' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: 'Documento no encontrado' }, { status: 404 })
     }
 
-    console.log('Documento encontrado:', documentoActual.numero, '- Tipo:', documentoActual.tipo)
+    // Validación de pertenencia al tenant (Grupo C)
+    if (tenantId && documentoActual.tenantId && documentoActual.tenantId !== tenantId) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+    }
 
-    // Verificar que sea un TICKET
     if (documentoActual.tipo !== 'TICKET') {
-      return NextResponse.json(
-        { error: 'Solo se pueden convertir tickets a facturas' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Solo se pueden convertir tickets a facturas' }, { status: 400 })
     }
 
-    // Generar nuevo número de factura usando el año del documento original
     const fechaOriginal = new Date(documentoActual.createdAt)
     const año = fechaOriginal.getFullYear()
     const prefijo = 'FAC'
-    
-    console.log('Fecha original del ticket:', fechaOriginal.toISOString())
-    console.log('Año para la factura:', año)
-    
-    // Buscar el número más alto por el propio número (NO por createdAt)
-    // para garantizar secuencia correcta según normativa fiscal española
+
     const facturasDelAño = await prisma.factura.findMany({
-      where: { 
-        numero: {
-          startsWith: `${prefijo}-${año}-`
-        }
+      where: {
+        numero: { startsWith: `${prefijo}-${año}-` },
+        ...tenantFilter
       },
       select: { numero: true }
     })
@@ -69,25 +56,14 @@ export async function PUT(
         const partes = d.numero.split('-')
         return partes.length === 3 ? (parseInt(partes[2]) || 0) : 0
       })
-      const maxNumero = Math.max(...numeros)
-      numeroSecuencia = maxNumero + 1
+      numeroSecuencia = Math.max(...numeros) + 1
     }
 
     const numeroFactura = `${prefijo}-${año}-${numeroSecuencia.toString().padStart(4, '0')}`
-    
-    console.log('Nuevo número de factura:', numeroFactura)
-
-    // Obtener datos de facturación del request (si se proporcionan)
     const body = await request.json().catch(() => ({}))
     const { datosFacturacion } = body
-
-    // La fecha de la factura convertida es HOY (fecha de emisión real)
-    // La normativa fiscal española exige que la fecha sea la de emisión,
-    // y el número debe ser correlativo con la fecha
     const fechaFactura = new Date()
-    console.log('Fecha de la factura (hoy):', fechaFactura.toISOString())
 
-    // Actualizar el documento a FACTURA
     const facturaConvertida = await prisma.factura.update({
       where: { id: params.id },
       data: {
@@ -97,17 +73,9 @@ export async function PUT(
         fecha: fechaFactura,
         createdAt: fechaFactura,
       },
-      include: {
-        factura_items: true,
-        cliente: true,
-        citas: true,
-      }
+      include: { factura_items: true, cliente: true, citas: true }
     })
 
-    console.log('=== CONVERSIÓN EXITOSA ===')
-    console.log('De:', documentoActual.numero, '→ A:', numeroFactura)
-
-    // 🔄 SINCRONIZAR CON GSCONTROL - CÓDIGO EXACTO DEL PDF
     const descripcionFactura = `${facturaConvertida.tipo}: ${facturaConvertida.numero} - ${facturaConvertida.cliente.nombre} ${facturaConvertida.cliente.apellido || ''}`
     await notificarCreacionGSControl({
       id: facturaConvertida.id,
@@ -119,8 +87,7 @@ export async function PUT(
 
     return NextResponse.json(facturaConvertida)
   } catch (error: any) {
-    console.error('=== ERROR EN CONVERSIÓN ===')
-    console.error('Error:', error)
+    console.error('Error en conversión:', error)
     return NextResponse.json(
       { error: 'Error al convertir ticket a factura', message: error.message },
       { status: 500 }

@@ -58,8 +58,10 @@ export async function POST(request: NextRequest) {
     
     // Si aún no hay localId, usar el local del usuario
     if (!localId) {
-      const user = await prisma.user.findUnique({
-        where: { email: session.user?.email || '' },
+      const localCtxCheckout = await getLocalContext()
+      const tenantIdCheckout = localCtxCheckout?.tenantId || null
+      const user = await prisma.user.findFirst({
+        where: { email: session.user?.email || '', ...(tenantIdCheckout ? { tenantId: tenantIdCheckout } : {}) },
         select: { localId: true }
       })
       localId = user?.localId || null
@@ -80,8 +82,10 @@ export async function POST(request: NextRequest) {
     const fullReference = reference || `${localPrefix}-${Date.now()}`
 
     // Obtener usuario
-    const user = await prisma.user.findUnique({
-      where: { email: session.user?.email || '' },
+    const localCtxUser = await getLocalContext()
+    const tenantIdUser = localCtxUser?.tenantId || null
+    const user = await prisma.user.findFirst({
+      where: { email: session.user?.email || '', ...(tenantIdUser ? { tenantId: tenantIdUser } : {}) },
     })
 
     // Obtener el reader de nuestra BD
@@ -101,7 +105,7 @@ export async function POST(request: NextRequest) {
     const transaction = await prisma.sumUpTransaction.create({
       data: {
         checkoutId: checkout.id,
-        readerId: dbReader?.id || '', // Si no existe en BD, string vacío temporal
+        readerId: dbReader?.id || '',
         localId: localId,
         amount: amount,
         status: 'PENDING',
@@ -111,6 +115,7 @@ export async function POST(request: NextRequest) {
         citaId: citaId || null,
         creadoPorId: user?.id || null,
         creadoPorNombre: user?.name || session.user?.name || null,
+        ...(tenantIdUser ? { tenantId: tenantIdUser } : {}),
       },
     })
 

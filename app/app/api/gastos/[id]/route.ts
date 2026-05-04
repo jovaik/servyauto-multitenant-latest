@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { getLocalContext } from '@/lib/local-context'
 import { notificarModificacionGSControl, notificarEliminacionGSControl, mapearCategoriaGasto } from '@/lib/gscontrol-sync'
 
 export async function PUT(
@@ -46,11 +47,13 @@ export async function PUT(
     }
 
     // Registrar proveedor automáticamente si hay nombre
+    const localCtxGastoId = await getLocalContext()
+    const tenantIdGastoId = localCtxGastoId?.tenantId || null
     let proveedorRegistradoId = proveedorId || null
     if (proveedor && !proveedorId) {
-      // Buscar si ya existe
+      // Buscar si ya existe dentro del tenant
       const proveedorExistente = await prisma.proveedor.findFirst({
-        where: { nombre: { equals: proveedor, mode: 'insensitive' } }
+        where: { nombre: { equals: proveedor, mode: 'insensitive' }, ...(tenantIdGastoId ? { tenantId: tenantIdGastoId } : {}) }
       })
       
       if (proveedorExistente) {
@@ -69,7 +72,7 @@ export async function PUT(
           })
         }
       } else {
-        // Crear nuevo proveedor
+        // Crear nuevo proveedor con tenantId
         const nuevoProveedor = await prisma.proveedor.create({
           data: {
             nombre: proveedor,
@@ -78,6 +81,7 @@ export async function PUT(
             codigoPostal: proveedorCodigoPostal || null,
             ciudad: proveedorCiudad || null,
             provincia: proveedorProvincia || null,
+            ...(tenantIdGastoId ? { tenantId: tenantIdGastoId } : {})
           }
         })
         proveedorRegistradoId = nuevoProveedor.id

@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/db'
+import { getLocalContext, buildLocalFilter } from '@/lib/local-context'
 
-const prisma = new PrismaClient()
-
-// GET - Listar todos los proveedores
+// GET - Listar todos los proveedores del tenant
 export async function GET() {
   try {
     const session = await getServerSession(authOptions)
@@ -13,7 +12,11 @@ export async function GET() {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
+    const localContext = await getLocalContext()
+    const tenantId = localContext?.tenantId || null
+
     const proveedores = await prisma.proveedor.findMany({
+      where: tenantId ? { tenantId } : {},
       orderBy: { nombre: 'asc' }
     })
 
@@ -45,9 +48,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Buscar si ya existe un proveedor con ese nombre
+    const localContext = await getLocalContext()
+    const tenantId = localContext?.tenantId || null
+
+    // Buscar si ya existe un proveedor con ese nombre en el tenant
     const existente = await prisma.proveedor.findFirst({
-      where: { nombre: { equals: nombre, mode: 'insensitive' } }
+      where: { nombre: { equals: nombre, mode: 'insensitive' }, ...(tenantId ? { tenantId } : {}) }
     })
 
     if (existente) {
@@ -78,6 +84,7 @@ export async function POST(request: NextRequest) {
         provincia,
         telefono,
         email,
+        ...(tenantId ? { tenantId } : {})
       }
     })
 

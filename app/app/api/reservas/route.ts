@@ -21,6 +21,10 @@ export async function GET(req: NextRequest) {
     // Si hay fecha y hora, verificar disponibilidad (endpoint público)
     if (fecha && hora) {
       const fechaCita = new Date(fecha)
+      // Obtener tenant para verificar disponibilidad dentro del tenant correcto
+      const tenantSlugCheck = req.headers.get('x-tenant-slug') || 'default'
+      const tenantCheck = await prisma.tenant.findUnique({ where: { slug: tenantSlugCheck }, select: { id: true } })
+      const tenantIdCheck = tenantCheck?.id || null
       const citaExistente = await prisma.cita.findFirst({
         where: {
           fecha: {
@@ -28,6 +32,7 @@ export async function GET(req: NextRequest) {
             lt: new Date(fechaCita.getFullYear(), fechaCita.getMonth(), fechaCita.getDate() + 1),
           },
           horaInicio: hora,
+          ...(tenantIdCheck ? { tenantId: tenantIdCheck } : {}),
         },
       })
 
@@ -88,6 +93,11 @@ export async function POST(req: NextRequest) {
       localId  // Nuevo: local seleccionado
     } = body
 
+    // Obtener tenant desde el header (el POST de reservas es público/sin sesión)
+    const tenantSlugRes = req.headers.get('x-tenant-slug') || 'default'
+    const tenantRes = await prisma.tenant.findUnique({ where: { slug: tenantSlugRes }, select: { id: true } })
+    const tenantIdRes = tenantRes?.id || null
+
     // Validar campos requeridos
     if (!nombre || !apellido || !telefono || !fecha || !hora || !marcaModelo || !matricula || !servicio) {
       return NextResponse.json(
@@ -116,13 +126,14 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Buscar o crear cliente
+    // Buscar o crear cliente (dentro del tenant)
     let cliente = await prisma.cliente.findFirst({
       where: {
         OR: [
           { telefono },
           ...(email ? [{ email }] : [])
-        ]
+        ],
+        ...(tenantIdRes ? { tenantId: tenantIdRes } : {})
       }
     })
 
@@ -133,7 +144,8 @@ export async function POST(req: NextRequest) {
           apellido,
           email: email || '',
           telefono,
-          clienteParking: false
+          clienteParking: false,
+          ...(tenantIdRes ? { tenantId: tenantIdRes } : {})
         }
       })
     }
@@ -152,17 +164,19 @@ export async function POST(req: NextRequest) {
         data: {
           marca: marcaParts[0] || marcaModelo,
           modelo: marcaParts.slice(1).join(' ') || 'N/A',
-          anio: new Date().getFullYear(), // Año actual por defecto
+          anio: new Date().getFullYear(),
           matricula: matricula.toUpperCase(),
-          clienteId: cliente.id
+          clienteId: cliente.id,
+          ...(tenantIdRes ? { tenantId: tenantIdRes } : {})
         }
       })
     }
 
-    // Buscar el servicio por nombre
+    // Buscar el servicio por nombre (dentro del tenant)
     const servicioDb = await prisma.servicio.findFirst({
       where: {
-        nombre: servicio
+        nombre: servicio,
+        ...(tenantIdRes ? { tenantId: tenantIdRes } : {})
       }
     })
 
@@ -174,8 +188,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Obtener el primer box de la configuración
-    const boxesConfig = await prisma.configuracion.findUnique({
-      where: { clave: 'boxes.nombres' }
+    const boxesConfig = await prisma.configuracion.findFirst({
+      where: { clave: 'boxes.nombres', ...(tenantIdRes ? { tenantId: tenantIdRes } : {}) }
     })
     
     let primerBox = 'Box 1' // Valor por defecto
@@ -205,7 +219,8 @@ export async function POST(req: NextRequest) {
         box: primerBox,
         estado: 'PENDIENTE',
         observaciones: mensaje || `Reserva online - ${servicio}`,
-        ...(localId && { localId }), // Asignar local si se proporcionó
+        ...(localId && { localId }),
+        ...(tenantIdRes ? { tenantId: tenantIdRes } : {}),
         cita_servicios: {
           create: [
             {
@@ -243,6 +258,7 @@ export async function POST(req: NextRequest) {
         mensaje: mensaje || null,
         estado: 'PENDIENTE',
         localId: localId || null,
+        ...(tenantIdRes ? { tenantId: tenantIdRes } : {}),
         updatedAt: new Date(),
       }
     })

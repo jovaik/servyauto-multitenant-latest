@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { getLocalContext, buildLocalFilter, getLocalIdForCreate } from '@/lib/local-context'
 import { notificarCreacionGSControl, mapearCategoriaGasto } from '@/lib/gscontrol-sync'
 
 export async function GET(request: NextRequest) {
@@ -109,9 +110,11 @@ export async function POST(request: NextRequest) {
 
     // 🗓️ OBTENER BOX CONFIGURADO (primer box disponible)
     let boxAsignado = 'Box 1' // Default
+    const localCtxTaller = await getLocalContext()
+    const tenantIdTaller = localCtxTaller?.tenantId || null
     try {
-      const configBoxes = await prisma.configuracion.findUnique({
-        where: { clave: 'boxes.nombres' }
+      const configBoxes = await prisma.configuracion.findFirst({
+        where: { clave: 'boxes.nombres', ...(tenantIdTaller ? { tenantId: tenantIdTaller } : {}) }
       })
       if (configBoxes?.valor) {
         const boxes = JSON.parse(configBoxes.valor)
@@ -135,9 +138,9 @@ export async function POST(request: NextRequest) {
     })
 
     // 🔧 CREAR SERVICIO PARA LA CITA (debe existir en catálogo)
-    // Buscar o crear un servicio genérico "Servicio de Taller"
+    // Buscar o crear un servicio genérico "Servicio de Taller" (dentro del tenant)
     let servicioGenerico = await prisma.servicio.findFirst({
-      where: { nombre: 'Servicio de Taller' }
+      where: { nombre: 'Servicio de Taller', ...(tenantIdTaller ? { tenantId: tenantIdTaller } : {}) }
     })
 
     if (!servicioGenerico) {
@@ -145,9 +148,10 @@ export async function POST(request: NextRequest) {
         data: {
           nombre: 'Servicio de Taller',
           descripcion: 'Servicios rápidos de taller (baterías, frenos, etc.)',
-          precio: 0, // El precio viene de cada servicio individual
+          precio: 0,
           duracion: 60,
-          activo: true
+          activo: true,
+          ...(tenantIdTaller ? { tenantId: tenantIdTaller } : {})
         }
       })
       console.log('✅ Servicio genérico creado:', servicioGenerico.id)
@@ -167,6 +171,7 @@ export async function POST(request: NextRequest) {
         observaciones: `Servicio de taller: ${concepto}`,
         metodoPago: metodoPago,
         total: importeTotal,
+        ...(tenantIdTaller ? { tenantId: tenantIdTaller } : {}),
         cita_servicios: {
           create: [{
             id: `cs_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
@@ -207,6 +212,7 @@ export async function POST(request: NextRequest) {
       adjunto: false,
       citaId: cita.id // ⭐ Vincular con la cita
     }
+    if (tenantIdTaller) servicioData.tenantId = tenantIdTaller
 
     const servicio = await prisma.servicioTaller.create({
       data: servicioData

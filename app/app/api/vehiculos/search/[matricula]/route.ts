@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { getLocalContext } from '@/lib/local-context'
 
 /**
  * Endpoint para buscar un vehículo por matrícula
@@ -25,13 +26,16 @@ export async function GET(
 
     console.log('🔍 Buscando vehículo por matrícula:', matricula)
 
-    // Buscar vehículo e incluir datos del cliente
+    // Buscar vehículo dentro del tenant del usuario
+    const localCtxSearch = await getLocalContext()
+    const tenantIdSearch = localCtxSearch?.tenantId || null
     const vehiculo = await prisma.vehiculo.findFirst({
       where: {
         matricula: {
           equals: matricula,
           mode: 'insensitive'
-        }
+        },
+        ...(tenantIdSearch ? { tenantId: tenantIdSearch } : {})
       },
       include: {
         cliente: true

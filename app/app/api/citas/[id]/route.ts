@@ -3,8 +3,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { getLocalContext } from '@/lib/local-context'
 import { enviarNotificacionVehiculoListo, enviarSolicitudResena } from '@/lib/notifications'
 import { notificarCreacionGSControl } from '@/lib/gscontrol-sync'
+
+async function getConfig(clave: string, tenantId: string | null) {
+  return prisma.configuracion.findFirst({
+    where: { clave, ...(tenantId ? { tenantId } : {}) }
+  })
+}
 
 export const dynamic = 'force-dynamic'
 
@@ -107,25 +114,28 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
           return (subtotal * valor) / 100
         }
 
+        const localCtx = await getLocalContext()
+        const tenantIdCitas = localCtx?.tenantId || null
+
         if (cliente?.clienteParking) {
-          const descConfig = await prisma.configuracion.findUnique({ where: { clave: 'precios.descuentoParking' } })
-          const tipoConfig = await prisma.configuracion.findUnique({ where: { clave: 'precios.descuentoParkingTipo' } })
+          const descConfig = await getConfig('precios.descuentoParking', tenantIdCitas)
+          const tipoConfig = await getConfig('precios.descuentoParkingTipo', tenantIdCitas)
           if (descConfig) {
             totalDescuentosUpdate += aplicarDescuentoUpdate(precioFinal, parseFloat(descConfig.valor) || 0, tipoConfig?.valor || 'FIJO')
           }
         }
 
         if (cliente?.clienteVIP) {
-          const descConfig = await prisma.configuracion.findUnique({ where: { clave: 'precios.descuentoVIP' } })
-          const tipoConfig = await prisma.configuracion.findUnique({ where: { clave: 'precios.descuentoVIPTipo' } })
+          const descConfig = await getConfig('precios.descuentoVIP', tenantIdCitas)
+          const tipoConfig = await getConfig('precios.descuentoVIPTipo', tenantIdCitas)
           if (descConfig) {
             totalDescuentosUpdate += aplicarDescuentoUpdate(precioFinal, parseFloat(descConfig.valor) || 0, tipoConfig?.valor || 'PORCENTAJE')
           }
         }
 
         if (cliente?.clienteEmpresa) {
-          const descConfig = await prisma.configuracion.findUnique({ where: { clave: 'precios.descuentoEmpresa' } })
-          const tipoConfig = await prisma.configuracion.findUnique({ where: { clave: 'precios.descuentoEmpresaTipo' } })
+          const descConfig = await getConfig('precios.descuentoEmpresa', tenantIdCitas)
+          const tipoConfig = await getConfig('precios.descuentoEmpresaTipo', tenantIdCitas)
           if (descConfig) {
             totalDescuentosUpdate += aplicarDescuentoUpdate(precioFinal, parseFloat(descConfig.valor) || 0, tipoConfig?.valor || 'PORCENTAJE')
           }
@@ -165,8 +175,10 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     // Trazabilidad: guardar quién completó la cita
     if (estado === 'COMPLETADA' || estado === 'LISTO_PARA_RECOGER') {
       const userEmail = session?.user?.email || ''
-      const user = await prisma.user.findUnique({
-        where: { email: userEmail },
+      const localCtxComp = await getLocalContext()
+      const tenantIdComp = localCtxComp?.tenantId || null
+      const user = await prisma.user.findFirst({
+        where: { email: userEmail, ...(tenantIdComp ? { tenantId: tenantIdComp } : {}) },
         select: { id: true, name: true }
       })
       updateData.completadoPorId = user?.id || null
@@ -374,12 +386,15 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       const año = new Date().getFullYear()
       
       // Buscar el número más alto por orden del propio número (NO por createdAt)
-      // para garantizar secuencia correcta según normativa fiscal española
+      // para garantizar secuencia correcta según normativa fiscal española (por tenant)
+      const localCtxFactura = await getLocalContext()
+      const tenantIdAutoFactura = localCtxFactura?.tenantId || null
       const documentosDelAño = await prisma.factura.findMany({
         where: { 
           numero: {
             startsWith: `${prefijo}-${año}-`
-          }
+          },
+          ...(tenantIdAutoFactura ? { tenantId: tenantIdAutoFactura } : {})
         },
         select: { numero: true }
       })
@@ -410,15 +425,16 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         data: {
           numero: numeroDocumento,
           tipo: tipoDocumento,
-          fecha: cita.fecha, // Usar la fecha del servicio, no la fecha actual
-          estado: 'PAGADA', // Por defecto se marca como pagada al entregar el vehículo
+          fecha: cita.fecha,
+          estado: 'PAGADA',
           subtotal: Math.round(subtotal * 100) / 100,
           iva: Math.round(iva * 100) / 100,
           total: total,
           metodoPago: cita.metodoPago,
           clienteId: cita.clienteId,
           citaId: cita.id,
-          localId: cita.localId, // ✅ Asignar el local de la cita a la factura
+          localId: cita.localId,
+          ...(tenantIdAutoFactura ? { tenantId: tenantIdAutoFactura } : {})
         }
       })
       

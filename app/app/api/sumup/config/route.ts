@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { getLocalContext } from '@/lib/local-context'
 
-// GET - Obtener configuración de SumUp
 export async function GET() {
   try {
     const session = await getServerSession(authOptions)
@@ -11,14 +11,18 @@ export async function GET() {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
-    // Buscar o crear configuración por defecto
-    let config = await prisma.sumUpConfig.findFirst()
-    
+    const localContext = await getLocalContext()
+    const tenantId = localContext?.tenantId || null
+    const tenantFilter = tenantId ? { tenantId } : {}
+
+    let config = await prisma.sumUpConfig.findFirst({ where: tenantFilter })
+
     if (!config) {
       config = await prisma.sumUpConfig.create({
         data: {
           modoAsignacion: 'COMPARTIDO',
           trackingPorLocal: true,
+          ...(tenantId ? { tenantId } : {})
         },
       })
     }
@@ -33,7 +37,6 @@ export async function GET() {
   }
 }
 
-// PUT - Actualizar configuración (solo SUPER_ADMIN)
 export async function PUT(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -41,9 +44,12 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
-    // Solo SUPER_ADMIN puede cambiar la configuración
-    const user = await prisma.user.findUnique({
-      where: { email: session.user?.email || '' },
+    const localContext = await getLocalContext()
+    const tenantId = localContext?.tenantId || null
+    const tenantFilter = tenantId ? { tenantId } : {}
+
+    const user = await prisma.user.findFirst({
+      where: { email: session.user?.email || '', ...(tenantId ? { tenantId } : {}) },
     })
 
     if (!user || user.role !== 'SUPER_ADMIN') {
@@ -55,8 +61,7 @@ export async function PUT(request: NextRequest) {
 
     const { modoAsignacion, trackingPorLocal } = await request.json()
 
-    // Buscar config existente
-    let config = await prisma.sumUpConfig.findFirst()
+    let config = await prisma.sumUpConfig.findFirst({ where: tenantFilter })
 
     if (config) {
       config = await prisma.sumUpConfig.update({
@@ -71,6 +76,7 @@ export async function PUT(request: NextRequest) {
         data: {
           modoAsignacion: modoAsignacion || 'COMPARTIDO',
           trackingPorLocal: trackingPorLocal !== undefined ? trackingPorLocal : true,
+          ...(tenantId ? { tenantId } : {})
         },
       })
     }

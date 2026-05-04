@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { getLocalContext } from '@/lib/local-context'
 
 export async function GET(
   request: NextRequest,
@@ -48,11 +49,14 @@ export async function PUT(
       return NextResponse.json({ error: 'El nombre es obligatorio' }, { status: 400 })
     }
 
-    // Verificar que no exista otro proveedor con el mismo nombre
+    // Verificar que no exista otro proveedor con el mismo nombre (dentro del tenant)
+    const localCtxProv = await getLocalContext()
+    const tenantIdProv = localCtxProv?.tenantId || null
     const existente = await prisma.proveedor.findFirst({
       where: {
         nombre: { equals: nombre.trim(), mode: 'insensitive' },
-        id: { not: params.id }
+        id: { not: params.id },
+        ...(tenantIdProv ? { tenantId: tenantIdProv } : {})
       }
     })
 

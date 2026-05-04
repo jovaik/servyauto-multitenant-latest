@@ -51,8 +51,10 @@ export async function POST(request: NextRequest) {
     
     // Si aún no hay localId, usar el primer local disponible del usuario
     if (!localId) {
-      const user = await prisma.user.findUnique({
-        where: { email: session.user?.email || '' },
+      const localCtxPlink = await getLocalContext()
+      const tenantIdPlink = localCtxPlink?.tenantId || null
+      const user = await prisma.user.findFirst({
+        where: { email: session.user?.email || '', ...(tenantIdPlink ? { tenantId: tenantIdPlink } : {}) },
         include: { local: true }
       })
       localId = user?.localId || null
@@ -73,8 +75,10 @@ export async function POST(request: NextRequest) {
     const reference = `${localPrefix}-${Date.now()}`
 
     // Obtener usuario
-    const user = await prisma.user.findUnique({
-      where: { email: session.user?.email || '' },
+    const localCtxPlinkUser = await getLocalContext()
+    const tenantIdPlinkUser = localCtxPlinkUser?.tenantId || null
+    const user = await prisma.user.findFirst({
+      where: { email: session.user?.email || '', ...(tenantIdPlinkUser ? { tenantId: tenantIdPlinkUser } : {}) },
     })
 
     console.log(`Creando payment link: ${amount}€ - ${description} - Local: ${local?.nombre}`)
@@ -97,7 +101,10 @@ export async function POST(request: NextRequest) {
     // Registrar transacción en nuestra BD
     // Nota: No tenemos reader para payment links, usamos un registro especial
     let readerRecord = await prisma.sumUpReader.findFirst({
-      where: { sumupReaderId: 'PAYMENT_LINK' },
+      where: {
+        sumupReaderId: 'PAYMENT_LINK',
+        ...(tenantIdPlinkUser ? { tenantId: tenantIdPlinkUser } : {})
+      },
     })
 
     if (!readerRecord) {
@@ -105,8 +112,9 @@ export async function POST(request: NextRequest) {
         data: {
           sumupReaderId: 'PAYMENT_LINK',
           nombre: 'Payment Links (Sin terminal)',
-          localId: null, // Compartido
+          localId: null,
           activo: true,
+          ...(tenantIdPlinkUser ? { tenantId: tenantIdPlinkUser } : {}),
         },
       })
     }
@@ -124,6 +132,7 @@ export async function POST(request: NextRequest) {
         citaId: citaId || null,
         creadoPorId: user?.id || null,
         creadoPorNombre: user?.name || session.user?.name || null,
+        ...(tenantIdPlinkUser ? { tenantId: tenantIdPlinkUser } : {}),
       },
     })
 

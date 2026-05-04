@@ -5,6 +5,13 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { getLocalContext, buildLocalFilter, getLocalIdForCreate } from '@/lib/local-context'
 
+// Helper: busca una configuracion por clave dentro del tenant actual
+async function getConfig(clave: string, tenantId: string | null) {
+  return prisma.configuracion.findFirst({
+    where: { clave, ...(tenantId ? { tenantId } : {}) }
+  })
+}
+
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
@@ -104,9 +111,13 @@ export async function POST(req: NextRequest) {
     const ticketsASolicitar = parseInt(ticketsUsados) || 0
     const localContextTickets = await getLocalContext()
     const localIdTickets = localContextTickets ? getLocalIdForCreate(localContextTickets) : null
+    const tenantIdTickets = localContextTickets?.tenantId || null
     if (ticketsASolicitar > 0) {
       const ultimoMovimiento = await prisma.inventarioTickets.findFirst({
-        where: localIdTickets ? { localId: localIdTickets } : {},
+        where: {
+          ...(localIdTickets ? { localId: localIdTickets } : {}),
+          ...(tenantIdTickets ? { tenantId: tenantIdTickets } : {}),
+        },
         orderBy: {
           createdAt: 'desc'
         }
@@ -122,8 +133,10 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Verificar disponibilidad del slot
+    // Verificar disponibilidad del slot (dentro del tenant)
     const fechaCita = new Date(fecha)
+    const localContextSlot = await getLocalContext()
+    const tenantIdSlot = localContextSlot?.tenantId || null
     const citaExistente = await prisma.cita.findFirst({
       where: {
         fecha: {
@@ -132,6 +145,7 @@ export async function POST(req: NextRequest) {
         },
         horaInicio,
         box,
+        ...(tenantIdSlot ? { tenantId: tenantIdSlot } : {}),
       },
     })
 
@@ -183,10 +197,13 @@ export async function POST(req: NextRequest) {
       return (subtotal * valor) / 100
     }
 
+    // Obtener tenantId para filtrar configs
+    const tenantIdDesc = localContextTickets?.tenantId || null
+
     // Descuento Parking
     if (cliente?.clienteParking) {
-      const descConfig = await prisma.configuracion.findUnique({ where: { clave: 'precios.descuentoParking' } })
-      const tipoConfig = await prisma.configuracion.findUnique({ where: { clave: 'precios.descuentoParkingTipo' } })
+      const descConfig = await getConfig('precios.descuentoParking', tenantIdDesc)
+      const tipoConfig = await getConfig('precios.descuentoParkingTipo', tenantIdDesc)
       if (descConfig) {
         const dto = aplicarDescuento(precioTotal, parseFloat(descConfig.valor) || 0, tipoConfig?.valor || 'FIJO')
         totalDescuentos += dto
@@ -196,8 +213,8 @@ export async function POST(req: NextRequest) {
 
     // Descuento VIP
     if (cliente?.clienteVIP) {
-      const descConfig = await prisma.configuracion.findUnique({ where: { clave: 'precios.descuentoVIP' } })
-      const tipoConfig = await prisma.configuracion.findUnique({ where: { clave: 'precios.descuentoVIPTipo' } })
+      const descConfig = await getConfig('precios.descuentoVIP', tenantIdDesc)
+      const tipoConfig = await getConfig('precios.descuentoVIPTipo', tenantIdDesc)
       if (descConfig) {
         const dto = aplicarDescuento(precioTotal, parseFloat(descConfig.valor) || 0, tipoConfig?.valor || 'PORCENTAJE')
         totalDescuentos += dto
@@ -207,8 +224,8 @@ export async function POST(req: NextRequest) {
 
     // Descuento Empresa
     if (cliente?.clienteEmpresa) {
-      const descConfig = await prisma.configuracion.findUnique({ where: { clave: 'precios.descuentoEmpresa' } })
-      const tipoConfig = await prisma.configuracion.findUnique({ where: { clave: 'precios.descuentoEmpresaTipo' } })
+      const descConfig = await getConfig('precios.descuentoEmpresa', tenantIdDesc)
+      const tipoConfig = await getConfig('precios.descuentoEmpresaTipo', tenantIdDesc)
       if (descConfig) {
         const dto = aplicarDescuento(precioTotal, parseFloat(descConfig.valor) || 0, tipoConfig?.valor || 'PORCENTAJE')
         totalDescuentos += dto
@@ -232,12 +249,13 @@ export async function POST(req: NextRequest) {
     // Obtener localId para asignar a la nueva cita
     const localContext = await getLocalContext()
     const localIdParaCita = localContext ? getLocalIdForCreate(localContext) : null
+    const tenantIdCita = localContext?.tenantId || null
 
     // Obtener información del usuario para trazabilidad
     const userEmail = session?.user?.email || ''
     const userName = session?.user?.name || userEmail
-    const user = await prisma.user.findUnique({
-      where: { email: userEmail },
+    const user = await prisma.user.findFirst({
+      where: { email: userEmail, ...(tenantIdCita ? { tenantId: tenantIdCita } : {}) },
       select: { id: true, name: true }
     })
 
@@ -256,6 +274,7 @@ export async function POST(req: NextRequest) {
         metodoPago,
         total: precioTotal,
         localId: localIdParaCita, // Asignar local
+        ...(tenantIdCita ? { tenantId: tenantIdCita } : {}),
         // Trazabilidad
         creadoPorId: user?.id || null,
         creadoPorNombre: user?.name || userName,
@@ -279,7 +298,10 @@ export async function POST(req: NextRequest) {
     if (ticketsASolicitar > 0) {
       const localIdConsumo = cita.localId || localIdTickets || null
       const ultimoMovimiento = await prisma.inventarioTickets.findFirst({
-        where: localIdConsumo ? { localId: localIdConsumo } : {},
+        where: {
+          ...(localIdConsumo ? { localId: localIdConsumo } : {}),
+          ...(tenantIdTickets ? { tenantId: tenantIdTickets } : {}),
+        },
         orderBy: {
           createdAt: 'desc'
         }
@@ -297,7 +319,8 @@ export async function POST(req: NextRequest) {
           concepto: `Tickets entregados en cita #${cita.id.substring(0, 8)}`,
           usuarioId: (session.user as any).id || null,
           citaId: cita.id,
-          localId: localIdConsumo
+          localId: localIdConsumo,
+          ...(tenantIdTickets ? { tenantId: tenantIdTickets } : {})
         }
       })
     }

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { getLocalContext } from '@/lib/local-context'
 
 export const dynamic = 'force-dynamic'
 
@@ -85,12 +86,15 @@ export async function PUT(
       )
     }
 
-    // Verificar si el email ya existe en otro cliente
+    // Verificar si el email ya existe en otro cliente (dentro del mismo tenant)
+    const localCtxClienteId = await getLocalContext()
+    const tenantIdClienteId = localCtxClienteId?.tenantId || null
     if (email) {
       const emailExists = await prisma.cliente.findFirst({
         where: { 
           email,
-          id: { not: params.id }
+          id: { not: params.id },
+          ...(tenantIdClienteId ? { tenantId: tenantIdClienteId } : {})
         }
       })
 

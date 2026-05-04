@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { getLocalContext, canAccessRecord } from '@/lib/local-context'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 
@@ -494,6 +495,11 @@ export async function GET(
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
+    const localContext = await getLocalContext()
+    if (!localContext) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
     // Obtener factura completa con local e items
     const factura = await prisma.factura.findUnique({
       where: { id: params.id },
@@ -509,6 +515,10 @@ export async function GET(
         { error: 'Factura no encontrada' },
         { status: 404 }
       )
+    }
+
+    if (!canAccessRecord(localContext, factura.localId)) {
+      return NextResponse.json({ error: 'Factura no encontrada' }, { status: 404 })
     }
 
     const { searchParams } = new URL(request.url)

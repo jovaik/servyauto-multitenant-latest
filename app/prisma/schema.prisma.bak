@@ -1,0 +1,607 @@
+generator client {
+    provider = "prisma-client-js"
+    binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id               String      @id @default(cuid())
+  name             String?
+  email            String      @unique
+  emailVerified    DateTime?
+  image            String?
+  password         String?
+  role             RolUsuario  @default(ADMIN)
+  activo           Boolean     @default(true)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  localId          String?
+  accounts         Account[]
+  sessions         Session[]
+  local            Local?      @relation(fields: [localId], references: [id])
+  localesAsignados UserLocal[]
+}
+
+model Local {
+  id                  String             @id @default(cuid())
+  nombre              String
+  nombreComercial     String?
+  logo                String?
+  direccion           String?
+  ciudad              String?
+  codigoPostal        String?
+  telefono            String?
+  email               String?
+  activo              Boolean            @default(true)
+  colorPrimario       String?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  cifNif              String?
+  ciudadFiscal        String?
+  codigoPostalFiscal  String?
+  direccionFiscal     String?
+  razonSocial         String?
+  sumupApiKey         String?
+  sumupAffiliateKey   String?
+  usuarios            User[]
+  citas               Cita[]
+  clientes            Cliente[]
+  facturas            Factura[]
+  gastos              Gasto[]
+  ingresosAdicionales IngresoAdicional[]
+  reservas            reservas[]
+  sumupReaders        SumUpReader[]
+  sumupTransactions   SumUpTransaction[]
+  usuariosAsignados   UserLocal[]
+  vehiculos           Vehiculo[]
+  inventarioTickets   InventarioTickets[] @relation("TicketsLocal")
+  categoriaOverrides  CategoriaOverrideLocal[]
+  precioOverrides     PrecioOverrideLocal[]
+  serviciosTaller     ServicioTaller[]
+  cierresCaja         CierreCaja[]
+
+  @@map("locales")
+}
+
+model CategoriaOverrideLocal {
+  id        String   @id @default(cuid())
+  localId   String
+  marca     String
+  modelo    String
+  categoria String   // PEQ, MED, GR, EXTGR
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  local     Local    @relation(fields: [localId], references: [id], onDelete: Cascade)
+
+  @@unique([localId, marca, modelo])
+  @@map("categoria_override_local")
+}
+
+model PrecioOverrideLocal {
+  id         String   @id @default(cuid())
+  localId    String
+  servicioId String
+  precio     Float
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  local      Local    @relation(fields: [localId], references: [id], onDelete: Cascade)
+  servicio   Servicio @relation(fields: [servicioId], references: [id], onDelete: Cascade)
+
+  @@unique([localId, servicioId])
+  @@map("precio_override_local")
+}
+
+model UserLocal {
+  id        String   @id @default(cuid())
+  userId    String
+  localId   String
+  createdAt DateTime @default(now())
+  local     Local    @relation(fields: [localId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, localId])
+  @@map("user_locales")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Cliente {
+  id               String           @id @default(cuid())
+  nombre           String
+  apellido         String?
+  email            String?          @unique
+  telefono         String
+  direccion        String?
+  documento        String?          @map("dni")
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  clienteParking   Boolean          @default(false)
+  clienteEmpresa   Boolean          @default(false)
+  clienteVIP       Boolean          @default(false)
+  localId          String?
+  creadoPorId      String?
+  creadoPorNombre  String?
+  citas            Cita[]
+  local            Local?           @relation(fields: [localId], references: [id])
+  facturas         Factura[]
+  serviciosRapidos ServicioTaller[]
+  vehiculos        Vehiculo[]
+
+  @@map("clientes")
+}
+
+model Vehiculo {
+  id               String           @id @default(cuid())
+  marca            String
+  modelo           String
+  anio             Int
+  color            String?
+  matricula        String
+  kilometraje      Int?
+  motor            String?
+  combustible      String?
+  observaciones    String?
+  clienteId        String
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  localId          String?
+  creadoPorId      String?
+  creadoPorNombre  String?
+  citas            Cita[]
+  serviciosRapidos ServicioTaller[]
+  cliente          Cliente          @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  local            Local?           @relation(fields: [localId], references: [id])
+
+  @@unique([matricula, localId])
+  @@map("vehiculos")
+}
+
+model Servicio {
+  id               String                @id @default(cuid())
+  nombre           String
+  descripcion      String?
+  precio           Float
+  duracion         Int
+  activo           Boolean               @default(true)
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  ordenPreferencia Int                   @default(999)
+  cita_servicios   cita_servicios[]
+  precioOverrides  PrecioOverrideLocal[]
+
+  @@map("servicios")
+}
+
+model Cita {
+  id                  String           @id @default(cuid())
+  fecha               DateTime
+  horaInicio          String
+  horaFin             String
+  box                 String
+  estado              EstadoCita       @default(PENDIENTE)
+  observaciones       String?
+  metodoPago          MetodoPago?
+  total               Float?
+  clienteId           String
+  vehiculoId          String
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  ticketsUsados       Int              @default(0)
+  localId             String?
+  completadoPorId     String?
+  completadoPorNombre String?
+  creadoPorId         String?
+  creadoPorNombre     String?
+  cita_servicios      cita_servicios[]
+  cliente             Cliente          @relation(fields: [clienteId], references: [id])
+  local               Local?           @relation(fields: [localId], references: [id])
+  vehiculo            Vehiculo         @relation(fields: [vehiculoId], references: [id])
+  facturas            Factura?
+  servicioTaller      ServicioTaller?
+
+  @@map("citas")
+}
+
+model Factura {
+  id               String          @id @default(cuid())
+  numero           String          @unique
+  tipo             TipoFactura     @default(TICKET)
+  fecha            DateTime        @default(now())
+  subtotal         Float
+  iva              Float
+  total            Float
+  estado           EstadoFactura   @default(PENDIENTE)
+  metodoPago       MetodoPago?
+  clienteId        String
+  citaId           String?         @unique
+  datosFacturacion String?
+  pdfPath          String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  creadoPorId      String?
+  creadoPorNombre  String?
+  fechaPago        DateTime?
+  localId          String?
+  factura_items    factura_items[]
+  citas            Cita?           @relation(fields: [citaId], references: [id])
+  cliente          Cliente         @relation(fields: [clienteId], references: [id])
+  local            Local?          @relation(fields: [localId], references: [id])
+  servicioRapido   ServicioTaller?
+
+  @@map("facturas")
+}
+
+model Configuracion {
+  id          String            @id @default(cuid())
+  clave       String            @unique
+  valor       String
+  tipo        TipoConfiguracion
+  categoria   String
+  descripcion String
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@map("configuraciones")
+}
+
+model cita_servicios {
+  id         String   @id
+  citaId     String
+  servicioId String
+  precio     Float
+  citas      Cita     @relation(fields: [citaId], references: [id], onDelete: Cascade)
+  servicios  Servicio @relation(fields: [servicioId], references: [id])
+
+  @@unique([citaId, servicioId])
+}
+
+model factura_items {
+  id          String  @id
+  descripcion String
+  cantidad    Int
+  precio      Float
+  total       Float
+  facturaId   String
+  facturas    Factura @relation(fields: [facturaId], references: [id], onDelete: Cascade)
+}
+
+model reservas {
+  id        String        @id
+  nombre    String
+  apellido  String?
+  email     String
+  telefono  String
+  fecha     DateTime
+  hora      String
+  vehiculo  String
+  servicio  String
+  mensaje   String?
+  estado    EstadoReserva @default(PENDIENTE)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime
+  localId   String?
+  local     Local?        @relation(fields: [localId], references: [id])
+}
+
+model Proveedor {
+  id           String   @id @default(cuid())
+  nombre       String   @unique
+  cif          String?
+  direccion    String?
+  codigoPostal String?
+  ciudad       String?
+  provincia    String?
+  telefono     String?
+  email        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  gastos       Gasto[]
+
+  @@map("proveedores")
+}
+
+model Gasto {
+  id                    String      @id @default(cuid())
+  concepto              String
+  fecha                 DateTime
+  proveedor             String?
+  tipoGasto             String
+  importe               Float
+  tipo                  TipoFactura @default(TICKET)
+  iva                   Float       @default(21)
+  adjunto               Boolean     @default(false)
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+  numeroFactura         String?
+  proveedorCIF          String?
+  proveedorCiudad       String?
+  proveedorCodigoPostal String?
+  proveedorDireccion    String?
+  proveedorProvincia    String?
+  metodoPago            MetodoPago?
+  creadoPorId           String?
+  creadoPorNombre       String?
+  proveedorId           String?
+  beneficiario          String?
+  localId               String?
+  local                 Local?      @relation(fields: [localId], references: [id])
+  proveedorRef          Proveedor?  @relation(fields: [proveedorId], references: [id])
+
+  @@map("gastos")
+}
+
+model CierreCaja {
+  id              String   @id @default(cuid())
+  fechaInicio     DateTime
+  fechaFin        DateTime
+  totalEfectivo   Float
+  totalTPVSumup   Float
+  totalTPVUnicaja Float
+  gastosEfectivo  Float
+  gastosTarjeta   Float
+  efectivoFinal   Float
+  observaciones   String?
+  usuarioId       String
+  localId         String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  local           Local?   @relation(fields: [localId], references: [id])
+
+  @@map("cierres_caja")
+}
+
+model InventarioTickets {
+  id            String               @id @default(cuid())
+  fecha         DateTime             @default(now())
+  tipo          TipoMovimientoTicket @default(COMPRA)
+  cantidad      Int
+  saldoAnterior Int
+  saldoActual   Int
+  concepto      String?
+  usuarioId     String?
+  citaId        String?
+  localId       String?
+  local         Local?               @relation("TicketsLocal", fields: [localId], references: [id])
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  @@map("inventario_tickets")
+}
+
+model IngresoAdicional {
+  id              String     @id @default(cuid())
+  concepto        String
+  descripcion     String?
+  importe         Float
+  fecha           DateTime   @default(now())
+  metodoPago      MetodoPago @default(EFECTIVO)
+  observaciones   String?
+  creadoPorId     String?
+  creadoPorNombre String?
+  localId         String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  local           Local?     @relation(fields: [localId], references: [id])
+
+  @@map("ingresos_adicionales")
+}
+
+model GaleriaAntesDespues {
+  id            Int      @id @default(autoincrement())
+  titulo        String
+  servicio      String
+  vehiculo      String
+  imagenAntes   String
+  imagenDespues String
+  descripcion   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("galeria_antes_despues")
+}
+
+model Portfolio {
+  id          Int      @id @default(autoincrement())
+  titulo      String
+  servicio    String
+  vehiculo    String?
+  categoria   String   @default("MEDIO")
+  imagenes    String[]
+  descripcion String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("portfolio")
+}
+
+model TipoServicio {
+  id            Int      @id @default(autoincrement())
+  nombre        String   @unique
+  codigo        String   @unique
+  margenDefecto Float    @default(30)
+  categoria     String   @default("OTROS")
+  descripcion   String?
+  activo        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("tipos_servicio")
+}
+
+model ServicioTaller {
+  id                  String      @id @default(cuid())
+  concepto            String
+  fecha               DateTime    @default(now())
+  clienteId           String
+  vehiculoId          String
+  tipoGasto           String
+  costeProducto       Float       @default(0)
+  costeManoObra       Float       @default(0)
+  precioProducto      Float
+  precioManoObra      Float
+  importe             Float
+  margen              Float
+  metodoPago          MetodoPago?
+  tipo                TipoFactura @default(TICKET)
+  iva                 Float       @default(21)
+  adjunto             Boolean     @default(false)
+  numeroFactura       String?
+  clienteCIF          String?
+  clienteDireccion    String?
+  clienteCodigoPostal String?
+  clienteCiudad       String?
+  clienteProvincia    String?
+  facturaId           String?     @unique
+  localId             String?
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+  citaId              String?     @unique
+  cita                Cita?       @relation(fields: [citaId], references: [id])
+  cliente             Cliente     @relation(fields: [clienteId], references: [id])
+  factura             Factura?    @relation(fields: [facturaId], references: [id])
+  vehiculo            Vehiculo    @relation(fields: [vehiculoId], references: [id])
+  local               Local?      @relation(fields: [localId], references: [id])
+
+  @@map("servicios_taller")
+}
+
+model SumUpConfig {
+  id               String   @id @default(cuid())
+  modoAsignacion   String   @default("COMPARTIDO")
+  trackingPorLocal Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("sumup_config")
+}
+
+model SumUpReader {
+  id            String             @id @default(cuid())
+  sumupReaderId String             @unique
+  nombre        String
+  localId       String?
+  activo        Boolean            @default(true)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  local         Local?             @relation(fields: [localId], references: [id])
+  transacciones SumUpTransaction[]
+
+  @@map("sumup_readers")
+}
+
+model SumUpTransaction {
+  id              String      @id @default(cuid())
+  checkoutId      String      @unique
+  readerId        String
+  localId         String
+  amount          Float
+  status          String
+  transactionCode String?
+  description     String?
+  reference       String?
+  facturaId       String?
+  citaId          String?
+  creadoPorId     String?
+  creadoPorNombre String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  local           Local       @relation(fields: [localId], references: [id])
+  reader          SumUpReader @relation(fields: [readerId], references: [id])
+
+  @@map("sumup_transactions")
+}
+
+enum RolUsuario {
+  SUPER_ADMIN
+  ADMIN
+  OPERADOR
+  CLIENTE
+  GRUPO_ADMIN
+}
+
+enum EstadoCita {
+  PENDIENTE
+  CONFIRMADA
+  EN_PROCESO
+  COMPLETADA
+  CANCELADA
+  NO_SHOW
+  LISTO_PARA_RECOGER
+}
+
+enum MetodoPago {
+  EFECTIVO
+  TPV_SUMUP
+  TPV_UNICAJA
+}
+
+enum EstadoFactura {
+  PENDIENTE
+  PAGADA
+  VENCIDA
+  CANCELADA
+}
+
+enum EstadoReserva {
+  PENDIENTE
+  CONFIRMADA
+  CANCELADA
+}
+
+enum TipoConfiguracion {
+  TEXTO
+  NUMERO
+  BOOLEANO
+  JSON
+  EMAIL
+  TELEFONO
+  DIRECCION
+  ARCHIVO
+}
+
+enum TipoFactura {
+  TICKET
+  FACTURA
+}
+
+enum TipoMovimientoTicket {
+  COMPRA
+  CONSUMO
+  AJUSTE
+}

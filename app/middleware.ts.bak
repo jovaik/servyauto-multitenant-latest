@@ -1,0 +1,51 @@
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+
+const PUBLIC_PATHS = [
+  '/api/auth',
+  '/api/signup',
+  '/api/locales/publicos',
+  '/api/reservas',
+  '/api/configuracion/publica',
+  '/login',
+  '/signup',
+  '/favicon.ico',
+  '/api/citas',
+]
+
+function isPublicPath(pathname: string): boolean {
+  if (pathname.startsWith('/api/citas/') && pathname.endsWith('/ics')) {
+    return true
+  }
+  return PUBLIC_PATHS.some(p => pathname.startsWith(p))
+}
+
+export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl
+
+  if (isPublicPath(pathname)) {
+    return NextResponse.next()
+  }
+
+  if (pathname.startsWith('/_next') || pathname.startsWith('/static')) {
+    return NextResponse.next()
+  }
+
+  if (!pathname.startsWith('/api/') && !pathname.startsWith('/dashboard')) {
+    return NextResponse.next()
+  }
+
+  const selectedLocalId = request.headers.get('x-selected-local-id')
+
+  if (selectedLocalId && selectedLocalId !== 'null' && selectedLocalId !== 'undefined') {
+    if (!/^[a-zA-Z0-9_-]+$/.test(selectedLocalId)) {
+      return NextResponse.json({ error: 'localId inválido' }, { status: 400 })
+    }
+  }
+
+  return NextResponse.next()
+}
+
+export const config = {
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.png$|.*\\.jpg$).*)'],
+}

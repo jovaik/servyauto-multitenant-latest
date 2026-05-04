@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { unpairReader, getLocalSumUpKeys } from '@/lib/sumup'
 import { prisma } from '@/lib/db'
+import { getLocalContext } from '@/lib/local-context'
 
 // PUT - Actualizar lector (asignar/desasignar local)
 export async function PUT(
@@ -24,12 +25,15 @@ export async function PUT(
 
     if (!dbReader) {
       // Si no existe, crearlo
+      const localCtxReaderId = await getLocalContext()
+      const tenantIdReaderId = localCtxReaderId?.tenantId || null
       dbReader = await prisma.sumUpReader.create({
         data: {
           sumupReaderId: params.id,
           nombre: nombre || `Terminal ${params.id.slice(-4)}`,
           localId: localId || null,
           activo: true,
+          ...(tenantIdReaderId ? { tenantId: tenantIdReaderId } : {}),
         },
       })
     } else {

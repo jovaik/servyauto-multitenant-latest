@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { getLocalContext } from '@/lib/local-context';
 
 // GET - Obtener locales asignados a un usuario
 export async function GET(
@@ -14,9 +15,12 @@ export async function GET(
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
+    const localContext = await getLocalContext();
+    const tenantId = localContext?.tenantId || null;
+
     // Solo SUPER_ADMIN puede ver asignaciones de otros usuarios
-    const currentUser = await prisma.user.findUnique({
-      where: { email: session.user.email },
+    const currentUser = await prisma.user.findFirst({
+      where: { email: session.user.email, ...(tenantId ? { tenantId } : {}) },
       select: { role: true }
     });
 
@@ -51,9 +55,11 @@ export async function PUT(
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
-    // Solo SUPER_ADMIN puede modificar asignaciones
-    const currentUser = await prisma.user.findUnique({
-      where: { email: session.user.email },
+    const localContext = await getLocalContext();
+    const tenantId = localContext?.tenantId || null;
+
+    const currentUser = await prisma.user.findFirst({
+      where: { email: session.user.email, ...(tenantId ? { tenantId } : {}) },
       select: { role: true }
     });
 
@@ -67,32 +73,20 @@ export async function PUT(
       return NextResponse.json({ error: 'localIds debe ser un array' }, { status: 400 });
     }
 
-    // Eliminar todas las asignaciones actuales
-    await prisma.userLocal.deleteMany({
-      where: { userId: params.id }
-    });
+    await prisma.userLocal.deleteMany({ where: { userId: params.id } });
 
-    // Crear nuevas asignaciones
     if (localIds.length > 0) {
       await prisma.userLocal.createMany({
-        data: localIds.map((localId: string) => ({
-          userId: params.id,
-          localId
-        }))
+        data: localIds.map((localId: string) => ({ userId: params.id, localId }))
       });
     }
 
-    // Obtener resultado actualizado
     const userLocales = await prisma.userLocal.findMany({
       where: { userId: params.id },
       include: {
-        local: {
-          select: { id: true, nombre: true, nombreComercial: true, activo: true }
-        }
+        local: { select: { id: true, nombre: true, nombreComercial: true, activo: true } }
       }
     });
-
-    console.log(`✅ Locales actualizados para usuario ${params.id}:`, localIds);
 
     return NextResponse.json(userLocales.map((ul: any) => ul.local));
   } catch (error) {
@@ -112,8 +106,11 @@ export async function POST(
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
-    const currentUser = await prisma.user.findUnique({
-      where: { email: session.user.email },
+    const localContext = await getLocalContext();
+    const tenantId = localContext?.tenantId || null;
+
+    const currentUser = await prisma.user.findFirst({
+      where: { email: session.user.email, ...(tenantId ? { tenantId } : {}) },
       select: { role: true }
     });
 
@@ -122,19 +119,12 @@ export async function POST(
     }
 
     const { localId } = await request.json();
-
     if (!localId) {
       return NextResponse.json({ error: 'localId es requerido' }, { status: 400 });
     }
 
-    // Verificar que no exista ya
     const existing = await prisma.userLocal.findUnique({
-      where: {
-        userId_localId: {
-          userId: params.id,
-          localId
-        }
-      }
+      where: { userId_localId: { userId: params.id, localId } }
     });
 
     if (existing) {
@@ -142,14 +132,9 @@ export async function POST(
     }
 
     const userLocal = await prisma.userLocal.create({
-      data: {
-        userId: params.id,
-        localId
-      },
+      data: { userId: params.id, localId },
       include: {
-        local: {
-          select: { id: true, nombre: true, nombreComercial: true, activo: true }
-        }
+        local: { select: { id: true, nombre: true, nombreComercial: true, activo: true } }
       }
     });
 
@@ -171,8 +156,11 @@ export async function DELETE(
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
-    const currentUser = await prisma.user.findUnique({
-      where: { email: session.user.email },
+    const localContext = await getLocalContext();
+    const tenantId = localContext?.tenantId || null;
+
+    const currentUser = await prisma.user.findFirst({
+      where: { email: session.user.email, ...(tenantId ? { tenantId } : {}) },
       select: { role: true }
     });
 
@@ -181,18 +169,12 @@ export async function DELETE(
     }
 
     const { localId } = await request.json();
-
     if (!localId) {
       return NextResponse.json({ error: 'localId es requerido' }, { status: 400 });
     }
 
     await prisma.userLocal.delete({
-      where: {
-        userId_localId: {
-          userId: params.id,
-          localId
-        }
-      }
+      where: { userId_localId: { userId: params.id, localId } }
     });
 
     return NextResponse.json({ success: true });

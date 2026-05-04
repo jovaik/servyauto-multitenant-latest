@@ -86,7 +86,8 @@ export async function POST(request: NextRequest) {
         saldoActual,
         concepto: concepto || null,
         usuarioId: (session.user as any).id || null,
-        localId
+        localId,
+        ...(localContext?.tenantId ? { tenantId: localContext.tenantId } : {})
       },
       include: {
         local: {

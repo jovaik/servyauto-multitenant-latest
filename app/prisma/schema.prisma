@@ -1,12 +1,47 @@
 generator client {
     provider = "prisma-client-js"
     binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
-    output = "/home/ubuntu/servyauto_manager_v89/app/node_modules/.prisma/client"
+    
 }
 
 datasource db {
     provider = "postgresql"
     url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  nombre      String
+  logo        String?
+  colorPrimario String?
+  activo      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  locales              Local[]
+  usuarios             User[]
+  clientes             Cliente[]
+  vehiculos            Vehiculo[]
+  citas                Cita[]
+  facturas             Factura[]
+  gastos               Gasto[]
+  ingresosAdicionales  IngresoAdicional[]
+  proveedores          Proveedor[]
+  reservas             reservas[]
+  serviciosTaller      ServicioTaller[]
+  cierresCaja          CierreCaja[]
+  sumupReaders         SumUpReader[]
+  sumupTransactions    SumUpTransaction[]
+  configuraciones      Configuracion[]
+  inventarioTickets    InventarioTickets[]
+  sumupConfigs         SumUpConfig[]
+  portfolios           Portfolio[]
+  galeriasAntesDespues GaleriaAntesDespues[]
+  tiposServicio        TipoServicio[]
+  servicios            Servicio[]
+
+  @@map("tenants")
 }
 
 model Account {
@@ -38,7 +73,7 @@ model Session {
 model User {
   id               String      @id @default(cuid())
   name             String?
-  email            String      @unique
+  email            String
   emailVerified    DateTime?
   image            String?
   password         String?
@@ -47,10 +82,15 @@ model User {
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
   localId          String?
+  tenantId         String?
   accounts         Account[]
   sessions         Session[]
   local            Local?      @relation(fields: [localId], references: [id])
   localesAsignados UserLocal[]
+  tenant           Tenant?     @relation(fields: [tenantId], references: [id])
+
+  @@unique([email, tenantId])
+  @@index([tenantId])
 }
 
 model Local {
@@ -74,6 +114,7 @@ model Local {
   razonSocial         String?
   sumupApiKey         String?
   sumupAffiliateKey   String?
+  tenantId            String?
   usuarios            User[]
   citas               Cita[]
   clientes            Cliente[]
@@ -88,7 +129,9 @@ model Local {
   inventarioTickets   InventarioTickets[] @relation("TicketsLocal")
   categoriaOverrides  CategoriaOverrideLocal[]
   precioOverrides     PrecioOverrideLocal[]
+  tenant              Tenant?             @relation(fields: [tenantId], references: [id])
 
+  @@index([tenantId])
   @@map("locales")
 }
 
@@ -97,7 +140,7 @@ model CategoriaOverrideLocal {
   localId   String
   marca     String
   modelo    String
-  categoria String   // PEQ, MED, GR, EXTGR
+  categoria String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   local     Local    @relation(fields: [localId], references: [id], onDelete: Cascade)
@@ -144,7 +187,7 @@ model Cliente {
   id               String           @id @default(cuid())
   nombre           String
   apellido         String?
-  email            String?          @unique
+  email            String?
   telefono         String
   direccion        String?
   documento        String?          @map("dni")
@@ -154,6 +197,7 @@ model Cliente {
   clienteEmpresa   Boolean          @default(false)
   clienteVIP       Boolean          @default(false)
   localId          String?
+  tenantId         String?
   creadoPorId      String?
   creadoPorNombre  String?
   citas            Cita[]
@@ -161,7 +205,9 @@ model Cliente {
   facturas         Factura[]
   serviciosRapidos ServicioTaller[]
   vehiculos        Vehiculo[]
+  tenant           Tenant?          @relation(fields: [tenantId], references: [id])
 
+  @@index([tenantId])
   @@map("clientes")
 }
 
@@ -180,14 +226,17 @@ model Vehiculo {
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
   localId          String?
+  tenantId         String?
   creadoPorId      String?
   creadoPorNombre  String?
   citas            Cita[]
   serviciosRapidos ServicioTaller[]
   cliente          Cliente          @relation(fields: [clienteId], references: [id], onDelete: Cascade)
   local            Local?           @relation(fields: [localId], references: [id])
+  tenant           Tenant?          @relation(fields: [tenantId], references: [id])
 
   @@unique([matricula, localId])
+  @@index([tenantId])
   @@map("vehiculos")
 }
 
@@ -201,9 +250,12 @@ model Servicio {
   createdAt        DateTime              @default(now())
   updatedAt        DateTime              @updatedAt
   ordenPreferencia Int                   @default(999)
+  tenantId         String?
   cita_servicios   cita_servicios[]
   precioOverrides  PrecioOverrideLocal[]
+  tenant           Tenant?               @relation(fields: [tenantId], references: [id])
 
+  @@index([tenantId])
   @@map("servicios")
 }
 
@@ -223,6 +275,7 @@ model Cita {
   updatedAt           DateTime         @updatedAt
   ticketsUsados       Int              @default(0)
   localId             String?
+  tenantId            String?
   completadoPorId     String?
   completadoPorNombre String?
   creadoPorId         String?
@@ -233,7 +286,9 @@ model Cita {
   vehiculo            Vehiculo         @relation(fields: [vehiculoId], references: [id])
   facturas            Factura?
   servicioTaller      ServicioTaller?
+  tenant              Tenant?          @relation(fields: [tenantId], references: [id])
 
+  @@index([tenantId])
   @@map("citas")
 }
 
@@ -257,25 +312,32 @@ model Factura {
   creadoPorNombre  String?
   fechaPago        DateTime?
   localId          String?
+  tenantId         String?
   factura_items    factura_items[]
   citas            Cita?           @relation(fields: [citaId], references: [id])
   cliente          Cliente         @relation(fields: [clienteId], references: [id])
   local            Local?          @relation(fields: [localId], references: [id])
   servicioRapido   ServicioTaller?
+  tenant           Tenant?         @relation(fields: [tenantId], references: [id])
 
+  @@index([tenantId])
   @@map("facturas")
 }
 
 model Configuracion {
   id          String            @id @default(cuid())
-  clave       String            @unique
+  clave       String
   valor       String
   tipo        TipoConfiguracion
   categoria   String
   descripcion String
+  tenantId    String?
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
+  tenant      Tenant?           @relation(fields: [tenantId], references: [id])
 
+  @@unique([clave, tenantId])
+  @@index([tenantId])
   @@map("configuraciones")
 }
 
@@ -315,12 +377,16 @@ model reservas {
   createdAt DateTime      @default(now())
   updatedAt DateTime
   localId   String?
+  tenantId  String?
   local     Local?        @relation(fields: [localId], references: [id])
+  tenant    Tenant?       @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
 }
 
 model Proveedor {
   id           String   @id @default(cuid())
-  nombre       String   @unique
+  nombre       String
   cif          String?
   direccion    String?
   codigoPostal String?
@@ -328,10 +394,14 @@ model Proveedor {
   provincia    String?
   telefono     String?
   email        String?
+  tenantId     String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   gastos       Gasto[]
+  tenant       Tenant?  @relation(fields: [tenantId], references: [id])
 
+  @@unique([nombre, tenantId])
+  @@index([tenantId])
   @@map("proveedores")
 }
 
@@ -359,9 +429,12 @@ model Gasto {
   proveedorId           String?
   beneficiario          String?
   localId               String?
+  tenantId              String?
   local                 Local?      @relation(fields: [localId], references: [id])
   proveedorRef          Proveedor?  @relation(fields: [proveedorId], references: [id])
+  tenant                Tenant?     @relation(fields: [tenantId], references: [id])
 
+  @@index([tenantId])
   @@map("gastos")
 }
 
@@ -377,9 +450,12 @@ model CierreCaja {
   efectivoFinal   Float
   observaciones   String?
   usuarioId       String
+  tenantId        String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+  tenant          Tenant?  @relation(fields: [tenantId], references: [id])
 
+  @@index([tenantId])
   @@map("cierres_caja")
 }
 
@@ -394,10 +470,13 @@ model InventarioTickets {
   usuarioId     String?
   citaId        String?
   localId       String?
+  tenantId      String?
   local         Local?               @relation("TicketsLocal", fields: [localId], references: [id])
+  tenant        Tenant?              @relation(fields: [tenantId], references: [id])
   createdAt     DateTime             @default(now())
   updatedAt     DateTime             @updatedAt
 
+  @@index([tenantId])
   @@map("inventario_tickets")
 }
 
@@ -412,10 +491,13 @@ model IngresoAdicional {
   creadoPorId     String?
   creadoPorNombre String?
   localId         String?
+  tenantId        String?
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
   local           Local?     @relation(fields: [localId], references: [id])
+  tenant          Tenant?    @relation(fields: [tenantId], references: [id])
 
+  @@index([tenantId])
   @@map("ingresos_adicionales")
 }
 
@@ -427,9 +509,12 @@ model GaleriaAntesDespues {
   imagenAntes   String
   imagenDespues String
   descripcion   String?
+  tenantId      String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  tenant        Tenant?  @relation(fields: [tenantId], references: [id])
 
+  @@index([tenantId])
   @@map("galeria_antes_despues")
 }
 
@@ -441,23 +526,31 @@ model Portfolio {
   categoria   String   @default("MEDIO")
   imagenes    String[]
   descripcion String?
+  tenantId    String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  tenant      Tenant?  @relation(fields: [tenantId], references: [id])
 
+  @@index([tenantId])
   @@map("portfolio")
 }
 
 model TipoServicio {
   id            Int      @id @default(autoincrement())
-  nombre        String   @unique
-  codigo        String   @unique
+  nombre        String
+  codigo        String
   margenDefecto Float    @default(30)
   categoria     String   @default("OTROS")
   descripcion   String?
   activo        Boolean  @default(true)
+  tenantId      String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  tenant        Tenant?  @relation(fields: [tenantId], references: [id])
 
+  @@unique([nombre, tenantId])
+  @@unique([codigo, tenantId])
+  @@index([tenantId])
   @@map("tipos_servicio")
 }
 
@@ -485,6 +578,7 @@ model ServicioTaller {
   clienteCiudad       String?
   clienteProvincia    String?
   facturaId           String?     @unique
+  tenantId            String?
   createdAt           DateTime    @default(now())
   updatedAt           DateTime    @updatedAt
   citaId              String?     @unique
@@ -492,7 +586,9 @@ model ServicioTaller {
   cliente             Cliente     @relation(fields: [clienteId], references: [id])
   factura             Factura?    @relation(fields: [facturaId], references: [id])
   vehiculo            Vehiculo    @relation(fields: [vehiculoId], references: [id])
+  tenant              Tenant?     @relation(fields: [tenantId], references: [id])
 
+  @@index([tenantId])
   @@map("servicios_taller")
 }
 
@@ -500,9 +596,12 @@ model SumUpConfig {
   id               String   @id @default(cuid())
   modoAsignacion   String   @default("COMPARTIDO")
   trackingPorLocal Boolean  @default(true)
+  tenantId         String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+  tenant           Tenant?  @relation(fields: [tenantId], references: [id])
 
+  @@index([tenantId])
   @@map("sumup_config")
 }
 
@@ -511,12 +610,15 @@ model SumUpReader {
   sumupReaderId String             @unique
   nombre        String
   localId       String?
+  tenantId      String?
   activo        Boolean            @default(true)
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
   local         Local?             @relation(fields: [localId], references: [id])
+  tenant        Tenant?            @relation(fields: [tenantId], references: [id])
   transacciones SumUpTransaction[]
 
+  @@index([tenantId])
   @@map("sumup_readers")
 }
 
@@ -525,6 +627,7 @@ model SumUpTransaction {
   checkoutId      String      @unique
   readerId        String
   localId         String
+  tenantId        String?
   amount          Float
   status          String
   transactionCode String?
@@ -538,7 +641,9 @@ model SumUpTransaction {
   updatedAt       DateTime    @updatedAt
   local           Local       @relation(fields: [localId], references: [id])
   reader          SumUpReader @relation(fields: [readerId], references: [id])
+  tenant          Tenant?     @relation(fields: [tenantId], references: [id])
 
+  @@index([tenantId])
   @@map("sumup_transactions")
 }
 

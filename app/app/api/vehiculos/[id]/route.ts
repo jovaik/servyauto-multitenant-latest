@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { getLocalContext } from '@/lib/local-context'
 
 export const dynamic = 'force-dynamic'
 
@@ -94,11 +95,14 @@ export async function PUT(
       )
     }
 
-    // Verificar si la matrícula ya existe en otro vehículo
+    // Verificar si la matrícula ya existe en otro vehículo (dentro del mismo tenant)
+    const localCtxVehiculo = await getLocalContext()
+    const tenantIdVehiculo = localCtxVehiculo?.tenantId || null
     const matriculaExists = await prisma.vehiculo.findFirst({
       where: { 
         matricula: matricula.toUpperCase(),
-        id: { not: params.id }
+        id: { not: params.id },
+        ...(tenantIdVehiculo ? { tenantId: tenantIdVehiculo } : {})
       }
     })
 

@@ -90,6 +90,7 @@ export async function POST(request: NextRequest) {
         creadoPorId: (session.user as any).id || null,
         creadoPorNombre: session.user?.name || session.user?.email || null,
         localId: localIdParaIngreso,
+        ...(localContext?.tenantId ? { tenantId: localContext.tenantId } : {}),
       },
       include: {
         local: true,

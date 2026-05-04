@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { getLocalContext, buildLocalFilter } from '@/lib/local-context'
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,10 +12,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
+    const localContext = await getLocalContext()
+    const tenantId = localContext?.tenantId || null
+    const tenantFilter = tenantId ? { tenantId } : {}
+
     const cierres = await prisma.cierreCaja.findMany({
-      orderBy: {
-        fechaFin: 'desc'
-      }
+      where: tenantFilter,
+      orderBy: { fechaFin: 'desc' }
     })
 
     return NextResponse.json(cierres)
@@ -27,16 +31,21 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
     const userId = (session.user as any).id
-    
+
     if (!userId) {
       return NextResponse.json({ error: 'Usuario inválido. Por favor, cierra sesión y vuelve a iniciar sesión.' }, { status: 401 })
     }
+
+    const localContext = await getLocalContext()
+    const tenantId = localContext?.tenantId || null
+    const tenantFilter = tenantId ? { tenantId } : {}
+    const localFilter = localContext ? buildLocalFilter(localContext) : {}
 
     const body = await request.json()
     const { fechaInicio, fechaFin, observaciones } = body
@@ -50,47 +59,35 @@ export async function POST(request: NextRequest) {
 
     const startDate = new Date(fechaInicio)
     startDate.setHours(0, 0, 0, 0)
-    
+
     const endDate = new Date(fechaFin)
     endDate.setHours(23, 59, 59, 999)
 
-    // Obtener IDs de citas que ya tienen factura asociada (para evitar duplicados)
     const citasConFactura = await prisma.factura.findMany({
-      where: {
-        citaId: { not: null }
-      },
-      select: {
-        citaId: true
-      }
+      where: { citaId: { not: null }, ...tenantFilter },
+      select: { citaId: true }
     })
     const citasConFacturaIds = citasConFactura
       .map((f: any) => f.citaId)
       .filter((id: any): id is string => id !== null && id !== undefined)
 
-    // Calcular totales de ventas (facturas pagadas)
     const facturas = await prisma.factura.findMany({
       where: {
-        fecha: {
-          gte: startDate,
-          lte: endDate
-        },
-        estado: 'PAGADA'
+        fecha: { gte: startDate, lte: endDate },
+        estado: 'PAGADA',
+        ...tenantFilter
       }
     })
 
-    // Obtener citas completadas SIN factura (para incluirlas en el total)
     const citasCompletadas = await prisma.cita.findMany({
       where: {
-        fecha: {
-          gte: startDate,
-          lte: endDate
-        },
+        fecha: { gte: startDate, lte: endDate },
         estado: 'COMPLETADA',
-        id: { notIn: citasConFacturaIds }
+        id: { notIn: citasConFacturaIds },
+        ...tenantFilter
       }
     })
 
-    // Sumar ventas de facturas
     let totalEfectivo = facturas
       .filter((f: any) => f.metodoPago === 'EFECTIVO')
       .reduce((sum: number, f: any) => sum + f.total, 0)
@@ -103,27 +100,19 @@ export async function POST(request: NextRequest) {
       .filter((f: any) => f.metodoPago === 'TPV_UNICAJA')
       .reduce((sum: number, f: any) => sum + f.total, 0)
 
-    // Sumar ventas de citas completadas sin factura
     for (const cita of citasCompletadas) {
       const metodoPago = cita.metodoPago || 'EFECTIVO'
       const totalCita = cita.total || 0
-      
-      if (metodoPago === 'EFECTIVO') {
-        totalEfectivo += totalCita
-      } else if (metodoPago === 'TPV_SUMUP') {
-        totalTPVSumup += totalCita
-      } else if (metodoPago === 'TPV_UNICAJA') {
-        totalTPVUnicaja += totalCita
-      }
+
+      if (metodoPago === 'EFECTIVO') totalEfectivo += totalCita
+      else if (metodoPago === 'TPV_SUMUP') totalTPVSumup += totalCita
+      else if (metodoPago === 'TPV_UNICAJA') totalTPVUnicaja += totalCita
     }
 
-    // Calcular totales de gastos
     const gastos = await prisma.gasto.findMany({
       where: {
-        fecha: {
-          gte: startDate,
-          lte: endDate
-        }
+        fecha: { gte: startDate, lte: endDate },
+        ...tenantFilter
       }
     })
 
@@ -137,7 +126,6 @@ export async function POST(request: NextRequest) {
 
     const efectivoFinal = totalEfectivo - gastosEfectivo
 
-    // Crear el cierre de caja
     const cierre = await prisma.cierreCaja.create({
       data: {
         fechaInicio: startDate,
@@ -149,12 +137,10 @@ export async function POST(request: NextRequest) {
         gastosTarjeta,
         efectivoFinal,
         observaciones: observaciones || null,
-        usuarioId: userId
+        usuarioId: userId,
+        ...(tenantId ? { tenantId } : {})
       }
     })
-
-    // ⚠️ Los cierres de caja NO se sincronizan con GSControl según instrucciones
-    // Solo se sincronizan facturas y gastos individuales
 
     return NextResponse.json(cierre, { status: 201 })
   } catch (error) {

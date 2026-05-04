@@ -101,10 +101,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Verificar si ya existe un cliente con el mismo email (solo si tiene email)
+    const tenantIdCliente = localContext?.tenantId || null
+
+    // Verificar si ya existe un cliente con el mismo email (solo si tiene email, dentro del tenant)
     if (email) {
       const existingClient = await prisma.cliente.findFirst({
-        where: { email }
+        where: { email, ...(tenantIdCliente ? { tenantId: tenantIdCliente } : {}) }
       })
       if (existingClient) {
         console.log('   ❌ Cliente con email duplicado encontrado:', existingClient.id)
@@ -129,6 +131,7 @@ export async function POST(request: NextRequest) {
         clienteVIP: clienteVIP || false,
         clienteEmpresa: clienteEmpresa || false,
         localId: localIdParaCliente,
+        ...(tenantIdCliente ? { tenantId: tenantIdCliente } : {}),
         // Trazabilidad - quién creó este cliente
         creadoPorId: (session.user as any)?.id || null,
         creadoPorNombre: session.user?.name || session.user?.email || 'Sistema',
@@ -177,12 +180,15 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    // Verificar si ya existe un cliente con el mismo email (excluyendo el cliente actual)
+    // Verificar si ya existe un cliente con el mismo email (excluyendo el cliente actual, dentro del tenant)
+    const localCtxPut = await getLocalContext()
+    const tenantIdPut = localCtxPut?.tenantId || null
     if (email) {
       const existingClient = await prisma.cliente.findFirst({
         where: { 
           email,
-          NOT: { id }
+          NOT: { id },
+          ...(tenantIdPut ? { tenantId: tenantIdPut } : {})
         }
       })
       if (existingClient) {

@@ -105,9 +105,11 @@ export async function POST(request: NextRequest) {
     if (proveedor && proveedor.trim() && !proveedorId) {
       console.log('Buscando/creando proveedor:', proveedor.trim())
       
-      // Buscar si existe un proveedor con ese nombre
+      // Buscar si existe un proveedor con ese nombre (dentro del tenant)
+      const localCtxGasto = await getLocalContext()
+      const tenantIdGasto = localCtxGasto?.tenantId || null
       let proveedorExistente = await prisma.proveedor.findFirst({
-        where: { nombre: { equals: proveedor.trim(), mode: 'insensitive' } }
+        where: { nombre: { equals: proveedor.trim(), mode: 'insensitive' }, ...(tenantIdGasto ? { tenantId: tenantIdGasto } : {}) }
       })
       
       if (proveedorExistente) {
@@ -141,7 +143,8 @@ export async function POST(request: NextRequest) {
             ciudad: proveedorCiudad?.trim() || null,
             provincia: proveedorProvincia?.trim() || null,
             telefono: proveedorTelefono?.trim() || null,
-            email: proveedorEmail?.trim() || null
+            email: proveedorEmail?.trim() || null,
+            ...(tenantIdGasto ? { tenantId: tenantIdGasto } : {})
           }
         })
         console.log('Nuevo proveedor creado:', nuevoProveedor.id, nuevoProveedor.nombre)
@@ -177,11 +180,15 @@ export async function POST(request: NextRequest) {
       gastoData.proveedorId = proveedorIdFinal
     }
 
-    // Obtener localId para asignar al nuevo gasto
+    // Obtener localId y tenantId para asignar al nuevo gasto
     const localContext = await getLocalContext()
     const localIdParaGasto = localContext ? getLocalIdForCreate(localContext) : null
     if (localIdParaGasto) {
       gastoData.localId = localIdParaGasto
+    }
+    const tenantIdParaGasto = localContext?.tenantId || null
+    if (tenantIdParaGasto) {
+      gastoData.tenantId = tenantIdParaGasto
     }
 
     console.log('Datos preparados para Prisma:', JSON.stringify(gastoData, null, 2))

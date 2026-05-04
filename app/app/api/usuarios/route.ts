@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { getLocalContext } from '@/lib/local-context'
 import bcrypt from 'bcryptjs'
 import { RolUsuario } from '@/lib/types'
 
@@ -13,14 +14,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
-    // Filtro opcional por localId
+    const localContext = await getLocalContext()
+    const tenantId = localContext?.tenantId || null
+
     const { searchParams } = new URL(request.url)
     const localId = searchParams.get('localId')
 
     const whereClause: any = {}
-    if (localId) {
-      whereClause.localId = localId
-    }
+    if (tenantId) whereClause.tenantId = tenantId
+    if (localId) whereClause.localId = localId
 
     const usuarios = await prisma.user.findMany({
       where: whereClause,
@@ -32,30 +34,18 @@ export async function GET(request: NextRequest) {
         activo: true,
         localId: true,
         local: {
-          select: {
-            id: true,
-            nombre: true,
-            nombreComercial: true,
-          }
+          select: { id: true, nombre: true, nombreComercial: true }
         },
         localesAsignados: {
           select: {
             localId: true,
-            local: {
-              select: {
-                id: true,
-                nombre: true,
-                nombreComercial: true,
-              }
-            }
+            local: { select: { id: true, nombre: true, nombreComercial: true } }
           }
         },
         createdAt: true,
         updatedAt: true,
       },
-      orderBy: {
-        createdAt: 'desc'
-      }
+      orderBy: { createdAt: 'desc' }
     })
 
     return NextResponse.json(usuarios)
@@ -72,32 +62,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
+    const localContext = await getLocalContext()
+    const tenantId = localContext?.tenantId || null
+
     const body = await request.json()
     const { name, email, password, role, activo, localId } = body
 
     if (!email || !password || !role) {
-      return NextResponse.json(
-        { error: 'Email, contraseña y rol son requeridos' }, 
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Email, contraseña y rol son requeridos' }, { status: 400 })
     }
 
-    // Verificar si el email ya existe
-    const existingUser = await prisma.user.findUnique({
-      where: { email }
+    // Verificar si el email ya existe en este tenant
+    const existingUser = await prisma.user.findFirst({
+      where: { email, ...(tenantId ? { tenantId } : {}) }
     })
 
     if (existingUser) {
-      return NextResponse.json(
-        { error: 'Ya existe un usuario con este email' }, 
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Ya existe un usuario con este email' }, { status: 400 })
     }
 
-    // Encriptar contraseña
     const hashedPassword = await bcrypt.hash(password, 12)
 
-    // Crear usuario
     const newUser = await prisma.user.create({
       data: {
         name,
@@ -105,7 +90,8 @@ export async function POST(request: NextRequest) {
         password: hashedPassword,
         role: role as RolUsuario,
         activo: activo ?? true,
-        localId: localId || null, // null = superadmin (ve todo)
+        localId: localId || null,
+        ...(tenantId ? { tenantId } : {})
       },
       select: {
         id: true,
@@ -114,19 +100,11 @@ export async function POST(request: NextRequest) {
         role: true,
         activo: true,
         localId: true,
-        local: {
-          select: {
-            id: true,
-            nombre: true,
-            nombreComercial: true,
-          }
-        },
+        local: { select: { id: true, nombre: true, nombreComercial: true } },
         createdAt: true,
         updatedAt: true,
       }
     })
-
-    console.log(`✅ Usuario creado: ${name} (${email}) - Local: ${localId || 'Todos (SuperAdmin)'}`)
 
     return NextResponse.json(newUser, { status: 201 })
   } catch (error) {

@@ -43,6 +43,11 @@ export async function GET(request: NextRequest) {
       where.status = status
     }
 
+    // Filtrar por tenant siempre
+    if (localContext?.tenantId) {
+      where.tenantId = localContext.tenantId
+    }
+
     // Si se especifica un localId específico, usarlo. Si no, usar el filtro del contexto
     if (localId) {
       where.localId = localId

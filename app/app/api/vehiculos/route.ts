@@ -160,6 +160,7 @@ export async function POST(request: NextRequest) {
         kilometraje: kilometraje || null,
         clienteId,
         localId: localIdParaVehiculo,
+        ...(localContext?.tenantId ? { tenantId: localContext.tenantId } : {}),
         // Trazabilidad - quién creó este vehículo
         creadoPorId: (session.user as any)?.id || null,
         creadoPorNombre: session.user?.name || session.user?.email || 'Sistema',

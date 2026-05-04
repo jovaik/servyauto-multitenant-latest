@@ -1,5 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server'
+import { headers } from 'next/headers'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/db'
 import { RolUsuario } from '@/lib/types'
@@ -15,9 +16,24 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Verificar si el usuario ya existe
-    const existingUser = await prisma.user.findUnique({
-      where: { email }
+    // Obtener el tenant del header inyectado por el middleware
+    const headersList = headers()
+    const tenantSlug = headersList.get('x-tenant-slug') || 'default'
+
+    const tenant = await prisma.tenant.findUnique({
+      where: { slug: tenantSlug }
+    })
+
+    if (!tenant) {
+      return NextResponse.json(
+        { error: 'Tenant no encontrado' },
+        { status: 400 }
+      )
+    }
+
+    // Verificar si el usuario ya existe EN ESTE TENANT
+    const existingUser = await prisma.user.findFirst({
+      where: { email, tenantId: tenant.id }
     })
 
     if (existingUser) {
@@ -27,28 +43,28 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Hashear la contraseña
     const hashedPassword = await bcrypt.hash(password, 12)
 
-    // Determinar el rol: si es el primer usuario, será ADMIN
-    const userCount = await prisma.user.count()
+    const userCount = await prisma.user.count({
+      where: { tenantId: tenant.id }
+    })
     const role = userCount === 0 ? RolUsuario.ADMIN : RolUsuario.ADMIN
 
-    // Crear el usuario
     const user = await prisma.user.create({
       data: {
         email,
         password: hashedPassword,
         name: fullName,
-        role: role
+        role,
+        tenantId: tenant.id
       }
     })
 
     return NextResponse.json(
-      { 
-        message: 'Usuario creado exitosamente', 
+      {
+        message: 'Usuario creado exitosamente',
         userId: user.id,
-        role: user.role 
+        role: user.role
       },
       { status: 201 }
     )

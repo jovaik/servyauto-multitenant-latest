@@ -1,46 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { getLocalContext } from '@/lib/local-context'
 import { generarArchivoICS, generarNombreArchivoICS } from '@/lib/ics-generator'
 
-/**
- * Endpoint para generar archivos ICS (iCalendar) de citas
- * Soporta dos tipos: CLIENTE y EMPRESA
- */
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const localContext = await getLocalContext()
+    const tenantId = localContext?.tenantId || null
+    const tenantFilter = tenantId ? { tenantId } : {}
+
     const searchParams = request.nextUrl.searchParams
     const tipo = searchParams.get('tipo') as 'CLIENTE' | 'EMPRESA' || 'CLIENTE'
 
-    // Buscar cita con todos los datos necesarios
     const cita = await prisma.cita.findUnique({
       where: { id: params.id },
       include: {
         cliente: true,
         vehiculo: true,
-        cita_servicios: {
-          include: {
-            servicios: true
-          }
-        }
+        cita_servicios: { include: { servicios: true } }
       }
     })
 
     if (!cita) {
-      return NextResponse.json(
-        { error: 'Cita no encontrada' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: 'Cita no encontrada' }, { status: 404 })
     }
 
-    // Obtener configuración de la empresa (buscar por claves específicas)
+    // Validación de pertenencia al tenant (Grupo C)
+    if (tenantId && cita.tenantId && cita.tenantId !== tenantId) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+    }
+
     const configs = await prisma.configuracion.findMany({
       where: {
-        clave: {
-          in: ['empresa.nombre', 'empresa.direccion', 'empresa.telefono', 'empresa.email']
-        }
+        clave: { in: ['empresa.nombre', 'empresa.direccion', 'empresa.telefono', 'empresa.email'] },
+        ...tenantFilter
       }
     })
 
@@ -49,7 +45,6 @@ export async function GET(
       return config?.valor || defaultValue
     }
 
-    // Preparar datos para el ICS
     const vehiculoInfo = `${cita.vehiculo.marca} ${cita.vehiculo.modelo}`
     const serviciosNombres = cita.cita_servicios?.map((cs: any) => cs.servicios.nombre) || []
 
@@ -71,7 +66,6 @@ export async function GET(
       tipoDestinatario: tipo
     }
 
-    // Generar contenido ICS
     const icsContent = generarArchivoICS(icsData)
     const nombreArchivo = generarNombreArchivoICS({
       clienteNombre: icsData.clienteNombre,
@@ -79,9 +73,6 @@ export async function GET(
       tipoDestinatario: tipo
     })
 
-    console.log(`📅 ICS generado para cita ${cita.id} (tipo: ${tipo})`)
-
-    // Retornar archivo ICS
     return new NextResponse(icsContent, {
       status: 200,
       headers: {
@@ -92,9 +83,6 @@ export async function GET(
     })
   } catch (error) {
     console.error('Error generando archivo ICS:', error)
-    return NextResponse.json(
-      { error: 'Error generando archivo ICS' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Error generando archivo ICS' }, { status: 500 })
   }
 }

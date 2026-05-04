@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { getLocalContext, canAccessRecord } from '@/lib/local-context'
 import { sendEmail } from '@/lib/email'
 
 export async function POST(request: NextRequest) {
@@ -26,6 +27,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const localContext = await getLocalContext()
+    if (!localContext) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
     // Obtener la factura con todos sus detalles
     const factura = await prisma.factura.findUnique({
       where: { id: facturaId },
@@ -40,6 +46,10 @@ export async function POST(request: NextRequest) {
         { error: 'Factura no encontrada' },
         { status: 404 }
       )
+    }
+
+    if (!canAccessRecord(localContext, factura.localId)) {
+      return NextResponse.json({ error: 'Factura no encontrada' }, { status: 404 })
     }
 
     // Generar el HTML del documento para adjuntarlo

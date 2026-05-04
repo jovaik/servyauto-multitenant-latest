@@ -13,12 +13,16 @@ export async function GET() {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
-    // Obtener configuración
-    const config = await prisma.sumUpConfig.findFirst()
+    // Obtener configuración (filtrada por tenant)
+    const localContextReadersList = await getLocalContext()
+    const tenantIdReadersList = localContextReadersList?.tenantId || null
+    const config = await prisma.sumUpConfig.findFirst({
+      where: tenantIdReadersList ? { tenantId: tenantIdReadersList } : {}
+    })
     const modoAsignacion = config?.modoAsignacion || 'COMPARTIDO'
 
     // Obtener contexto local para determinar qué API key usar
-    const localContextForKey = await getLocalContext()
+    const localContextForKey = localContextReadersList
     const localKeysForReaders = await getLocalSumUpKeys(localContextForKey?.selectedLocalId)
 
     // Obtener lectores de SumUp API (usando la key del local si tiene)
@@ -90,12 +94,15 @@ export async function POST(request: NextRequest) {
     const reader = await pairReader(pairingCode, name || 'ServyAuto Terminal', localKeysForPair.apiKey)
 
     // Registrar en nuestra BD
+    const localCtxReaders = await getLocalContext()
+    const tenantIdReaders = localCtxReaders?.tenantId || null
     const dbReader = await prisma.sumUpReader.create({
       data: {
         sumupReaderId: reader.id,
         nombre: name || 'ServyAuto Terminal',
-        localId: localId || null, // null = compartido
+        localId: localId || null,
         activo: true,
+        ...(tenantIdReaders ? { tenantId: tenantIdReaders } : {}),
       },
       include: { local: true },
     })

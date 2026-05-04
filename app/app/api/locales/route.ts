@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { getLocalContext } from '@/lib/local-context';
 
 // GET - Listar locales según permisos del usuario
 export async function GET() {
@@ -11,16 +12,17 @@ export async function GET() {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
+    const localContext = await getLocalContext();
+    const tenantId = localContext?.tenantId || null;
+
     // Obtener usuario con sus locales asignados
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      select: { 
-        id: true, 
-        localId: true, 
+    const user = await prisma.user.findFirst({
+      where: { email: session.user.email, ...(tenantId ? { tenantId } : {}) },
+      select: {
+        id: true,
+        localId: true,
         role: true,
-        localesAsignados: {
-          select: { localId: true }
-        }
+        localesAsignados: { select: { localId: true } }
       }
     });
 
@@ -28,21 +30,18 @@ export async function GET() {
       return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
     }
 
-    // Construir filtro según rol
+    // Construir filtro base incluyendo tenantId
     let whereFilter: any = { activo: true };
-    
+    if (tenantId) whereFilter.tenantId = tenantId;
+
     if (user.role === 'SUPER_ADMIN') {
-      // SUPER_ADMIN: ve todos los locales
-      // No añadimos filtro adicional
+      // SUPER_ADMIN: ve todos los locales del tenant
     } else if (user.role === 'GRUPO_ADMIN' && user.localesAsignados.length > 0) {
-      // GRUPO_ADMIN: ve solo sus locales asignados
       const allowedIds = user.localesAsignados.map((ul: any) => ul.localId);
       whereFilter.id = { in: allowedIds };
     } else if (user.localId) {
-      // ADMIN/OPERADOR: ve solo su local
       whereFilter.id = user.localId;
     } else {
-      // Sin acceso a ningún local
       return NextResponse.json([]);
     }
 
@@ -65,7 +64,6 @@ export async function GET() {
     return NextResponse.json(locales);
   } catch (error: any) {
     console.error('Error al obtener locales:', error?.message || error);
-    // Si es error de conexión a DB, devolver 503 para que el cliente reintente
     if (error?.message?.includes("Can't reach database") || error?.message?.includes('connect')) {
       return NextResponse.json({ error: 'Base de datos temporalmente no disponible' }, { status: 503 });
     }
@@ -81,9 +79,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
-    // Verificar que sea SUPER_ADMIN
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
+    const localContext = await getLocalContext();
+    const tenantId = localContext?.tenantId || null;
+
+    const user = await prisma.user.findFirst({
+      where: { email: session.user.email, ...(tenantId ? { tenantId } : {}) },
       select: { role: true }
     });
 
@@ -92,10 +92,9 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await request.json();
-    const { 
-      nombre, nombreComercial, logo, direccion, ciudad, codigoPostal, 
+    const {
+      nombre, nombreComercial, logo, direccion, ciudad, codigoPostal,
       telefono, email, colorPrimario,
-      // Campos fiscales
       cifNif, razonSocial, direccionFiscal, codigoPostalFiscal, ciudadFiscal
     } = data;
 
@@ -114,12 +113,12 @@ export async function POST(request: NextRequest) {
         telefono: telefono || null,
         email: email || null,
         colorPrimario: colorPrimario || null,
-        // Campos fiscales
         cifNif: cifNif || null,
         razonSocial: razonSocial || null,
         direccionFiscal: direccionFiscal || null,
         codigoPostalFiscal: codigoPostalFiscal || null,
         ciudadFiscal: ciudadFiscal || null,
+        ...(tenantId ? { tenantId } : {})
       }
     });
 

@@ -121,12 +121,18 @@ export async function POST(request: NextRequest) {
     const año = new Date().getFullYear()
     const prefijo = tipo === 'FACTURA' ? 'FAC' : 'TKT'
     
-    // Buscar el último documento del año con ese prefijo
+    // Obtener contexto local y tenant (una sola vez)
+    const localContext = await getLocalContext()
+    const tenantIdFactura = localContext?.tenantId || null
+    const localIdParaFactura = localContext ? getLocalIdForCreate(localContext) : null
+
+    // Buscar el último documento del año con ese prefijo (por tenant)
     const ultimoDocumento = await prisma.factura.findFirst({
       where: { 
         numero: {
           startsWith: `${prefijo}-${año}-`
-        }
+        },
+        ...(tenantIdFactura ? { tenantId: tenantIdFactura } : {})
       },
       orderBy: { createdAt: 'desc' }
     })
@@ -148,10 +154,6 @@ export async function POST(request: NextRequest) {
       datosFacturacionString = JSON.stringify(datosFacturacion)
     }
 
-    // Obtener localId para asignar a la nueva factura
-    const localContext = await getLocalContext()
-    const localIdParaFactura = localContext ? getLocalIdForCreate(localContext) : null
-
     // Crear factura con items
     const factura = await prisma.factura.create({
       data: {
@@ -167,6 +169,7 @@ export async function POST(request: NextRequest) {
         estado: 'PAGADA', // Al crear se marca como pagada
         fechaPago: new Date(),
         localId: localIdParaFactura, // Asignar local
+        ...(localContext?.tenantId ? { tenantId: localContext.tenantId } : {}),
         // Trazabilidad - quién creó este ingreso
         creadoPorId: (session.user as any)?.id || null,
         creadoPorNombre: session.user?.name || session.user?.email || 'Sistema',
