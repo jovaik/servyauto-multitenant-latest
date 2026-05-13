@@ -246,13 +246,7 @@ const VEHICLE_DATABASE: Record<string, ModelEntry[]> = {
     { pattern: 'E-UP', category: 'PEQ' },
   ],
 
-  VOLKSWAGEN: [
-    { pattern: 'GOLF', category: 'MED' },
-    { pattern: 'POLO', category: 'PEQ' },
-    { pattern: 'TIGUAN', category: 'MED' },
-    { pattern: 'TOUAREG', category: 'GR' },
-    { pattern: 'PASSAT', category: 'GR' },
-  ],
+  // VOLKSWAGEN se unifica con VW arriba — los alias se resuelven en getModelsForBrand
 
   // ==================== ESPAÑOLAS ====================
   SEAT: [
@@ -899,8 +893,24 @@ const CANONICAL_BRANDS: string[] = [
   'RANGE ROVER', 'RENAULT', 'ROLLS ROYCE',
   'SEAT', 'SKODA', 'SMART', 'SUBARU', 'SUZUKI',
   'TESLA', 'TOYOTA',
-  'VOLKSWAGEN', 'VOLVO', 'VW',
+  'VOLKSWAGEN', 'VOLVO',
 ]
+
+/**
+ * Mapa de alias de marcas.
+ * Cuando el usuario selecciona una marca del dropdown, también se buscan
+ * los modelos de todas las claves alias en VEHICLE_DATABASE.
+ */
+const BRAND_ALIASES: Record<string, string[]> = {
+  'VOLKSWAGEN': ['VW', 'VOLKSWAGEN'],
+  'VW': ['VW', 'VOLKSWAGEN'],
+  'MERCEDES': ['MERCEDES', 'MERCEDES-BENZ', 'MERCEDES BENZ'],
+  'MERCEDES-BENZ': ['MERCEDES', 'MERCEDES-BENZ', 'MERCEDES BENZ'],
+  'RANGE ROVER': ['RANGE ROVER', 'LAND ROVER'],
+  'LAND ROVER': ['RANGE ROVER', 'LAND ROVER'],
+  'ROLLS ROYCE': ['ROLLS ROYCE', 'ROLLS-ROYCE'],
+  'ROLLS-ROYCE': ['ROLLS ROYCE', 'ROLLS-ROYCE'],
+}
 
 /**
  * Obtiene las marcas disponibles para los desplegables.
@@ -917,12 +927,15 @@ export function getAvailableBrands(): string[] {
 export function getModelsForBrand(marca: string): { modelo: string; category: VehicleCategory }[] {
   const marcaClean = marca.trim().toUpperCase()
   
-  // Buscar en todas las variantes de la marca (ej: VW y VOLKSWAGEN)
+  // Resolver alias: VOLKSWAGEN → busca en VW y VOLKSWAGEN
+  const keysToSearch = BRAND_ALIASES[marcaClean] || [marcaClean]
+  
   const allModels: ModelEntry[] = []
   const seen = new Set<string>()
   
   for (const key of Object.keys(VEHICLE_DATABASE)) {
-    if (key.trim().toUpperCase() === marcaClean) {
+    const keyUpper = key.trim().toUpperCase()
+    if (keysToSearch.includes(keyUpper)) {
       for (const m of VEHICLE_DATABASE[key]) {
         const modelUpper = m.pattern.toUpperCase()
         if (!seen.has(modelUpper)) {
