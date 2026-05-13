@@ -210,7 +210,7 @@ const VEHICLE_DATABASE: Record<string, ModelEntry[]> = {
     { pattern: '718', category: 'MED' },
   ],
 
-  VW: [
+  VOLKSWAGEN: [
     // EXTGR
     { pattern: 'MULTIVAN', category: 'EXTGR' },
     { pattern: 'CARAVELLE', category: 'EXTGR' },
@@ -245,8 +245,6 @@ const VEHICLE_DATABASE: Record<string, ModelEntry[]> = {
     { pattern: 'UP', category: 'PEQ' },
     { pattern: 'E-UP', category: 'PEQ' },
   ],
-
-  // VOLKSWAGEN se unifica con VW arriba — los alias se resuelven en getModelsForBrand
 
   // ==================== ESPAÑOLAS ====================
   SEAT: [
@@ -787,12 +785,18 @@ export function detectVehicleCategory(
   const marcaClean = marca.trim().toUpperCase()
   const modeloClean = modelo.trim().toUpperCase()
 
-  // Buscar la marca en la base de datos
-  // Intentar coincidencia exacta primero, luego con el original (por marcas con espacio al final)
+  // Resolver alias (VW → VOLKSWAGEN, etc.)
+  const aliasKeys = BRAND_ALIASES[marcaClean] || [marcaClean]
   const brandKeys = Object.keys(VEHICLE_DATABASE)
   
-  // Primero: coincidencia exacta con la marca limpia
-  let models = VEHICLE_DATABASE[marcaClean]
+  // Buscar en todas las claves alias
+  let models: ModelEntry[] | undefined
+  for (const aliasKey of aliasKeys) {
+    if (VEHICLE_DATABASE[aliasKey]) {
+      models = VEHICLE_DATABASE[aliasKey]
+      break
+    }
+  }
   
   // Segundo: buscar con la marca tal cual (para cubrir typos como "MERCEDES " con espacio)
   if (!models) {
@@ -902,8 +906,8 @@ const CANONICAL_BRANDS: string[] = [
  * los modelos de todas las claves alias en VEHICLE_DATABASE.
  */
 const BRAND_ALIASES: Record<string, string[]> = {
-  'VOLKSWAGEN': ['VW', 'VOLKSWAGEN'],
-  'VW': ['VW', 'VOLKSWAGEN'],
+  'VOLKSWAGEN': ['VOLKSWAGEN'],
+  'VW': ['VOLKSWAGEN'],
   'MERCEDES': ['MERCEDES', 'MERCEDES-BENZ', 'MERCEDES BENZ'],
   'MERCEDES-BENZ': ['MERCEDES', 'MERCEDES-BENZ', 'MERCEDES BENZ'],
   'RANGE ROVER': ['RANGE ROVER', 'LAND ROVER'],
