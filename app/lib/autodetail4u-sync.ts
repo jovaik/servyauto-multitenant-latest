@@ -20,6 +20,8 @@ interface AD4UReservaPayload {
   vehiculoModelo: string
   matricula: string
   localId?: string
+  localNombre?: string
+  creadoPorNombre?: string
   tenantSlug: string
 }
 
