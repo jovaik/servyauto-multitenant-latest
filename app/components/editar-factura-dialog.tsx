@@ -480,23 +480,45 @@ export function EditarFacturaDialog({ facturaId, facturaNumero, onFacturaActuali
               </div>
             </div>
 
-            {/* Items - Solo lectura por ahora */}
+            {/* Items del documento */}
             <div>
-              <Label className="text-base font-medium">Items del Documento</Label>
+              <div className="flex items-center justify-between mb-2">
+                <Label className="text-base font-medium">Items del Documento</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setItems([...items, {
+                    id: `new_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                    descripcion: '',
+                    cantidad: 1,
+                    precio: 0,
+                    total: 0,
+                  }])}
+                  className="text-xs"
+                >
+                  + Añadir línea
+                </Button>
+              </div>
               <div className="mt-3 space-y-3">
+                {items.length === 0 && (
+                  <div className="text-center py-4 text-gray-500 text-sm border rounded bg-gray-50">
+                    No hay items. Pulsa &quot;Añadir línea&quot; para agregar uno.
+                  </div>
+                )}
                 {items.map((item, index) => (
-                  <div key={item.id} className="grid grid-cols-4 gap-3 p-3 border rounded bg-gray-50">
+                  <div key={item.id} className="grid grid-cols-[1fr_80px_100px_100px_40px] gap-2 p-3 border rounded bg-gray-50 items-end">
                     <div>
                       <Label className="text-xs">Descripción</Label>
                       <Input
                         value={item.descripcion}
                         onChange={(e) => actualizarItem(index, 'descripcion', e.target.value)}
-                        placeholder="Descripción"
+                        placeholder="Descripción del servicio"
                         className="text-sm"
                       />
                     </div>
                     <div>
-                      <Label className="text-xs">Cantidad</Label>
+                      <Label className="text-xs">Cant.</Label>
                       <Input
                         type="number"
                         min="1"
@@ -523,6 +545,18 @@ export function EditarFacturaDialog({ facturaId, facturaNumero, onFacturaActuali
                         disabled
                         className="text-sm font-medium"
                       />
+                    </div>
+                    <div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1 h-8 w-8"
+                        onClick={() => setItems(items.filter((_, i) => i !== index))}
+                        title="Eliminar línea"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
                 ))}
