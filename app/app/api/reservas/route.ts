@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { getLocalContext, buildLocalFilter } from '@/lib/local-context'
+import { syncReservaToAD4U, buildAD4UPayloadFromReserva } from '@/lib/autodetail4u-sync'
 
 export const dynamic = 'force-dynamic'
 
@@ -246,6 +247,21 @@ export async function POST(req: NextRequest) {
         updatedAt: new Date(),
       }
     })
+
+    // 🔄 Sync a autodetail4u (fire-and-forget)
+    const ad4uPayload = buildAD4UPayloadFromReserva({
+      nombre,
+      apellido,
+      telefono,
+      email,
+      fecha: fechaCita,
+      hora,
+      servicio,
+      marcaModelo,
+      matricula,
+      localId,
+    })
+    syncReservaToAD4U(ad4uPayload).catch(() => {})
 
     return NextResponse.json({
       success: true,

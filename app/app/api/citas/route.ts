@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { getLocalContext, buildLocalFilter, getLocalIdForCreate } from '@/lib/local-context'
+import { syncReservaToAD4U, buildAD4UPayloadFromCita } from '@/lib/autodetail4u-sync'
 
 export const dynamic = 'force-dynamic'
 
@@ -395,6 +396,10 @@ export async function POST(req: NextRequest) {
     } catch (icsError) {
       console.error('❌ Error generando confirmación con ICS:', icsError);
     }
+
+    // 🔄 Sync a autodetail4u (fire-and-forget)
+    const ad4uPayload = buildAD4UPayloadFromCita(cita)
+    syncReservaToAD4U(ad4uPayload).catch(() => {})
 
     return NextResponse.json({
       ...cita,
