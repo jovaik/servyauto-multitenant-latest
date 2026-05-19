@@ -1,108 +1,143 @@
-const { PrismaClient } = require('@prisma/client')
+/**
+ * Script de sincronización histórica a autodetail4u.
+ * Itera todas las citas con estado COMPLETADA o PENDIENTE y las envía al endpoint de importación.
+ * Usa lotes de 5 con delay entre cada uno para no saturar.
+ */
 
-const prisma = new PrismaClient()
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
-const AD4U_URL = 'https://app.autodetail4u.com/api/import/reservas'
-const AD4U_API_KEY = 'ad4u-sync-2026-S9xK2mP7vL4nQ8wR'
-const AD4U_TENANT = 'quick-shine'
+const AD4U_URL = process.env.AD4U_SYNC_URL;
+const AD4U_API_KEY = process.env.AD4U_SYNC_API_KEY;
+const AD4U_TENANT = process.env.AD4U_TENANT_SLUG || 'quick-shine';
+
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+async function sendToAD4U(payload) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const res = await fetch(AD4U_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': AD4U_API_KEY,
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+
+    const text = await res.text();
+    if (res.ok) {
+      return { ok: true, status: res.status, body: text };
+    } else {
+      return { ok: false, status: res.status, body: text };
+    }
+  } catch (err) {
+    clearTimeout(timeout);
+    return { ok: false, status: 0, body: err.message };
+  }
+}
 
 async function main() {
-  // Últimas 5 semanas
-  const desde = new Date()
-  desde.setDate(desde.getDate() - 35)
-  
-  console.log(`\n📅 Buscando citas desde ${desde.toISOString().split('T')[0]} hasta hoy...\n`)
+  if (!AD4U_URL || !AD4U_API_KEY) {
+    console.error('❌ Falta AD4U_SYNC_URL o AD4U_SYNC_API_KEY en .env');
+    process.exit(1);
+  }
 
+  console.log('=== SYNC HISTÓRICO A AUTODETAIL4U ===');
+  console.log('URL:', AD4U_URL);
+  console.log('Tenant:', AD4U_TENANT);
+  console.log('');
+
+  // Traer todas las citas (no canceladas) con cliente, vehículo y servicios
   const citas = await prisma.cita.findMany({
     where: {
-      fecha: { gte: desde },
-      estado: { in: ['COMPLETADA', 'PENDIENTE', 'EN_PROCESO'] }
+      estado: { in: ['COMPLETADA', 'PENDIENTE', 'EN_PROCESO'] },
     },
     include: {
       cliente: true,
       vehiculo: true,
       cita_servicios: {
-        include: { servicios: true }
-      }
+        include: {
+          servicios: true,
+        },
+      },
     },
-    orderBy: { fecha: 'asc' }
-  })
+    orderBy: { fecha: 'asc' },
+  });
 
-  console.log(`✅ Encontradas ${citas.length} citas\n`)
+  console.log(`Total citas a sincronizar: ${citas.length}`);
+  console.log('');
 
-  let ok = 0, fail = 0, skip = 0
+  let ok = 0;
+  let fail = 0;
+  let skip = 0;
 
-  for (const cita of citas) {
+  for (let i = 0; i < citas.length; i++) {
+    const cita = citas[i];
+
+    // Validar datos mínimos
     if (!cita.cliente || !cita.vehiculo) {
-      console.log(`⏭️  Cita ${cita.id.substring(0,8)} sin cliente/vehículo — skip`)
-      skip++
-      continue
+      console.log(`[${i + 1}/${citas.length}] ⏭️ SKIP (sin cliente/vehículo): cita ${cita.id}`);
+      skip++;
+      continue;
     }
+
+    // Formatear fecha
+    const fechaStr = cita.fecha instanceof Date
+      ? cita.fecha.toISOString().split('T')[0]
+      : new Date(cita.fecha).toISOString().split('T')[0];
+
+    // Extraer servicios
+    const servicios = (cita.cita_servicios || [])
+      .map(cs => cs.servicios?.nombre)
+      .filter(Boolean);
 
     const payload = {
       nombre: cita.cliente.nombre || '',
       apellido: cita.cliente.apellido || '',
       telefono: cita.cliente.telefono || '',
       email: cita.cliente.email || '',
-      fecha: cita.fecha.toISOString().split('T')[0],
-      hora: cita.horaInicio || '10:00',
-      servicios: (cita.cita_servicios || []).map(cs => cs.servicios?.nombre).filter(Boolean),
+      fecha: fechaStr,
+      hora: cita.horaInicio || '',
+      servicios: servicios,
       vehiculoMarca: cita.vehiculo.marca || '',
       vehiculoModelo: cita.vehiculo.modelo || '',
       matricula: (cita.vehiculo.matricula || '').toUpperCase(),
-      tenantSlug: AD4U_TENANT
+      localId: cita.localId || undefined,
+      tenantSlug: AD4U_TENANT,
+    };
+
+    const result = await sendToAD4U(payload);
+
+    if (result.ok) {
+      ok++;
+      console.log(`[${i + 1}/${citas.length}] ✅ ${fechaStr} ${cita.horaInicio} | ${cita.cliente.nombre} | ${cita.vehiculo.matricula} | ${servicios.join(', ') || 'sin servicio'}`);
+    } else {
+      fail++;
+      console.log(`[${i + 1}/${citas.length}] ❌ ${fechaStr} ${cita.horaInicio} | ${cita.cliente.nombre} | HTTP ${result.status}: ${result.body.substring(0, 100)}`);
     }
 
-    // Validar campos requeridos
-    if (!payload.telefono || !payload.matricula || !payload.vehiculoMarca) {
-      console.log(`⏭️  Cita ${cita.id.substring(0,8)} datos incompletos (tel:${payload.telefono} mat:${payload.matricula}) — skip`)
-      skip++
-      continue
+    // Delay cada 5 requests para no saturar
+    if ((i + 1) % 5 === 0) {
+      await sleep(500);
     }
-
-    try {
-      const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 15000)
-
-      const res = await fetch(AD4U_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': AD4U_API_KEY
-        },
-        body: JSON.stringify(payload),
-        signal: controller.signal
-      })
-
-      clearTimeout(timeout)
-
-      if (res.ok) {
-        const result = await res.json().catch(() => ({}))
-        console.log(`✅ ${payload.fecha} ${payload.hora} | ${payload.nombre} | ${payload.matricula} | ${payload.servicios.join(', ') || 'sin servicio'} → OK`)
-        ok++
-      } else {
-        const errText = await res.text().catch(() => '')
-        console.log(`❌ ${payload.fecha} ${payload.hora} | ${payload.nombre} | ${payload.matricula} → HTTP ${res.status}: ${errText.substring(0,100)}`)
-        fail++
-      }
-    } catch (err) {
-      console.log(`❌ ${payload.fecha} ${payload.hora} | ${payload.nombre} | ${payload.matricula} → ${err.message}`)
-      fail++
-    }
-
-    // Pequeña pausa para no saturar
-    await new Promise(r => setTimeout(r, 200))
   }
 
-  console.log(`\n${'='.repeat(50)}`)
-  console.log(`📊 RESUMEN:`)
-  console.log(`   ✅ Enviadas OK: ${ok}`)
-  console.log(`   ❌ Fallidas: ${fail}`)
-  console.log(`   ⏭️  Saltadas: ${skip}`)
-  console.log(`   📋 Total citas: ${citas.length}`)
-  console.log(`${'='.repeat(50)}\n`)
+  console.log('');
+  console.log('=== RESUMEN ===');
+  console.log(`✅ Enviadas OK: ${ok}`);
+  console.log(`❌ Fallidas: ${fail}`);
+  console.log(`⏭️ Skipped: ${skip}`);
+  console.log(`📊 Total procesadas: ${ok + fail + skip} / ${citas.length}`);
 
-  await prisma.$disconnect()
+  await prisma.$disconnect();
 }
 
-main().catch(e => { console.error(e); process.exit(1) })
+main().catch(err => {
+  console.error('Error fatal:', err);
+  process.exit(1);
+});
