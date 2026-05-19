@@ -260,6 +260,8 @@ export async function POST(req: NextRequest) {
       marcaModelo,
       matricula,
       localId,
+      localNombre: (cita as any).local?.nombre || undefined,
+      creadoPorNombre: 'RESERVA ONLINE',
     })
     syncReservaToAD4U(ad4uPayload).catch(() => {})
 

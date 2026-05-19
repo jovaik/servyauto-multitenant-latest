@@ -103,8 +103,10 @@ export function buildAD4UPayloadFromReserva(params: {
   marcaModelo: string
   matricula: string
   localId?: string
+  localNombre?: string
+  creadoPorNombre?: string
 }): AD4UReservaPayload {
-  const { nombre, apellido, telefono, email, fecha, hora, servicio, marcaModelo, matricula, localId } = params
+  const { nombre, apellido, telefono, email, fecha, hora, servicio, marcaModelo, matricula, localId, localNombre, creadoPorNombre } = params
 
   // Separar marca/modelo: "MERCEDES GLE" → marca=MERCEDES, modelo=GLE
   const parts = (marcaModelo || '').trim().split(/\s+/)
@@ -133,6 +135,8 @@ export function buildAD4UPayloadFromReserva(params: {
     vehiculoModelo,
     matricula: (matricula || '').toUpperCase(),
     localId: localId || undefined,
+    localNombre: localNombre || undefined,
+    creadoPorNombre: creadoPorNombre || undefined,
     tenantSlug: AD4U_TENANT,
   }
 }
@@ -147,6 +151,8 @@ export function buildAD4UPayloadFromCita(cita: {
   horaInicio: string
   cita_servicios?: Array<{ servicios: { nombre: string } }>
   localId?: string | null
+  local?: { nombre: string } | null
+  creadoPorNombre?: string | null
 }): AD4UReservaPayload {
   // Formatear fecha a YYYY-MM-DD
   let fechaStr: string
@@ -168,6 +174,8 @@ export function buildAD4UPayloadFromCita(cita: {
     vehiculoModelo: cita.vehiculo.modelo || '',
     matricula: (cita.vehiculo.matricula || '').toUpperCase(),
     localId: cita.localId || undefined,
+    localNombre: cita.local?.nombre || undefined,
+    creadoPorNombre: cita.creadoPorNombre || undefined,
     tenantSlug: AD4U_TENANT,
   }
 }
