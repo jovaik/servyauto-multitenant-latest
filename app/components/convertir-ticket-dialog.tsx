@@ -2,8 +2,8 @@
 
 'use client'
 
-import React, { useState } from 'react'
-import { RefreshCw, FileText } from 'lucide-react'
+import React, { useState, useEffect, useCallback } from 'react'
+import { RefreshCw, FileText, Building2, Loader2 } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -19,12 +19,19 @@ import { Label } from '@/components/ui/label'
 interface ConvertirTicketDialogProps {
   ticketId: string
   ticketNumero: string
+  clienteId?: string
+  clienteNombre?: string
+  clienteApellido?: string
+  clienteDocumento?: string
+  clienteTelefono?: string
+  clienteDireccion?: string
   onConvertido: () => void
 }
 
-export function ConvertirTicketDialog({ ticketId, ticketNumero, onConvertido }: ConvertirTicketDialogProps) {
+export function ConvertirTicketDialog({ ticketId, ticketNumero, clienteId, clienteNombre, clienteApellido, clienteDocumento, clienteTelefono, clienteDireccion, onConvertido }: ConvertirTicketDialogProps) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [cargandoDatos, setCargandoDatos] = useState(false)
   const [datosFacturacion, setDatosFacturacion] = useState({
     nombreFiscal: '',
     nif: '',
@@ -33,6 +40,63 @@ export function ConvertirTicketDialog({ ticketId, ticketNumero, onConvertido }: 
     codigoPostal: '',
     telefono: ''
   })
+
+  // Al abrir el diálogo, cargar datos de facturación previos del cliente
+  const cargarDatosFacturacion = useCallback(async () => {
+    if (!clienteId) return
+    
+    setCargandoDatos(true)
+    try {
+      // Buscar facturas previas de este cliente que tengan datosFacturacion
+      const res = await fetch(`/api/facturas?clienteId=${clienteId}&tipo=FACTURA&limit=1`)
+      if (res.ok) {
+        const facturas = await res.json()
+        const facturasArr = Array.isArray(facturas) ? facturas : (facturas.facturas || [])
+        
+        // Buscar datosFacturacion en facturas previas
+        for (const fac of facturasArr) {
+          if (fac.datosFacturacion) {
+            try {
+              const datos = typeof fac.datosFacturacion === 'string' 
+                ? JSON.parse(fac.datosFacturacion) 
+                : fac.datosFacturacion
+              if (datos.nombreFiscal || datos.nif) {
+                setDatosFacturacion({
+                  nombreFiscal: datos.nombreFiscal || '',
+                  nif: datos.nif || '',
+                  direccion: datos.direccion || '',
+                  ciudad: datos.ciudad || '',
+                  codigoPostal: datos.codigoPostal || '',
+                  telefono: datos.telefono || '',
+                })
+                setCargandoDatos(false)
+                return
+              }
+            } catch { /* ignore parse errors */ }
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error cargando datos de facturación previos:', err)
+    }
+    
+    // Si no hay datos de facturación previos, usar datos del cliente
+    setDatosFacturacion({
+      nombreFiscal: [clienteNombre, clienteApellido].filter(Boolean).join(' ').trim() || '',
+      nif: clienteDocumento || '',
+      direccion: clienteDireccion || '',
+      ciudad: '',
+      codigoPostal: '',
+      telefono: clienteTelefono || '',
+    })
+    setCargandoDatos(false)
+  }, [clienteId, clienteNombre, clienteApellido, clienteDocumento, clienteTelefono, clienteDireccion])
+
+  useEffect(() => {
+    if (open) {
+      cargarDatosFacturacion()
+    }
+  }, [open, cargarDatosFacturacion])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -103,6 +167,12 @@ export function ConvertirTicketDialog({ ticketId, ticketNumero, onConvertido }: 
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {cargandoDatos && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Cargando datos de facturación previos...
+            </div>
+          )}
           {/* Datos de Facturación */}
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">

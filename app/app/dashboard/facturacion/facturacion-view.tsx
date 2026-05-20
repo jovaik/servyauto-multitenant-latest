@@ -59,11 +59,14 @@ interface Factura {
   numero: string
   tipo: 'TICKET' | 'FACTURA'
   fecha: string
+  clienteId: string
   cliente: {
     nombre: string
     apellido?: string
     email?: string
     telefono: string
+    documento?: string
+    direccion?: string
   }
   total: number
   estado: 'PENDIENTE' | 'PAGADA' | 'VENCIDA' | 'CANCELADA'
@@ -784,6 +787,12 @@ export function FacturacionView() {
                             <ConvertirTicketDialog 
                               ticketId={factura.id}
                               ticketNumero={factura.numero}
+                              clienteId={factura.clienteId}
+                              clienteNombre={factura.cliente?.nombre}
+                              clienteApellido={factura.cliente?.apellido}
+                              clienteDocumento={factura.cliente?.documento}
+                              clienteTelefono={factura.cliente?.telefono}
+                              clienteDireccion={factura.cliente?.direccion}
                               onConvertido={loadFacturas}
                             />
                           )}

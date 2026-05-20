@@ -24,23 +24,36 @@ export async function GET(request: NextRequest) {
     
     const localFilter = buildLocalFilter(localContext)
 
+    // Filtros opcionales por query params
+    const { searchParams } = new URL(request.url)
+    const clienteIdFilter = searchParams.get('clienteId')
+    const tipoFilter = searchParams.get('tipo')
+    const limitParam = searchParams.get('limit')
+
+    const whereClause: any = { ...localFilter }
+    if (clienteIdFilter) whereClause.clienteId = clienteIdFilter
+    if (tipoFilter) whereClause.tipo = tipoFilter
+
     // Obtener facturas y tickets (documentos reales)
     const facturas = await prisma.factura.findMany({
-      where: localFilter,
+      where: whereClause,
       include: {
         cliente: {
           select: {
             nombre: true,
             apellido: true,
             email: true,
-            telefono: true
+            telefono: true,
+            documento: true,
+            direccion: true,
           }
         },
         local: true,
       },
       orderBy: {
         createdAt: 'desc'
-      }
+      },
+      ...(limitParam ? { take: parseInt(limitParam) } : {}),
     })
 
     return NextResponse.json(facturas)
