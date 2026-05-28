@@ -152,18 +152,29 @@ export function FacturacionView() {
 
 
 
+  const [descargandoPDF, setDescargandoPDF] = useState<string | null>(null)
+
   const descargarPDF = async (facturaId: string) => {
     try {
+      setDescargandoPDF(facturaId)
       const response = await fetch(`/api/facturas/${facturaId}/pdf`)
       if (response.ok) {
         const contentType = response.headers.get('content-type') || ''
+        const disposition = response.headers.get('content-disposition') || ''
         
         if (contentType.includes('application/pdf')) {
-          // Es un PDF real - abrir en nueva pestaña
+          // Es un PDF real - forzar descarga
           const blob = await response.blob()
           const url = URL.createObjectURL(blob)
-          window.open(url, '_blank')
-          // Limpiar URL después de un tiempo
+          // Extraer filename del header o usar default
+          const filenameMatch = disposition.match(/filename="?([^"]+)"?/)
+          const filename = filenameMatch ? filenameMatch[1] : `documento_${facturaId}.pdf`
+          const a = document.createElement('a')
+          a.href = url
+          a.download = filename
+          document.body.appendChild(a)
+          a.click()
+          document.body.removeChild(a)
           setTimeout(() => URL.revokeObjectURL(url), 60000)
         } else {
           // Fallback a HTML (para imprimir)
@@ -183,6 +194,8 @@ export function FacturacionView() {
     } catch (error) {
       console.error('Error downloading document:', error)
       alert('Error al generar el documento. Por favor intenta de nuevo.')
+    } finally {
+      setDescargandoPDF(null)
     }
   }
 
@@ -748,9 +761,12 @@ export function FacturacionView() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => descargarPDF(factura.id)}>
-                            <Download className="mr-2 h-4 w-4" />
-                            Descargar Documento
+                          <DropdownMenuItem onClick={() => descargarPDF(factura.id)} disabled={descargandoPDF === factura.id}>
+                            {descargandoPDF === factura.id ? (
+                              <><RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Generando PDF...</>
+                            ) : (
+                              <><Download className="mr-2 h-4 w-4" /> Descargar Documento</>
+                            )}
                           </DropdownMenuItem>
                           {factura.estado === 'PENDIENTE' && (
                             <DropdownMenuItem 

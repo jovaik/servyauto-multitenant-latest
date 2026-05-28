@@ -413,11 +413,17 @@ function generateFacturaHTML(factura: any, local: any, items: any[]): string {
 // Función para generar PDF usando la API de Abacus
 async function generatePDF(htmlContent: string, isTicket: boolean): Promise<Buffer | null> {
   try {
+    const apiKey = process.env.ABACUSAI_API_KEY
+    if (!apiKey) {
+      console.error('[PDF] ❌ ABACUSAI_API_KEY no configurada')
+      return null
+    }
+
     // Opciones de PDF según tipo de documento
     const pdfOptions = isTicket 
       ? {
           width: '80mm',
-          height: '200mm', // Altura suficiente, se ajusta al contenido
+          height: '200mm',
           margin: { top: '0mm', right: '0mm', bottom: '0mm', left: '0mm' },
           print_background: true
         }
@@ -427,12 +433,14 @@ async function generatePDF(htmlContent: string, isTicket: boolean): Promise<Buff
           print_background: true
         }
 
+    console.log('[PDF] Solicitando generación de PDF...', { isTicket, htmlLength: htmlContent.length })
+
     // Step 1: Crear la solicitud de generación de PDF
     const createResponse = await fetch('https://apps.abacus.ai/api/createConvertHtmlToPdfRequest', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        deployment_token: process.env.ABACUSAI_API_KEY,
+        deployment_token: apiKey,
         html_content: htmlContent,
         pdf_options: pdfOptions,
         base_url: process.env.NEXTAUTH_URL || ''
@@ -440,15 +448,22 @@ async function generatePDF(htmlContent: string, isTicket: boolean): Promise<Buff
     })
 
     if (!createResponse.ok) {
-      console.error('Error creating PDF request:', await createResponse.text())
+      const errText = await createResponse.text()
+      console.error('[PDF] ❌ Error creating PDF request:', createResponse.status, errText)
       return null
     }
 
-    const { request_id } = await createResponse.json()
-    if (!request_id) return null
+    const createResult = await createResponse.json()
+    const requestId = createResult?.request_id
+    if (!requestId) {
+      console.error('[PDF] ❌ No request_id returned:', createResult)
+      return null
+    }
 
-    // Step 2: Esperar a que se complete
-    const maxAttempts = 60 // 1 minuto máximo
+    console.log('[PDF] request_id:', requestId)
+
+    // Step 2: Esperar a que se complete (máx 120s)
+    const maxAttempts = 120
     let attempts = 0
 
     while (attempts < maxAttempts) {
@@ -458,8 +473,8 @@ async function generatePDF(htmlContent: string, isTicket: boolean): Promise<Buff
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          request_id: request_id,
-          deployment_token: process.env.ABACUSAI_API_KEY
+          request_id: requestId,
+          deployment_token: apiKey
         })
       })
 
@@ -468,18 +483,20 @@ async function generatePDF(htmlContent: string, isTicket: boolean): Promise<Buff
       const result = statusResult?.result
 
       if (status === 'SUCCESS' && result?.result) {
+        console.log('[PDF] ✅ PDF generado exitosamente (intento', attempts + 1, ')')
         return Buffer.from(result.result, 'base64')
       } else if (status === 'FAILED') {
-        console.error('PDF generation failed:', result?.error)
+        console.error('[PDF] ❌ Generación falló:', result?.error || JSON.stringify(statusResult))
         return null
       }
       
       attempts++
     }
 
+    console.error('[PDF] ❌ Timeout después de', maxAttempts, 'intentos')
     return null
   } catch (error) {
-    console.error('Error in PDF generation:', error)
+    console.error('[PDF] ❌ Error en generación:', error)
     return null
   }
 }
@@ -520,33 +537,36 @@ export async function GET(
       ? generateTicketHTML(factura, factura.local, factura.factura_items || [])
       : generateFacturaHTML(factura, factura.local, factura.factura_items || [])
 
-    // Si se solicita HTML (fallback)
+    const filename = `${factura.tipo}_${factura.numero}`.replace(/[^a-zA-Z0-9_-]/g, '_')
+
+    // Si se solicita HTML explícitamente
     if (formato === 'html') {
       return new NextResponse(htmlContent, {
         headers: {
           'Content-Type': 'text/html; charset=utf-8',
-          'Content-Disposition': `inline; filename="${factura.tipo}_${factura.numero}.html"`
+          'Content-Disposition': `inline; filename="${filename}.html"`
         }
       })
     }
 
     // Generar PDF
+    console.log(`[PDF] Generando PDF para ${factura.numero} (${factura.tipo})...`)
     const pdfBuffer = await generatePDF(htmlContent, isTicket)
 
     if (pdfBuffer) {
       return new NextResponse(pdfBuffer, {
         headers: {
           'Content-Type': 'application/pdf',
-          'Content-Disposition': `inline; filename="${factura.tipo}_${factura.numero}.pdf"`
+          'Content-Disposition': `attachment; filename="${filename}.pdf"`
         }
       })
     } else {
-      // Fallback a HTML si falla la generación de PDF
-      console.warn('PDF generation failed, falling back to HTML')
+      // Fallback: devolver HTML con cabeceras que permitan imprimir
+      console.warn('[PDF] Generación de PDF falló, devolviendo HTML como fallback')
       return new NextResponse(htmlContent, {
         headers: {
           'Content-Type': 'text/html; charset=utf-8',
-          'Content-Disposition': `inline; filename="${factura.tipo}_${factura.numero}.html"`
+          'Content-Disposition': `inline; filename="${filename}.html"`
         }
       })
     }
