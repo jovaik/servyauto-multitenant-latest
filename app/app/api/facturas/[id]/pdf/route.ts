@@ -5,6 +5,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { SERVYAUTO_LOGO_BASE64 } from '@/lib/logo-base64'
 
 // Generar HTML para TICKET (formato estrecho 80mm)
 function generateTicketHTML(factura: any, local: any, items: any[]): string {
@@ -60,9 +61,13 @@ function generateTicketHTML(factura: any, local: any, items: any[]): string {
           margin-bottom: 3mm;
         }
         .logo {
-          font-size: 18px;
-          font-weight: bold;
+          text-align: center;
           margin-bottom: 2mm;
+        }
+        .logo img {
+          max-width: 50mm;
+          max-height: 18mm;
+          object-fit: contain;
         }
         .local-info {
           font-size: 10px;
@@ -143,7 +148,7 @@ function generateTicketHTML(factura: any, local: any, items: any[]): string {
     </head>
     <body>
       <div class="header">
-        <div class="logo">${nombreLocal}</div>
+        <div class="logo"><img src="${SERVYAUTO_LOGO_BASE64}" alt="${nombreLocal}" /></div>
         <div class="local-info">
           ${cifLocal ? `CIF: ${cifLocal}<br>` : ''}
           ${direccionLocal ? `${direccionLocal}<br>` : ''}
@@ -305,9 +310,9 @@ function generateFacturaHTML(factura: any, local: any, items: any[]): string {
       <tr>
         <!-- LOGO SERVYAUTO -->
         <td style="vertical-align:middle;width:60%;padding-right:8px;">
-          <div style="background:${naranja};padding:12px 20px;text-align:center;border:2px solid ${naranjaOscuro};">
-            <div style="font-size:28px;font-weight:900;color:#000;letter-spacing:2px;font-family:Arial Black,Arial,sans-serif;">SERVY<span style="color:#cc0000;">AUTO</span></div>
-            <div style="font-size:10px;color:#000;margin-top:2px;font-style:italic;">servicios del autom&oacute;vil</div>
+          <div style="background:#fff;padding:10px 20px;text-align:center;border:2px solid ${naranjaOscuro};">
+            <img src="${SERVYAUTO_LOGO_BASE64}" alt="ServyAuto" style="max-width:220px;max-height:70px;object-fit:contain;" />
+            <div style="font-size:9px;color:#666;margin-top:4px;font-style:italic;">servicios del autom&oacute;vil</div>
           </div>
           <div style="margin-top:6px;font-size:10px;">
             Email: <a href="mailto:info@servyauto.com" style="color:#0066cc;">info@servyauto.com</a>
