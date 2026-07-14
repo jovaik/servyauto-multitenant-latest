@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { requireSuperAdminForDelete, logActivity } from '@/lib/activity-logger'
 
 export const dynamic = 'force-dynamic'
 
@@ -72,6 +73,8 @@ export async function PUT(
       }
     })
 
+    logActivity({ action: 'UPDATE', entity: 'SERVICIO', entityId: params.id, description: `Servicio actualizado: ${servicioActualizado.nombre}` }).catch(() => {})
+
     return NextResponse.json(servicioActualizado)
   } catch (error) {
     console.error('Error updating service:', error)
@@ -87,11 +90,8 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-    }
+    const guardResponse = await requireSuperAdminForDelete()
+    if (guardResponse) return guardResponse
 
     const servicioId = params.id
 

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { logActivity } from '@/lib/activity-logger'
 
 export const dynamic = 'force-dynamic'
 
@@ -87,6 +88,8 @@ export async function POST(req: NextRequest) {
         ordenPreferencia: ordenPreferencia !== undefined ? parseInt(ordenPreferencia) : 999
       }
     })
+
+    logActivity({ action: 'CREATE', entity: 'SERVICIO', entityId: servicio.id, description: `Servicio creado: ${servicio.nombre} - ${servicio.precio}€` }).catch(() => {})
 
     return NextResponse.json(servicio, { status: 201 })
   } catch (error) {

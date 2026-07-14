@@ -5,6 +5,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { notificarCreacionGSControl, mapearCategoriaGasto } from '@/lib/gscontrol-sync'
 import { getLocalContext, buildLocalFilter, getLocalIdForCreate } from '@/lib/local-context'
+import { logActivity } from '@/lib/activity-logger'
 
 export async function GET(request: NextRequest) {
   try {
@@ -209,6 +210,8 @@ export async function POST(request: NextRequest) {
       // Nuevo campo según PDF
       costCategory: categoriaGSControl
     })
+
+    logActivity({ action: 'CREATE', entity: 'GASTO', entityId: gasto.id, description: `Gasto creado - ${gasto.concepto} - ${gasto.importe}€` }).catch(() => {})
 
     return NextResponse.json(gasto, { status: 201 })
   } catch (error: any) {

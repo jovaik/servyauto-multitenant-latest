@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { requireSuperAdminForDelete } from '@/lib/activity-logger'
 
 // GET: Obtener overrides de un local
 export async function GET(request: NextRequest) {
@@ -98,8 +99,8 @@ export async function POST(request: NextRequest) {
 // DELETE: Eliminar un override
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    const guardResponse = await requireSuperAdminForDelete()
+    if (guardResponse) return guardResponse
 
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')

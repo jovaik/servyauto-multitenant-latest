@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { logActivity } from '@/lib/activity-logger'
 
 export async function GET(request: NextRequest) {
   try {
@@ -64,6 +65,9 @@ export async function POST(request: NextRequest) {
         })
       )
     )
+
+    const claves = configData.map((c: any) => c.clave).join(', ')
+    logActivity({ action: 'CONFIG', entity: 'CONFIGURACION', description: `Configuración actualizada: ${claves}` }).catch(() => {})
 
     return NextResponse.json({ 
       success: true, 

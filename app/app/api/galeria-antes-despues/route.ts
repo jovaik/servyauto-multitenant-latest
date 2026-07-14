@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { requireSuperAdminForDelete } from '@/lib/activity-logger'
 
 // GET - Obtener todas las imágenes de galería
 export async function GET() {
@@ -102,14 +103,8 @@ export async function PUT(request: Request) {
 // DELETE - Eliminar imagen de galería
 export async function DELETE(request: Request) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'No autorizado' },
-        { status: 401 }
-      )
-    }
+    const guardResponse = await requireSuperAdminForDelete()
+    if (guardResponse) return guardResponse
 
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')

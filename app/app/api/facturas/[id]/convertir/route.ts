@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { notificarCreacionGSControl } from '@/lib/gscontrol-sync'
+import { logActivity } from '@/lib/activity-logger'
 
 export async function PUT(
   request: NextRequest,
@@ -116,6 +117,8 @@ export async function PUT(
       importe: facturaConvertida.total,
       descripcion: descripcionFactura
     })
+
+    logActivity({ action: 'CONVERT', entity: 'FACTURA', entityId: params.id, description: `Ticket convertido a Factura` }).catch(() => {})
 
     return NextResponse.json(facturaConvertida)
   } catch (error: any) {

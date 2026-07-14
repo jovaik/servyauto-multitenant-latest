@@ -5,6 +5,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { notificarCreacionGSControl } from '@/lib/gscontrol-sync'
 import { getLocalContext, buildLocalFilter, getLocalIdForCreate } from '@/lib/local-context'
+import { logActivity } from '@/lib/activity-logger'
 
 export async function GET(request: NextRequest) {
   try {
@@ -218,6 +219,8 @@ export async function POST(request: NextRequest) {
       clientName: clienteNombreCompleto || undefined,
       clientDni: factura.cliente.documento || undefined
     })
+
+    logActivity({ action: 'CREATE', entity: 'FACTURA', entityId: factura.id, description: `${factura.tipo} creada - ${factura.numero || 'sin número'} - Total: ${factura.total}€` }).catch(() => {})
 
     return NextResponse.json(factura, { status: 201 })
   } catch (error) {

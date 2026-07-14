@@ -5,6 +5,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { enviarNotificacionVehiculoListo, enviarSolicitudResena } from '@/lib/notifications'
 import { notificarCreacionGSControl } from '@/lib/gscontrol-sync'
+import { logActivity, requireSuperAdminForDelete } from '@/lib/activity-logger'
 
 export const dynamic = 'force-dynamic'
 
@@ -670,12 +671,21 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       }
     }
     
+    // 📝 Log de actividad
+    logActivity({
+      action: 'UPDATE',
+      entity: 'Cita',
+      entityId: params.id,
+      description: `Cita actualizada - Estado: ${body.estado || cita.estado}`,
+      details: { estado: body.estado, total: body.total },
+    }).catch(() => {})
+
     return NextResponse.json({
       ...cita,
-      depositoData: depositoData, // Incluir datos de confirmación de depósito si se generaron
-      confirmacionICSData: confirmacionICSData, // Incluir datos de confirmación con ICS si se generaron
-      listoData: listoData, // Incluir datos de notificación de vehículo listo si se generaron
-      whatsappData: whatsappData // Incluir datos de WhatsApp y SMS si se generaron
+      depositoData: depositoData,
+      confirmacionICSData: confirmacionICSData,
+      listoData: listoData,
+      whatsappData: whatsappData
     })
   } catch (error: any) {
     console.error('=== ERROR EN ACTUALIZACIÓN ===')
@@ -704,15 +714,13 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const session = await getServerSession(authOptions)
-
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-    }
+    const guardResponse = await requireSuperAdminForDelete()
+    if (guardResponse) return guardResponse
 
     // Verificar si la cita existe
     const citaExistente = await prisma.cita.findUnique({
       where: { id: params.id },
+      include: { vehiculo: true, cliente: true }
     })
 
     if (!citaExistente) {
@@ -725,6 +733,13 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     // Eliminar la cita y sus servicios relacionados
     await prisma.cita.delete({
       where: { id: params.id },
+    })
+
+    await logActivity({
+      action: 'DELETE',
+      entity: 'Cita',
+      entityId: params.id,
+      description: `Cita eliminada - ${citaExistente.vehiculo?.matricula || 'Sin matrícula'} / ${citaExistente.cliente?.nombre || 'Sin cliente'} (${citaExistente.fecha?.toISOString().slice(0,10) || ''})`,
     })
 
     return NextResponse.json({ message: 'Cita eliminada correctamente' })

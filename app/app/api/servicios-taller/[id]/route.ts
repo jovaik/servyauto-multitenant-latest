@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { requireSuperAdminForDelete } from '@/lib/activity-logger'
 import { notificarModificacionGSControl, notificarEliminacionGSControl, mapearCategoriaGasto } from '@/lib/gscontrol-sync'
 
 export async function GET(
@@ -196,10 +197,8 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-    }
+    const guardResponse = await requireSuperAdminForDelete()
+    if (guardResponse) return guardResponse
 
     // Obtener el servicio antes de eliminarlo (para sincronizar)
     const servicio = await prisma.servicioTaller.findUnique({

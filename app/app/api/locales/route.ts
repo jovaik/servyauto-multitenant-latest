@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { logActivity } from '@/lib/activity-logger';
 
 // GET - Listar locales según permisos del usuario
 export async function GET() {
@@ -122,6 +123,8 @@ export async function POST(request: NextRequest) {
         ciudadFiscal: ciudadFiscal || null,
       }
     });
+
+    logActivity({ action: 'CREATE', entity: 'LOCAL', entityId: local.id, description: `Local creado: ${local.nombre}` }).catch(() => {});
 
     return NextResponse.json(local, { status: 201 });
   } catch (error) {

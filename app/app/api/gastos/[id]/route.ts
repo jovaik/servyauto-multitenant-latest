@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { logActivity, requireSuperAdminForDelete } from '@/lib/activity-logger'
 import { notificarModificacionGSControl, notificarEliminacionGSControl, mapearCategoriaGasto } from '@/lib/gscontrol-sync'
 
 export async function PUT(
@@ -124,6 +125,8 @@ export async function PUT(
       costCategory: categoriaGSControl
     })
 
+    logActivity({ action: 'UPDATE', entity: 'GASTO', entityId: params.id, description: `Gasto actualizado - ${body.concepto || ''}`, details: body }).catch(() => {})
+
     return NextResponse.json(gasto)
   } catch (error) {
     console.error('Error updating gasto:', error)
@@ -139,12 +142,9 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-    }
+    const guardResponse = await requireSuperAdminForDelete()
+    if (guardResponse) return guardResponse
 
-    // Obtener el gasto antes de eliminarlo (para sincronizar)
     const gasto = await prisma.gasto.findUnique({
       where: { id: params.id }
     })
@@ -153,11 +153,17 @@ export async function DELETE(
       return NextResponse.json({ error: 'Gasto no encontrado' }, { status: 404 })
     }
 
-    // 🔄 SINCRONIZAR ELIMINACIÓN CON GSCONTROL - CÓDIGO EXACTO DEL PDF
     await notificarEliminacionGSControl(gasto.id)
 
     await prisma.gasto.delete({
       where: { id: params.id }
+    })
+
+    await logActivity({
+      action: 'DELETE',
+      entity: 'Gasto',
+      entityId: params.id,
+      description: `Gasto eliminado - ${gasto.concepto || ''} (${gasto.importe}€)`,
     })
 
     return NextResponse.json({ message: 'Gasto eliminado' })

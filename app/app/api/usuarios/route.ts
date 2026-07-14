@@ -5,6 +5,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import bcrypt from 'bcryptjs'
 import { RolUsuario } from '@/lib/types'
+import { logActivity } from '@/lib/activity-logger'
 
 export async function GET(request: NextRequest) {
   try {
@@ -30,6 +31,7 @@ export async function GET(request: NextRequest) {
         email: true,
         role: true,
         activo: true,
+        puedeEliminar: true,
         localId: true,
         local: {
           select: {
@@ -73,7 +75,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { name, email, password, role, activo, localId } = body
+    const { name, email, password, role, activo, localId, puedeEliminar } = body
 
     if (!email || !password || !role) {
       return NextResponse.json(
@@ -105,6 +107,7 @@ export async function POST(request: NextRequest) {
         password: hashedPassword,
         role: role as RolUsuario,
         activo: activo ?? true,
+        puedeEliminar: puedeEliminar ?? false,
         localId: localId || null, // null = superadmin (ve todo)
       },
       select: {
@@ -113,6 +116,7 @@ export async function POST(request: NextRequest) {
         email: true,
         role: true,
         activo: true,
+        puedeEliminar: true,
         localId: true,
         local: {
           select: {
@@ -127,6 +131,8 @@ export async function POST(request: NextRequest) {
     })
 
     console.log(`✅ Usuario creado: ${name} (${email}) - Local: ${localId || 'Todos (SuperAdmin)'}`)
+
+    logActivity({ action: 'CREATE', entity: 'USUARIO', entityId: newUser.id, description: `Usuario creado: ${name} (${email}) - Rol: ${role}` }).catch(() => {})
 
     return NextResponse.json(newUser, { status: 201 })
   } catch (error) {

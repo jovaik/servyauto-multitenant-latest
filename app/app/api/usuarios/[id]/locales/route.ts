@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { prisma } from '@/lib/db';
+import { prisma } from '@/lib/db'
+import { requireSuperAdminForDelete } from '@/lib/activity-logger';
 
 // GET - Obtener locales asignados a un usuario
 export async function GET(
@@ -166,19 +167,8 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
-
-    const currentUser = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      select: { role: true }
-    });
-
-    if (currentUser?.role !== 'SUPER_ADMIN') {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
-    }
+    const guardResponse = await requireSuperAdminForDelete();
+    if (guardResponse) return guardResponse;
 
     const { localId } = await request.json();
 

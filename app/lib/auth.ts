@@ -4,6 +4,7 @@ import CredentialsProvider from "next-auth/providers/credentials"
 import { PrismaAdapter } from "@next-auth/prisma-adapter"
 import { prisma } from "@/lib/db"
 import bcrypt from "bcryptjs"
+import { logActivity } from "@/lib/activity-logger"
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
@@ -68,6 +69,16 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id
         token.role = (user as any).role
+        // Log de login
+        logActivity({
+          action: 'LOGIN',
+          entity: 'USUARIO',
+          entityId: user.id,
+          description: `Inicio de sesión: ${user.name || user.email}`,
+          userId: user.id,
+          userName: user.name || undefined,
+          userEmail: user.email || undefined,
+        }).catch(() => {})
       }
       return token
     },

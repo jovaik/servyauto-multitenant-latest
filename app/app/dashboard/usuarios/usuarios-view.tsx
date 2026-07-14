@@ -45,6 +45,7 @@ interface Usuario {
   email: string
   role: string
   activo: boolean
+  puedeEliminar: boolean
   localId: string | null
   local?: Local | null
   localesAsignados?: { localId: string, local: Local }[]
@@ -67,6 +68,7 @@ export function UsuariosView() {
     password: '',
     role: 'ADMIN',
     activo: true,
+    puedeEliminar: false,
     localId: 'ALL', // ALL = todos los locales (superadmin)
     localesAsignados: [] as string[] // Para GRUPO_ADMIN: IDs de locales asignados
   })
@@ -115,6 +117,7 @@ export function UsuariosView() {
           password: formData.password,
           role: formData.role,
           activo: formData.activo,
+          puedeEliminar: formData.puedeEliminar,
           localId: formData.role === 'GRUPO_ADMIN' ? null : (formData.localId === 'ALL' ? null : formData.localId)
         })
       })
@@ -139,6 +142,7 @@ export function UsuariosView() {
           password: '',
           role: 'ADMIN',
           activo: true,
+          puedeEliminar: false,
           localId: 'ALL',
           localesAsignados: []
         })
@@ -163,6 +167,7 @@ export function UsuariosView() {
         email: formData.email,
         role: formData.role,
         activo: formData.activo,
+        puedeEliminar: formData.puedeEliminar,
         localId: formData.role === 'GRUPO_ADMIN' ? null : (formData.localId === 'ALL' ? null : formData.localId)
       }
 
@@ -203,6 +208,7 @@ export function UsuariosView() {
           password: '',
           role: 'ADMIN',
           activo: true,
+          puedeEliminar: false,
           localId: 'ALL',
           localesAsignados: []
         })
@@ -261,6 +267,7 @@ export function UsuariosView() {
       password: '',
       role: usuario.role,
       activo: usuario.activo,
+      puedeEliminar: usuario.puedeEliminar ?? false,
       localId: usuario.localId || 'ALL',
       localesAsignados
     })
@@ -394,6 +401,17 @@ export function UsuariosView() {
                     <SelectItem value="false">Inactivo</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="puedeEliminar"
+                  checked={formData.puedeEliminar}
+                  onChange={(e) => setFormData({ ...formData, puedeEliminar: e.target.checked })}
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                <Label htmlFor="puedeEliminar">Puede eliminar registros</Label>
               </div>
               
               {/* Selector de locales según rol */}
@@ -640,6 +658,17 @@ export function UsuariosView() {
                   <SelectItem value="false">Inactivo</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="edit-puedeEliminar"
+                checked={formData.puedeEliminar}
+                onChange={(e) => setFormData({ ...formData, puedeEliminar: e.target.checked })}
+                className="h-4 w-4 rounded border-gray-300"
+              />
+              <Label htmlFor="edit-puedeEliminar">Puede eliminar registros</Label>
             </div>
             
             {/* Selector de locales según rol */}

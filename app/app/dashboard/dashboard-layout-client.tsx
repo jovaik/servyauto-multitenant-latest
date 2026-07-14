@@ -32,7 +32,8 @@ import {
   BookOpen,
   Building2,
   Store,
-  ParkingCircle
+  ParkingCircle,
+  ScrollText
 } from 'lucide-react'
 import { RolUsuario } from '@/lib/types'
 import { Button } from '@/components/ui/button'
@@ -93,6 +94,7 @@ const additionalNavigation: NavItem[] = [
   { name: 'Usuarios', href: '/dashboard/usuarios', icon: UserCheck, roles: [RolUsuario.SUPER_ADMIN] },
   { name: 'Locales', href: '/dashboard/locales', icon: Store, roles: [RolUsuario.SUPER_ADMIN] },
   { name: 'Configuración', href: '/dashboard/configuracion', icon: Settings, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN] },
+  { name: 'Registro Actividad', href: '/dashboard/actividad', icon: ScrollText, roles: [RolUsuario.SUPER_ADMIN] },
   { name: 'Página Pública', href: '/dashboard/configuracion-publica', icon: Globe, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN] },
 ]
 

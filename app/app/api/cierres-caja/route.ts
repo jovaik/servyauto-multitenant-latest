@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { logActivity } from '@/lib/activity-logger'
 
 export async function GET(request: NextRequest) {
   try {
@@ -155,6 +156,8 @@ export async function POST(request: NextRequest) {
 
     // ⚠️ Los cierres de caja NO se sincronizan con GSControl según instrucciones
     // Solo se sincronizan facturas y gastos individuales
+
+    logActivity({ action: 'CREATE', entity: 'CIERRE_CAJA', entityId: cierre.id, description: `Cierre de caja creado` }).catch(() => {})
 
     return NextResponse.json(cierre, { status: 201 })
   } catch (error) {

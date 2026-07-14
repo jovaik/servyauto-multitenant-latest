@@ -5,6 +5,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { notificarModificacionGSControl, notificarEliminacionGSControl } from '@/lib/gscontrol-sync'
 import { enviarSolicitudResena } from '@/lib/notifications'
+import { logActivity, requireSuperAdminForDelete } from '@/lib/activity-logger'
 
 export async function GET(
   request: NextRequest,
@@ -161,6 +162,8 @@ export async function PUT(
       items: factura.factura_items || []
     }
 
+    logActivity({ action: 'UPDATE', entity: 'FACTURA', entityId: params.id, description: `Factura actualizada`, details: body }).catch(() => {})
+
     return NextResponse.json(facturaConItems)
   } catch (error) {
     console.error('Error updating factura:', error)
@@ -176,10 +179,8 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-    }
+    const guardResponse = await requireSuperAdminForDelete()
+    if (guardResponse) return guardResponse
 
     // Verificar que la factura existe
     const factura = await prisma.factura.findUnique({
@@ -199,6 +200,13 @@ export async function DELETE(
     // Eliminar factura (los items se eliminan automáticamente por CASCADE)
     await prisma.factura.delete({
       where: { id: params.id }
+    })
+
+    await logActivity({
+      action: 'DELETE',
+      entity: 'Factura',
+      entityId: params.id,
+      description: `${factura.tipo} ${factura.numero} eliminada - Total: ${factura.total}€`,
     })
 
     return NextResponse.json({ message: 'Factura eliminada correctamente' })

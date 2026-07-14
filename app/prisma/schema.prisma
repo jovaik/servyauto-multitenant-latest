@@ -44,6 +44,7 @@ model User {
   password         String?
   role             RolUsuario  @default(ADMIN)
   activo           Boolean     @default(true)
+  puedeEliminar    Boolean     @default(false)
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
   localId          String?
@@ -599,4 +600,24 @@ enum TipoMovimientoTicket {
   COMPRA
   CONSUMO
   AJUSTE
+}
+
+model ActivityLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  userName    String?
+  userEmail   String?
+  action      String   // CREATE, UPDATE, DELETE, LOGIN, LOGOUT, etc.
+  entity      String   // Cita, Factura, Cliente, Vehiculo, etc.
+  entityId    String?
+  description String   @db.Text
+  details     Json?    // datos adicionales (cambios, valores anteriores, etc.)
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([entity])
+  @@index([action])
+  @@index([createdAt])
+  @@map("activity_logs")
 }

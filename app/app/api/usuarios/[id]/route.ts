@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { requireSuperAdminForDelete, logActivity } from '@/lib/activity-logger'
 import bcrypt from 'bcryptjs'
 import { RolUsuario } from '@/lib/types'
 
@@ -24,6 +25,7 @@ export async function GET(
         email: true,
         role: true,
         activo: true,
+        puedeEliminar: true,
         localId: true,
         local: {
           select: {
@@ -59,7 +61,7 @@ export async function PUT(
     }
 
     const body = await request.json()
-    const { name, email, password, role, activo, localId } = body
+    const { name, email, password, role, activo, localId, puedeEliminar } = body
 
     // Verificar si el usuario existe
     const existingUser = await prisma.user.findUnique({
@@ -92,6 +94,7 @@ export async function PUT(
     }
     if (role !== undefined) updateData.role = role as RolUsuario
     if (activo !== undefined) updateData.activo = activo
+    if (puedeEliminar !== undefined) updateData.puedeEliminar = puedeEliminar
     
     // LocalId: null = SuperAdmin (ve todos), string = local específico
     if (localId !== undefined) {
@@ -117,6 +120,7 @@ export async function PUT(
         email: true,
         role: true,
         activo: true,
+        puedeEliminar: true,
         localId: true,
         local: {
           select: {
@@ -130,6 +134,8 @@ export async function PUT(
       }
     })
 
+    logActivity({ action: 'UPDATE', entity: 'USUARIO', entityId: params.id, description: `Usuario actualizado: ${updatedUser.name} (${updatedUser.email})` }).catch(() => {})
+
     return NextResponse.json(updatedUser)
   } catch (error) {
     console.error('Error al actualizar usuario:', error)
@@ -142,10 +148,10 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const guardResponse = await requireSuperAdminForDelete()
+    if (guardResponse) return guardResponse
+
     const session = await getServerSession(authOptions)
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-    }
 
     // Verificar si el usuario existe
     const existingUser = await prisma.user.findUnique({
@@ -157,7 +163,7 @@ export async function DELETE(
     }
 
     // No permitir eliminar el usuario actual
-    if (params.id === (session.user as any).id) {
+    if (params.id === (session?.user as any)?.id) {
       return NextResponse.json(
         { error: 'No puedes eliminar tu propia cuenta' }, 
         { status: 400 }

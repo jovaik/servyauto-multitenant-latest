@@ -5,6 +5,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { getLocalContext, buildLocalFilter, getLocalIdForCreate } from '@/lib/local-context'
 import { syncReservaToAD4U, buildAD4UPayloadFromCita } from '@/lib/autodetail4u-sync'
+import { logActivity } from '@/lib/activity-logger'
 
 export const dynamic = 'force-dynamic'
 
@@ -401,10 +402,18 @@ export async function POST(req: NextRequest) {
     const ad4uPayload = buildAD4UPayloadFromCita(cita)
     syncReservaToAD4U(ad4uPayload).catch(() => {})
 
+    // 📝 Log de actividad
+    logActivity({
+      action: 'CREATE',
+      entity: 'Cita',
+      entityId: cita.id,
+      description: `Nueva cita - ${cita.vehiculo?.matricula || ''} / ${cita.cliente?.nombre || ''} (${fecha})`,
+    }).catch(() => {})
+
     return NextResponse.json({
       ...cita,
-      depositoData: depositoData, // Incluir datos de confirmación de depósito si se generaron
-      confirmacionICSData: confirmacionICSData // Incluir datos de confirmación con ICS si se generaron
+      depositoData: depositoData,
+      confirmacionICSData: confirmacionICSData
     }, { status: 201 })
   } catch (error) {
     console.error('Error creating appointment:', error)
