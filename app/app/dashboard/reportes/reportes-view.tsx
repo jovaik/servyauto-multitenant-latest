@@ -21,9 +21,12 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Minus,
+  Car,
+  Search,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 
 type Periodo = 'diario' | 'semanal' | 'mensual' | 'trimestral' | 'anual'
 
@@ -75,6 +78,21 @@ interface DatoLocal {
   citas: number
 }
 
+interface DetalleCita {
+  id: string
+  fecha: string
+  hora: string
+  matricula: string
+  vehiculo: string
+  color: string
+  cliente: string
+  servicios: string[]
+  total: number
+  metodoPago: string | null
+  operario: string
+  local: string
+}
+
 interface LocalDisponible {
   id: string
   nombre: string
@@ -90,6 +108,7 @@ interface ReporteData {
   desgloseGastos: DesgloseGasto[]
   desgloseIngresosAdicionales: DesgloseIngresoAdicional[]
   topServicios: TopServicio[]
+  detalleCitas: DetalleCita[]
   datosLocales: DatoLocal[]
   localesDisponibles: LocalDisponible[]
 }
@@ -124,6 +143,8 @@ export function ReportesView() {
   const [data, setData] = useState<ReporteData | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [busquedaCitas, setBusquedaCitas] = useState('')
+  const [mostrarDetalle, setMostrarDetalle] = useState(true)
   const printRef = useRef<HTMLDivElement>(null)
 
   const fetchReporte = useCallback(async () => {
@@ -217,6 +238,23 @@ export function ReportesView() {
       rows.push(['TOP SERVICIOS'])
       rows.push(['Servicio', 'Total', 'Cantidad'])
       data.topServicios.forEach(s => rows.push([s.servicio, s.total.toFixed(2), String(s.count)]))
+      rows.push([])
+    }
+    if (data.detalleCitas.length > 0) {
+      rows.push(['DETALLE DE VEHÍCULOS ATENDIDOS'])
+      rows.push(['Fecha', 'Hora', 'Matrícula', 'Vehículo', 'Cliente', 'Servicios', 'Total', 'Método Pago', 'Operario', 'Local'])
+      data.detalleCitas.forEach(c => rows.push([
+        new Date(c.fecha).toLocaleDateString('es-ES'),
+        c.hora,
+        c.matricula,
+        c.vehiculo,
+        c.cliente,
+        c.servicios.join(' + '),
+        c.total.toFixed(2),
+        METODO_LABELS[c.metodoPago || ''] || c.metodoPago || '',
+        c.operario,
+        c.local,
+      ]))
       rows.push([])
     }
     if (data.datosLocales.length > 0) {
@@ -516,6 +554,105 @@ export function ReportesView() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Detalle de vehículos atendidos */}
+          {data.detalleCitas.length > 0 && (
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Car className="h-4 w-4 text-blue-500" />
+                    Vehículos Atendidos ({data.detalleCitas.length})
+                  </CardTitle>
+                  <div className="flex items-center gap-2">
+                    <div className="relative">
+                      <Search className="h-4 w-4 absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <Input
+                        placeholder="Buscar matrícula, cliente, servicio..."
+                        value={busquedaCitas}
+                        onChange={e => setBusquedaCitas(e.target.value)}
+                        className="pl-8 h-8 text-sm w-[250px]"
+                      />
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setMostrarDetalle(!mostrarDetalle)}
+                      className="text-xs"
+                    >
+                      {mostrarDetalle ? 'Ocultar' : 'Mostrar'}
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              {mostrarDetalle && (
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                          <th className="text-left py-2 px-2 font-semibold">Fecha</th>
+                          <th className="text-left py-2 px-2 font-semibold">Hora</th>
+                          <th className="text-left py-2 px-2 font-semibold">Matrícula</th>
+                          <th className="text-left py-2 px-2 font-semibold">Vehículo</th>
+                          <th className="text-left py-2 px-2 font-semibold">Cliente</th>
+                          <th className="text-left py-2 px-2 font-semibold">Servicios</th>
+                          <th className="text-right py-2 px-2 font-semibold">Total</th>
+                          <th className="text-left py-2 px-2 font-semibold">Pago</th>
+                          <th className="text-left py-2 px-2 font-semibold">Operario</th>
+                          {localId === 'todos' && <th className="text-left py-2 px-2 font-semibold">Local</th>}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.detalleCitas
+                          .filter(c => {
+                            if (!busquedaCitas) return true
+                            const q = busquedaCitas.toLowerCase()
+                            return (
+                              c.matricula.toLowerCase().includes(q) ||
+                              c.vehiculo.toLowerCase().includes(q) ||
+                              c.cliente.toLowerCase().includes(q) ||
+                              c.servicios.some(s => s.toLowerCase().includes(q)) ||
+                              c.operario.toLowerCase().includes(q) ||
+                              c.local.toLowerCase().includes(q)
+                            )
+                          })
+                          .map((c, i) => (
+                            <tr key={c.id} className="border-b last:border-0 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                              <td className="py-1.5 px-2 whitespace-nowrap">
+                                {new Date(c.fecha).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })}
+                              </td>
+                              <td className="py-1.5 px-2 whitespace-nowrap">{c.hora}</td>
+                              <td className="py-1.5 px-2 font-mono font-bold text-blue-600 whitespace-nowrap">{c.matricula}</td>
+                              <td className="py-1.5 px-2 whitespace-nowrap">
+                                <span className="font-medium">{c.vehiculo}</span>
+                                {c.color && <span className="text-xs text-gray-400 ml-1">({c.color})</span>}
+                              </td>
+                              <td className="py-1.5 px-2 whitespace-nowrap">{c.cliente}</td>
+                              <td className="py-1.5 px-2">
+                                <div className="flex flex-wrap gap-1">
+                                  {c.servicios.map((s, si) => (
+                                    <span key={si} className="inline-block bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs px-1.5 py-0.5 rounded">
+                                      {s}
+                                    </span>
+                                  ))}
+                                </div>
+                              </td>
+                              <td className="py-1.5 px-2 text-right font-semibold whitespace-nowrap">{formatCurrency(c.total)}</td>
+                              <td className="py-1.5 px-2 whitespace-nowrap text-xs">
+                                {METODO_LABELS[c.metodoPago || ''] || c.metodoPago || '-'}
+                              </td>
+                              <td className="py-1.5 px-2 whitespace-nowrap text-xs text-gray-500">{c.operario || '-'}</td>
+                              {localId === 'todos' && <td className="py-1.5 px-2 whitespace-nowrap text-xs">{c.local}</td>}
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              )}
+            </Card>
+          )}
 
           {/* Comparativa por local - only shown when all locals selected */}
           {data.datosLocales.length > 0 && (

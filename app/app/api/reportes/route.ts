@@ -209,6 +209,65 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    // Detalle de citas (vehículos lavados con servicios)
+    const citasDetalle = await prisma.cita.findMany({
+      where: { fecha: { gte: startDate, lte: endDate }, estado: 'COMPLETADA', ...localFilter },
+      select: {
+        id: true,
+        fecha: true,
+        horaInicio: true,
+        total: true,
+        metodoPago: true,
+        completadoPorNombre: true,
+        vehiculo: {
+          select: {
+            matricula: true,
+            marca: true,
+            modelo: true,
+            color: true,
+          }
+        },
+        cliente: {
+          select: {
+            nombre: true,
+            apellido: true,
+          }
+        },
+        local: {
+          select: {
+            nombre: true,
+            nombreComercial: true,
+          }
+        },
+        cita_servicios: {
+          select: {
+            precio: true,
+            servicios: {
+              select: {
+                nombre: true,
+              }
+            }
+          }
+        },
+      },
+      orderBy: [{ fecha: 'asc' }, { horaInicio: 'asc' }],
+    })
+
+    const detalleCitas = citasDetalle.map((c: any) => ({
+      id: c.id,
+      fecha: c.fecha,
+      hora: c.horaInicio,
+      matricula: c.vehiculo?.matricula || '',
+      vehiculo: `${c.vehiculo?.marca || ''} ${c.vehiculo?.modelo || ''}`.trim(),
+      color: c.vehiculo?.color || '',
+      cliente: `${c.cliente?.nombre || ''} ${c.cliente?.apellido || ''}`.trim(),
+      servicios: c.cita_servicios?.map((cs: any) => cs.servicios?.nombre || '').filter(Boolean) || [],
+      total: c.total || 0,
+      metodoPago: c.metodoPago || null,
+      operario: c.completadoPorNombre || '',
+      local: c.local?.nombreComercial || c.local?.nombre || '',
+    }))
+
     // Datos por local (solo si no se filtró por uno específico)
     let datosLocales: any[] = []
     if (!localId || localId === 'todos') {
@@ -252,8 +311,8 @@ export async function GET(request: NextRequest) {
         const gastos = gastosLocal._sum?.importe || 0
 
         return {
-          id: local.id,
-          nombre: local.nombreComercial || local.nombre,
+          localId: local.id,
+          localNombre: local.nombreComercial || local.nombre,
           ingresos,
           gastos,
           balance: ingresos - gastos,
@@ -317,6 +376,7 @@ export async function GET(request: NextRequest) {
         total: s._sum?.total || 0,
         count: s._count || 0,
       })),
+      detalleCitas,
       datosLocales,
       localesDisponibles: localesDisponibles.map((l: any) => ({
         id: l.id,
