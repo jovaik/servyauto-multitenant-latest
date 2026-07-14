@@ -2,6 +2,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
 import { 
   TrendingDown, 
   Plus,
@@ -52,6 +53,8 @@ interface Gasto {
 }
 
 export function GastosView() {
+  const { data: session } = useSession() || {}
+  const userRole = (session?.user as any)?.role || ''
   const [gastos, setGastos] = useState<Gasto[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -256,22 +259,24 @@ export function GastosView() {
               <Download className="h-4 w-4 mr-1" />
               PDF
             </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={async () => {
-                const total = filteredGastos.reduce((sum, g) => sum + g.importe, 0)
-                const porCategoria: Record<string, number> = {}
-                filteredGastos.forEach(g => {
-                  porCategoria[g.tipoGasto] = (porCategoria[g.tipoGasto] || 0) + g.importe
-                })
-                await exportarGastosExcel(filteredGastos, { total, porCategoria }, 'Período seleccionado')
-              }}
-              className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
-            >
-              <Download className="h-4 w-4 mr-1" />
-              Excel
-            </Button>
+            {userRole === 'SUPER_ADMIN' && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={async () => {
+                  const total = filteredGastos.reduce((sum, g) => sum + g.importe, 0)
+                  const porCategoria: Record<string, number> = {}
+                  filteredGastos.forEach(g => {
+                    porCategoria[g.tipoGasto] = (porCategoria[g.tipoGasto] || 0) + g.importe
+                  })
+                  await exportarGastosExcel(filteredGastos, { total, porCategoria }, 'Período seleccionado')
+                }}
+                className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+              >
+                <Download className="h-4 w-4 mr-1" />
+                Excel
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={loadGastos}>
               <RefreshCw className="h-4 w-4" />
             </Button>

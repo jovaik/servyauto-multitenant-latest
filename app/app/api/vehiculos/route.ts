@@ -16,17 +16,10 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
-    // Obtener contexto de local para filtrado
-    const localContext = await getLocalContext()
-    
-    if (!localContext) {
-      return NextResponse.json([])
-    }
-    
-    const localFilter = buildLocalFilter(localContext)
-
+    // Vehículos son compartidos entre todos los locales
+    // Cualquier usuario autenticado puede ver todos los vehículos
     const vehiculos = await prisma.vehiculo.findMany({
-      where: localFilter,
+      where: {},
       include: {
         cliente: {
           select: {

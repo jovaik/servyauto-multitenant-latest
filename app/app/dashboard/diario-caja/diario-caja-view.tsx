@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
+import { useSession } from 'next-auth/react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -42,6 +43,8 @@ interface Movimiento {
 }
 
 export default function DiarioCajaView() {
+  const { data: session } = useSession() || {}
+  const userRole = (session?.user as any)?.role || ''
   const [movimientos, setMovimientos] = useState<Movimiento[]>([])
   const [loading, setLoading] = useState(true)
   const [filtroTipo, setFiltroTipo] = useState<string>('TODOS')
@@ -257,21 +260,23 @@ export default function DiarioCajaView() {
             <Download className="h-4 w-4 mr-2" />
             PDF
           </Button>
-          <Button 
-            onClick={async () => {
-              const periodoTexto = filtroPeriodo === 'HOY' ? 'Hoy' :
-                filtroPeriodo === 'SEMANA' ? 'Esta semana' :
-                filtroPeriodo === 'MES_ACTUAL' ? 'Mes actual' :
-                filtroPeriodo === 'MES_ANTERIOR' ? 'Mes anterior' :
-                `${fechaInicio || ''} - ${fechaFin || ''}`
-              await exportarDiarioCajaExcel(movimientosFiltrados, totales, periodoTexto)
-            }} 
-            variant="outline"
-            className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
-          >
-            <Download className="h-4 w-4 mr-2" />
-            Excel
-          </Button>
+          {userRole === 'SUPER_ADMIN' && (
+            <Button 
+              onClick={async () => {
+                const periodoTexto = filtroPeriodo === 'HOY' ? 'Hoy' :
+                  filtroPeriodo === 'SEMANA' ? 'Esta semana' :
+                  filtroPeriodo === 'MES_ACTUAL' ? 'Mes actual' :
+                  filtroPeriodo === 'MES_ANTERIOR' ? 'Mes anterior' :
+                  `${fechaInicio || ''} - ${fechaFin || ''}`
+                await exportarDiarioCajaExcel(movimientosFiltrados, totales, periodoTexto)
+              }} 
+              variant="outline"
+              className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Excel
+            </Button>
+          )}
           <Button onClick={cargarDatos} variant="outline" disabled={loading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Actualizar

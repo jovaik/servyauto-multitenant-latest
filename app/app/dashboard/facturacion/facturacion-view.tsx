@@ -2,6 +2,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
 import { 
   CreditCard, 
   FileText, 
@@ -75,6 +76,8 @@ interface Factura {
 }
 
 export function FacturacionView() {
+  const { data: session } = useSession() || {}
+  const userRole = (session?.user as any)?.role || ''
   const [facturas, setFacturas] = useState<Factura[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -410,24 +413,26 @@ export function FacturacionView() {
                 <Download className="h-4 w-4 mr-2" />
                 PDF
               </Button>
-              <Button 
-                variant="outline"
-                size="sm"
-                onClick={async () => {
-                  const total = facturas.filter(f => f.estado === 'PAGADA').reduce((sum, f) => sum + f.total, 0)
-                  const tickets = facturas.filter(f => f.tipo === 'TICKET' && f.estado === 'PAGADA').reduce((sum, f) => sum + f.total, 0)
-                  const facturasTotal = facturas.filter(f => f.tipo === 'FACTURA' && f.estado === 'PAGADA').reduce((sum, f) => sum + f.total, 0)
-                  await exportarFacturacionExcel(
-                    facturas.filter(f => f.estado === 'PAGADA'),
-                    { total, tickets, facturas: facturasTotal },
-                    'Período seleccionado'
-                  )
-                }}
-                className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Excel
-              </Button>
+              {userRole === 'SUPER_ADMIN' && (
+                <Button 
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    const total = facturas.filter(f => f.estado === 'PAGADA').reduce((sum, f) => sum + f.total, 0)
+                    const tickets = facturas.filter(f => f.tipo === 'TICKET' && f.estado === 'PAGADA').reduce((sum, f) => sum + f.total, 0)
+                    const facturasTotal = facturas.filter(f => f.tipo === 'FACTURA' && f.estado === 'PAGADA').reduce((sum, f) => sum + f.total, 0)
+                    await exportarFacturacionExcel(
+                      facturas.filter(f => f.estado === 'PAGADA'),
+                      { total, tickets, facturas: facturasTotal },
+                      'Período seleccionado'
+                    )
+                  }}
+                  className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Excel
+                </Button>
+              )}
               <Button 
                 variant="outline" 
                 size="sm"

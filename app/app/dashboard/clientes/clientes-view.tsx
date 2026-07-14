@@ -2,6 +2,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
 import { Users, User, Car, Phone, Mail, Plus, Edit, Trash2, X, Download } from 'lucide-react'
 import { exportarClientesExcel } from '@/lib/excel-generator'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -42,6 +43,8 @@ interface Vehiculo {
 }
 
 export function ClientesView() {
+  const { data: session } = useSession() || {}
+  const userRole = (session?.user as any)?.role || ''
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -212,14 +215,16 @@ export function ClientesView() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button 
-            variant="outline"
-            onClick={() => exportarClientesExcel(clientes)}
-            className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
-          >
-            <Download className="mr-2 h-4 w-4" />
-            Excel
-          </Button>
+          {userRole === 'SUPER_ADMIN' && (
+            <Button 
+              variant="outline"
+              onClick={() => exportarClientesExcel(clientes)}
+              className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Excel
+            </Button>
+          )}
           <Button 
             className="bg-blue-600 hover:bg-blue-700"
             onClick={() => handleOpenModal()}

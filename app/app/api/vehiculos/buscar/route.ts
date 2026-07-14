@@ -26,25 +26,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ vehiculos: [] })
     }
 
-    // Obtener contexto de local para filtrado
-    const localContext = await getLocalContext()
-    
-    if (!localContext) {
-      return NextResponse.json({ vehiculos: [] })
-    }
-    
-    const localFilter = buildLocalFilter(localContext)
+    // Vehículos son compartidos entre todos los locales
+    // Cualquier usuario autenticado puede buscar cualquier vehículo
+    console.log('🔍 Buscando vehículos por:', query)
 
-    console.log('🔍 Buscando vehículos por:', query, 'con filtro local:', localFilter)
-
-    // Buscar vehículos que coincidan con la matrícula Y pertenezcan al local
     const vehiculos = await prisma.vehiculo.findMany({
       where: {
         matricula: {
           contains: query,
           mode: 'insensitive'
         },
-        ...localFilter
       },
       include: {
         cliente: {

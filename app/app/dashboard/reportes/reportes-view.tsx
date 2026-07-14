@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { useSession } from 'next-auth/react'
 import { format, addDays, subDays, addWeeks, subWeeks, addMonths, subMonths, addYears, subYears } from 'date-fns'
 import { es } from 'date-fns/locale'
 import {
@@ -137,6 +138,8 @@ function formatCurrency(amount: number): string {
 }
 
 export function ReportesView() {
+  const { data: session } = useSession() || {}
+  const userRole = (session?.user as any)?.role || ''
   const [periodo, setPeriodo] = useState<Periodo>('diario')
   const [fecha, setFecha] = useState(() => format(new Date(), 'yyyy-MM-dd'))
   const [localId, setLocalId] = useState('todos')
@@ -283,6 +286,7 @@ export function ReportesView() {
           </h1>
           <p className="text-sm text-gray-500 mt-1">Genera reportes por período y local</p>
         </div>
+        {userRole === 'SUPER_ADMIN' && (
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={handlePrint} disabled={!data || loading}>
             <Printer className="h-4 w-4 mr-1" /> Imprimir
@@ -291,6 +295,7 @@ export function ReportesView() {
             <Download className="h-4 w-4 mr-1" /> CSV
           </Button>
         </div>
+        )}
       </div>
 
       {/* Controls */}

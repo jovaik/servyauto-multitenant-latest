@@ -2,6 +2,7 @@
 'use client'
 
 import React, { useState } from 'react'
+import { useSession } from 'next-auth/react'
 import { Download, FileSpreadsheet, AlertCircle, CheckCircle } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -15,6 +16,8 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert'
 
 export function ExportarIVAView() {
+  const { data: session } = useSession() || {}
+  const userRole = (session?.user as any)?.role || ''
   const currentYear = new Date().getFullYear()
   const [trimestre, setTrimestre] = useState('Q1')
   const [anio, setAnio] = useState(currentYear.toString())
@@ -130,6 +133,7 @@ export function ExportarIVAView() {
             </p>
           </div>
 
+          {userRole === 'SUPER_ADMIN' && (
           <Button 
             onClick={handleExport} 
             disabled={loading}
@@ -139,6 +143,10 @@ export function ExportarIVAView() {
             <Download className="mr-2 h-5 w-5" />
             {loading ? 'Generando Excel...' : 'Exportar IVA a Excel'}
           </Button>
+          )}
+          {userRole !== 'SUPER_ADMIN' && (
+            <p className="text-sm text-gray-500 text-center py-2">Solo SuperAdmin puede exportar datos</p>
+          )}
 
           {message && (
             <Alert variant={message.type === 'success' ? 'default' : 'destructive'}>
