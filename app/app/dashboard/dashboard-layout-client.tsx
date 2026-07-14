@@ -94,6 +94,7 @@ const additionalNavigation: NavItem[] = [
   { name: 'Usuarios', href: '/dashboard/usuarios', icon: UserCheck, roles: [RolUsuario.SUPER_ADMIN] },
   { name: 'Locales', href: '/dashboard/locales', icon: Store, roles: [RolUsuario.SUPER_ADMIN] },
   { name: 'Configuración', href: '/dashboard/configuracion', icon: Settings, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN] },
+  { name: 'Reportes', href: '/dashboard/reportes', icon: FileText, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.GRUPO_ADMIN, RolUsuario.ADMIN] },
   { name: 'Registro Actividad', href: '/dashboard/actividad', icon: ScrollText, roles: [RolUsuario.SUPER_ADMIN] },
   { name: 'Página Pública', href: '/dashboard/configuracion-publica', icon: Globe, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN] },
 ]
