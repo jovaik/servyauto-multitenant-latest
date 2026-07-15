@@ -56,8 +56,7 @@ export function HorasServicioCard() {
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
-      const params = new URLSearchParams({ period: periodo })
-      if (localId !== 'todos') params.set('localId', localId)
+      const params = new URLSearchParams({ period: periodo, localId: localId })
       const res = await fetch(`/api/dashboard/horas-servicio?${params}`)
       if (res.ok) {
         setStats(await res.json())

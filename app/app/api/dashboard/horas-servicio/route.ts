@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { getLocalContext, buildLocalFilter } from '@/lib/local-context'
 
 export const dynamic = 'force-dynamic'
 
@@ -81,16 +80,10 @@ export async function GET(req: NextRequest) {
         endDate.setHours(23, 59, 59, 999)
     }
 
-    // Build local filter
-    let localFilter: any = {}
-    if (localIdParam && localIdParam !== 'todos') {
-      localFilter = { localId: localIdParam }
-    } else {
-      const localContext = await getLocalContext()
-      if (localContext) {
-        localFilter = buildLocalFilter(localContext)
-      }
-    }
+    // Build local filter - uses query param directly, ignoring global header interceptor
+    const localFilter: any = (localIdParam && localIdParam !== 'todos')
+      ? { localId: localIdParam }
+      : {} // 'todos' or empty = no local filter, show all
 
     // Fetch citas in the period
     const citas = await prisma.cita.findMany({
