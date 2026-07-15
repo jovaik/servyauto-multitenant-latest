@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { HorasServicioCard } from '@/components/horas-servicio-card'
 
 interface DashboardContentProps {
   session: Session | null
@@ -282,6 +283,9 @@ export function DashboardContent({ session }: DashboardContentProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Horas de Servicio */}
+      <HorasServicioCard />
 
       {/* Actions Grid */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
