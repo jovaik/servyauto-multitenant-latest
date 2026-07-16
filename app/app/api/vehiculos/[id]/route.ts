@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { logActivity, requireSuperAdminForDelete } from '@/lib/activity-logger'
+import { normalizeBrand } from '@/lib/vehicle-categories'
 
 export const dynamic = 'force-dynamic'
 
@@ -113,7 +114,7 @@ export async function PUT(
     const vehiculo = await prisma.vehiculo.update({
       where: { id: params.id },
       data: {
-        marca: marca.trim().toUpperCase(),
+        marca: normalizeBrand(marca),
         modelo: modelo.trim().toUpperCase(),
         matricula: matricula.trim().toUpperCase(),
         anio: anio || existingVehicle.anio,

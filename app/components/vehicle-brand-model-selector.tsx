@@ -43,6 +43,14 @@ export function VehicleBrandModelSelector({
   const allBrands = getAvailableBrands()
   const modelsForBrand = marca && !marcaOtro ? getModelsForBrand(marca) : []
 
+  // Si la marca actual no está en la lista canónica, activar modo manual
+  useEffect(() => {
+    if (marca && !marcaOtro && !allBrands.includes(marca.trim().toUpperCase())) {
+      setMarcaOtro(true)
+      setModeloOtro(true)
+    }
+  }, []) // Solo al montar
+
   // Filtrar marcas según búsqueda
   const filteredBrands = brandSearch
     ? allBrands.filter(b => b.includes(brandSearch.toUpperCase()))

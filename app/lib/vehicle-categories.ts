@@ -917,6 +917,27 @@ const BRAND_ALIASES: Record<string, string[]> = {
 }
 
 /**
+ * Mapa de normalización: mapea alias/variantes a la marca canónica.
+ * Se usa en la API al guardar vehículos para evitar duplicados.
+ */
+const BRAND_CANONICAL: Record<string, string> = {
+  'VW': 'VOLKSWAGEN',
+  'MERCEDES-BENZ': 'MERCEDES',
+  'MERCEDES BENZ': 'MERCEDES',
+  'ROLLS-ROYCE': 'ROLLS ROYCE',
+  'CITROËN': 'CITROEN',
+  'HYUNDAY': 'HYUNDAI',
+}
+
+/**
+ * Normaliza una marca: trim, uppercase, y resuelve alias a la forma canónica.
+ */
+export function normalizeBrand(marca: string): string {
+  const clean = marca.trim().toUpperCase()
+  return BRAND_CANONICAL[clean] || clean
+}
+
+/**
  * Obtiene las marcas disponibles para los desplegables.
  * Lista limpia, sin typos ni duplicados.
  */

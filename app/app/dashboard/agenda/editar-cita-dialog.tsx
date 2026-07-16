@@ -2,6 +2,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
 import { format } from 'date-fns'
 import { Calendar, Clock, User, Car, CreditCard, Trash2, Smartphone, Banknote, Building2, ToggleLeft, ToggleRight } from 'lucide-react'
 import {
@@ -106,6 +107,8 @@ export function EditarCitaDialog({
   const [localIdSeleccionado, setLocalIdSeleccionado] = useState<string>('')
   const [categoriaVehiculo, setCategoriaVehiculo] = useState<VehicleCategory | null>(null)
   const [modoManualServicios, setModoManualServicios] = useState(false)
+  const { data: session } = useSession() || {}
+  const isSuperAdmin = (session?.user as any)?.role === 'SUPER_ADMIN'
   const [categoriaOverrides, setCategoriaOverrides] = useState<{ marca: string; modelo: string; categoria: string }[]>([])
   const [precioOverrides, setPrecioOverrides] = useState<{ servicioId: string; precio: number }[]>([])
   
@@ -671,7 +674,7 @@ export function EditarCitaDialog({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label>Servicios</Label>
-              {categoriaVehiculo && (
+              {categoriaVehiculo && isSuperAdmin && (
                 <button
                   type="button"
                   onClick={() => setModoManualServicios(!modoManualServicios)}

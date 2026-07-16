@@ -5,6 +5,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { logActivity, requireSuperAdminForDelete } from '@/lib/activity-logger'
 import { getLocalContext, buildLocalFilter, getLocalIdForCreate } from '@/lib/local-context'
+import { normalizeBrand } from '@/lib/vehicle-categories'
 
 export const dynamic = 'force-dynamic'
 
@@ -146,7 +147,7 @@ export async function POST(request: NextRequest) {
 
     const vehiculo = await prisma.vehiculo.create({
       data: {
-        marca: marca.trim().toUpperCase(),
+        marca: normalizeBrand(marca),
         modelo: modelo.trim().toUpperCase(),
         matricula: matricula.trim().toUpperCase(),
         anio: anio || new Date().getFullYear(),
@@ -251,7 +252,7 @@ export async function PUT(request: NextRequest) {
     const vehiculo = await prisma.vehiculo.update({
       where: { id },
       data: {
-        marca: marca.trim().toUpperCase(),
+        marca: normalizeBrand(marca),
         modelo: modelo.trim().toUpperCase(),
         matricula: matricula.trim().toUpperCase(),
         anio: anio || new Date().getFullYear(),

@@ -2,6 +2,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { Calendar, Clock, User, Car, CreditCard, Settings, ToggleLeft, ToggleRight } from 'lucide-react'
@@ -97,6 +98,8 @@ export function NuevaCitaDialog({
   onDepositoRequest,
   onConfirmacionICSRequest
 }: NuevaCitaDialogProps) {
+  const { data: session } = useSession() || {}
+  const isSuperAdmin = (session?.user as any)?.role === 'SUPER_ADMIN'
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
   const [clientes, setClientes] = useState<Cliente[]>([])
@@ -1319,7 +1322,7 @@ export function NuevaCitaDialog({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label>Servicios</Label>
-              {categoriaVehiculo && (
+              {categoriaVehiculo && isSuperAdmin && (
                 <button
                   type="button"
                   onClick={() => {
