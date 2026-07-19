@@ -66,7 +66,8 @@ export function ExportarIVAView() {
       'Q1': 'Q1 (Enero - Marzo)',
       'Q2': 'Q2 (Abril - Junio)',
       'Q3': 'Q3 (Julio - Septiembre)',
-      'Q4': 'Q4 (Octubre - Diciembre)'
+      'Q4': 'Q4 (Octubre - Diciembre)',
+      'ANUAL': 'Resumen Anual (Modelo 390)'
     }
     return labels[q] || q
   }
@@ -105,6 +106,7 @@ export function ExportarIVAView() {
                   <SelectItem value="Q2">Q2 (Abril - Junio)</SelectItem>
                   <SelectItem value="Q3">Q3 (Julio - Septiembre)</SelectItem>
                   <SelectItem value="Q4">Q4 (Octubre - Diciembre)</SelectItem>
+                  <SelectItem value="ANUAL">Anual (Resumen Modelo 390)</SelectItem>
                 </SelectContent>
               </Select>
             </div>

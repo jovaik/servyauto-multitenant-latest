@@ -15,8 +15,9 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const trimestre = searchParams.get('trimestre') || 'Q1'
     const anio = parseInt(searchParams.get('anio') || new Date().getFullYear().toString())
+    const esAnual = trimestre === 'ANUAL'
 
-    // Calcular fechas del trimestre
+    // Calcular fechas del trimestre (o del año completo si es ANUAL)
     let startMonth = 0
     let endMonth = 2
 
@@ -35,6 +36,10 @@ export async function GET(request: NextRequest) {
         break
       case 'Q4':
         startMonth = 9
+        endMonth = 11
+        break
+      case 'ANUAL':
+        startMonth = 0
         endMonth = 11
         break
     }
@@ -185,6 +190,67 @@ export async function GET(request: NextRequest) {
     ]
     const resumenSheet = XLSX.utils.json_to_sheet(resumenData)
     XLSX.utils.book_append_sheet(workbook, resumenSheet, 'Resumen IVA')
+
+    // Hoja de Resumen Anual (Modelo 390) - solo en exportación ANUAL
+    if (esAnual) {
+      // Definición de los 4 trimestres
+      const trimestresDef = [
+        { label: '1T (Ene-Mar)', ini: 0, fin: 2 },
+        { label: '2T (Abr-Jun)', ini: 3, fin: 5 },
+        { label: '3T (Jul-Sep)', ini: 6, fin: 8 },
+        { label: '4T (Oct-Dic)', ini: 9, fin: 11 },
+      ]
+
+      const resumenAnualData = trimestresDef.map((t) => {
+        const tIni = new Date(anio, t.ini, 1)
+        const tFin = new Date(anio, t.fin + 1, 0, 23, 59, 59)
+
+        // Ventas del trimestre
+        const ventasT = ventas.filter((v: any) => {
+          const f = new Date(v.fecha)
+          return f >= tIni && f <= tFin
+        })
+        const baseVentasT = ventasT.reduce((s: number, v: any) => s + (v.subtotal || 0), 0)
+        const ivaVentasT = ventasT.reduce((s: number, v: any) => s + (v.iva || 0), 0)
+
+        // Compras del trimestre
+        const comprasT = compras.filter((c: any) => {
+          const f = new Date(c.fecha)
+          return f >= tIni && f <= tFin
+        })
+        const baseComprasT = comprasT.reduce((s: number, c: any) => {
+          const rate = (c.iva || 0) / 100
+          return s + ((c.importe || 0) / (1 + rate))
+        }, 0)
+        const ivaComprasT = comprasT.reduce((s: number, c: any) => {
+          const rate = (c.iva || 0) / 100
+          const base = (c.importe || 0) / (1 + rate)
+          return s + ((c.importe || 0) - base)
+        }, 0)
+
+        return {
+          'Trimestre': t.label,
+          'Base Ventas': baseVentasT.toFixed(2),
+          'IVA Repercutido': ivaVentasT.toFixed(2),
+          'Base Compras': baseComprasT.toFixed(2),
+          'IVA Soportado': ivaComprasT.toFixed(2),
+          'Resultado (Rep. - Sop.)': (ivaVentasT - ivaComprasT).toFixed(2),
+        }
+      })
+
+      // Fila de totales anuales
+      resumenAnualData.push({
+        'Trimestre': 'TOTAL AÑO',
+        'Base Ventas': totalVentasBase.toFixed(2),
+        'IVA Repercutido': totalVentasIVA.toFixed(2),
+        'Base Compras': totalComprasBase.toFixed(2),
+        'IVA Soportado': totalComprasIVA.toFixed(2),
+        'Resultado (Rep. - Sop.)': (totalVentasIVA - totalComprasIVA).toFixed(2),
+      })
+
+      const resumenAnualSheet = XLSX.utils.json_to_sheet(resumenAnualData)
+      XLSX.utils.book_append_sheet(workbook, resumenAnualSheet, 'Resumen Anual (Modelo 390)')
+    }
 
     // Generar buffer
     const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' })
