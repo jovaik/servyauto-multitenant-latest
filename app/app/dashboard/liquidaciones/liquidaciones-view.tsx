@@ -441,8 +441,11 @@ export default function LiquidacionesView() {
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <FileText className="h-4 w-4" />
                 <span>
-                  <strong>Responsable</strong>: {'{'}% × (Ingresos − Gastos generales){'}'} − sus gastos |
-                  <strong> Prescriptor</strong>: {'{'}% × Bruto de sus citas prescritas{'}'} − sus gastos |
+                  Comisión <strong>por acción</strong>: cada colaborador cobra por cada función que realiza en una cita. |
+                  <strong> Prescriptor</strong>: % × bruto de citas que prescribió |
+                  <strong> Operario</strong>: % × bruto de lavados que realizó |
+                  <strong> Responsable</strong>: % × (Ingresos − Gastos generales del local) |
+                  si prescribe Y ejecuta la misma cita, cobra ambas. Menos sus gastos atribuidos. |
                   <strong> Propietario</strong>: Ingresos − Gastos totales − Comisiones netas
                 </span>
               </div>
