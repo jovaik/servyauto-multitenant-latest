@@ -89,42 +89,61 @@ export async function GET(req: NextRequest) {
     const gastosGeneralesPorLocal: Record<string, number> = {};
     gastos.filter(g => !g.colaboradorId).forEach(g => { const k = g.localId || ''; gastosGeneralesPorLocal[k] = (gastosGeneralesPorLocal[k] || 0) + g.importe; });
 
-    // 5. Liquidación por colaborador
+    const round2 = (n: number) => Math.round(n * 100) / 100;
+
+    const citaResumen = (c: (typeof citas)[number]) => ({
+      id: c.id,
+      fecha: c.fecha,
+      total: c.total,
+      cliente: c.cliente ? `${c.cliente.nombre} ${c.cliente.apellido || ''}`.trim() : 'Sin cliente',
+      vehiculo: c.vehiculo ? `${c.vehiculo.marca} ${c.vehiculo.modelo} (${c.vehiculo.matricula})` : '',
+      servicios: c.cita_servicios?.map(cs => cs.servicios?.nombre || '').filter(Boolean).join(', ') || '',
+    });
+
+    // 5. Liquidación por colaborador — COMISIÓN POR ACCIÓN
+    // Un colaborador cobra por CADA acción que realiza sobre una cita:
+    //   - Prescriptor: % sobre el bruto de las citas que prescribió (prescriptorId)
+    //   - Operario:    % sobre el bruto de las citas que ejecutó   (realizadoPorId)
+    //   - Responsable: % sobre el neto de su local (ingresos − gastos generales del local)
+    // Si la misma persona prescribe Y ejecuta una cita, cobra por ambas acciones (es justo).
     const liquidaciones = colaboradores.map(col => {
       // Gastos atribuidos a este colaborador
-      const gastosColaborador = gastos
-        .filter(g => g.colaboradorId === col.id)
-        .reduce((sum, g) => sum + g.importe, 0);
-
       const gastosColaboradorDetalle = gastos.filter(g => g.colaboradorId === col.id);
+      const gastosColaborador = gastosColaboradorDetalle.reduce((sum, g) => sum + g.importe, 0);
 
-      let baseCalculo = 0;
-      let comision = 0;
-      let citasRelacionadas: typeof citas = [];
+      // --- Acción PRESCRIPTOR ---
+      const citasPrescritas = citas.filter(c => c.prescriptorId === col.id);
+      const basePrescriptor = citasPrescritas.reduce((sum, c) => sum + (c.total || 0), 0);
+      const comisionPrescriptor = (basePrescriptor * col.comisionPct) / 100;
 
+      // --- Acción OPERARIO ---
+      const citasRealizadas = citas.filter(c => c.realizadoPorId === col.id);
+      const baseOperario = citasRealizadas.reduce((sum, c) => sum + (c.total || 0), 0);
+      const comisionOperario = (baseOperario * col.comisionPct) / 100;
+
+      // --- Acción RESPONSABLE (solo si su rol es RESPONSABLE) ---
+      let baseResponsable = 0;
+      let comisionResponsable = 0;
       if (col.rol === "RESPONSABLE") {
-        // Responsable: comisión sobre el neto de SU local (ingresos - gastos generales del local)
         const ingLocal = ingresosPorLocal[col.localId || ''] || 0;
         const gastoGenLocal = gastosGeneralesPorLocal[col.localId || ''] || 0;
-        baseCalculo = ingLocal - gastoGenLocal;
-        comision = (baseCalculo * col.comisionPct) / 100;
-        // Descontar gastos atribuidos al responsable
-        comision -= gastosColaborador;
-        citasRelacionadas = citas.filter(c => c.localId === col.localId); // Citas de su local
-      } else if (col.rol === "PRESCRIPTOR") {
-        // Prescriptor: comisión sobre el bruto de citas que prescribió
-        citasRelacionadas = citas.filter(c => c.prescriptorId === col.id);
-        baseCalculo = citasRelacionadas.reduce((sum, c) => sum + (c.total || 0), 0);
-        comision = (baseCalculo * col.comisionPct) / 100;
-        // Descontar gastos atribuidos al prescriptor
-        comision -= gastosColaborador;
-      } else {
-        // Operario: comisión sobre el bruto de citas que realizó
-        citasRelacionadas = citas.filter(c => c.realizadoPorId === col.id);
-        baseCalculo = citasRelacionadas.reduce((sum, c) => sum + (c.total || 0), 0);
-        comision = (baseCalculo * col.comisionPct) / 100;
-        comision -= gastosColaborador;
+        baseResponsable = ingLocal - gastoGenLocal;
+        comisionResponsable = (baseResponsable * col.comisionPct) / 100;
       }
+
+      const comisionBruta = comisionPrescriptor + comisionOperario + comisionResponsable;
+      const baseCalculo = basePrescriptor + baseOperario + baseResponsable;
+      const comisionNeta = comisionBruta - gastosColaborador;
+
+      // Citas relacionadas = unión (sin duplicar) de prescritas + realizadas
+      // (+ las de su local si es responsable, para dar contexto de su base)
+      const citasMap = new Map<string, (typeof citas)[number]>();
+      citasPrescritas.forEach(c => citasMap.set(c.id, c));
+      citasRealizadas.forEach(c => citasMap.set(c.id, c));
+      if (col.rol === "RESPONSABLE") {
+        citas.filter(c => c.localId === col.localId).forEach(c => citasMap.set(c.id, c));
+      }
+      const citasRelacionadas = Array.from(citasMap.values());
 
       return {
         colaborador: {
@@ -135,40 +154,56 @@ export async function GET(req: NextRequest) {
           telefono: col.telefono,
           email: col.email,
         },
-        baseCalculo: Math.round(baseCalculo * 100) / 100,
-        comisionBruta: Math.round((baseCalculo * col.comisionPct / 100) * 100) / 100,
-        gastosAtribuidos: Math.round(gastosColaborador * 100) / 100,
+        baseCalculo: round2(baseCalculo),
+        comisionBruta: round2(comisionBruta),
+        gastosAtribuidos: round2(gastosColaborador),
         gastosDetalle: gastosColaboradorDetalle.map(g => ({
           id: g.id,
           concepto: g.concepto,
           importe: g.importe,
           fecha: g.fecha,
         })),
-        comisionNeta: Math.round(comision * 100) / 100,
+        comisionNeta: round2(comisionNeta),
+        // Desglose por acción (una persona puede cobrar por varias)
+        desglose: {
+          prescriptor: {
+            base: round2(basePrescriptor),
+            comision: round2(comisionPrescriptor),
+            numCitas: citasPrescritas.length,
+          },
+          operario: {
+            base: round2(baseOperario),
+            comision: round2(comisionOperario),
+            numCitas: citasRealizadas.length,
+          },
+          responsable: {
+            base: round2(baseResponsable),
+            comision: round2(comisionResponsable),
+          },
+        },
         numCitas: citasRelacionadas.length,
-        citas: citasRelacionadas.map(c => ({
-          id: c.id,
-          fecha: c.fecha,
-          total: c.total,
-          cliente: c.cliente ? `${c.cliente.nombre} ${c.cliente.apellido || ''}`.trim() : 'Sin cliente',
-          vehiculo: c.vehiculo ? `${c.vehiculo.marca} ${c.vehiculo.modelo} (${c.vehiculo.matricula})` : '',
-          servicios: c.cita_servicios?.map(cs => cs.servicios?.nombre || '').filter(Boolean).join(', ') || '',
-        })),
+        citas: citasRelacionadas.map(citaResumen),
       };
     });
 
-    // 6. Resultado del propietario
+    // 6. Totales por rol/acción y resultado del propietario
+    const totalComisionesPrescriptor = liquidaciones.reduce((sum, l) => sum + l.desglose.prescriptor.comision, 0);
+    const totalComisionesOperario = liquidaciones.reduce((sum, l) => sum + l.desglose.operario.comision, 0);
+    const totalComisionesResponsable = liquidaciones.reduce((sum, l) => sum + l.desglose.responsable.comision, 0);
     const totalComisiones = liquidaciones.reduce((sum, l) => sum + Math.max(0, l.comisionNeta), 0);
     const resultadoPropietario = ingresosTotales - gastosTotales - totalComisiones;
 
     return NextResponse.json({
       periodo: { desde: fechaDesde, hasta: fechaHasta },
       resumen: {
-        ingresosTotales: Math.round(ingresosTotales * 100) / 100,
-        gastosTotales: Math.round(gastosTotales * 100) / 100,
-        gastosGenerales: Math.round(gastosGenerales * 100) / 100,
-        totalComisiones: Math.round(totalComisiones * 100) / 100,
-        resultadoPropietario: Math.round(resultadoPropietario * 100) / 100,
+        ingresosTotales: round2(ingresosTotales),
+        gastosTotales: round2(gastosTotales),
+        gastosGenerales: round2(gastosGenerales),
+        totalComisiones: round2(totalComisiones),
+        totalComisionesPrescriptor: round2(totalComisionesPrescriptor),
+        totalComisionesOperario: round2(totalComisionesOperario),
+        totalComisionesResponsable: round2(totalComisionesResponsable),
+        resultadoPropietario: round2(resultadoPropietario),
         numCitas: citas.length,
       },
       liquidaciones,

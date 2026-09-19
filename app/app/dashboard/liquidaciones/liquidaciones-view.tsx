@@ -26,6 +26,11 @@ interface LiquidacionColaborador {
   gastosAtribuidos: number
   gastosDetalle: { id: string; concepto: string; importe: number; fecha: string }[]
   comisionNeta: number
+  desglose: {
+    prescriptor: { base: number; comision: number; numCitas: number }
+    operario: { base: number; comision: number; numCitas: number }
+    responsable: { base: number; comision: number }
+  }
   numCitas: number
   citas: { id: string; fecha: string; total: number | null; cliente: string; vehiculo: string; servicios: string }[]
 }
@@ -37,6 +42,9 @@ interface LiquidacionData {
     gastosTotales: number
     gastosGenerales: number
     totalComisiones: number
+    totalComisionesPrescriptor: number
+    totalComisionesOperario: number
+    totalComisionesResponsable: number
     resultadoPropietario: number
     numCitas: number
   }
@@ -127,12 +135,14 @@ export default function LiquidacionesView() {
   const exportCSV = () => {
     if (!data) return
     const rows = [
-      ['Colaborador', 'Rol', '% Comisión', 'Base Cálculo (€)', 'Comisión Bruta (€)', 'Gastos Atribuidos (€)', 'Comisión Neta (€)', 'Nº Citas'],
+      ['Colaborador', 'Rol', '% Comisión', 'Com. Prescriptor (€)', 'Com. Operario (€)', 'Com. Responsable (€)', 'Comisión Bruta (€)', 'Gastos Atribuidos (€)', 'Comisión Neta (€)', 'Nº Citas'],
       ...data.liquidaciones.map(l => [
         l.colaborador.nombre,
         ROL_LABELS[l.colaborador.rol],
         l.colaborador.comisionPct.toString(),
-        l.baseCalculo.toFixed(2),
+        l.desglose.prescriptor.comision.toFixed(2),
+        l.desglose.operario.comision.toFixed(2),
+        l.desglose.responsable.comision.toFixed(2),
         l.comisionBruta.toFixed(2),
         l.gastosAtribuidos.toFixed(2),
         l.comisionNeta.toFixed(2),
@@ -142,7 +152,10 @@ export default function LiquidacionesView() {
       ['RESUMEN'],
       ['Ingresos Totales', '', '', data.resumen.ingresosTotales.toFixed(2)],
       ['Gastos Totales', '', '', data.resumen.gastosTotales.toFixed(2)],
-      ['Total Comisiones', '', '', data.resumen.totalComisiones.toFixed(2)],
+      ['Total Comisiones Prescriptores', '', '', data.resumen.totalComisionesPrescriptor.toFixed(2)],
+      ['Total Comisiones Operarios', '', '', data.resumen.totalComisionesOperario.toFixed(2)],
+      ['Total Comisiones Encargados', '', '', data.resumen.totalComisionesResponsable.toFixed(2)],
+      ['Total Comisiones (neto)', '', '', data.resumen.totalComisiones.toFixed(2)],
       ['Resultado Propietario', '', '', data.resumen.resultadoPropietario.toFixed(2)],
     ]
     const csv = rows.map(r => r.join(';')).join('\n')
@@ -254,6 +267,49 @@ export default function LiquidacionesView() {
             </Card>
           </div>
 
+          {/* Totales por rol */}
+          <div>
+            <h2 className="text-lg font-semibold mb-3">Totales por rol</h2>
+            <div className="grid gap-4 md:grid-cols-4">
+              <Card className="border-purple-200">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Prescriptores</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-purple-700">{data.resumen.totalComisionesPrescriptor.toFixed(2)} €</div>
+                  <p className="text-xs text-muted-foreground">Comisión por citas prescritas</p>
+                </CardContent>
+              </Card>
+              <Card className="border-gray-200">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Operarios</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-gray-700">{data.resumen.totalComisionesOperario.toFixed(2)} €</div>
+                  <p className="text-xs text-muted-foreground">Comisión por lavados realizados</p>
+                </CardContent>
+              </Card>
+              <Card className="border-blue-200">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Encargados</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-blue-700">{data.resumen.totalComisionesResponsable.toFixed(2)} €</div>
+                  <p className="text-xs text-muted-foreground">Comisión sobre neto del local</p>
+                </CardContent>
+              </Card>
+              <Card className="border-green-300 bg-green-50/50">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Propietario</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className={`text-2xl font-bold ${data.resumen.resultadoPropietario >= 0 ? 'text-green-700' : 'text-red-600'}`}>{data.resumen.resultadoPropietario.toFixed(2)} €</div>
+                  <p className="text-xs text-muted-foreground">Resultado neto tras comisiones</p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
           {/* Liquidación por colaborador */}
           <div className="space-y-4">
             <h2 className="text-lg font-semibold">Detalle por Colaborador</h2>
@@ -285,14 +341,32 @@ export default function LiquidacionesView() {
 
                   {isExpanded && (
                     <CardContent className="space-y-4">
-                      {/* Desglose */}
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-muted/50 rounded-lg">
-                        <div>
-                          <div className="text-xs text-muted-foreground">Base de cálculo</div>
-                          <div className="font-semibold">{liq.baseCalculo.toFixed(2)} €</div>
+                      {/* Desglose por acción */}
+                      <div>
+                        <h4 className="text-sm font-medium mb-2">Comisión por acción ({liq.colaborador.comisionPct}%)</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <div className="p-3 bg-purple-50 rounded-lg">
+                            <div className="text-xs text-purple-700 font-medium">Como Prescriptor</div>
+                            <div className="text-lg font-bold text-purple-800">{liq.desglose.prescriptor.comision.toFixed(2)} €</div>
+                            <div className="text-xs text-muted-foreground">{liq.desglose.prescriptor.numCitas} citas · base {liq.desglose.prescriptor.base.toFixed(2)} €</div>
+                          </div>
+                          <div className="p-3 bg-gray-100 rounded-lg">
+                            <div className="text-xs text-gray-700 font-medium">Como Operario</div>
+                            <div className="text-lg font-bold text-gray-800">{liq.desglose.operario.comision.toFixed(2)} €</div>
+                            <div className="text-xs text-muted-foreground">{liq.desglose.operario.numCitas} lavados · base {liq.desglose.operario.base.toFixed(2)} €</div>
+                          </div>
+                          <div className="p-3 bg-blue-50 rounded-lg">
+                            <div className="text-xs text-blue-700 font-medium">Como Responsable</div>
+                            <div className="text-lg font-bold text-blue-800">{liq.desglose.responsable.comision.toFixed(2)} €</div>
+                            <div className="text-xs text-muted-foreground">neto local {liq.desglose.responsable.base.toFixed(2)} €</div>
+                          </div>
                         </div>
+                      </div>
+
+                      {/* Totales */}
+                      <div className="grid grid-cols-3 gap-4 p-4 bg-muted/50 rounded-lg">
                         <div>
-                          <div className="text-xs text-muted-foreground">Comisión bruta ({liq.colaborador.comisionPct}%)</div>
+                          <div className="text-xs text-muted-foreground">Comisión bruta</div>
                           <div className="font-semibold">{liq.comisionBruta.toFixed(2)} €</div>
                         </div>
                         <div>
