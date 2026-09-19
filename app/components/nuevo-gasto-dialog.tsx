@@ -97,9 +97,8 @@ export function NuevoGastoDialog({ onGastoCreado }: NuevoGastoDialogProps) {
         .then(data => setProveedores(data))
         .catch(err => console.error('Error cargando proveedores:', err))
       const localId = getSelectedLocalId()
-      if (localId) {
-        fetch(`/api/colaboradores?localId=${localId}&activo=true`).then(r => r.ok ? r.json() : []).then(setColaboradores).catch(() => {})
-      }
+      const colabUrl = localId ? `/api/colaboradores?localId=${localId}&activo=true` : `/api/colaboradores?activo=true`
+      fetch(colabUrl).then(r => r.ok ? r.json() : []).then(setColaboradores).catch(() => {})
     }
   }, [open])
 

@@ -214,11 +214,10 @@ export function NuevaCitaDialog({
       loadDescuentos()
       loadTicketsDisponibles()
       loadOverridesLocal()
-      // Cargar colaboradores del local
+      // Cargar colaboradores del local (o todos si no hay local seleccionado)
       const localId = getSelectedLocalId()
-      if (localId) {
-        fetch(`/api/colaboradores?localId=${localId}&activo=true`).then(r => r.ok ? r.json() : []).then(setColaboradores).catch(() => {})
-      }
+      const colabUrl = localId ? `/api/colaboradores?localId=${localId}&activo=true` : `/api/colaboradores?activo=true`
+      fetch(colabUrl).then(r => r.ok ? r.json() : []).then(setColaboradores).catch(() => {})
       setFormData(prev => ({ 
         ...prev, 
         fecha: format(selectedDate, 'yyyy-MM-dd'),

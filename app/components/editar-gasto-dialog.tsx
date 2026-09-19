@@ -105,9 +105,8 @@ export function EditarGastoDialog({ gasto, onGastoActualizado }: EditarGastoDial
     if (open) {
       fetchProveedores()
       const localId = getSelectedLocalId()
-      if (localId) {
-        fetch(`/api/colaboradores?localId=${localId}&activo=true`).then(r => r.ok ? r.json() : []).then(setColaboradores).catch(() => {})
-      }
+      const colabUrl = localId ? `/api/colaboradores?localId=${localId}&activo=true` : `/api/colaboradores?activo=true`
+      fetch(colabUrl).then(r => r.ok ? r.json() : []).then(setColaboradores).catch(() => {})
     }
   }, [open])
 

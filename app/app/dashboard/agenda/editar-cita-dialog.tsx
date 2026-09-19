@@ -213,11 +213,10 @@ export function EditarCitaDialog({
           prescriptorId: (cita as any).prescriptorId || '',
           realizadoPorId: (cita as any).realizadoPorId || '',
         })
-        // Cargar colaboradores del local de la cita
+        // Cargar colaboradores del local de la cita (o todos si no hay local)
         const citaLocalId = (cita as any).localId
-        if (citaLocalId) {
-          fetch(`/api/colaboradores?localId=${citaLocalId}&activo=true`).then(r => r.ok ? r.json() : []).then(setColaboradores).catch(() => {})
-        }
+        const colabUrl = citaLocalId ? `/api/colaboradores?localId=${citaLocalId}&activo=true` : `/api/colaboradores?activo=true`
+        fetch(colabUrl).then(r => r.ok ? r.json() : []).then(setColaboradores).catch(() => {})
         
         // Establecer el local actual de la cita
         setLocalIdSeleccionado((cita as any).localId || '')
