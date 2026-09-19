@@ -62,6 +62,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       servicios,
       ticketsUsados,
       localId,
+      prescriptorId,
+      realizadoPorId,
     } = body
 
     console.log('=== INICIO ACTUALIZACIÓN CITA ===')
@@ -160,6 +162,10 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     if (metodoPago !== undefined) {
       updateData.metodoPago = metodoPago || null
     }
+
+    // Colaboradores
+    if (prescriptorId !== undefined) updateData.prescriptorId = prescriptorId || null
+    if (realizadoPorId !== undefined) updateData.realizadoPorId = realizadoPorId || null
     
     if (precioFinal !== undefined) updateData.total = precioFinal
 

@@ -111,6 +111,7 @@ export function EditarCitaDialog({
   const isSuperAdmin = (session?.user as any)?.role === 'SUPER_ADMIN'
   const [categoriaOverrides, setCategoriaOverrides] = useState<{ marca: string; modelo: string; categoria: string }[]>([])
   const [precioOverrides, setPrecioOverrides] = useState<{ servicioId: string; precio: number }[]>([])
+  const [colaboradores, setColaboradores] = useState<{ id: string; nombre: string; rol: string }[]>([])
   
   const [formData, setFormData] = useState({
     fecha: '',
@@ -121,6 +122,8 @@ export function EditarCitaDialog({
     observaciones: '',
     metodoPago: '',
     ticketsUsados: 0,
+    prescriptorId: '',
+    realizadoPorId: '',
   })
 
   // Franjas horarias removidas - ahora se usa input type="time" para mayor flexibilidad
@@ -207,7 +210,14 @@ export function EditarCitaDialog({
           observaciones: cita.observaciones || '',
           metodoPago: cita.metodoPago || '',
           ticketsUsados: cita.ticketsUsados || 0,
+          prescriptorId: (cita as any).prescriptorId || '',
+          realizadoPorId: (cita as any).realizadoPorId || '',
         })
+        // Cargar colaboradores del local de la cita
+        const citaLocalId = (cita as any).localId
+        if (citaLocalId) {
+          fetch(`/api/colaboradores?localId=${citaLocalId}&activo=true`).then(r => r.ok ? r.json() : []).then(setColaboradores).catch(() => {})
+        }
         
         // Establecer el local actual de la cita
         setLocalIdSeleccionado((cita as any).localId || '')
@@ -288,6 +298,8 @@ export function EditarCitaDialog({
         servicios: serviciosData,
         total: calcularPrecioTotal(),
         localId: localIdSeleccionado || undefined,
+        prescriptorId: formData.prescriptorId || null,
+        realizadoPorId: formData.realizadoPorId || null,
       }
 
       console.log('Enviando datos:', dataToSend)
@@ -806,6 +818,36 @@ export function EditarCitaDialog({
               </div>
             )}
           </div>
+
+          {/* Colaboradores (prescriptor / realizado por) */}
+          {colaboradores.length > 0 && (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Prescriptor</Label>
+                <Select value={formData.prescriptorId || "_none"} onValueChange={(v) => setFormData(prev => ({ ...prev, prescriptorId: v === '_none' ? '' : v }))}>
+                  <SelectTrigger><SelectValue placeholder="Sin prescriptor" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_none">Sin prescriptor</SelectItem>
+                    {colaboradores.filter(c => c.rol === 'PRESCRIPTOR' || c.rol === 'RESPONSABLE').map(c => (
+                      <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Realizado por</Label>
+                <Select value={formData.realizadoPorId || "_none"} onValueChange={(v) => setFormData(prev => ({ ...prev, realizadoPorId: v === '_none' ? '' : v }))}>
+                  <SelectTrigger><SelectValue placeholder="Sin asignar" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_none">Sin asignar</SelectItem>
+                    {colaboradores.map(c => (
+                      <SelectItem key={c.id} value={c.id}>{c.nombre} ({c.rol === 'RESPONSABLE' ? 'Resp.' : c.rol === 'PRESCRIPTOR' ? 'Presc.' : 'Op.'})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
 
           {/* Observaciones */}
           <div className="space-y-2">

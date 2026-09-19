@@ -2,7 +2,8 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Plus, Scan, Edit, Search, Building2, User, Wallet } from 'lucide-react'
+import { Plus, Scan, Edit, Search, Building2, User, Wallet, Handshake } from 'lucide-react'
+import { getSelectedLocalId } from '@/lib/local-store'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -65,6 +66,7 @@ export function NuevoGastoDialog({ onGastoCreado }: NuevoGastoDialogProps) {
   const [busquedaProveedor, setBusquedaProveedor] = useState('')
   const [mostrarListaProveedores, setMostrarListaProveedores] = useState(false)
   const [proveedorSeleccionado, setProveedorSeleccionado] = useState<Proveedor | null>(null)
+  const [colaboradores, setColaboradores] = useState<{ id: string; nombre: string; rol: string }[]>([])
   const [formData, setFormData] = useState({
     concepto: '',
     fecha: new Date().toISOString().split('T')[0],
@@ -83,16 +85,21 @@ export function NuevoGastoDialog({ onGastoCreado }: NuevoGastoDialogProps) {
     proveedorProvincia: '',
     proveedorTelefono: '',
     proveedorEmail: '',
-    beneficiario: '' // 📌 Nuevo campo para gastos internos
+    beneficiario: '', // 📌 Nuevo campo para gastos internos
+    colaboradorId: '',
   })
 
-  // Cargar proveedores al abrir
+  // Cargar proveedores y colaboradores al abrir
   useEffect(() => {
     if (open) {
       fetch('/api/proveedores')
         .then(res => res.json())
         .then(data => setProveedores(data))
         .catch(err => console.error('Error cargando proveedores:', err))
+      const localId = getSelectedLocalId()
+      if (localId) {
+        fetch(`/api/colaboradores?localId=${localId}&activo=true`).then(r => r.ok ? r.json() : []).then(setColaboradores).catch(() => {})
+      }
     }
   }, [open])
 
@@ -191,7 +198,8 @@ export function NuevoGastoDialog({ onGastoCreado }: NuevoGastoDialogProps) {
           proveedorProvincia: '',
           proveedorTelefono: '',
           proveedorEmail: '',
-          beneficiario: ''
+          beneficiario: '',
+          colaboradorId: '',
         })
         setBusquedaProveedor('')
         setProveedorSeleccionado(null)
@@ -553,6 +561,23 @@ export function NuevoGastoDialog({ onGastoCreado }: NuevoGastoDialogProps) {
                 onChange={(e) => setFormData({ ...formData, numeroFactura: e.target.value })}
                 required={formData.tipo === 'FACTURA'}
               />
+            </div>
+          )}
+
+          {/* Atribuir gasto a colaborador */}
+          {colaboradores.length > 0 && (
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2"><Handshake className="h-4 w-4" /> Atribuir a colaborador</Label>
+              <Select value={formData.colaboradorId || "_none"} onValueChange={(v) => setFormData({ ...formData, colaboradorId: v === '_none' ? '' : v })}>
+                <SelectTrigger><SelectValue placeholder="Sin atribuir (gasto general)" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_none">Sin atribuir (gasto general)</SelectItem>
+                  {colaboradores.map(c => (
+                    <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">Si este gasto es de un colaborador, se descontará de su liquidación</p>
             </div>
           )}
 

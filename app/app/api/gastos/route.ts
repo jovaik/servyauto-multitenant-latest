@@ -56,6 +56,7 @@ export async function POST(request: NextRequest) {
       proveedor, 
       proveedorId,
       beneficiario,  // 📌 Campo para gastos internos (empleados, propietario, etc.)
+      colaboradorId,
       tipoGasto, 
       importe, 
       metodoPago, 
@@ -183,6 +184,11 @@ export async function POST(request: NextRequest) {
     const localIdParaGasto = localContext ? getLocalIdForCreate(localContext) : null
     if (localIdParaGasto) {
       gastoData.localId = localIdParaGasto
+    }
+
+    // Vincular a colaborador si se especificó
+    if (colaboradorId && colaboradorId.trim()) {
+      gastoData.colaboradorId = colaboradorId.trim()
     }
 
     console.log('Datos preparados para Prisma:', JSON.stringify(gastoData, null, 2))

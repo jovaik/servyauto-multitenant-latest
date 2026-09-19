@@ -124,6 +124,8 @@ export function NuevaCitaDialog({
     ticketsUsados: 0,
     observaciones: '',
     metodoPago: '',
+    prescriptorId: '',
+    realizadoPorId: '',
   })
   
   // Guardar info del cliente seleccionado para evitar problemas de sincronización
@@ -140,6 +142,9 @@ export function NuevaCitaDialog({
   // Overrides por local
   const [categoriaOverrides, setCategoriaOverrides] = useState<{ marca: string; modelo: string; categoria: string }[]>([])
   const [precioOverrides, setPrecioOverrides] = useState<{ servicioId: string; precio: number }[]>([])
+
+  // Colaboradores del local
+  const [colaboradores, setColaboradores] = useState<{ id: string; nombre: string; rol: string }[]>([])
 
   // Autocomplete de matrícula
   const [matriculaBusqueda, setMatriculaBusqueda] = useState('')
@@ -209,6 +214,11 @@ export function NuevaCitaDialog({
       loadDescuentos()
       loadTicketsDisponibles()
       loadOverridesLocal()
+      // Cargar colaboradores del local
+      const localId = getSelectedLocalId()
+      if (localId) {
+        fetch(`/api/colaboradores?localId=${localId}&activo=true`).then(r => r.ok ? r.json() : []).then(setColaboradores).catch(() => {})
+      }
       setFormData(prev => ({ 
         ...prev, 
         fecha: format(selectedDate, 'yyyy-MM-dd'),
@@ -613,6 +623,8 @@ export function NuevaCitaDialog({
       const payload = {
         ...formData,
         descuentoManual: descuentoManual || 0,
+        prescriptorId: formData.prescriptorId || null,
+        realizadoPorId: formData.realizadoPorId || null,
         servicios: formData.servicios.map(servicioId => ({
           servicioId,
           precio: getPrecioEfectivo(servicioId)
@@ -732,6 +744,8 @@ export function NuevaCitaDialog({
       ticketsUsados: 0,
       observaciones: '',
       metodoPago: '',
+      prescriptorId: '',
+      realizadoPorId: '',
     })
     setClienteSeleccionadoInfo(null)
     setDescuentoManual(0)
@@ -1515,6 +1529,36 @@ export function NuevaCitaDialog({
               </SelectContent>
             </Select>
           </div>
+
+          {/* Colaboradores (prescriptor / realizado por) */}
+          {colaboradores.length > 0 && (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Prescriptor</Label>
+                <Select value={formData.prescriptorId || "_none"} onValueChange={(v) => setFormData(prev => ({ ...prev, prescriptorId: v === '_none' ? '' : v }))}>
+                  <SelectTrigger><SelectValue placeholder="Sin prescriptor" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_none">Sin prescriptor</SelectItem>
+                    {colaboradores.filter(c => c.rol === 'PRESCRIPTOR' || c.rol === 'RESPONSABLE').map(c => (
+                      <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Realizado por</Label>
+                <Select value={formData.realizadoPorId || "_none"} onValueChange={(v) => setFormData(prev => ({ ...prev, realizadoPorId: v === '_none' ? '' : v }))}>
+                  <SelectTrigger><SelectValue placeholder="Sin asignar" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_none">Sin asignar</SelectItem>
+                    {colaboradores.map(c => (
+                      <SelectItem key={c.id} value={c.id}>{c.nombre} ({c.rol === 'RESPONSABLE' ? 'Resp.' : c.rol === 'PRESCRIPTOR' ? 'Presc.' : 'Op.'})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
 
           {/* Observaciones */}
           <div className="space-y-2">

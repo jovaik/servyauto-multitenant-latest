@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
-import { Pencil, Search, Building2, User, Wallet } from 'lucide-react'
+import { Pencil, Search, Building2, User, Wallet, Handshake } from 'lucide-react'
+import { getSelectedLocalId } from '@/lib/local-store'
 
 interface Proveedor {
   id: string
@@ -67,6 +68,7 @@ export function EditarGastoDialog({ gasto, onGastoActualizado }: EditarGastoDial
   const [busquedaProveedor, setBusquedaProveedor] = useState('')
   const [mostrarListaProveedores, setMostrarListaProveedores] = useState(false)
   const [proveedorSeleccionado, setProveedorSeleccionado] = useState<Proveedor | null>(null)
+  const [colaboradores, setColaboradores] = useState<{ id: string; nombre: string; rol: string }[]>([])
   const [formData, setFormData] = useState({
     concepto: '',
     fecha: '',
@@ -84,6 +86,7 @@ export function EditarGastoDialog({ gasto, onGastoActualizado }: EditarGastoDial
     proveedorCodigoPostal: '',
     proveedorCiudad: '',
     proveedorProvincia: '',
+    colaboradorId: '',
   })
 
   // Cargar proveedores
@@ -99,7 +102,13 @@ export function EditarGastoDialog({ gasto, onGastoActualizado }: EditarGastoDial
         console.error('Error cargando proveedores:', error)
       }
     }
-    if (open) fetchProveedores()
+    if (open) {
+      fetchProveedores()
+      const localId = getSelectedLocalId()
+      if (localId) {
+        fetch(`/api/colaboradores?localId=${localId}&activo=true`).then(r => r.ok ? r.json() : []).then(setColaboradores).catch(() => {})
+      }
+    }
   }, [open])
 
   // Cargar datos del gasto al abrir
@@ -126,6 +135,7 @@ export function EditarGastoDialog({ gasto, onGastoActualizado }: EditarGastoDial
         proveedorCodigoPostal: gasto.proveedorCodigoPostal || '',
         proveedorCiudad: gasto.proveedorCiudad || '',
         proveedorProvincia: gasto.proveedorProvincia || '',
+        colaboradorId: (gasto as any).colaboradorId || '',
       })
       setBusquedaProveedor(gasto.proveedor || '')
     }
@@ -412,6 +422,22 @@ export function EditarGastoDialog({ gasto, onGastoActualizado }: EditarGastoDial
                 onChange={(e) => setFormData({ ...formData, numeroFactura: e.target.value })}
                 placeholder="Ej: FAC-2025-001"
               />
+            </div>
+          )}
+
+          {/* Atribuir gasto a colaborador */}
+          {colaboradores.length > 0 && (
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2"><Handshake className="h-4 w-4" /> Atribuir a colaborador</Label>
+              <Select value={formData.colaboradorId || "_none"} onValueChange={(v) => setFormData({ ...formData, colaboradorId: v === '_none' ? '' : v })}>
+                <SelectTrigger><SelectValue placeholder="Sin atribuir" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_none">Sin atribuir (gasto general)</SelectItem>
+                  {colaboradores.map(c => (
+                    <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           )}
 

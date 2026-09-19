@@ -35,7 +35,8 @@ export async function PUT(
       proveedorDireccion,
       proveedorCodigoPostal,
       proveedorCiudad,
-      proveedorProvincia
+      proveedorProvincia,
+      colaboradorId
     } = body
 
     // Validar campos requeridos
@@ -94,6 +95,7 @@ export async function PUT(
         proveedor: proveedor || null,
         proveedorId: proveedorRegistradoId,
         beneficiario: beneficiario || null,  // 📌 Nuevo campo
+        colaboradorId: colaboradorId || null,
         tipoGasto,
         importe: parseFloat(importe.toString()),
         metodoPago: metodoPago as any,
