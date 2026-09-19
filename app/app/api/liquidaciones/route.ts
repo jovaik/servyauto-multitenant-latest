@@ -5,15 +5,61 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
+// POST /api/liquidaciones — actualizar configuración (propietarioPct)
+export async function POST(req: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    const user = session.user as { role?: string };
+    if (user.role !== "SUPER_ADMIN" && user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Sin permisos" }, { status: 403 });
+    }
+    const body = await req.json();
+    if (body.propietarioPct !== undefined) {
+      const pct = Math.max(0, Math.min(100, parseFloat(body.propietarioPct) || 0));
+      await prisma.configuracion.upsert({
+        where: { clave: 'liquidaciones.propietarioPct' },
+        update: { valor: String(pct) },
+        create: {
+          clave: 'liquidaciones.propietarioPct',
+          valor: String(pct),
+          tipo: 'NUMERO',
+          categoria: 'liquidaciones',
+          descripcion: 'Porcentaje del propietario sobre el neto del local',
+        },
+      });
+      return NextResponse.json({ ok: true, propietarioPct: pct });
+    }
+    return NextResponse.json({ error: "No hay datos para actualizar" }, { status: 400 });
+  } catch (error: unknown) {
+    console.error("Error actualizando config liquidaciones:", error);
+    return NextResponse.json({ error: "Error al guardar" }, { status: 500 });
+  }
+}
+
 // GET /api/liquidaciones?localId=xxx&desde=2026-09-01&hasta=2026-09-07
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-    const user = session.user as { role?: string };
-    if (user.role !== "SUPER_ADMIN" && user.role !== "ADMIN") {
+    const user = session.user as { id?: string; role?: string };
+    const allowedRoles = ["SUPER_ADMIN", "ADMIN", "OPERADOR"];
+    if (!allowedRoles.includes(user.role || '')) {
       return NextResponse.json({ error: "Sin permisos" }, { status: 403 });
+    }
+
+    // Si es OPERADOR, buscar su colaborador vinculado
+    let colaboradorIdUsuario: string | null = null;
+    if (user.role === "OPERADOR" && user.id) {
+      const miColaborador = await prisma.colaborador.findFirst({
+        where: { userId: user.id, activo: true },
+        select: { id: true },
+      });
+      if (!miColaborador) {
+        return NextResponse.json({ error: "Tu usuario no está vinculado a ningún colaborador. Contacta al administrador." }, { status: 403 });
+      }
+      colaboradorIdUsuario = miColaborador.id;
     }
 
     const { searchParams } = new URL(req.url);
@@ -186,27 +232,43 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    // 6. Totales por rol/acción y resultado del propietario
+    // 6. Leer % propietario de la configuración
+    const configProp = await prisma.configuracion.findUnique({ where: { clave: 'liquidaciones.propietarioPct' } });
+    const propietarioPct = configProp ? parseFloat(configProp.valor) : 50; // default 50%
+
+    // 7. Totales por rol/acción
     const totalComisionesPrescriptor = liquidaciones.reduce((sum, l) => sum + l.desglose.prescriptor.comision, 0);
     const totalComisionesOperario = liquidaciones.reduce((sum, l) => sum + l.desglose.operario.comision, 0);
     const totalComisionesResponsable = liquidaciones.reduce((sum, l) => sum + l.desglose.responsable.comision, 0);
     const totalComisiones = liquidaciones.reduce((sum, l) => sum + Math.max(0, l.comisionNeta), 0);
-    const resultadoPropietario = ingresosTotales - gastosTotales - totalComisiones;
+
+    // Resultado propietario = su % sobre el neto (Ingresos - Gastos)
+    const netoLocal = ingresosTotales - gastosTotales;
+    const resultadoPropietario = (netoLocal * propietarioPct) / 100;
+
+    // Si es OPERADOR, devolver solo su propia liquidación
+    const liquidacionesFiltradas = colaboradorIdUsuario
+      ? liquidaciones.filter(l => l.colaborador.id === colaboradorIdUsuario)
+      : liquidaciones;
 
     return NextResponse.json({
       periodo: { desde: fechaDesde, hasta: fechaHasta },
+      vistaRestringida: !!colaboradorIdUsuario,
+      propietarioPct,
       resumen: {
         ingresosTotales: round2(ingresosTotales),
         gastosTotales: round2(gastosTotales),
         gastosGenerales: round2(gastosGenerales),
+        netoLocal: round2(netoLocal),
         totalComisiones: round2(totalComisiones),
         totalComisionesPrescriptor: round2(totalComisionesPrescriptor),
         totalComisionesOperario: round2(totalComisionesOperario),
         totalComisionesResponsable: round2(totalComisionesResponsable),
+        propietarioPct,
         resultadoPropietario: round2(resultadoPropietario),
         numCitas: citas.length,
       },
-      liquidaciones,
+      liquidaciones: liquidacionesFiltradas,
     });
   } catch (error: unknown) {
     console.error("Error en liquidaciones:", error);

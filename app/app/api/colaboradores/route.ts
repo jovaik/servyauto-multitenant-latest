@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
 
     const colaboradores = await prisma.colaborador.findMany({
       where,
-      include: { local: { select: { id: true, nombre: true } } },
+      include: { local: { select: { id: true, nombre: true } }, user: { select: { id: true, name: true, email: true } } },
       orderBy: { nombre: "asc" },
     });
 
@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { nombre, telefono, email, rol, comisionPct, localId } = body;
+    const { nombre, telefono, email, rol, comisionPct, localId, userId } = body;
 
     if (!nombre || !rol || !localId) {
       return NextResponse.json({ error: "Nombre, rol y local son obligatorios" }, { status: 400 });
@@ -58,8 +58,9 @@ export async function POST(req: NextRequest) {
         rol,
         comisionPct: comisionPct ?? 0,
         localId,
+        userId: userId || null,
       },
-      include: { local: { select: { id: true, nombre: true } } },
+      include: { local: { select: { id: true, nombre: true } }, user: { select: { id: true, name: true, email: true } } },
     });
 
     return NextResponse.json(colaborador, { status: 201 });

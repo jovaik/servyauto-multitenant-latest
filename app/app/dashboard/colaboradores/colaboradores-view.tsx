@@ -9,8 +9,14 @@ import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Switch } from '@/components/ui/switch'
-import { Handshake, Plus, Pencil, Trash2, Phone, Mail, Percent } from 'lucide-react'
+import { Handshake, Plus, Pencil, Trash2, Phone, Mail, Percent, UserCircle } from 'lucide-react'
 import { useLocalStore } from '@/lib/local-store'
+
+interface UserOption {
+  id: string
+  name: string | null
+  email: string
+}
 
 interface Colaborador {
   id: string
@@ -22,6 +28,8 @@ interface Colaborador {
   activo: boolean
   localId: string
   local?: { id: string; nombre: string }
+  userId?: string | null
+  user?: { id: string; name: string | null; email: string } | null
 }
 
 const ROL_LABELS: Record<string, string> = {
@@ -41,8 +49,9 @@ export default function ColaboradoresView() {
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [form, setForm] = useState({ nombre: '', telefono: '', email: '', rol: 'PRESCRIPTOR', comisionPct: '25' })
+  const [form, setForm] = useState({ nombre: '', telefono: '', email: '', rol: 'PRESCRIPTOR', comisionPct: '25', userId: '' })
   const [saving, setSaving] = useState(false)
+  const [usuarios, setUsuarios] = useState<UserOption[]>([])
   const { selectedLocalId } = useLocalStore()
 
   const fetchData = useCallback(async () => {
@@ -64,9 +73,20 @@ export default function ColaboradoresView() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
+  useEffect(() => {
+    // Cargar usuarios disponibles para el selector
+    fetch('/api/usuarios')
+      .then(r => r.ok ? r.json() : [])
+      .then(data => {
+        const list = Array.isArray(data) ? data : (data.usuarios || [])
+        setUsuarios(list.map((u: { id: string; name?: string | null; email: string }) => ({ id: u.id, name: u.name, email: u.email })))
+      })
+      .catch(() => {})
+  }, [])
+
   const openNew = () => {
     setEditingId(null)
-    setForm({ nombre: '', telefono: '', email: '', rol: 'PRESCRIPTOR', comisionPct: '25' })
+    setForm({ nombre: '', telefono: '', email: '', rol: 'PRESCRIPTOR', comisionPct: '25', userId: '' })
     setDialogOpen(true)
   }
 
@@ -78,6 +98,7 @@ export default function ColaboradoresView() {
       email: c.email || '',
       rol: c.rol,
       comisionPct: String(c.comisionPct),
+      userId: c.userId || '',
     })
     setDialogOpen(true)
   }
@@ -94,6 +115,7 @@ export default function ColaboradoresView() {
         rol: form.rol,
         comisionPct: parseFloat(form.comisionPct) || 0,
         localId: selectedLocalId,
+        userId: form.userId || null,
       }
       const url = editingId ? `/api/colaboradores/${editingId}` : '/api/colaboradores'
       const method = editingId ? 'PUT' : 'POST'
@@ -211,6 +233,11 @@ export default function ColaboradoresView() {
                     <Mail className="h-3.5 w-3.5" /> <span suppressHydrationWarning>{c.email}</span>
                   </div>
                 )}
+                {c.user && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <UserCircle className="h-3.5 w-3.5" /> {c.user.name || c.user.email}
+                  </div>
+                )}
                 <div className="flex items-center justify-between pt-2 border-t">
                   <span className="text-xs text-muted-foreground">Activo</span>
                   <Switch checked={c.activo} onCheckedChange={() => handleToggleActivo(c)} />
@@ -293,6 +320,21 @@ export default function ColaboradoresView() {
                 {form.rol === 'RESPONSABLE' ? 'Sobre el neto (ingresos − gastos del local)' :
                  form.rol === 'PRESCRIPTOR' ? 'Sobre el bruto de las citas que prescribe' :
                  'Porcentaje asignado'}
+              </p>
+            </div>
+            <div>
+              <Label>Usuario vinculado</Label>
+              <Select value={form.userId || '_none'} onValueChange={v => setForm({ ...form, userId: v === '_none' ? '' : v })}>
+                <SelectTrigger><SelectValue placeholder="Sin vincular" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_none">Sin vincular</SelectItem>
+                  {usuarios.map(u => (
+                    <SelectItem key={u.id} value={u.id}>{u.name || u.email} ({u.email})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Permite que este usuario acceda a su propia liquidación
               </p>
             </div>
           </div>

@@ -26,11 +26,12 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     if (comisionPct !== undefined) data.comisionPct = comisionPct;
     if (activo !== undefined) data.activo = activo;
     if (localId !== undefined) data.localId = localId;
+    if (body.userId !== undefined) data.userId = body.userId || null;
 
     const colaborador = await prisma.colaborador.update({
       where: { id: params.id },
       data,
-      include: { local: { select: { id: true, nombre: true } } },
+      include: { local: { select: { id: true, nombre: true } }, user: { select: { id: true, name: true, email: true } } },
     });
 
     return NextResponse.json(colaborador);

@@ -37,14 +37,18 @@ interface LiquidacionColaborador {
 
 interface LiquidacionData {
   periodo: { desde: string; hasta: string }
+  vistaRestringida?: boolean
+  propietarioPct?: number
   resumen: {
     ingresosTotales: number
     gastosTotales: number
     gastosGenerales: number
+    netoLocal: number
     totalComisiones: number
     totalComisionesPrescriptor: number
     totalComisionesOperario: number
     totalComisionesResponsable: number
+    propietarioPct: number
     resultadoPropietario: number
     numCitas: number
   }
@@ -74,6 +78,8 @@ export default function LiquidacionesView() {
   const [loading, setLoading] = useState(false)
   const [expandedColaborador, setExpandedColaborador] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [editPropPct, setEditPropPct] = useState<string>('50')
+  const [savingPct, setSavingPct] = useState(false)
 
   const calcular = useCallback(async () => {
     setLoading(true)
@@ -83,7 +89,9 @@ export default function LiquidacionesView() {
       if (selectedLocalId) params.set('localId', selectedLocalId)
       const res = await fetch(`/api/liquidaciones?${params}`)
       if (res.ok) {
-        setData(await res.json())
+        const d = await res.json()
+        setData(d)
+        if (d.propietarioPct !== undefined) setEditPropPct(String(d.propietarioPct))
       } else {
         const err = await res.json()
         setError(err.error || 'Error al calcular')
@@ -132,6 +140,19 @@ export default function LiquidacionesView() {
     }
   }
 
+  const guardarPropPct = async () => {
+    setSavingPct(true)
+    try {
+      const res = await fetch('/api/liquidaciones', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ propietarioPct: parseFloat(editPropPct) || 50 }),
+      })
+      if (res.ok) calcular()
+    } catch (e) { console.error(e) }
+    finally { setSavingPct(false) }
+  }
+
   const exportCSV = () => {
     if (!data) return
     const rows = [
@@ -152,11 +173,12 @@ export default function LiquidacionesView() {
       ['RESUMEN'],
       ['Ingresos Totales', '', '', data.resumen.ingresosTotales.toFixed(2)],
       ['Gastos Totales', '', '', data.resumen.gastosTotales.toFixed(2)],
+      ['Neto del Local', '', '', data.resumen.netoLocal.toFixed(2)],
       ['Total Comisiones Prescriptores', '', '', data.resumen.totalComisionesPrescriptor.toFixed(2)],
       ['Total Comisiones Operarios', '', '', data.resumen.totalComisionesOperario.toFixed(2)],
       ['Total Comisiones Encargados', '', '', data.resumen.totalComisionesResponsable.toFixed(2)],
       ['Total Comisiones (neto)', '', '', data.resumen.totalComisiones.toFixed(2)],
-      ['Resultado Propietario', '', '', data.resumen.resultadoPropietario.toFixed(2)],
+      [`Propietario (${data.propietarioPct ?? 50}% del neto)`, '', '', data.resumen.resultadoPropietario.toFixed(2)],
     ]
     const csv = rows.map(r => r.join(';')).join('\n')
     const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' })
@@ -216,8 +238,8 @@ export default function LiquidacionesView() {
       {/* Resumen */}
       {data && (
         <>
-          {/* Cuenta de resultados */}
-          <Card>
+          {/* Cuenta de resultados - solo para admin/propietario */}
+          {!data.vistaRestringida && <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-lg flex items-center gap-2">
                 <Euro className="h-5 w-5" />
@@ -280,20 +302,51 @@ export default function LiquidacionesView() {
 
                 <Separator className="my-0" />
 
-                {/* Propietario */}
-                <div className="flex justify-between items-center py-4 bg-green-50/60 -mx-6 px-6 rounded-b-lg">
+                {/* Neto del local */}
+                <div className="flex justify-between items-center py-3">
                   <div className="flex items-center gap-2">
-                    <Euro className="h-5 w-5 text-green-700" />
-                    <span className="text-lg font-bold">Propietario</span>
-                    <span className="text-xs text-muted-foreground">Ingresos − Gastos − Comisiones</span>
+                    <span className="font-bold">Neto del local</span>
+                    <span className="text-xs text-muted-foreground">(Ingresos − Gastos)</span>
                   </div>
-                  <span className={`text-2xl font-bold ${data.resumen.resultadoPropietario >= 0 ? 'text-green-700' : 'text-red-600'}`}>
-                    {data.resumen.resultadoPropietario.toFixed(2)} €
+                  <span className={`text-lg font-bold ${data.resumen.netoLocal >= 0 ? 'text-green-700' : 'text-red-600'}`}>
+                    {data.resumen.netoLocal.toFixed(2)} €
                   </span>
+                </div>
+
+                <Separator className="my-0" />
+
+                {/* Propietario con % editable */}
+                <div className="py-4 bg-green-50/60 -mx-6 px-6 rounded-b-lg">
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Euro className="h-5 w-5 text-green-700" />
+                      <span className="text-lg font-bold">Propietario</span>
+                      <div className="flex items-center gap-1">
+                        <Input
+                          type="number"
+                          min={0}
+                          max={100}
+                          step={1}
+                          value={editPropPct}
+                          onChange={e => setEditPropPct(e.target.value)}
+                          className="w-16 h-7 text-sm text-center"
+                        />
+                        <span className="text-sm text-muted-foreground">% × neto</span>
+                        {String(data.propietarioPct ?? 50) !== editPropPct && (
+                          <Button size="sm" variant="outline" className="h-7 text-xs ml-1" onClick={guardarPropPct} disabled={savingPct}>
+                            {savingPct ? '...' : 'Guardar'}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    <span className={`text-2xl font-bold ${data.resumen.resultadoPropietario >= 0 ? 'text-green-700' : 'text-red-600'}`}>
+                      {data.resumen.resultadoPropietario.toFixed(2)} €
+                    </span>
+                  </div>
                 </div>
               </div>
             </CardContent>
-          </Card>
+          </Card>}
 
           {/* Liquidación por colaborador */}
           <div className="space-y-4">
@@ -431,7 +484,7 @@ export default function LiquidacionesView() {
                   <strong> Operario</strong>: % × bruto de lavados que realizó |
                   <strong> Responsable</strong>: % × (Ingresos − Gastos generales del local) |
                   si prescribe Y ejecuta la misma cita, cobra ambas. Menos sus gastos atribuidos. |
-                  <strong> Propietario</strong>: Ingresos − Gastos totales − Comisiones netas
+                  <strong> Propietario</strong>: % configurable × Neto del local (Ingresos − Gastos)
                 </span>
               </div>
             </CardContent>

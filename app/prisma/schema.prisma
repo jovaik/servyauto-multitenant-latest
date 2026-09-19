@@ -52,6 +52,7 @@ model User {
   sessions         Session[]
   local            Local?      @relation(fields: [localId], references: [id])
   localesAsignados UserLocal[]
+  colaboradores    Colaborador[]
 }
 
 model Local {
@@ -625,6 +626,8 @@ model Colaborador {
   activo          Boolean         @default(true)
   localId         String
   local           Local           @relation(fields: [localId], references: [id])
+  userId          String?         // Vinculado a un usuario del sistema para acceso a liquidaciones
+  user            User?           @relation(fields: [userId], references: [id])
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
   citasPrescriptor  Cita[]        @relation("CitaPrescriptor")
