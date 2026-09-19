@@ -21,8 +21,8 @@ export async function GET(req: NextRequest) {
     const desde = searchParams.get("desde");
     const hasta = searchParams.get("hasta");
 
-    if (!localId || !desde || !hasta) {
-      return NextResponse.json({ error: "localId, desde y hasta son obligatorios" }, { status: 400 });
+    if (!desde || !hasta) {
+      return NextResponse.json({ error: "desde y hasta son obligatorios" }, { status: 400 });
     }
 
     const fechaDesde = new Date(desde);
@@ -30,16 +30,16 @@ export async function GET(req: NextRequest) {
     const fechaHasta = new Date(hasta);
     fechaHasta.setHours(23, 59, 59, 999);
 
-    // 1. Colaboradores del local
+    // 1. Colaboradores (del local, o de todos si no se especifica)
     const colaboradores = await prisma.colaborador.findMany({
-      where: { localId },
+      where: { activo: true, ...(localId ? { localId } : {}) },
       orderBy: { nombre: "asc" },
     });
 
-    // 2. Citas completadas en el período para este local
+    // 2. Citas completadas en el período (del local, o de todos)
     const citas = await prisma.cita.findMany({
       where: {
-        localId,
+        ...(localId ? { localId } : {}),
         estado: "COMPLETADA",
         fecha: { gte: fechaDesde, lte: fechaHasta },
       },
@@ -47,6 +47,7 @@ export async function GET(req: NextRequest) {
         id: true,
         total: true,
         fecha: true,
+        localId: true,
         prescriptorId: true,
         realizadoPorId: true,
         cliente: { select: { nombre: true, apellido: true } },
@@ -55,10 +56,10 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    // 3. Gastos del local en el período
+    // 3. Gastos en el período (del local, o de todos)
     const gastos = await prisma.gasto.findMany({
       where: {
-        localId,
+        ...(localId ? { localId } : {}),
         fecha: { gte: fechaDesde, lte: fechaHasta },
       },
       select: {
@@ -66,6 +67,7 @@ export async function GET(req: NextRequest) {
         concepto: true,
         importe: true,
         fecha: true,
+        localId: true,
         colaboradorId: true,
       },
     });
@@ -81,6 +83,12 @@ export async function GET(req: NextRequest) {
     // Gastos totales
     const gastosTotales = gastos.reduce((sum, g) => sum + g.importe, 0);
 
+    // Mapas por local (para responsables cuando se agregan varios locales)
+    const ingresosPorLocal: Record<string, number> = {};
+    citas.forEach(c => { const k = c.localId || ''; ingresosPorLocal[k] = (ingresosPorLocal[k] || 0) + (c.total || 0); });
+    const gastosGeneralesPorLocal: Record<string, number> = {};
+    gastos.filter(g => !g.colaboradorId).forEach(g => { const k = g.localId || ''; gastosGeneralesPorLocal[k] = (gastosGeneralesPorLocal[k] || 0) + g.importe; });
+
     // 5. Liquidación por colaborador
     const liquidaciones = colaboradores.map(col => {
       // Gastos atribuidos a este colaborador
@@ -95,12 +103,14 @@ export async function GET(req: NextRequest) {
       let citasRelacionadas: typeof citas = [];
 
       if (col.rol === "RESPONSABLE") {
-        // Responsable: comisión sobre el neto (ingresos - gastos generales)
-        baseCalculo = ingresosTotales - gastosGenerales;
+        // Responsable: comisión sobre el neto de SU local (ingresos - gastos generales del local)
+        const ingLocal = ingresosPorLocal[col.localId || ''] || 0;
+        const gastoGenLocal = gastosGeneralesPorLocal[col.localId || ''] || 0;
+        baseCalculo = ingLocal - gastoGenLocal;
         comision = (baseCalculo * col.comisionPct) / 100;
         // Descontar gastos atribuidos al responsable
         comision -= gastosColaborador;
-        citasRelacionadas = citas; // Todas las citas
+        citasRelacionadas = citas.filter(c => c.localId === col.localId); // Citas de su local
       } else if (col.rol === "PRESCRIPTOR") {
         // Prescriptor: comisión sobre el bruto de citas que prescribió
         citasRelacionadas = citas.filter(c => c.prescriptorId === col.id);

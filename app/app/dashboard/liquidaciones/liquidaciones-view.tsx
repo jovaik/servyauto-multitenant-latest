@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -57,22 +57,22 @@ const ROL_COLORS: Record<string, string> = {
 
 export default function LiquidacionesView() {
   const { selectedLocalId } = useLocalStore()
-  const prevWeekStart = startOfWeek(subWeeks(new Date(), 1), { weekStartsOn: 1 })
-  const prevWeekEnd = endOfWeek(subWeeks(new Date(), 1), { weekStartsOn: 1 })
+  // Por defecto: semana actual (lunes -> hoy) para ver de inmediato las citas recientes
+  const thisWeekStart = startOfWeek(new Date(), { weekStartsOn: 1 })
 
-  const [desde, setDesde] = useState(format(prevWeekStart, 'yyyy-MM-dd'))
-  const [hasta, setHasta] = useState(format(prevWeekEnd, 'yyyy-MM-dd'))
+  const [desde, setDesde] = useState(format(thisWeekStart, 'yyyy-MM-dd'))
+  const [hasta, setHasta] = useState(format(new Date(), 'yyyy-MM-dd'))
   const [data, setData] = useState<LiquidacionData | null>(null)
   const [loading, setLoading] = useState(false)
   const [expandedColaborador, setExpandedColaborador] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const calcular = useCallback(async () => {
-    if (!selectedLocalId) { setError('Selecciona un local'); return }
     setLoading(true)
     setError(null)
     try {
-      const params = new URLSearchParams({ localId: selectedLocalId, desde, hasta })
+      const params = new URLSearchParams({ desde, hasta })
+      if (selectedLocalId) params.set('localId', selectedLocalId)
       const res = await fetch(`/api/liquidaciones?${params}`)
       if (res.ok) {
         setData(await res.json())
@@ -87,6 +87,11 @@ export default function LiquidacionesView() {
       setLoading(false)
     }
   }, [selectedLocalId, desde, hasta])
+
+  // Auto-calcular al montar y cuando cambie el local o el rango de fechas
+  useEffect(() => {
+    calcular()
+  }, [selectedLocalId, desde, hasta, calcular])
 
   const setPreset = (preset: 'esta_semana' | 'semana_pasada' | 'este_mes' | 'mes_pasado') => {
     const now = new Date()
@@ -190,9 +195,6 @@ export default function LiquidacionesView() {
         </CardContent>
       </Card>
 
-      {!selectedLocalId && (
-        <Card><CardContent className="py-8 text-center text-muted-foreground">Selecciona un local para calcular liquidaciones</CardContent></Card>
-      )}
 
       {error && (
         <Card><CardContent className="py-6 text-center text-destructive">{error}</CardContent></Card>
