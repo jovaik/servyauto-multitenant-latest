@@ -216,99 +216,84 @@ export default function LiquidacionesView() {
       {/* Resumen */}
       {data && (
         <>
-          <div className="grid gap-4 md:grid-cols-5">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Ingresos</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600 flex items-center gap-1">
-                  <TrendingUp className="h-5 w-5" />
-                  {data.resumen.ingresosTotales.toFixed(2)} €
+          {/* Cuenta de resultados */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Euro className="h-5 w-5" />
+                Cuenta de Resultados
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-0">
+              <div className="divide-y">
+                {/* Ingresos */}
+                <div className="flex justify-between items-center py-3">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-green-600" />
+                    <span className="font-medium">Ingresos</span>
+                    <span className="text-xs text-muted-foreground">({data.resumen.numCitas} citas)</span>
+                  </div>
+                  <span className="text-lg font-bold text-green-600">{data.resumen.ingresosTotales.toFixed(2)} €</span>
                 </div>
-                <p className="text-xs text-muted-foreground">{data.resumen.numCitas} citas completadas</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Gastos Totales</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-red-600 flex items-center gap-1">
-                  <TrendingDown className="h-5 w-5" />
-                  {data.resumen.gastosTotales.toFixed(2)} €
+                {/* Gastos */}
+                <div className="flex justify-between items-center py-3">
+                  <div className="flex items-center gap-2">
+                    <TrendingDown className="h-4 w-4 text-red-600" />
+                    <span className="font-medium">Gastos totales</span>
+                    <span className="text-xs text-muted-foreground">(general: {data.resumen.gastosGenerales.toFixed(2)} €)</span>
+                  </div>
+                  <span className="text-lg font-bold text-red-600">-{data.resumen.gastosTotales.toFixed(2)} €</span>
                 </div>
-                <p className="text-xs text-muted-foreground">General: {data.resumen.gastosGenerales.toFixed(2)} €</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Comisiones</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-orange-600 flex items-center gap-1">
-                  <Users className="h-5 w-5" />
-                  {data.resumen.totalComisiones.toFixed(2)} €
-                </div>
-                <p className="text-xs text-muted-foreground">{data.liquidaciones.length} colaboradores</p>
-              </CardContent>
-            </Card>
-            <Card className="md:col-span-2">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Resultado Propietario</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className={`text-3xl font-bold flex items-center gap-1 ${data.resumen.resultadoPropietario >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  <Euro className="h-6 w-6" />
-                  {data.resumen.resultadoPropietario.toFixed(2)} €
-                </div>
-                <p className="text-xs text-muted-foreground">Ingresos − Gastos − Comisiones</p>
-              </CardContent>
-            </Card>
-          </div>
 
-          {/* Totales por rol */}
-          <div>
-            <h2 className="text-lg font-semibold mb-3">Totales por rol</h2>
-            <div className="grid gap-4 md:grid-cols-4">
-              <Card className="border-purple-200">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Prescriptores</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-purple-700">{data.resumen.totalComisionesPrescriptor.toFixed(2)} €</div>
-                  <p className="text-xs text-muted-foreground">Comisión por citas prescritas</p>
-                </CardContent>
-              </Card>
-              <Card className="border-gray-200">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Operarios</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-gray-700">{data.resumen.totalComisionesOperario.toFixed(2)} €</div>
-                  <p className="text-xs text-muted-foreground">Comisión por lavados realizados</p>
-                </CardContent>
-              </Card>
-              <Card className="border-blue-200">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Encargados</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-blue-700">{data.resumen.totalComisionesResponsable.toFixed(2)} €</div>
-                  <p className="text-xs text-muted-foreground">Comisión sobre neto del local</p>
-                </CardContent>
-              </Card>
-              <Card className="border-green-300 bg-green-50/50">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Propietario</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className={`text-2xl font-bold ${data.resumen.resultadoPropietario >= 0 ? 'text-green-700' : 'text-red-600'}`}>{data.resumen.resultadoPropietario.toFixed(2)} €</div>
-                  <p className="text-xs text-muted-foreground">Resultado neto tras comisiones</p>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
+                <Separator className="my-0" />
+
+                {/* Comisiones por rol */}
+                <div className="py-3">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="font-medium text-muted-foreground text-sm uppercase tracking-wide">Comisiones por rol</span>
+                    <span className="font-bold text-orange-600">{data.resumen.totalComisiones.toFixed(2)} €</span>
+                  </div>
+                  <div className="ml-6 space-y-2">
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 rounded-full bg-purple-500" />
+                        <span>Prescriptores</span>
+                      </div>
+                      <span className="font-semibold text-purple-700">{data.resumen.totalComisionesPrescriptor.toFixed(2)} €</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 rounded-full bg-gray-500" />
+                        <span>Operarios</span>
+                      </div>
+                      <span className="font-semibold text-gray-700">{data.resumen.totalComisionesOperario.toFixed(2)} €</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+                        <span>Encargados</span>
+                      </div>
+                      <span className="font-semibold text-blue-700">{data.resumen.totalComisionesResponsable.toFixed(2)} €</span>
+                    </div>
+                  </div>
+                </div>
+
+                <Separator className="my-0" />
+
+                {/* Propietario */}
+                <div className="flex justify-between items-center py-4 bg-green-50/60 -mx-6 px-6 rounded-b-lg">
+                  <div className="flex items-center gap-2">
+                    <Euro className="h-5 w-5 text-green-700" />
+                    <span className="text-lg font-bold">Propietario</span>
+                    <span className="text-xs text-muted-foreground">Ingresos − Gastos − Comisiones</span>
+                  </div>
+                  <span className={`text-2xl font-bold ${data.resumen.resultadoPropietario >= 0 ? 'text-green-700' : 'text-red-600'}`}>
+                    {data.resumen.resultadoPropietario.toFixed(2)} €
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Liquidación por colaborador */}
           <div className="space-y-4">
