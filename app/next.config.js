@@ -16,6 +16,11 @@ const nextConfig = {
     ignoreBuildErrors: false,
   },
   images: { unoptimized: true },
+  // Dev chunk URLs are not content-hashed, so a cached copy outlives an edit.
+  async headers() {
+    if (process.env.NODE_ENV !== 'development') return [];
+    return [{ source: '/_next/static/:path*', headers: [{ key: 'Cache-Control', value: 'no-store, must-revalidate' }] }];
+  },
   webpack: (config, { dev, isServer }) => {
     if (!isServer) {
       // Content hashes only exist in a production compilation. `next dev` builds chunks on

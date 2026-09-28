@@ -12,13 +12,15 @@ import {
   Clock,
   User,
   Car,
-  Building2
+  Building2,
+  Zap
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { NuevaCitaDialog } from './nueva-cita-dialog'
 import { EditarCitaDialog } from './editar-cita-dialog'
+import { ReservaRapidaDialog } from './reserva-rapida-dialog'
 import { Cita } from '@/lib/types'
 import EnviarResenaDialog from '@/components/enviar-resena-dialog'
 import EnviarDepositoDialog from '@/components/enviar-deposito-dialog'
@@ -38,6 +40,7 @@ export function AgendaView() {
   const [citas, setCitas] = useState<Cita[]>([])
   const [loading, setLoading] = useState(true)
   const [showNuevaCita, setShowNuevaCita] = useState(false)
+  const [showReservaRapida, setShowReservaRapida] = useState(false)
   const [showEditarCita, setShowEditarCita] = useState(false)
   const [selectedCita, setSelectedCita] = useState<Cita | null>(null)
   const [preselectedSlot, setPreselectedSlot] = useState<{time: string, box: string} | null>(null)
@@ -314,10 +317,16 @@ export function AgendaView() {
             Gestiona las citas y horarios del taller - Click en cualquier slot para reservar
           </p>
         </div>
-        <Button onClick={() => setShowNuevaCita(true)} className="bg-blue-600 hover:bg-blue-700">
-          <Plus className="mr-2 h-4 w-4" />
-          Nueva Cita
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={() => setShowReservaRapida(true)} variant="outline" className="border-orange-300 text-orange-600 hover:bg-orange-50">
+            <Zap className="mr-2 h-4 w-4" />
+            Reserva Rápida
+          </Button>
+          <Button onClick={() => setShowNuevaCita(true)} className="bg-blue-600 hover:bg-blue-700">
+            <Plus className="mr-2 h-4 w-4" />
+            Nueva Cita
+          </Button>
+        </div>
       </div>
 
       {/* Date Navigation */}
@@ -497,6 +506,14 @@ export function AgendaView() {
       </Card>
 
       {/* Dialogs */}
+      <ReservaRapidaDialog
+        open={showReservaRapida}
+        onOpenChange={setShowReservaRapida}
+        onSuccess={handleCitaUpdated}
+        selectedDate={selectedDate}
+        preselectedSlot={preselectedSlot}
+      />
+
       <NuevaCitaDialog 
         open={showNuevaCita}
         onOpenChange={handleNewCitaClose}
