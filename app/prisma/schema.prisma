@@ -91,6 +91,7 @@ model Local {
   categoriaOverrides  CategoriaOverrideLocal[]
   precioOverrides     PrecioOverrideLocal[]
   colaboradores       Colaborador[]
+  presupuestos        Presupuesto[]
 
   @@map("locales")
 }
@@ -164,6 +165,7 @@ model Cliente {
   facturas         Factura[]
   serviciosRapidos ServicioTaller[]
   vehiculos        Vehiculo[]
+  presupuestos     Presupuesto[]
 
   @@map("clientes")
 }
@@ -610,10 +612,59 @@ enum TipoMovimientoTicket {
   AJUSTE
 }
 
+enum EstadoPresupuesto {
+  BORRADOR
+  ENVIADO
+  ACEPTADO
+  RECHAZADO
+  EXPIRADO
+  CONVERTIDO
+}
+
 enum RolColaborador {
   RESPONSABLE
   PRESCRIPTOR
   OPERARIO
+}
+
+model Presupuesto {
+  id              String              @id @default(cuid())
+  numero          String              @unique
+  fecha           DateTime            @default(now())
+  validoHasta     DateTime?
+  estado          EstadoPresupuesto   @default(BORRADOR)
+  clienteNombre   String
+  clienteTelefono String?
+  clienteEmail    String?
+  vehiculoInfo    String?             // "MARCA MODELO - MATRICULA" texto libre
+  subtotal        Float               @default(0)
+  iva             Float               @default(0)
+  total           Float               @default(0)
+  observaciones   String?             @db.Text
+  localId         String?
+  local           Local?              @relation(fields: [localId], references: [id])
+  clienteId       String?
+  cliente         Cliente?            @relation(fields: [clienteId], references: [id])
+  creadoPorId     String?
+  creadoPorNombre String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  items           PresupuestoItem[]
+
+  @@map("presupuestos")
+}
+
+model PresupuestoItem {
+  id              String       @id @default(cuid())
+  presupuestoId   String
+  presupuesto     Presupuesto  @relation(fields: [presupuestoId], references: [id], onDelete: Cascade)
+  descripcion     String
+  cantidad        Int          @default(1)
+  precioUnitario  Float
+  total           Float
+  servicioId      String?      // referencia opcional al catálogo
+
+  @@map("presupuesto_items")
 }
 
 model Colaborador {

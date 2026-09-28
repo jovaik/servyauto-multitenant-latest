@@ -79,6 +79,7 @@ const gestionSection: NavSection = {
     { name: 'Dashboard', href: '/dashboard', icon: BarChart3, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.GRUPO_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
     { name: 'Diario de Caja', href: '/dashboard/diario-caja', icon: BookOpen, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.GRUPO_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
     { name: 'Facturación', href: '/dashboard/facturacion', icon: CreditCard, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.GRUPO_ADMIN, RolUsuario.ADMIN] },
+    { name: 'Presupuestos', href: '/dashboard/presupuestos', icon: FileText, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.GRUPO_ADMIN, RolUsuario.ADMIN] },
     { name: 'Gastos', href: '/dashboard/gastos', icon: TrendingDown, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.GRUPO_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
     { name: 'Ingresos Extra', href: '/dashboard/ingresos-adicionales', icon: ParkingCircle, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.GRUPO_ADMIN, RolUsuario.ADMIN] },
     { name: 'Proveedores', href: '/dashboard/proveedores', icon: Building2, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.GRUPO_ADMIN, RolUsuario.ADMIN] },
