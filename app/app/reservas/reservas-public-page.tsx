@@ -604,8 +604,8 @@ export function ReservasPublicPage() {
                     onChange={(e) => setFormData(prev => ({ ...prev, hora: e.target.value }))}
                     className="pl-10 w-full text-lg"
                     required
-                    min="08:00"
-                    max="20:00"
+                    min="06:00"
+                    max="23:59"
                     step="60" // Permite cualquier minuto
                   />
                 </div>

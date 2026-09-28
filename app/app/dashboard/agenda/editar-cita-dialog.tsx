@@ -605,8 +605,8 @@ export function EditarCitaDialog({
                   onChange={(e) => setFormData(prev => ({ ...prev, horaInicio: e.target.value }))}
                   className="pl-10"
                   required
-                  min="08:00"
-                  max="20:00"
+                  min="06:00"
+                  max="23:59"
                   step="60" // Permite cualquier minuto
                 />
               </div>
@@ -628,8 +628,8 @@ export function EditarCitaDialog({
                   onChange={(e) => setFormData(prev => ({ ...prev, horaFin: e.target.value }))}
                   className="pl-10"
                   required
-                  min="08:00"
-                  max="20:00"
+                  min="06:00"
+                  max="23:59"
                   step="60"
                 />
               </div>
