@@ -27,15 +27,18 @@ export async function GET(request: NextRequest) {
     }
 
     // Vehículos son compartidos entre todos los locales
-    // Cualquier usuario autenticado puede buscar cualquier vehículo
-    console.log('🔍 Buscando vehículos por:', query)
+    // Buscar por matrícula, nombre/apellido del cliente o teléfono
+    console.log('🔍 Buscando vehículos/clientes por:', query)
 
     const vehiculos = await prisma.vehiculo.findMany({
       where: {
-        matricula: {
-          contains: query,
-          mode: 'insensitive'
-        },
+        OR: [
+          { matricula: { contains: query, mode: 'insensitive' } },
+          { marca: { contains: query, mode: 'insensitive' } },
+          { cliente: { nombre: { contains: query, mode: 'insensitive' } } },
+          { cliente: { apellido: { contains: query, mode: 'insensitive' } } },
+          { cliente: { telefono: { contains: query } } },
+        ],
       },
       include: {
         cliente: {
@@ -50,7 +53,7 @@ export async function GET(request: NextRequest) {
           }
         }
       },
-      take: 10, // Limitar a 10 resultados
+      take: 15,
       orderBy: {
         createdAt: 'desc'
       }

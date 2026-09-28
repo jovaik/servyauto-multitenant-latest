@@ -358,7 +358,7 @@ export function NuevaCitaDialog({
 
   // Handler para el input con debounce
   const handleMatriculaChange = (value: string) => {
-    setMatriculaBusqueda(value.toUpperCase())
+    setMatriculaBusqueda(value)
     
     // Cancelar timeout anterior
     if (debounceTimeout) {
@@ -898,14 +898,14 @@ export function NuevaCitaDialog({
               <div className="space-y-2 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-lg relative autocomplete-container">
                 <div className="flex items-center gap-2 mb-2">
                   <Car className="h-5 w-5 text-blue-600" />
-                  <Label className="text-base font-semibold text-blue-900">Búsqueda rápida por matrícula</Label>
+                  <Label className="text-base font-semibold text-blue-900">Búsqueda rápida</Label>
                 </div>
                 <p className="text-xs text-blue-700 mb-3">
-                  Escribe la matrícula y selecciona el vehículo de la lista
+                  Busca por matrícula, nombre del cliente o teléfono
                 </p>
                 <div className="relative autocomplete-container">
                   <Input
-                    placeholder="Ej: 1426, 7178, HLJ..."
+                    placeholder="Matrícula, nombre o teléfono..."
                     value={matriculaBusqueda}
                     onChange={(e) => handleMatriculaChange(e.target.value)}
                     onFocus={() => {
@@ -913,7 +913,7 @@ export function NuevaCitaDialog({
                         setMostrarResultados(true)
                       }
                     }}
-                    className="uppercase font-mono text-lg pr-10"
+                    className="text-lg pr-10"
                   />
                   {buscandoMatricula && (
                     <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -939,14 +939,14 @@ export function NuevaCitaDialog({
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="font-medium text-gray-900">
-                                {vehiculo.marca} {vehiculo.modelo}
-                              </div>
-                              <div className="text-sm text-gray-600">
                                 {vehiculo.cliente.nombre} {vehiculo.cliente.apellido}
                               </div>
+                              <div className="text-sm text-gray-600">
+                                {vehiculo.marca} {vehiculo.modelo}
+                              </div>
                             </div>
-                            <div className="flex-shrink-0 text-xs text-gray-500">
-                              {vehiculo.anio}
+                            <div className="flex-shrink-0 text-right">
+                              <div className="text-xs text-gray-500">{vehiculo.cliente.telefono}</div>
                             </div>
                           </div>
                         </button>
@@ -958,7 +958,7 @@ export function NuevaCitaDialog({
                   {mostrarResultados && resultadosBusqueda.length === 0 && !buscandoMatricula && matriculaBusqueda.length >= 2 && (
                     <div className="absolute z-50 w-full mt-1 bg-white border-2 border-gray-300 rounded-lg shadow-xl p-4 text-center">
                       <p className="text-gray-600 text-sm">
-                        No se encontraron vehículos con "<span className="font-mono font-semibold">{matriculaBusqueda}</span>"
+                        No se encontraron resultados para "<span className="font-semibold">{matriculaBusqueda}</span>"
                       </p>
                       <p className="text-gray-500 text-xs mt-1">
                         Puedes dar de alta un nuevo cliente y vehículo abajo
