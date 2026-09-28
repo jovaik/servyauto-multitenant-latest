@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
+import { getSelectedLocalId } from '@/lib/local-store'
 
 interface ReservaRapidaDialogProps {
   open: boolean
@@ -97,6 +98,12 @@ export function ReservaRapidaDialog({
   const handleSubmit = async () => {
     if (!formData.fecha || !formData.horaInicio || !formData.nombre.trim() || !formData.telefono.trim()) {
       toast({ title: 'Faltan datos', description: 'Fecha, hora, nombre y teléfono son obligatorios.', variant: 'destructive' })
+      return
+    }
+
+    const localId = getSelectedLocalId()
+    if (!localId) {
+      toast({ title: 'Selecciona un local', description: 'Debes seleccionar un local concreto antes de crear una reserva rápida.', variant: 'destructive' })
       return
     }
 

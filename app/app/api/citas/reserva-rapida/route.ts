@@ -23,6 +23,13 @@ export async function POST(req: NextRequest) {
     const localContext = await getLocalContext()
     const localId = localContext ? getLocalIdForCreate(localContext) : null
 
+    if (!localId) {
+      return NextResponse.json(
+        { error: 'Debes seleccionar un local concreto para crear una reserva rápida' },
+        { status: 400 }
+      )
+    }
+
     // User info for traceability
     const userEmail = session?.user?.email || ''
     const user = await prisma.user.findUnique({
