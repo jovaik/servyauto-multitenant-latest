@@ -472,7 +472,7 @@ export function ClientesView() {
                 <Input
                   id="nombre"
                   value={formData.nombre}
-                  onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, nombre: e.target.value.toUpperCase() })}
                   placeholder="Juan"
                 />
               </div>
@@ -481,7 +481,7 @@ export function ClientesView() {
                 <Input
                   id="apellido"
                   value={formData.apellido}
-                  onChange={(e) => setFormData({ ...formData, apellido: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, apellido: e.target.value.toUpperCase() })}
                   placeholder="Pérez (opcional)"
                 />
               </div>

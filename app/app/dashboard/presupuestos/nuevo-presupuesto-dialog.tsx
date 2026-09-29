@@ -255,7 +255,7 @@ export default function NuevoPresupuestoDialog({ open, onOpenChange, onSuccess, 
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs">Nombre <span className="text-red-500">*</span></Label>
-                <Input value={clienteNombre} onChange={e => setClienteNombre(e.target.value)} placeholder="Nombre completo" />
+                <Input value={clienteNombre} onChange={e => setClienteNombre(e.target.value.toUpperCase())} placeholder="Nombre completo" />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Teléfono</Label>

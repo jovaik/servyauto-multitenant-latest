@@ -1029,7 +1029,7 @@ export function NuevaCitaDialog({
                         <Label>Nombre *</Label>
                         <Input
                           value={newCliente.nombre}
-                          onChange={(e) => setNewCliente(prev => ({ ...prev, nombre: e.target.value }))}
+                          onChange={(e) => setNewCliente(prev => ({ ...prev, nombre: e.target.value.toUpperCase() }))}
                           placeholder="Nombre"
                           required
                         />
@@ -1038,7 +1038,7 @@ export function NuevaCitaDialog({
                         <Label>Apellido</Label>
                         <Input
                           value={newCliente.apellido}
-                          onChange={(e) => setNewCliente(prev => ({ ...prev, apellido: e.target.value }))}
+                          onChange={(e) => setNewCliente(prev => ({ ...prev, apellido: e.target.value.toUpperCase() }))}
                           placeholder="Apellido"
                         />
                       </div>

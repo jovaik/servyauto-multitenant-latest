@@ -643,7 +643,7 @@ export function ReservasPublicPage() {
                     id="nombre"
                     required
                     value={formData.nombre}
-                    onChange={(e) => setFormData(prev => ({ ...prev, nombre: e.target.value }))}
+                    onChange={(e) => setFormData(prev => ({ ...prev, nombre: e.target.value.toUpperCase() }))}
                     placeholder="Tu nombre"
                   />
                 </div>
@@ -653,7 +653,7 @@ export function ReservasPublicPage() {
                     id="apellido"
                     required
                     value={formData.apellido}
-                    onChange={(e) => setFormData(prev => ({ ...prev, apellido: e.target.value }))}
+                    onChange={(e) => setFormData(prev => ({ ...prev, apellido: e.target.value.toUpperCase() }))}
                     placeholder="Tu apellido"
                   />
                 </div>
@@ -683,7 +683,7 @@ export function ReservasPublicPage() {
                   id="marcaModelo"
                   required
                   value={formData.marcaModelo}
-                  onChange={(e) => setFormData(prev => ({ ...prev, marcaModelo: e.target.value }))}
+                  onChange={(e) => setFormData(prev => ({ ...prev, marcaModelo: e.target.value.toUpperCase() }))}
                   placeholder="Ej: Toyota Corolla"
                 />
               </div>

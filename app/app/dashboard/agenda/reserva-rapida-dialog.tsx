@@ -219,7 +219,7 @@ export function ReservaRapidaDialog({
                 <Input
                   placeholder="Nombre del cliente"
                   value={formData.nombre}
-                  onChange={(e) => setFormData(prev => ({ ...prev, nombre: e.target.value }))}
+                  onChange={(e) => setFormData(prev => ({ ...prev, nombre: e.target.value.toUpperCase() }))}
                 />
               </div>
               <div className="space-y-2">
