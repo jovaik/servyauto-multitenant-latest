@@ -28,6 +28,7 @@ export function SimpleDocumentScanner({
 }: SimpleDocumentScannerProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string>('')
+  const [originalPreview, setOriginalPreview] = useState<string>('')
   const [isProcessing, setIsProcessing] = useState(false)
   const [isDetecting, setIsDetecting] = useState(false)
   const [showCropper, setShowCropper] = useState(false)
@@ -61,6 +62,7 @@ export function SimpleDocumentScanner({
       reader.onload = async (e) => {
         const dataUrl = e.target?.result as string
         setPreview(dataUrl)
+        setOriginalPreview(dataUrl)
         
         // Cargar imagen para obtener dimensiones
         const img = new window.Image()
@@ -124,6 +126,7 @@ export function SimpleDocumentScanner({
       
       toast.success('✅ Documento recortado', { id: 'crop' })
       setShowCropper(false)
+      onFileSelect?.(croppedFile)
       
       // Actualizar preview con imagen recortada
       const reader = new FileReader()
@@ -144,119 +147,62 @@ export function SimpleDocumentScanner({
   const skipCrop = async () => {
     setShowCropper(false)
     if (selectedFile) {
+      onFileSelect?.(selectedFile)
+      setPreview(originalPreview)
       await extractDataFromImage(selectedFile)
     }
   }
 
-  // Canvas drawing
-  useEffect(() => {
-    if (!showCropper || !canvasRef.current || !imageRef.current || !corners) return
+  // ===== Recorte: esquinas arrastrables con dedo o ratón (pointer events) =====
+  const cropBoxRef = useRef<HTMLDivElement>(null)
 
-    const canvas = canvasRef.current
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    const img = imageRef.current
-
-    // Ajustar tamaño del canvas al contenedor
-    const container = canvas.parentElement
-    if (!container) return
-
-    const maxWidth = container.clientWidth
-    const maxHeight = 600
-    const scale = Math.min(maxWidth / img.width, maxHeight / img.height, 1)
-
-    canvas.width = img.width * scale
-    canvas.height = img.height * scale
-
-    // Dibujar imagen
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-
-    // Dibujar overlay semi-transparente
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)'
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
-
-    // Dibujar área seleccionada
-    ctx.save()
-    ctx.globalCompositeOperation = 'destination-out'
-    ctx.beginPath()
-    ctx.moveTo(corners.topLeft.x * scale, corners.topLeft.y * scale)
-    ctx.lineTo(corners.topRight.x * scale, corners.topRight.y * scale)
-    ctx.lineTo(corners.bottomRight.x * scale, corners.bottomRight.y * scale)
-    ctx.lineTo(corners.bottomLeft.x * scale, corners.bottomLeft.y * scale)
-    ctx.closePath()
-    ctx.fill()
-    ctx.restore()
-
-    // Dibujar bordes
-    ctx.strokeStyle = '#10b981'
-    ctx.lineWidth = 3
-    ctx.beginPath()
-    ctx.moveTo(corners.topLeft.x * scale, corners.topLeft.y * scale)
-    ctx.lineTo(corners.topRight.x * scale, corners.topRight.y * scale)
-    ctx.lineTo(corners.bottomRight.x * scale, corners.bottomRight.y * scale)
-    ctx.lineTo(corners.bottomLeft.x * scale, corners.bottomLeft.y * scale)
-    ctx.closePath()
-    ctx.stroke()
-
-    // Dibujar puntos de esquina
-    const cornerKeys: (keyof Corners)[] = ['topLeft', 'topRight', 'bottomRight', 'bottomLeft']
-    cornerKeys.forEach((key) => {
-      const corner = corners[key]
-      ctx.beginPath()
-      ctx.arc(corner.x * scale, corner.y * scale, 12, 0, 2 * Math.PI)
-      ctx.fillStyle = '#10b981'
-      ctx.fill()
-      ctx.strokeStyle = '#ffffff'
-      ctx.lineWidth = 2
-      ctx.stroke()
-    })
-  }, [showCropper, corners])
-
-  const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!canvasRef.current || !corners) return
-
-    const canvas = canvasRef.current
-    const rect = canvas.getBoundingClientRect()
-    const scaleX = imageSize.width / canvas.width
-    const scaleY = imageSize.height / canvas.height
-    const x = (e.clientX - rect.left) * scaleX
-    const y = (e.clientY - rect.top) * scaleY
-
-    // Buscar esquina más cercana
-    const threshold = 30
-    const cornerKeys: (keyof Corners)[] = ['topLeft', 'topRight', 'bottomRight', 'bottomLeft']
-    
-    for (const key of cornerKeys) {
-      const corner = corners[key]
-      const distance = Math.hypot(corner.x - x, corner.y - y)
-      
-      if (distance < threshold) {
-        setDraggingCorner(key)
-        break
-      }
+  const pointToImage = (clientX: number, clientY: number): Point | null => {
+    const box = cropBoxRef.current
+    if (!box || !imageSize.width) return null
+    const rect = box.getBoundingClientRect()
+    const x = ((clientX - rect.left) / rect.width) * imageSize.width
+    const y = ((clientY - rect.top) / rect.height) * imageSize.height
+    return {
+      x: Math.max(0, Math.min(x, imageSize.width)),
+      y: Math.max(0, Math.min(y, imageSize.height)),
     }
   }
 
-  const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!draggingCorner || !canvasRef.current || !corners) return
+  const startDrag = (key: keyof Corners) => (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    ;(e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId)
+    setDraggingCorner(key)
+  }
 
-    const canvas = canvasRef.current
-    const rect = canvas.getBoundingClientRect()
-    const scaleX = imageSize.width / canvas.width
-    const scaleY = imageSize.height / canvas.height
-    const x = Math.max(0, Math.min((e.clientX - rect.left) * scaleX, imageSize.width))
-    const y = Math.max(0, Math.min((e.clientY - rect.top) * scaleY, imageSize.height))
+  const moveDrag = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!draggingCorner) return
+    e.preventDefault()
+    const p = pointToImage(e.clientX, e.clientY)
+    if (!p) return
+    setCorners((prev) => (prev ? { ...prev, [draggingCorner]: p } : prev))
+  }
 
+  const endDrag = (e: React.PointerEvent<HTMLDivElement>) => {
+    try { (e.currentTarget as HTMLDivElement).releasePointerCapture(e.pointerId) } catch {}
+    setDraggingCorner(null)
+  }
+
+  const resetCorners = (full: boolean) => {
+    const { width, height } = imageSize
+    const m = full ? 0 : 0.05
     setCorners({
-      ...corners,
-      [draggingCorner]: { x, y }
+      topLeft: { x: width * m, y: height * m },
+      topRight: { x: width * (1 - m), y: height * m },
+      bottomRight: { x: width * (1 - m), y: height * (1 - m) },
+      bottomLeft: { x: width * m, y: height * (1 - m) },
     })
   }
 
-  const handleCanvasMouseUp = () => {
-    setDraggingCorner(null)
-  }
+  const pct = (p: Point) => ({
+    left: `${(p.x / (imageSize.width || 1)) * 100}%`,
+    top: `${(p.y / (imageSize.height || 1)) * 100}%`,
+  })
 
   const convertPDFToImage = async (pdfFile: File): Promise<File> => {
     return new Promise((resolve, reject) => {
@@ -396,24 +342,81 @@ export function SimpleDocumentScanner({
                 </span>
               </div>
             </div>
-            <p className="text-sm text-gray-400 mb-4">
-              Arrastra los puntos verdes para ajustar las esquinas del documento
+            <p className="text-sm text-gray-400 mb-3">
+              Arrastra los 4 puntos verdes (con el dedo o el ratón) hasta las esquinas del documento
             </p>
-            
-            <div className="relative bg-black rounded-lg overflow-hidden">
-              <canvas
-                ref={canvasRef}
-                className="w-full cursor-crosshair"
-                onMouseDown={handleCanvasMouseDown}
-                onMouseMove={handleCanvasMouseMove}
-                onMouseUp={handleCanvasMouseUp}
-                onMouseLeave={handleCanvasMouseUp}
-              />
+            <div className="flex gap-2 mb-3">
+              <Button type="button" size="sm" variant="secondary" onClick={() => resetCorners(true)}>
+                Toda la imagen
+              </Button>
+              <Button type="button" size="sm" variant="secondary" onClick={() => resetCorners(false)}>
+                Restablecer
+              </Button>
+            </div>
+
+            <div className="flex justify-center bg-black rounded-lg p-4">
+              <div
+                ref={cropBoxRef}
+                className="relative inline-block select-none"
+                style={{ touchAction: 'none' }}
+                onPointerMove={moveDrag}
+                onPointerUp={endDrag}
+                onPointerCancel={endDrag}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={originalPreview || preview}
+                  alt="Documento a recortar"
+                  draggable={false}
+                  className="block max-w-full max-h-[60vh] w-auto h-auto pointer-events-none"
+                />
+                {corners && (
+                  <>
+                    <svg
+                      className="absolute inset-0 w-full h-full pointer-events-none"
+                      viewBox={`0 0 ${imageSize.width || 1} ${imageSize.height || 1}`}
+                      preserveAspectRatio="none"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        fill="rgba(0,0,0,0.55)"
+                        d={`M0 0H${imageSize.width}V${imageSize.height}H0Z M${corners.topLeft.x} ${corners.topLeft.y}L${corners.topRight.x} ${corners.topRight.y}L${corners.bottomRight.x} ${corners.bottomRight.y}L${corners.bottomLeft.x} ${corners.bottomLeft.y}Z`}
+                      />
+                      <polygon
+                        points={`${corners.topLeft.x},${corners.topLeft.y} ${corners.topRight.x},${corners.topRight.y} ${corners.bottomRight.x},${corners.bottomRight.y} ${corners.bottomLeft.x},${corners.bottomLeft.y}`}
+                        fill="none"
+                        stroke="#10b981"
+                        strokeWidth={3}
+                        vectorEffect="non-scaling-stroke"
+                      />
+                    </svg>
+                    {(['topLeft', 'topRight', 'bottomRight', 'bottomLeft'] as (keyof Corners)[]).map((key) => (
+                      <div
+                        key={key}
+                        onPointerDown={startDrag(key)}
+                        onPointerMove={moveDrag}
+                        onPointerUp={endDrag}
+                        onPointerCancel={endDrag}
+                        className="absolute -translate-x-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center cursor-grab active:cursor-grabbing"
+                        style={{ ...pct(corners[key]), touchAction: 'none' }}
+                        aria-label={`Esquina ${key}`}
+                      >
+                        <div
+                          className={`rounded-full border-2 border-white bg-green-500 shadow-lg transition-transform ${
+                            draggingCorner === key ? 'w-7 h-7 scale-110' : 'w-6 h-6'
+                          }`}
+                        />
+                      </div>
+                    ))}
+                  </>
+                )}
+              </div>
             </div>
           </div>
 
           <div className="flex gap-2">
             <Button
+              type="button"
               onClick={applyCropAndExtract}
               disabled={isProcessing}
               className="flex-1 bg-green-600 hover:bg-green-700"
@@ -431,6 +434,7 @@ export function SimpleDocumentScanner({
               )}
             </Button>
             <Button
+              type="button"
               onClick={skipCrop}
               disabled={isProcessing}
               variant="outline"
@@ -465,6 +469,7 @@ export function SimpleDocumentScanner({
       {selectedFile && !isProcessing && !showCropper && !isDetecting && (
         <div className="flex justify-center">
           <Button
+            type="button"
             onClick={() => {
               if (selectedFile && imageSize.width > 0) {
                 detectAndShowBorders(selectedFile, imageSize.width, imageSize.height)
