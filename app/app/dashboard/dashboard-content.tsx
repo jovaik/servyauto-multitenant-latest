@@ -60,6 +60,7 @@ export function DashboardContent({ session }: DashboardContentProps) {
   const [balanceMensual, setBalanceMensual] = useState(0)
   const [monthlyData, setMonthlyData] = useState<any[]>([])
   const [topConceptos, setTopConceptos] = useState<any[]>([])
+  const [desglosePagos, setDesglosePagos] = useState<any[]>([])
   
   const [citasRecientes, setCitasRecientes] = useState<CitaReciente[]>([])
   const [loading, setLoading] = useState(true)
@@ -84,6 +85,7 @@ export function DashboardContent({ session }: DashboardContentProps) {
           setBalanceMensual(statsData.balanceMensual || 0)
           setMonthlyData(statsData.monthlyData || [])
           setTopConceptos(statsData.topConceptos || [])
+          setDesglosePagos(statsData.desglosePagos || [])
         }
 
         if (citasResponse.ok) {
@@ -283,6 +285,58 @@ export function DashboardContent({ session }: DashboardContentProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Desglose por método de pago */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <CreditCard className="mr-2 h-5 w-5" />
+            Pagos por método ({getPeriodLabel()})
+          </CardTitle>
+          <CardDescription>
+            Relación de ingresos cobrados por cada método de pago
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {desglosePagos.length > 0 ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {desglosePagos.map((p: any) => {
+                const labels: Record<string, string> = {
+                  EFECTIVO: 'Efectivo',
+                  TARJETA: 'Tarjeta',
+                  SUMUP: 'SumUp',
+                  TPV_SUMUP: 'SumUp',
+                  UNICAJA: 'Unicaja',
+                  TPV_UNICAJA: 'Unicaja',
+                  REVOLUT: 'Revolut',
+                  TRANSFERENCIA: 'Transferencia',
+                  BIZUM: 'Bizum',
+                  'SIN ESPECIFICAR': 'Sin especificar',
+                }
+                const colors: Record<string, string> = {
+                  EFECTIVO: 'text-green-600',
+                  SUMUP: 'text-blue-600',
+                  TPV_SUMUP: 'text-blue-600',
+                  UNICAJA: 'text-red-600',
+                  TPV_UNICAJA: 'text-red-600',
+                  REVOLUT: 'text-slate-700',
+                }
+                return (
+                  <div key={p.metodo} className="rounded-lg border bg-gray-50 p-4">
+                    <p className="text-sm font-medium text-gray-600">{labels[p.metodo] || p.metodo}</p>
+                    <p className={`text-2xl font-bold ${colors[p.metodo] || 'text-gray-900'}`}>€{Number(p.total).toFixed(2)}</p>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <CreditCard className="mx-auto h-12 w-12 text-gray-300 mb-2" />
+              <p className="text-sm">No hay pagos registrados en este período</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Horas de Servicio */}
       <HorasServicioCard />

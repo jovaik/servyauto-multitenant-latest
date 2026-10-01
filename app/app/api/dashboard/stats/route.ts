@@ -196,6 +196,33 @@ export async function GET(req: NextRequest) {
     const gastosTotal = gastosPeriodo._sum?.importe || 0
     const balancePeriodo = facturacionTotal - gastosTotal
 
+    // Desglose por método de pago (facturas pagadas + citas completadas sin factura)
+    const [facturasPorMetodo, citasPorMetodo] = await Promise.all([
+      prisma.factura.groupBy({
+        by: ['metodoPago'],
+        where: { fecha: { gte: startDate, lte: endDate }, estado: 'PAGADA', ...localFilter },
+        _sum: { total: true },
+      }),
+      prisma.cita.groupBy({
+        by: ['metodoPago'],
+        where: { fecha: { gte: startDate, lte: endDate }, estado: 'COMPLETADA', id: { notIn: citasConFacturaIds }, ...localFilter },
+        _sum: { total: true },
+      }),
+    ])
+
+    const pagosMap: Record<string, number> = {}
+    for (const f of facturasPorMetodo as any[]) {
+      const m = f.metodoPago || 'SIN ESPECIFICAR'
+      pagosMap[m] = (pagosMap[m] || 0) + (f._sum?.total || 0)
+    }
+    for (const c of citasPorMetodo as any[]) {
+      const m = c.metodoPago || 'SIN ESPECIFICAR'
+      pagosMap[m] = (pagosMap[m] || 0) + (c._sum?.total || 0)
+    }
+    const desglosePagos = Object.entries(pagosMap)
+      .map(([metodo, total]) => ({ metodo, total }))
+      .sort((a, b) => b.total - a.total)
+
     // Ingresos vs Gastos por mes (año actual)
     const currentYear = today.getFullYear()
     const monthlyData = []
@@ -341,6 +368,7 @@ export async function GET(req: NextRequest) {
       balanceMensual: balancePeriodo,
       clientesTotal: clientesPeriodo || 0,
       citasPendientes: citasPendientes || 0,
+      desglosePagos,
       monthlyData,
       topConceptos,
     })

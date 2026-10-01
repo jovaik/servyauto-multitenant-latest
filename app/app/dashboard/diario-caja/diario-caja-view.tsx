@@ -220,6 +220,14 @@ export default function DiarioCajaView() {
       .filter(m => m.tipo === 'GASTO' && m.metodoPago === 'TPV_UNICAJA')
       .reduce((sum, m) => sum + m.importe, 0)
 
+    const ingresosRevolut = movimientosFiltrados
+      .filter(m => m.tipo === 'INGRESO' && m.metodoPago === 'REVOLUT')
+      .reduce((sum, m) => sum + m.importe, 0)
+
+    const gastosRevolut = movimientosFiltrados
+      .filter(m => m.tipo === 'GASTO' && m.metodoPago === 'REVOLUT')
+      .reduce((sum, m) => sum + m.importe, 0)
+
     return {
       ingresos,
       gastos,
@@ -227,7 +235,8 @@ export default function DiarioCajaView() {
       // Por método de pago
       efectivo: ingresosEfectivo - gastosEfectivo,
       tpvSumUp: ingresosSumUp - gastosSumUp,
-      tpvUnicaja: ingresosUnicaja - gastosUnicaja
+      tpvUnicaja: ingresosUnicaja - gastosUnicaja,
+      revolut: ingresosRevolut - gastosRevolut
     }
   }, [movimientosFiltrados])
 
@@ -330,7 +339,7 @@ export default function DiarioCajaView() {
       </div>
 
       {/* Desglose por método de pago */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="border-l-4 border-l-yellow-500 bg-yellow-50/50">
           <CardContent className="pt-4">
             <div className="flex items-center justify-between">
@@ -372,6 +381,21 @@ export default function DiarioCajaView() {
                 <p className="text-xs text-gray-500">Ingresos - Gastos</p>
               </div>
               <Building2 className="h-10 w-10 text-cyan-600 opacity-50" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-slate-700 bg-slate-50/50">
+          <CardContent className="pt-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 font-medium">📱 Revolut</p>
+                <p className={`text-2xl font-bold ${totales.revolut >= 0 ? 'text-slate-800' : 'text-red-600'}`}>
+                  €{totales.revolut.toFixed(2)}
+                </p>
+                <p className="text-xs text-gray-500">Ingresos - Gastos</p>
+              </div>
+              <CreditCard className="h-10 w-10 text-slate-700 opacity-50" />
             </div>
           </CardContent>
         </Card>

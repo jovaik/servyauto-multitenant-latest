@@ -126,6 +126,7 @@ const METODO_LABELS: Record<string, string> = {
   EFECTIVO: 'Efectivo',
   TPV_SUMUP: 'TPV SumUp',
   TPV_UNICAJA: 'TPV Unicaja',
+  REVOLUT: 'Revolut',
   SIN_ESPECIFICAR: 'Sin especificar',
 }
 

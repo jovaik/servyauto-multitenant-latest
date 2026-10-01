@@ -250,7 +250,8 @@ export function FacturacionView() {
     const metodos: { [key: string]: string } = {
       'EFECTIVO': 'Efectivo',
       'TPV_SUMUP': 'TPV SUMUP',
-      'TPV_UNICAJA': 'TPV UNICAJA'
+      'TPV_UNICAJA': 'TPV UNICAJA',
+      'REVOLUT': 'Revolut'
     }
     return metodos[metodoPago] || metodoPago
   }
