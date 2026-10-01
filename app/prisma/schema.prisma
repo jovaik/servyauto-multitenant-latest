@@ -531,6 +531,30 @@ model SumUpReader {
   @@map("sumup_readers")
 }
 
+model revolut_transactions {
+  id                String   @id
+  order_id          String   @unique
+  checkout_url      String?
+  amount            Float
+  currency          String   @default("EUR")
+  status            String   // PENDING | PAID | FAILED | CANCELLED
+  description       String?
+  reference         String?
+  citaId            String?
+  facturaId         String?
+  localId           String?
+  creadoPorId       String?
+  creadoPorNombre   String?
+  reconciled        Boolean  @default(false)
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  @@index([citaId])
+  @@index([facturaId])
+  @@index([status])
+  @@map("revolut_transactions")
+}
+
 model SumUpTransaction {
   id              String      @id @default(cuid())
   checkoutId      String      @unique
@@ -575,6 +599,7 @@ enum MetodoPago {
   EFECTIVO
   TPV_SUMUP
   TPV_UNICAJA
+  REVOLUT
 }
 
 enum EstadoFactura {

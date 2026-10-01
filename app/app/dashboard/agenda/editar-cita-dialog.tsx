@@ -29,6 +29,7 @@ import { useToast } from '@/hooks/use-toast'
 import { Cita, EstadoCita, MetodoPago } from '@/lib/types'
 import { Checkbox } from '@/components/ui/checkbox'
 import { CobrarSumUpDialog } from '@/components/cobrar-sumup-dialog'
+import { CobrarRevolutDialog } from '@/components/cobrar-revolut-dialog'
 import { getSelectedLocalId } from '@/lib/local-store'
 import { 
   detectVehicleCategory, 
@@ -103,6 +104,7 @@ export function EditarCitaDialog({
   const [servicios, setServicios] = useState<Servicio[]>([])
   const [serviciosSeleccionados, setServiciosSeleccionados] = useState<string[]>([])
   const [showSumUpDialog, setShowSumUpDialog] = useState(false)
+  const [showRevolutDialog, setShowRevolutDialog] = useState(false)
   const [locales, setLocales] = useState<Local[]>([])
   const [localIdSeleccionado, setLocalIdSeleccionado] = useState<string>('')
   const [categoriaVehiculo, setCategoriaVehiculo] = useState<VehicleCategory | null>(null)
@@ -758,7 +760,7 @@ export function EditarCitaDialog({
             {formData.metodoPago && (
               <div className="flex items-center gap-2 p-2 bg-green-50 rounded-lg border border-green-200">
                 <Badge variant="outline" className="bg-green-100 text-green-800">
-                  ✅ Pagado: {formData.metodoPago === 'EFECTIVO' ? 'Efectivo' : formData.metodoPago === 'TPV_SUMUP' ? 'TPV SumUp' : 'TPV Unicaja'}
+                  ✅ Pagado: {formData.metodoPago === 'EFECTIVO' ? 'Efectivo' : formData.metodoPago === 'TPV_SUMUP' ? 'TPV SumUp' : formData.metodoPago === 'REVOLUT' ? 'Revolut' : 'TPV Unicaja'}
                 </Badge>
                 <Button 
                   type="button" 
@@ -813,6 +815,17 @@ export function EditarCitaDialog({
                 >
                   <Smartphone className="h-5 w-5 text-cyan-600" />
                   <span className="text-xs font-medium text-center leading-tight">Generar Link SumUp</span>
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-14 flex flex-col items-center justify-center gap-1 border-2 hover:bg-slate-100 hover:border-slate-700"
+                  onClick={() => setShowRevolutDialog(true)}
+                  disabled={!cita?.total || cita.total <= 0}
+                >
+                  <Smartphone className="h-5 w-5 text-slate-800" />
+                  <span className="text-xs font-medium text-center leading-tight">Generar Link Revolut</span>
                 </Button>
               </div>
             )}
@@ -897,6 +910,29 @@ export function EditarCitaDialog({
         toast({
           title: '✅ Pago completado',
           description: `Cobro de ${cita?.total?.toFixed(2)}€ realizado con SumUp`,
+        })
+      }}
+      onPaymentFailed={() => {
+        toast({
+          title: 'Pago fallido',
+          description: 'El pago no se pudo completar',
+          variant: 'destructive',
+        })
+      }}
+    />
+
+    {/* Dialog de Cobro Revolut */}
+    <CobrarRevolutDialog
+      open={showRevolutDialog}
+      onOpenChange={setShowRevolutDialog}
+      amount={cita?.total || 0}
+      description={`${cita?.cliente?.nombre || 'Cliente'} - ${cita?.vehiculo?.matricula || 'Vehículo'}`}
+      citaId={cita?.id}
+      onPaymentComplete={() => {
+        setFormData(prev => ({ ...prev, metodoPago: 'REVOLUT' }))
+        toast({
+          title: '✅ Pago completado',
+          description: `Cobro de ${cita?.total?.toFixed(2)}€ realizado con Revolut`,
         })
       }}
       onPaymentFailed={() => {

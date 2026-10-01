@@ -130,6 +130,7 @@ export enum MetodoPago {
   EFECTIVO = "EFECTIVO",
   TPV_SUMUP = "TPV_SUMUP",
   TPV_UNICAJA = "TPV_UNICAJA",
+  REVOLUT = "REVOLUT",
 }
 
 export enum RolUsuario {
