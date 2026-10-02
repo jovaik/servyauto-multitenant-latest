@@ -15,6 +15,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Sin permisos" }, { status: 403 });
     }
     const body = await req.json();
+    let actualizado = false;
+    const respuesta: Record<string, unknown> = { ok: true };
     if (body.propietarioPct !== undefined) {
       const pct = Math.max(0, Math.min(100, parseFloat(body.propietarioPct) || 0));
       await prisma.configuracion.upsert({
@@ -28,9 +30,29 @@ export async function POST(req: NextRequest) {
           descripcion: 'Porcentaje del propietario sobre el neto del local',
         },
       });
-      return NextResponse.json({ ok: true, propietarioPct: pct });
+      respuesta.propietarioPct = pct;
+      actualizado = true;
     }
-    return NextResponse.json({ error: "No hay datos para actualizar" }, { status: 400 });
+    if (body.numPartesIguales !== undefined) {
+      const partes = Math.max(2, Math.min(10, Math.round(parseFloat(body.numPartesIguales) || 3)));
+      await prisma.configuracion.upsert({
+        where: { clave: 'liquidaciones.numPartesIguales' },
+        update: { valor: String(partes) },
+        create: {
+          clave: 'liquidaciones.numPartesIguales',
+          valor: String(partes),
+          tipo: 'NUMERO',
+          categoria: 'liquidaciones',
+          descripcion: 'Número de partes iguales para el reparto del neto (Modelo B)',
+        },
+      });
+      respuesta.numPartesIguales = partes;
+      actualizado = true;
+    }
+    if (!actualizado) {
+      return NextResponse.json({ error: "No hay datos para actualizar" }, { status: 400 });
+    }
+    return NextResponse.json(respuesta);
   } catch (error: unknown) {
     console.error("Error actualizando config liquidaciones:", error);
     return NextResponse.json({ error: "Error al guardar" }, { status: 500 });
@@ -246,6 +268,44 @@ export async function GET(req: NextRequest) {
     const netoLocal = ingresosTotales - gastosTotales;
     const resultadoPropietario = (netoLocal * propietarioPct) / 100;
 
+    // 7b. SIMULADOR DE MODELOS DE REPARTO (para comparar cuál interesa más)
+    //   Modelo A (actual): se pagan comisiones por acción (incluida la del prescriptor
+    //     que trae el vehículo) y el propietario se queda con el resto del neto.
+    //   Modelo B (partes iguales): el neto se reparte a partes iguales ((Ingresos − Gastos) / N,
+    //     N=3 por defecto), SIN pagar comisión al prescriptor (su % queda solo como dato
+    //     estadístico de control).
+    // Número de partes iguales del Modelo B (configurable, por defecto 3)
+    const configPartes = await prisma.configuracion.findUnique({ where: { clave: 'liquidaciones.numPartesIguales' } });
+    const numPartesIguales = configPartes ? Math.max(2, Math.round(parseFloat(configPartes.valor) || 3)) : 3;
+
+    const comisionesAutonomosA = totalComisiones; // suma de comisiones netas (>0)
+    const propietarioA = netoLocal - comisionesAutonomosA;
+    const porParteB = netoLocal / numPartesIguales;
+    const simulacion = {
+      propietarioPct,
+      numPartesIguales,
+      modeloA: {
+        nombre: 'Comisiones por acción (actual)',
+        descripcion: 'Se restan gastos y se pagan comisiones por acción, incluida la del prescriptor que trae el vehículo. El propietario se queda con el resto del neto.',
+        neto: round2(netoLocal),
+        comisionesAutonomos: round2(comisionesAutonomosA),
+        comisionPrescriptor: round2(totalComisionesPrescriptor),
+        comisionOperario: round2(totalComisionesOperario),
+        comisionResponsable: round2(totalComisionesResponsable),
+        propietario: round2(propietarioA),
+      },
+      modeloB: {
+        nombre: `Partes iguales entre ${numPartesIguales} tras gastos`,
+        descripcion: `Se restan gastos y el neto se reparte a partes iguales ((Ingresos − Gastos) / ${numPartesIguales}). La comisión del prescriptor NO se paga: queda solo a efectos estadísticos de control.`,
+        neto: round2(netoLocal),
+        numPartes: numPartesIguales,
+        porParte: round2(porParteB),
+        propietario: round2(porParteB),
+        comisionPrescriptorInformativa: round2(totalComisionesPrescriptor),
+      },
+      diferenciaPropietario: round2(porParteB - propietarioA),
+    };
+
     // Si es OPERADOR, devolver solo su propia liquidación
     const liquidacionesFiltradas = colaboradorIdUsuario
       ? liquidaciones.filter(l => l.colaborador.id === colaboradorIdUsuario)
@@ -255,6 +315,7 @@ export async function GET(req: NextRequest) {
       periodo: { desde: fechaDesde, hasta: fechaHasta },
       vistaRestringida: !!colaboradorIdUsuario,
       propietarioPct,
+      simulacion,
       resumen: {
         ingresosTotales: round2(ingresosTotales),
         gastosTotales: round2(gastosTotales),

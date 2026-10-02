@@ -35,10 +35,36 @@ interface LiquidacionColaborador {
   citas: { id: string; fecha: string; total: number | null; cliente: string; vehiculo: string; servicios: string }[]
 }
 
+interface SimulacionData {
+  propietarioPct: number
+  numPartesIguales: number
+  modeloA: {
+    nombre: string
+    descripcion: string
+    neto: number
+    comisionesAutonomos: number
+    comisionPrescriptor: number
+    comisionOperario: number
+    comisionResponsable: number
+    propietario: number
+  }
+  modeloB: {
+    nombre: string
+    descripcion: string
+    neto: number
+    numPartes: number
+    porParte: number
+    propietario: number
+    comisionPrescriptorInformativa: number
+  }
+  diferenciaPropietario: number
+}
+
 interface LiquidacionData {
   periodo: { desde: string; hasta: string }
   vistaRestringida?: boolean
   propietarioPct?: number
+  simulacion?: SimulacionData
   resumen: {
     ingresosTotales: number
     gastosTotales: number
@@ -80,6 +106,8 @@ export default function LiquidacionesView() {
   const [error, setError] = useState<string | null>(null)
   const [editPropPct, setEditPropPct] = useState<string>('50')
   const [savingPct, setSavingPct] = useState(false)
+  const [editPartes, setEditPartes] = useState<string>('3')
+  const [savingPartes, setSavingPartes] = useState(false)
 
   const calcular = useCallback(async () => {
     setLoading(true)
@@ -92,6 +120,7 @@ export default function LiquidacionesView() {
         const d = await res.json()
         setData(d)
         if (d.propietarioPct !== undefined) setEditPropPct(String(d.propietarioPct))
+        if (d.simulacion?.numPartesIguales !== undefined) setEditPartes(String(d.simulacion.numPartesIguales))
       } else {
         const err = await res.json()
         setError(err.error || 'Error al calcular')
@@ -153,6 +182,19 @@ export default function LiquidacionesView() {
     finally { setSavingPct(false) }
   }
 
+  const guardarPartes = async () => {
+    setSavingPartes(true)
+    try {
+      const res = await fetch('/api/liquidaciones', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ numPartesIguales: parseInt(editPartes) || 3 }),
+      })
+      if (res.ok) calcular()
+    } catch (e) { console.error(e) }
+    finally { setSavingPartes(false) }
+  }
+
   const exportCSV = () => {
     if (!data) return
     const rows = [
@@ -179,6 +221,23 @@ export default function LiquidacionesView() {
       ['Total Comisiones Encargados', '', '', data.resumen.totalComisionesResponsable.toFixed(2)],
       ['Total Comisiones (neto)', '', '', data.resumen.totalComisiones.toFixed(2)],
       [`Propietario (${data.propietarioPct ?? 50}% del neto)`, '', '', data.resumen.resultadoPropietario.toFixed(2)],
+      ...(data.simulacion ? [
+        [],
+        ['SIMULADOR DE REPARTO'],
+        ['MODELO A - Comisiones por acción (actual)'],
+        ['Neto (Ingresos - Gastos)', '', '', data.simulacion.modeloA.neto.toFixed(2)],
+        ['Comisiones a autónomos', '', '', data.simulacion.modeloA.comisionesAutonomos.toFixed(2)],
+        ['  de ellas, prescriptor', '', '', data.simulacion.modeloA.comisionPrescriptor.toFixed(2)],
+        ['Propietario (Modelo A)', '', '', data.simulacion.modeloA.propietario.toFixed(2)],
+        [],
+        [`MODELO B - Partes iguales entre ${data.simulacion.modeloB.numPartes}`],
+        ['Neto (Ingresos - Gastos)', '', '', data.simulacion.modeloB.neto.toFixed(2)],
+        ['Por parte', '', '', data.simulacion.modeloB.porParte.toFixed(2)],
+        ['Comisión prescriptor (solo estadística)', '', '', data.simulacion.modeloB.comisionPrescriptorInformativa.toFixed(2)],
+        ['Propietario (Modelo B, 1 parte)', '', '', data.simulacion.modeloB.propietario.toFixed(2)],
+        [],
+        ['Diferencia para el propietario (B - A)', '', '', data.simulacion.diferenciaPropietario.toFixed(2)],
+      ] : []),
     ]
     const csv = rows.map(r => r.join(';')).join('\n')
     const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' })
@@ -347,6 +406,90 @@ export default function LiquidacionesView() {
               </div>
             </CardContent>
           </Card>}
+
+          {/* Simulador de reparto - solo admin/propietario */}
+          {!data.vistaRestringida && data.simulacion && (
+            <Card className="border-2 border-primary/30">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Calculator className="h-5 w-5 text-primary" />
+                  Simulador de Reparto — ¿qué modelo interesa más?
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Compara cuánto se lleva el propietario con cada modelo para el período y local seleccionados.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Modelo A */}
+                  <div className="p-4 rounded-lg border bg-orange-50/50 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Badge className="bg-orange-100 text-orange-800">Modelo A</Badge>
+                      <span className="font-semibold text-sm">{data.simulacion.modeloA.nombre}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{data.simulacion.modeloA.descripcion}</p>
+                    <div className="space-y-1 text-sm pt-1">
+                      <div className="flex justify-between"><span>Neto (Ingresos − Gastos)</span><span className="font-medium">{data.simulacion.modeloA.neto.toFixed(2)} €</span></div>
+                      <div className="flex justify-between text-muted-foreground"><span>− Comisiones a autónomos</span><span>-{data.simulacion.modeloA.comisionesAutonomos.toFixed(2)} €</span></div>
+                      <div className="flex justify-between text-xs text-purple-700 pl-3"><span>· de ellas, prescriptor</span><span>{data.simulacion.modeloA.comisionPrescriptor.toFixed(2)} €</span></div>
+                    </div>
+                    <Separator />
+                    <div className="flex justify-between items-center pt-1">
+                      <span className="font-bold">Propietario</span>
+                      <span className={`text-xl font-bold ${data.simulacion.modeloA.propietario >= 0 ? 'text-green-700' : 'text-red-600'}`}>{data.simulacion.modeloA.propietario.toFixed(2)} €</span>
+                    </div>
+                  </div>
+
+                  {/* Modelo B */}
+                  <div className="p-4 rounded-lg border bg-green-50/50 space-y-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge className="bg-green-100 text-green-800">Modelo B</Badge>
+                      <span className="font-semibold text-sm">Partes iguales tras gastos</span>
+                      <div className="flex items-center gap-1 ml-auto">
+                        <span className="text-xs text-muted-foreground">Partes:</span>
+                        <Input
+                          type="number"
+                          min={2}
+                          max={10}
+                          step={1}
+                          value={editPartes}
+                          onChange={e => setEditPartes(e.target.value)}
+                          className="w-14 h-7 text-sm text-center"
+                        />
+                        {String(data.simulacion.numPartesIguales) !== editPartes && (
+                          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={guardarPartes} disabled={savingPartes}>
+                            {savingPartes ? '...' : 'Guardar'}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{data.simulacion.modeloB.descripcion}</p>
+                    <div className="space-y-1 text-sm pt-1">
+                      <div className="flex justify-between"><span>Neto (Ingresos − Gastos)</span><span className="font-medium">{data.simulacion.modeloB.neto.toFixed(2)} €</span></div>
+                      <div className="flex justify-between text-muted-foreground"><span>÷ {data.simulacion.modeloB.numPartes} partes iguales</span><span>{data.simulacion.modeloB.porParte.toFixed(2)} € / parte</span></div>
+                      <div className="flex justify-between text-xs text-purple-700 pl-3"><span>· comisión prescriptor (solo estadística)</span><span>{data.simulacion.modeloB.comisionPrescriptorInformativa.toFixed(2)} €</span></div>
+                    </div>
+                    <Separator />
+                    <div className="flex justify-between items-center pt-1">
+                      <span className="font-bold">Propietario (1 parte)</span>
+                      <span className={`text-xl font-bold ${data.simulacion.modeloB.propietario >= 0 ? 'text-green-700' : 'text-red-600'}`}>{data.simulacion.modeloB.propietario.toFixed(2)} €</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Veredicto */}
+                <div className={`p-3 rounded-lg text-center text-sm font-medium ${data.simulacion.diferenciaPropietario > 0 ? 'bg-green-100 text-green-800' : data.simulacion.diferenciaPropietario < 0 ? 'bg-orange-100 text-orange-800' : 'bg-muted text-muted-foreground'}`}>
+                  {data.simulacion.diferenciaPropietario > 0 && (
+                    <>Con el <strong>Modelo B (partes iguales)</strong> el propietario se lleva <strong>{Math.abs(data.simulacion.diferenciaPropietario).toFixed(2)} € más</strong> en este período.</>
+                  )}
+                  {data.simulacion.diferenciaPropietario < 0 && (
+                    <>Con el <strong>Modelo A (comisiones)</strong> el propietario se lleva <strong>{Math.abs(data.simulacion.diferenciaPropietario).toFixed(2)} € más</strong> en este período.</>
+                  )}
+                  {data.simulacion.diferenciaPropietario === 0 && (<>Ambos modelos dan el mismo resultado al propietario en este período.</>)}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Liquidación por colaborador */}
           <div className="space-y-4">
