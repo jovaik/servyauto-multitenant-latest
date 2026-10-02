@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
         activo: true,
         puedeEliminar: true,
         localId: true,
+        tpvNombre: true,
         local: {
           select: {
             id: true,
@@ -75,7 +76,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { name, email, password, role, activo, localId, puedeEliminar } = body
+    const { name, email, password, role, activo, localId, puedeEliminar, tpvNombre } = body
 
     if (!email || !password || !role) {
       return NextResponse.json(
@@ -109,6 +110,7 @@ export async function POST(request: NextRequest) {
         activo: activo ?? true,
         puedeEliminar: puedeEliminar ?? false,
         localId: localId || null, // null = superadmin (ve todo)
+        tpvNombre: tpvNombre || null,
       },
       select: {
         id: true,
@@ -118,6 +120,7 @@ export async function POST(request: NextRequest) {
         activo: true,
         puedeEliminar: true,
         localId: true,
+        tpvNombre: true,
         local: {
           select: {
             id: true,

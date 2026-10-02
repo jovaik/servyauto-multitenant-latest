@@ -27,6 +27,7 @@ export async function GET(
         activo: true,
         puedeEliminar: true,
         localId: true,
+        tpvNombre: true,
         local: {
           select: {
             id: true,
@@ -61,7 +62,7 @@ export async function PUT(
     }
 
     const body = await request.json()
-    const { name, email, password, role, activo, localId, puedeEliminar } = body
+    const { name, email, password, role, activo, localId, puedeEliminar, tpvNombre } = body
 
     // Verificar si el usuario existe
     const existingUser = await prisma.user.findUnique({
@@ -100,6 +101,9 @@ export async function PUT(
     if (localId !== undefined) {
       updateData.localId = localId === '' || localId === null ? null : localId
     }
+    if (tpvNombre !== undefined) {
+      updateData.tpvNombre = tpvNombre === '' || tpvNombre === null ? null : tpvNombre
+    }
 
     // Si se proporciona una nueva contraseña, encriptarla
     if (password && password.trim() !== '') {
@@ -122,6 +126,7 @@ export async function PUT(
         activo: true,
         puedeEliminar: true,
         localId: true,
+        tpvNombre: true,
         local: {
           select: {
             id: true,

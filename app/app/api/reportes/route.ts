@@ -111,6 +111,8 @@ export async function GET(request: NextRequest) {
       citasCanceladas,
       totalClientes,
       facturasDetalle,
+      facturasTpvDetalle,
+      citasTpvDetalle,
       gastosDetalle,
       ingresosAdicionalesDetalle,
     ] = await Promise.all([
@@ -169,6 +171,26 @@ export async function GET(request: NextRequest) {
       prisma.factura.groupBy({
         by: ['metodoPago'],
         where: { fecha: { gte: startDate, lte: endDate }, estado: 'PAGADA', ...localFilter },
+        _sum: { total: true },
+        _count: true,
+      }),
+      // Detalle facturas por TPV (autónomo)
+      prisma.factura.groupBy({
+        by: ['tpvNombre'],
+        where: { fecha: { gte: startDate, lte: endDate }, estado: 'PAGADA', tpvNombre: { not: null }, ...localFilter },
+        _sum: { total: true },
+        _count: true,
+      }),
+      // Detalle citas sin factura por TPV (autónomo)
+      prisma.cita.groupBy({
+        by: ['tpvNombre'],
+        where: {
+          fecha: { gte: startDate, lte: endDate },
+          estado: 'COMPLETADA',
+          tpvNombre: { not: null },
+          id: { notIn: citasConFacturaIds.length > 0 ? citasConFacturaIds : ['__none__'] },
+          ...localFilter
+        },
         _sum: { total: true },
         _count: true,
       }),
@@ -361,6 +383,22 @@ export async function GET(request: NextRequest) {
         total: f._sum?.total || 0,
         count: f._count || 0,
       })),
+      desgloseTPV: (() => {
+        const map: { [key: string]: { tpv: string; total: number; count: number } } = {}
+        for (const f of facturasTpvDetalle as any[]) {
+          const k = f.tpvNombre || 'SIN TPV'
+          if (!map[k]) map[k] = { tpv: k, total: 0, count: 0 }
+          map[k].total += f._sum?.total || 0
+          map[k].count += f._count || 0
+        }
+        for (const c of citasTpvDetalle as any[]) {
+          const k = c.tpvNombre || 'SIN TPV'
+          if (!map[k]) map[k] = { tpv: k, total: 0, count: 0 }
+          map[k].total += c._sum?.total || 0
+          map[k].count += c._count || 0
+        }
+        return Object.values(map).sort((a, b) => b.total - a.total)
+      })(),
       desgloseGastos: gastosDetalle.map((g: any) => ({
         tipo: g.tipoGasto,
         total: g._sum?.importe || 0,

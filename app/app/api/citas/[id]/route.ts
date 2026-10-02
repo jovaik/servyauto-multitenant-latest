@@ -64,6 +64,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       localId,
       prescriptorId,
       realizadoPorId,
+      tpvUserId,
+      tpvNombre,
     } = body
 
     console.log('=== INICIO ACTUALIZACIÓN CITA ===')
@@ -166,6 +168,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     // Colaboradores
     if (prescriptorId !== undefined) updateData.prescriptorId = prescriptorId || null
     if (realizadoPorId !== undefined) updateData.realizadoPorId = realizadoPorId || null
+    if (tpvUserId !== undefined) updateData.tpvUserId = tpvUserId || null
+    if (tpvNombre !== undefined) updateData.tpvNombre = tpvNombre || null
     
     if (precioFinal !== undefined) updateData.total = precioFinal
 
@@ -347,6 +351,9 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       if (metodoPago) {
         facturaUpdateData.metodoPago = metodoPago
       }
+      // Propagar el TPV usado a la factura
+      if (cita.tpvUserId !== undefined) facturaUpdateData.tpvUserId = cita.tpvUserId || null
+      if (cita.tpvNombre !== undefined) facturaUpdateData.tpvNombre = cita.tpvNombre || null
       
       const facturaActualizada = await prisma.factura.update({
         where: { id: cita.facturas.id },
@@ -426,6 +433,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
           clienteId: cita.clienteId,
           citaId: cita.id,
           localId: cita.localId, // ✅ Asignar el local de la cita a la factura
+          tpvUserId: cita.tpvUserId || null,
+          tpvNombre: cita.tpvNombre || null,
         }
       })
       

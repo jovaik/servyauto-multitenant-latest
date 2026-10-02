@@ -94,6 +94,8 @@ export async function POST(req: NextRequest) {
       descuentoManual,
       prescriptorId,
       realizadoPorId,
+      tpvUserId,
+      tpvNombre,
     } = body
 
     // Validar campos requeridos
@@ -262,6 +264,8 @@ export async function POST(req: NextRequest) {
         localId: localIdParaCita, // Asignar local
         prescriptorId: prescriptorId || null,
         realizadoPorId: realizadoPorId || null,
+        tpvUserId: tpvUserId || null,
+        tpvNombre: tpvNombre || null,
         // Trazabilidad
         creadoPorId: user?.id || null,
         creadoPorNombre: user?.name || userName,

@@ -52,6 +52,12 @@ interface DesglosePago {
   count: number
 }
 
+interface DesgloseTPV {
+  tpv: string
+  total: number
+  count: number
+}
+
 interface DesgloseGasto {
   tipo: string
   total: number
@@ -106,6 +112,7 @@ interface ReporteData {
   endDate: string
   resumen: Resumen
   desglosePagos: DesglosePago[]
+  desgloseTPV: DesgloseTPV[]
   desgloseGastos: DesgloseGasto[]
   desgloseIngresosAdicionales: DesgloseIngresoAdicional[]
   topServicios: TopServicio[]
@@ -230,6 +237,12 @@ export function ReportesView() {
       rows.push(['DESGLOSE POR MÉTODO DE PAGO'])
       rows.push(['Método', 'Total', 'Operaciones'])
       data.desglosePagos.forEach(p => rows.push([METODO_LABELS[p.metodo] || p.metodo, p.total.toFixed(2), String(p.count)]))
+      rows.push([])
+    }
+    if (data.desgloseTPV && data.desgloseTPV.length > 0) {
+      rows.push(['DESGLOSE POR TPV (AUTÓNOMO)'])
+      rows.push(['TPV', 'Total', 'Operaciones'])
+      data.desgloseTPV.forEach(t => rows.push([t.tpv, t.total.toFixed(2), String(t.count)]))
       rows.push([])
     }
     if (data.desgloseGastos.length > 0) {
@@ -477,6 +490,31 @@ export function ReportesView() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Desglose por TPV (autónomo) */}
+            {data.desgloseTPV && data.desgloseTPV.length > 0 && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <CreditCard className="h-4 w-4 text-orange-500" />
+                    Cobros por TPV (autónomo)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {data.desgloseTPV.map((t, i) => (
+                      <div key={i} className="flex items-center justify-between py-2 border-b last:border-0 dark:border-gray-700">
+                        <div>
+                          <span className="text-sm font-medium">💳 {t.tpv}</span>
+                          <span className="text-xs text-gray-400 ml-2">({t.count} ops)</span>
+                        </div>
+                        <span className="text-sm font-semibold text-green-600">{formatCurrency(t.total)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Desglose gastos */}
             <Card>

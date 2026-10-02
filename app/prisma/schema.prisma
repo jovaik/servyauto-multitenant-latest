@@ -48,6 +48,7 @@ model User {
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
   localId          String?
+  tpvNombre        String?
   accounts         Account[]
   sessions         Session[]
   local            Local?      @relation(fields: [localId], references: [id])
@@ -232,6 +233,8 @@ model Cita {
   completadoPorNombre String?
   creadoPorId         String?
   creadoPorNombre     String?
+  tpvUserId           String?
+  tpvNombre           String?
   cita_servicios      cita_servicios[]
   cliente             Cliente          @relation(fields: [clienteId], references: [id])
   local               Local?           @relation(fields: [localId], references: [id])
@@ -266,6 +269,8 @@ model Factura {
   creadoPorNombre  String?
   fechaPago        DateTime?
   localId          String?
+  tpvUserId        String?
+  tpvNombre        String?
   factura_items    factura_items[]
   citas            Cita?           @relation(fields: [citaId], references: [id])
   cliente          Cliente         @relation(fields: [clienteId], references: [id])

@@ -47,6 +47,7 @@ interface Usuario {
   activo: boolean
   puedeEliminar: boolean
   localId: string | null
+  tpvNombre?: string | null
   local?: Local | null
   localesAsignados?: { localId: string, local: Local }[]
   createdAt: string
@@ -70,6 +71,7 @@ export function UsuariosView() {
     activo: true,
     puedeEliminar: false,
     localId: 'ALL', // ALL = todos los locales (superadmin)
+    tpvNombre: '', // Nombre del TPV propio del usuario (autónomo)
     localesAsignados: [] as string[] // Para GRUPO_ADMIN: IDs de locales asignados
   })
 
@@ -118,7 +120,8 @@ export function UsuariosView() {
           role: formData.role,
           activo: formData.activo,
           puedeEliminar: formData.puedeEliminar,
-          localId: formData.role === 'GRUPO_ADMIN' ? null : (formData.localId === 'ALL' ? null : formData.localId)
+          localId: formData.role === 'GRUPO_ADMIN' ? null : (formData.localId === 'ALL' ? null : formData.localId),
+          tpvNombre: formData.tpvNombre
         })
       })
 
@@ -144,6 +147,7 @@ export function UsuariosView() {
           activo: true,
           puedeEliminar: false,
           localId: 'ALL',
+          tpvNombre: '',
           localesAsignados: []
         })
         fetchUsuarios()
@@ -168,7 +172,8 @@ export function UsuariosView() {
         role: formData.role,
         activo: formData.activo,
         puedeEliminar: formData.puedeEliminar,
-        localId: formData.role === 'GRUPO_ADMIN' ? null : (formData.localId === 'ALL' ? null : formData.localId)
+        localId: formData.role === 'GRUPO_ADMIN' ? null : (formData.localId === 'ALL' ? null : formData.localId),
+        tpvNombre: formData.tpvNombre
       }
 
       // Solo incluir password si se proporcionó uno nuevo
@@ -210,6 +215,7 @@ export function UsuariosView() {
           activo: true,
           puedeEliminar: false,
           localId: 'ALL',
+          tpvNombre: '',
           localesAsignados: []
         })
         fetchUsuarios()
@@ -269,6 +275,7 @@ export function UsuariosView() {
       activo: usuario.activo,
       puedeEliminar: usuario.puedeEliminar ?? false,
       localId: usuario.localId || 'ALL',
+      tpvNombre: usuario.tpvNombre || '',
       localesAsignados
     })
     setOpenEdit(true)
@@ -412,6 +419,19 @@ export function UsuariosView() {
                   className="h-4 w-4 rounded border-gray-300"
                 />
                 <Label htmlFor="puedeEliminar">Puede eliminar registros</Label>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="tpvNombre">TPV propio (opcional)</Label>
+                <Input
+                  id="tpvNombre"
+                  value={formData.tpvNombre}
+                  onChange={(e) => setFormData({ ...formData, tpvNombre: e.target.value.toUpperCase() })}
+                  placeholder="EJ: TPV JUAN"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Nombre del datáfono propio del autónomo. Aparecerá como opción al cobrar con tarjeta.
+                </p>
               </div>
               
               {/* Selector de locales según rol */}
@@ -669,6 +689,19 @@ export function UsuariosView() {
                 className="h-4 w-4 rounded border-gray-300"
               />
               <Label htmlFor="edit-puedeEliminar">Puede eliminar registros</Label>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-tpvNombre">TPV propio (opcional)</Label>
+              <Input
+                id="edit-tpvNombre"
+                value={formData.tpvNombre}
+                onChange={(e) => setFormData({ ...formData, tpvNombre: e.target.value.toUpperCase() })}
+                placeholder="EJ: TPV JUAN"
+              />
+              <p className="text-xs text-muted-foreground">
+                Nombre del datáfono propio del autónomo. Aparecerá como opción al cobrar con tarjeta.
+              </p>
             </div>
             
             {/* Selector de locales según rol */}

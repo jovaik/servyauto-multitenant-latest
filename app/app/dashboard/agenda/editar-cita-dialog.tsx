@@ -114,6 +114,7 @@ export function EditarCitaDialog({
   const [categoriaOverrides, setCategoriaOverrides] = useState<{ marca: string; modelo: string; categoria: string }[]>([])
   const [precioOverrides, setPrecioOverrides] = useState<{ servicioId: string; precio: number }[]>([])
   const [colaboradores, setColaboradores] = useState<{ id: string; nombre: string; rol: string }[]>([])
+  const [tpvsDisponibles, setTpvsDisponibles] = useState<{ id: string; name: string | null; tpvNombre: string }[]>([])
   
   const [formData, setFormData] = useState({
     fecha: '',
@@ -126,6 +127,8 @@ export function EditarCitaDialog({
     ticketsUsados: 0,
     prescriptorId: '',
     realizadoPorId: '',
+    tpvUserId: '',
+    tpvNombre: '',
   })
 
   // Franjas horarias removidas - ahora se usa input type="time" para mayor flexibilidad
@@ -214,11 +217,19 @@ export function EditarCitaDialog({
           ticketsUsados: cita.ticketsUsados || 0,
           prescriptorId: (cita as any).prescriptorId || '',
           realizadoPorId: (cita as any).realizadoPorId || '',
+          tpvUserId: (cita as any).tpvUserId || '',
+          tpvNombre: (cita as any).tpvNombre || '',
         })
         // Cargar colaboradores del local de la cita (o todos si no hay local)
         const citaLocalId = (cita as any).localId
         const colabUrl = citaLocalId ? `/api/colaboradores?localId=${citaLocalId}&activo=true` : `/api/colaboradores?activo=true`
         fetch(colabUrl).then(r => r.ok ? r.json() : []).then(setColaboradores).catch(() => {})
+
+        // Cargar TPVs propios (usuarios con tpvNombre del local)
+        const tpvUrl = citaLocalId ? `/api/usuarios?localId=${citaLocalId}` : `/api/usuarios`
+        fetch(tpvUrl).then(r => r.ok ? r.json() : []).then((us: any[]) => {
+          setTpvsDisponibles((us || []).filter(u => u.tpvNombre && u.activo).map(u => ({ id: u.id, name: u.name, tpvNombre: u.tpvNombre })))
+        }).catch(() => {})
         
         // Establecer el local actual de la cita
         setLocalIdSeleccionado((cita as any).localId || '')
@@ -301,6 +312,8 @@ export function EditarCitaDialog({
         localId: localIdSeleccionado || undefined,
         prescriptorId: formData.prescriptorId || null,
         realizadoPorId: formData.realizadoPorId || null,
+        tpvUserId: formData.tpvUserId || null,
+        tpvNombre: formData.tpvNombre || null,
       }
 
       console.log('Enviando datos:', dataToSend)
@@ -827,6 +840,32 @@ export function EditarCitaDialog({
                   <Smartphone className="h-5 w-5 text-slate-800" />
                   <span className="text-xs font-medium text-center leading-tight">Generar Link Revolut</span>
                 </Button>
+              </div>
+            )}
+
+            {/* Selector de TPV utilizado (autónomo) - solo para pagos con tarjeta */}
+            {tpvsDisponibles.length > 0 && ['TPV_SUMUP', 'TPV_UNICAJA', 'REVOLUT'].includes(formData.metodoPago) && (
+              <div className="space-y-2 pt-1">
+                <Label>💳 TPV utilizado (autónomo)</Label>
+                <Select
+                  value={formData.tpvUserId || '_none'}
+                  onValueChange={(v) => {
+                    if (v === '_none') {
+                      setFormData(prev => ({ ...prev, tpvUserId: '', tpvNombre: '' }))
+                    } else {
+                      const t = tpvsDisponibles.find(x => x.id === v)
+                      setFormData(prev => ({ ...prev, tpvUserId: v, tpvNombre: t?.tpvNombre || '' }))
+                    }
+                  }}
+                >
+                  <SelectTrigger><SelectValue placeholder="Sin especificar" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_none">Sin especificar</SelectItem>
+                    {tpvsDisponibles.map(t => (
+                      <SelectItem key={t.id} value={t.id}>{t.tpvNombre}{t.name ? ` (${t.name})` : ''}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             )}
           </div>
