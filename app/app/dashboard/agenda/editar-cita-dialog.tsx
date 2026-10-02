@@ -944,6 +944,8 @@ export function EditarCitaDialog({
       amount={cita?.total || 0}
       description={`${cita?.cliente?.nombre || 'Cliente'} - ${cita?.vehiculo?.matricula || 'Vehículo'}`}
       citaId={cita?.id}
+      clienteTelefono={cita?.cliente?.telefono}
+      clienteEmail={cita?.cliente?.email}
       onPaymentComplete={(transactionCode) => {
         setFormData(prev => ({ ...prev, metodoPago: 'TPV_SUMUP' }))
         toast({
@@ -967,6 +969,8 @@ export function EditarCitaDialog({
       amount={cita?.total || 0}
       description={`${cita?.cliente?.nombre || 'Cliente'} - ${cita?.vehiculo?.matricula || 'Vehículo'}`}
       citaId={cita?.id}
+      clienteTelefono={cita?.cliente?.telefono}
+      clienteEmail={cita?.cliente?.email}
       onPaymentComplete={() => {
         setFormData(prev => ({ ...prev, metodoPago: 'REVOLUT' }))
         toast({

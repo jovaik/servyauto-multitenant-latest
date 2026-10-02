@@ -20,6 +20,7 @@ import {
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/hooks/use-toast'
+import { SharePaymentLink } from '@/components/share-payment-link'
 
 interface CobrarSumUpDialogProps {
   open: boolean
@@ -29,6 +30,8 @@ interface CobrarSumUpDialogProps {
   reference?: string
   citaId?: string
   facturaId?: string
+  clienteTelefono?: string
+  clienteEmail?: string
   onPaymentComplete?: (transactionCode: string) => void
   onPaymentFailed?: () => void
 }
@@ -48,6 +51,8 @@ export function CobrarSumUpDialog({
   reference,
   citaId,
   facturaId,
+  clienteTelefono,
+  clienteEmail,
   onPaymentComplete,
   onPaymentFailed,
 }: CobrarSumUpDialogProps) {
@@ -364,19 +369,14 @@ export function CobrarSumUpDialog({
         )}
 
         {status === 'polling' && activeTab === 'link' && paymentUrl && (
-          <div className="flex flex-col items-center py-4 space-y-4">
-            <div className="p-4 bg-gray-100 rounded-lg w-full">
-              <p className="text-xs text-gray-500 mb-1">Link de pago:</p>
-              <p className="text-sm font-mono break-all">{paymentUrl}</p>
-            </div>
-            <div className="flex gap-2 w-full">
-              <Button onClick={copyLink} variant="outline" className="flex-1">
-                Copiar link
-              </Button>
-              <Button onClick={openLink} className="flex-1">
-                Abrir link
-              </Button>
-            </div>
+          <div className="flex flex-col items-center py-2 space-y-4">
+            <SharePaymentLink
+              paymentUrl={paymentUrl}
+              amount={amount}
+              descripcion={description}
+              clienteTelefono={clienteTelefono}
+              clienteEmail={clienteEmail}
+            />
             <div className="flex items-center gap-2 text-amber-600">
               <Loader2 className="h-4 w-4 animate-spin" />
               <p className="text-sm">Esperando confirmación de pago...</p>

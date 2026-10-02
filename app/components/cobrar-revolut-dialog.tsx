@@ -5,6 +5,7 @@ import { Loader2, CheckCircle, XCircle, RefreshCw, Link2, Smartphone } from 'luc
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useToast } from '@/hooks/use-toast'
+import { SharePaymentLink } from '@/components/share-payment-link'
 
 interface CobrarRevolutDialogProps {
   open: boolean
@@ -14,6 +15,8 @@ interface CobrarRevolutDialogProps {
   reference?: string
   citaId?: string
   facturaId?: string
+  clienteTelefono?: string
+  clienteEmail?: string
   onPaymentComplete?: (orderId: string) => void
   onPaymentFailed?: () => void
 }
@@ -31,6 +34,8 @@ export function CobrarRevolutDialog({
   reference,
   citaId,
   facturaId,
+  clienteTelefono,
+  clienteEmail,
   onPaymentComplete,
   onPaymentFailed,
 }: CobrarRevolutDialogProps) {
@@ -133,15 +138,6 @@ export function CobrarRevolutDialog({
     resetState()
   }
 
-  const buildShareText = () => {
-    return `Pago ServyAuto: ${amount.toFixed(2)} €\n👉 ${paymentUrl}`
-  }
-
-  const copyLink = () => {
-    navigator.clipboard.writeText(buildShareText())
-    toast({ title: 'Mensaje copiado', description: 'Incluye el importe y el enlace. Pégalo en WhatsApp o SMS' })
-  }
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -178,15 +174,14 @@ export function CobrarRevolutDialog({
         )}
 
         {status === 'polling' && paymentUrl && (
-          <div className="flex flex-col items-center py-4 space-y-4">
-            <div className="p-4 bg-gray-100 rounded-lg w-full">
-              <p className="text-xs text-gray-500 mb-1">Link de pago:</p>
-              <p className="text-sm font-mono break-all">{paymentUrl}</p>
-            </div>
-            <div className="flex gap-2 w-full">
-              <Button onClick={copyLink} variant="outline" className="flex-1">Copiar link</Button>
-              <Button onClick={() => window.open(paymentUrl, '_blank')} variant="outline" className="flex-1">Abrir link</Button>
-            </div>
+          <div className="flex flex-col items-center py-2 space-y-4">
+            <SharePaymentLink
+              paymentUrl={paymentUrl}
+              amount={amount}
+              descripcion={description}
+              clienteTelefono={clienteTelefono}
+              clienteEmail={clienteEmail}
+            />
             <div className="flex items-center gap-2 text-amber-600">
               <Loader2 className="h-4 w-4 animate-spin" />
               <p className="text-sm">Esperando confirmación de pago...</p>
