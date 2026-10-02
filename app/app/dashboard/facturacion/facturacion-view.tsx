@@ -97,6 +97,7 @@ export function FacturacionView() {
     ventasEfectivo: 0,
     ventasTPVSumup: 0,
     ventasTPVUnicaja: 0,
+    ventasRevolut: 0,
     gastosEfectivo: 0,
     efectivoEnCaja: 0
   })
@@ -499,7 +500,7 @@ export function FacturacionView() {
             </div>
 
             {/* Desglose de TPVs */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* TPV SUMUP */}
               <div className="bg-white rounded-lg p-5 shadow-sm border-2 border-purple-200">
                 <div className="flex items-center justify-between mb-3">
@@ -538,6 +539,27 @@ export function FacturacionView() {
                   </span>
                   <span className="text-xs font-medium text-orange-600">
                     Cobrado por tarjeta
+                  </span>
+                </div>
+              </div>
+
+              {/* REVOLUT */}
+              <div className="bg-white rounded-lg p-5 shadow-sm border-2 border-slate-300">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center">
+                    <CreditCard className="h-5 w-5 text-slate-700 mr-2" />
+                    <span className="text-base font-semibold text-gray-700">REVOLUT</span>
+                  </div>
+                </div>
+                <div className="text-3xl font-bold text-slate-700">
+                  €{stats.ventasRevolut.toFixed(2)}
+                </div>
+                <div className="flex justify-between items-center mt-2">
+                  <span className="text-xs text-gray-500">
+                    {stats.totalVentas > 0 ? ((stats.ventasRevolut / stats.totalVentas) * 100).toFixed(1) : '0'}% del total
+                  </span>
+                  <span className="text-xs font-medium text-slate-700">
+                    Cobrado por enlace
                   </span>
                 </div>
               </div>

@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     if (!localContext) {
       return NextResponse.json({
         totalFacturas: 0, totalTickets: 0, ingresosMes: 0, pendientesCobro: 0,
-        totalVentas: 0, ventasEfectivo: 0, ventasTPVSumup: 0, ventasTPVUnicaja: 0,
+        totalVentas: 0, ventasEfectivo: 0, ventasTPVSumup: 0, ventasTPVUnicaja: 0, ventasRevolut: 0,
         gastosEfectivo: 0, efectivoEnCaja: 0, totalCitasCompletadasSinFactura: 0
       })
     }
@@ -209,6 +209,10 @@ export async function GET(request: NextRequest) {
       .filter((f: any) => f.metodoPago === 'TPV_UNICAJA')
       .reduce((sum: number, f: any) => sum + f.total, 0)
 
+    const ventasRevolutFacturas = facturasPagadas
+      .filter((f: any) => f.metodoPago === 'REVOLUT')
+      .reduce((sum: number, f: any) => sum + f.total, 0)
+
     // CITAS completadas SIN factura (evita duplicados)
     const ventasEfectivoCitas = citasCompletadasSinFactura
       .filter((c: any) => c.metodoPago === 'EFECTIVO')
@@ -222,11 +226,16 @@ export async function GET(request: NextRequest) {
       .filter((c: any) => c.metodoPago === 'TPV_UNICAJA')
       .reduce((sum: number, c: any) => sum + (c.total || 0), 0)
 
+    const ventasRevolutCitas = citasCompletadasSinFactura
+      .filter((c: any) => c.metodoPago === 'REVOLUT')
+      .reduce((sum: number, c: any) => sum + (c.total || 0), 0)
+
     // TOTALES combinados (facturas + citas sin factura - evita duplicados)
     const ventasEfectivo = ventasEfectivoFacturas + ventasEfectivoCitas
     const ventasTPVSumup = ventasTPVSumupFacturas + ventasTPVSumupCitas
     const ventasTPVUnicaja = ventasTPVUnicajaFacturas + ventasTPVUnicajaCitas
-    const totalVentas = ventasEfectivo + ventasTPVSumup + ventasTPVUnicaja
+    const ventasRevolut = ventasRevolutFacturas + ventasRevolutCitas
+    const totalVentas = ventasEfectivo + ventasTPVSumup + ventasTPVUnicaja + ventasRevolut
 
     // ====== OBTENER GASTOS PARA RESTAR DEL EFECTIVO ====== (filtrado por local)
     const todosGastos = await prisma.gasto.findMany({
@@ -258,6 +267,7 @@ export async function GET(request: NextRequest) {
       ventasEfectivo,
       ventasTPVSumup,
       ventasTPVUnicaja,
+      ventasRevolut,
       // Gastos
       gastosEfectivo,
       efectivoEnCaja, // Efectivo real que debe haber en caja
