@@ -411,11 +411,12 @@ export default function ServiciosTallerView() {
                   <SelectItem value="EFECTIVO">Efectivo → Genera TICKET</SelectItem>
                   <SelectItem value="TPV_SUMUP">TPV SumUp → Genera TICKET</SelectItem>
                   <SelectItem value="TPV_UNICAJA">TPV Unicaja → Genera FACTURA</SelectItem>
+                  <SelectItem value="REVOLUT">Revolut → Genera TICKET</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
                 {metodoPago === 'TPV_UNICAJA' && '📄 Se generará FACTURA automáticamente'}
-                {(metodoPago === 'EFECTIVO' || metodoPago === 'TPV_SUMUP') && '🎫 Se generará TICKET automáticamente'}
+                {(metodoPago === 'EFECTIVO' || metodoPago === 'TPV_SUMUP' || metodoPago === 'REVOLUT') && '🎫 Se generará TICKET automáticamente'}
               </p>
             </div>
 

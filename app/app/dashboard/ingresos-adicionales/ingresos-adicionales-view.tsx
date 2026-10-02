@@ -353,6 +353,11 @@ export default function IngresosAdicionalesView() {
                         <CreditCard className="h-4 w-4" /> TPV Unicaja
                       </span>
                     </SelectItem>
+                    <SelectItem value="REVOLUT">
+                      <span className="flex items-center gap-2">
+                        <CreditCard className="h-4 w-4" /> Revolut
+                      </span>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>

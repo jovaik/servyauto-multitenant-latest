@@ -1525,6 +1525,12 @@ export function NuevaCitaDialog({
                     TPV UNICAJA
                   </div>
                 </SelectItem>
+                <SelectItem value="REVOLUT">
+                  <div className="flex items-center">
+                    <CreditCard className="mr-2 h-4 w-4" />
+                    Revolut
+                  </div>
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>

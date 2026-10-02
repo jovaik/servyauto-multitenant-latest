@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validar que metodoPago sea uno de los valores válidos del enum
-    const metodosValidos = ['EFECTIVO', 'TPV_SUMUP', 'TPV_UNICAJA']
+    const metodosValidos = ['EFECTIVO', 'TPV_SUMUP', 'TPV_UNICAJA', 'REVOLUT']
     if (!metodosValidos.includes(metodoPago)) {
       console.error('Método de pago inválido:', metodoPago)
       return NextResponse.json(

@@ -278,6 +278,7 @@ export default function EditarServicioTallerDialog({
                   <SelectItem value="EFECTIVO">Efectivo</SelectItem>
                   <SelectItem value="TPV_SUMUP">TPV SumUp</SelectItem>
                   <SelectItem value="TPV_UNICAJA">TPV Unicaja</SelectItem>
+                  <SelectItem value="REVOLUT">Revolut</SelectItem>
                 </SelectContent>
               </Select>
             </div>
