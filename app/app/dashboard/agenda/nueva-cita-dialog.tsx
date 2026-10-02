@@ -1513,9 +1513,15 @@ export function NuevaCitaDialog({
           {/* Método de Pago */}
           <div className="space-y-2">
             <Label>Método de pago</Label>
-            <Select value={formData.metodoPago || ""} onValueChange={(value) => 
-              setFormData(prev => ({ ...prev, metodoPago: value }))
-            }>
+            <Select value={formData.tpvUserId ? `tpv:${formData.tpvUserId}` : (formData.metodoPago || "")} onValueChange={(value) => {
+              if (value.startsWith('tpv:')) {
+                const id = value.slice(4)
+                const t = tpvsDisponibles.find(x => x.id === id)
+                setFormData(prev => ({ ...prev, metodoPago: 'TPV_SUMUP', tpvUserId: id, tpvNombre: t?.tpvNombre || '' }))
+              } else {
+                setFormData(prev => ({ ...prev, metodoPago: value, tpvUserId: '', tpvNombre: '' }))
+              }
+            }}>
               <SelectTrigger>
                 <SelectValue placeholder="Selecciona método de pago" />
               </SelectTrigger>
@@ -1544,6 +1550,15 @@ export function NuevaCitaDialog({
                     TPV REVOLUT
                   </div>
                 </SelectItem>
+                {/* TPVs propios de autónomos del local */}
+                {tpvsDisponibles.map(t => (
+                  <SelectItem key={t.id} value={`tpv:${t.id}`}>
+                    <div className="flex items-center">
+                      <CreditCard className="mr-2 h-4 w-4" />
+                      {t.tpvNombre}
+                    </div>
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
 

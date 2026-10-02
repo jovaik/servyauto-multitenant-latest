@@ -773,7 +773,7 @@ export function EditarCitaDialog({
             {formData.metodoPago && (
               <div className="flex items-center gap-2 p-2 bg-green-50 rounded-lg border border-green-200">
                 <Badge variant="outline" className="bg-green-100 text-green-800">
-                  ✅ Pagado: {formData.metodoPago === 'EFECTIVO' ? 'Efectivo' : formData.metodoPago === 'TPV_SUMUP' ? 'TPV SumUp' : formData.metodoPago === 'REVOLUT' ? 'TPV REVOLUT' : 'TPV Unicaja'}
+                  ✅ Pagado: {formData.tpvNombre ? formData.tpvNombre : formData.metodoPago === 'EFECTIVO' ? 'Efectivo' : formData.metodoPago === 'TPV_SUMUP' ? 'TPV SumUp' : formData.metodoPago === 'REVOLUT' ? 'TPV REVOLUT' : 'TPV Unicaja'}
                 </Badge>
                 <Button 
                   type="button" 
@@ -840,6 +840,20 @@ export function EditarCitaDialog({
                   <Smartphone className="h-5 w-5 text-slate-800" />
                   <span className="text-xs font-medium text-center leading-tight">Generar Link Revolut</span>
                 </Button>
+
+                {/* TPVs propios de autónomos del local (cobro directo en su datáfono) */}
+                {tpvsDisponibles.map(t => (
+                  <Button
+                    key={t.id}
+                    type="button"
+                    variant="outline"
+                    className="h-14 flex flex-col items-center justify-center gap-1 border-2 hover:bg-amber-50 hover:border-amber-500"
+                    onClick={() => setFormData(prev => ({ ...prev, metodoPago: 'TPV_SUMUP', tpvUserId: t.id, tpvNombre: t.tpvNombre }))}
+                  >
+                    <CreditCard className="h-5 w-5 text-amber-600" />
+                    <span className="text-xs font-medium text-center leading-tight">{t.tpvNombre}</span>
+                  </Button>
+                ))}
               </div>
             )}
 
