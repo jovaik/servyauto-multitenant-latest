@@ -14,6 +14,40 @@ import { prisma } from '@/lib/db'
 
 const SUMUP_API_BASE = 'https://api.sumup.com'
 
+// Cache del merchant_code por API key (cada local puede tener su propia cuenta SumUp).
+const _merchantCodeCache = new Map<string, string>()
+
+/**
+ * Obtener el merchant_code real (ej: "MCZ42XNC") llamando a /v0.1/me.
+ * Necesario porque la API key puede NO tener permiso sobre el alias "me"
+ * en endpoints de readers; hay que usar el merchant_code explícito.
+ * Se cachea por API key (cada local puede usar una cuenta distinta).
+ */
+async function getMerchantCode(overrideApiKey?: string): Promise<string> {
+  const apiKey = overrideApiKey || process.env.SUMUP_API_KEY
+  if (!apiKey) throw new Error('SUMUP_API_KEY no configurada')
+
+  const cached = _merchantCodeCache.get(apiKey)
+  if (cached) return cached
+
+  const res = await fetch(`${SUMUP_API_BASE}/v0.1/me`, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${apiKey}` },
+  })
+  if (!res.ok) {
+    throw new Error(`Error obteniendo merchant_code: ${await res.text()}`)
+  }
+  const data = await res.json()
+  const code = data.merchant_code
+    || data.merchant_profile?.merchant_code
+    || data.account?.merchant_code
+  if (!code) {
+    throw new Error('No se encontró merchant_code en respuesta de /v0.1/me')
+  }
+  _merchantCodeCache.set(apiKey, code)
+  return code
+}
+
 /**
  * Obtener las API keys de SumUp para un local específico.
  * Si el local tiene su propia key, la devuelve. Si no, devuelve undefined (usa la central del .env).
@@ -102,7 +136,8 @@ export async function getMerchantInfo(overrideApiKey?: string) {
  * Listar lectores emparejados
  */
 export async function listReaders(overrideApiKey?: string): Promise<SumUpReader[]> {
-  const response = await fetch(`${SUMUP_API_BASE}/v0.1/merchants/me/readers`, {
+  const merchantCode = await getMerchantCode(overrideApiKey)
+  const response = await fetch(`${SUMUP_API_BASE}/v0.1/merchants/${merchantCode}/readers`, {
     method: 'GET',
     headers: getHeaders(overrideApiKey),
   })
@@ -121,7 +156,8 @@ export async function listReaders(overrideApiKey?: string): Promise<SumUpReader[
  * Emparejar un nuevo lector usando código de emparejamiento
  */
 export async function pairReader(pairingCode: string, readerName: string, overrideApiKey?: string): Promise<SumUpReader> {
-  const response = await fetch(`${SUMUP_API_BASE}/v0.1/merchants/me/readers`, {
+  const merchantCode = await getMerchantCode(overrideApiKey)
+  const response = await fetch(`${SUMUP_API_BASE}/v0.1/merchants/${merchantCode}/readers`, {
     method: 'POST',
     headers: getHeaders(overrideApiKey),
     body: JSON.stringify({
@@ -142,7 +178,8 @@ export async function pairReader(pairingCode: string, readerName: string, overri
  * Eliminar/desemparejar un lector
  */
 export async function unpairReader(readerId: string, overrideApiKey?: string): Promise<void> {
-  const response = await fetch(`${SUMUP_API_BASE}/v0.1/merchants/me/readers/${readerId}`, {
+  const merchantCode = await getMerchantCode(overrideApiKey)
+  const response = await fetch(`${SUMUP_API_BASE}/v0.1/merchants/${merchantCode}/readers/${readerId}`, {
     method: 'DELETE',
     headers: getHeaders(overrideApiKey),
   })
@@ -221,17 +258,30 @@ export async function createCheckout(
  */
 export async function initiateReaderPayment(
   readerId: string,
-  checkoutId: string,
+  amount: number,
+  description?: string,
   overrideApiKey?: string
-): Promise<{ status: string }> {
+): Promise<{ checkout_id: string | null; client_transaction_id: string | null }> {
+  const merchantCode = await getMerchantCode(overrideApiKey)
+
+  // La Cloud API de SumUp (cobro en terminal) pide el importe en 'total_amount'
+  // con 'value' en unidades menores (céntimos) como entero. Enviar checkout_id
+  // devuelve el error {"total_amount":["can't be blank"]}.
+  const body: any = {
+    total_amount: {
+      currency: 'EUR',
+      minor_unit: 2,
+      value: Math.round(amount * 100),
+    },
+  }
+  if (description) body.description = description
+
   const response = await fetch(
-    `${SUMUP_API_BASE}/v0.1/merchants/me/readers/${readerId}/checkout`,
+    `${SUMUP_API_BASE}/v0.1/merchants/${merchantCode}/readers/${readerId}/checkout`,
     {
       method: 'POST',
       headers: getHeaders(overrideApiKey),
-      body: JSON.stringify({
-        checkout_id: checkoutId,
-      }),
+      body: JSON.stringify(body),
     }
   )
   
@@ -239,8 +289,15 @@ export async function initiateReaderPayment(
     const error = await response.text()
     throw new Error(`Error iniciando cobro en lector: ${error}`)
   }
-  
-  return response.json()
+
+  // La Cloud API devuelve { data: { checkout_id, client_transaction_id } }.
+  // Ese checkout_id es el del cobro REAL en el terminal; lo devolvemos para
+  // guardarlo y poder consultar su estado / conciliarlo al instante.
+  const json: any = await response.json()
+  return {
+    checkout_id: json?.data?.checkout_id ?? null,
+    client_transaction_id: json?.data?.client_transaction_id ?? null,
+  }
 }
 
 /**
@@ -258,6 +315,46 @@ export async function getCheckoutStatus(checkoutId: string, overrideApiKey?: str
   }
   
   return response.json()
+}
+
+/**
+ * Consultar el estado de un cobro iniciado en un TERMINAL (Cloud API).
+ * El cobro en el lector NO se puede consultar por /checkouts/{id} (devuelve
+ * NOT_FOUND); hay que buscar la transacción por su client_transaction_id.
+ * Devuelve un objeto compatible con SumUpCheckout (status normalizado a
+ * PAID/FAILED/CANCELLED/PENDING) para reutilizar la lógica de conciliación.
+ */
+export async function getReaderTransactionStatus(
+  clientTransactionId: string,
+  overrideApiKey?: string
+): Promise<SumUpCheckout | null> {
+  const response = await fetch(
+    `${SUMUP_API_BASE}/v0.1/me/transactions?client_transaction_id=${encodeURIComponent(clientTransactionId)}`,
+    { method: 'GET', headers: getHeaders(overrideApiKey) }
+  )
+
+  if (response.status === 404) return null
+  if (!response.ok) {
+    const error = await response.text()
+    throw new Error(`Error consultando transacción de terminal: ${error}`)
+  }
+
+  const txn: any = await response.json()
+  if (!txn || !txn.status) return null
+
+  // Estados de transacción SumUp: SUCCESSFUL / FAILED / CANCELLED / PENDING.
+  const raw = String(txn.status).toUpperCase()
+  const status = raw === 'SUCCESSFUL' ? 'PAID' : raw
+
+  return {
+    id: txn.id,
+    checkout_reference: txn.transaction_code,
+    amount: txn.amount,
+    currency: txn.currency,
+    status,
+    transaction_code: txn.transaction_code,
+    transaction_id: txn.id,
+  } as any
 }
 
 /**
@@ -279,8 +376,9 @@ export async function cancelCheckout(checkoutId: string, overrideApiKey?: string
  * Terminar transacción en curso en un lector
  */
 export async function terminateReaderTransaction(readerId: string, overrideApiKey?: string): Promise<void> {
+  const merchantCode = await getMerchantCode(overrideApiKey)
   const response = await fetch(
-    `${SUMUP_API_BASE}/v0.1/merchants/me/readers/${readerId}/terminate`,
+    `${SUMUP_API_BASE}/v0.1/merchants/${merchantCode}/readers/${readerId}/terminate`,
     {
       method: 'POST',
       headers: getHeaders(overrideApiKey),

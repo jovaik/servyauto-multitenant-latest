@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { createCheckout, initiateReaderPayment, getLocalSumUpKeys } from '@/lib/sumup'
+import { initiateReaderPayment, getLocalSumUpKeys } from '@/lib/sumup'
 import { prisma } from '@/lib/db'
 import { getLocalContext } from '@/lib/local-context'
+import { randomUUID } from 'crypto'
 
 // POST - Crear checkout e iniciar cobro en lector
 export async function POST(request: NextRequest) {
@@ -92,15 +93,27 @@ export async function POST(request: NextRequest) {
     // Obtener API keys del local (si tiene propias)
     const localKeys = await getLocalSumUpKeys(localId)
 
-    // 1. Crear checkout en SumUp
-    console.log(`Creando checkout SumUp: ${amount}€ - ${description} - Local: ${local?.nombre}`)
-    const checkout = await createCheckout(amount, description, fullReference, localKeys.apiKey, localKeys.affiliateKey)
-    console.log('Checkout creado:', checkout.id)
+    // 1. Enviar el cobro DIRECTAMENTE al terminal (Cloud API).
+    // La Cloud API inicia el cobro en el datáfono con el IMPORTE y DEVUELVE el
+    // checkout_id real + client_transaction_id. Ya no se crea un checkout previo
+    // aparte (eso provocaba el error "total_amount can't be blank" y un checkout
+    // fantasma). Así el importe aparece en la pantalla del terminal al instante.
+    console.log(`Enviando cobro al terminal ${readerId}: ${amount}€ - ${description} - Local: ${local?.nombre}`)
+    const readerResult = await initiateReaderPayment(
+      readerId,
+      amount,
+      description || 'Cobro ServyAuto',
+      localKeys.apiKey
+    )
+    const realCheckoutId = readerResult.checkout_id || randomUUID()
+    console.log('Cobro iniciado en terminal, checkout_id:', realCheckoutId)
 
-    // 2. Registrar transacción en nuestra BD (para tracking)
+    // 2. Registrar transacción en nuestra BD con el checkout_id REAL del terminal
+    // y el client_transaction_id (necesario para consultar su estado después).
     const transaction = await prisma.sumUpTransaction.create({
       data: {
-        checkoutId: checkout.id,
+        checkoutId: realCheckoutId,
+        clientTransactionId: readerResult.client_transaction_id || null,
         readerId: dbReader?.id || '', // Si no existe en BD, string vacío temporal
         localId: localId,
         amount: amount,
@@ -114,12 +127,8 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // 3. Enviar al lector
-    console.log(`Enviando a lector ${readerId}`)
-    await initiateReaderPayment(readerId, checkout.id, localKeys.apiKey)
-
     return NextResponse.json({
-      checkoutId: checkout.id,
+      checkoutId: realCheckoutId,
       transactionId: transaction.id,
       status: 'PENDING',
       localNombre: local?.nombre,

@@ -561,8 +561,9 @@ model revolut_transactions {
 }
 
 model SumUpTransaction {
-  id              String      @id @default(cuid())
-  checkoutId      String      @unique
+  id                   String      @id @default(cuid())
+  checkoutId           String      @unique
+  clientTransactionId  String?
   readerId        String
   localId         String
   amount          Float
