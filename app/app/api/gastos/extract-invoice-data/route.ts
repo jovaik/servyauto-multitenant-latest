@@ -83,115 +83,117 @@ REGLAS ESTRICTAS:
 4. La fecha debe ser la de emisión (no vencimiento ni entrega)
 5. Devuelve SOLO JSON limpio, sin \`\`\`json ni texto extra`;
 
-    // Llamar a la API de Vision
+    // Llamar a la API de Vision CON REINTENTOS
     console.log('🚀 [INVOICE-OCR] Enviando petición a Abacus.AI Vision API...');
-    
-    let visionResponse;
-    try {
-      const apiUrl = 'https://apps.abacus.ai/v1/chat/completions';
-      
-      console.log('📡 [INVOICE-OCR] URL de la API:', apiUrl);
-      
-      visionResponse = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [
-            {
-              role: 'user',
-              content: [
-                {
-                  type: 'text',
-                  text: extractionPrompt
-                },
-                {
-                  type: 'image_url',
-                  image_url: {
-                    url: `data:${mimeType};base64,${base64Data}`
-                  }
-                }
-              ]
-            }
-          ],
-          max_tokens: 1000,
-          temperature: 0.1
-        })
-      });
 
-      console.log('📡 [INVOICE-OCR] Respuesta de Vision API - Status:', visionResponse.status);
-      
-      if (!visionResponse.ok) {
-        const errorText = await visionResponse.text();
-        console.error('❌ [INVOICE-OCR] Error de Vision API:', errorText);
-        throw new Error(`Error de Vision API: ${visionResponse.status} - ${errorText}`);
+    const apiUrl = 'https://apps.abacus.ai/v1/chat/completions';
+    const MAX_INTENTOS = 2;
+    let extractedData: any = null;
+    let ultimoContenido = '';
+    let ultimoError = '';
+
+    for (let intento = 1; intento <= MAX_INTENTOS && !extractedData; intento++) {
+      console.log(`🔁 [INVOICE-OCR] Intento ${intento}/${MAX_INTENTOS}`);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 45000);
+
+      try {
+        const visionResponse = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: [
+              {
+                role: 'user',
+                content: [
+                  { type: 'text', text: extractionPrompt },
+                  { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Data}` } }
+                ]
+              }
+            ],
+            max_tokens: 1000,
+            temperature: 0.1
+          }),
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+        console.log(`📡 [INVOICE-OCR] Status intento ${intento}:`, visionResponse.status);
+
+        if (!visionResponse.ok) {
+          ultimoError = `HTTP ${visionResponse.status}`;
+          console.error('❌ [INVOICE-OCR] Vision API no OK:', await visionResponse.text().catch(() => ''));
+          continue;
+        }
+
+        const aiResponse = await visionResponse.json();
+        const content = aiResponse?.choices?.[0]?.message?.content;
+
+        if (!content || typeof content !== 'string') {
+          ultimoError = 'Sin contenido';
+          console.error('❌ [INVOICE-OCR] Respuesta sin contenido');
+          continue;
+        }
+
+        ultimoContenido = content;
+        console.log('📄 [INVOICE-OCR] Contenido:', content.substring(0, 300));
+
+        // Intentar extraer JSON del contenido (tolerante a texto extra / negativas)
+        try {
+          let cleaned = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+          // Si el modelo añadió texto, quedarnos con el primer objeto JSON
+          const primerLlave = cleaned.indexOf('{');
+          const ultimaLlave = cleaned.lastIndexOf('}');
+          if (primerLlave !== -1 && ultimaLlave !== -1 && ultimaLlave > primerLlave) {
+            cleaned = cleaned.substring(primerLlave, ultimaLlave + 1);
+          }
+          extractedData = JSON.parse(cleaned);
+          console.log('✅ [INVOICE-OCR] JSON parseado en intento', intento);
+        } catch (parseErr) {
+          ultimoError = 'No se pudo parsear JSON';
+          console.error('❌ [INVOICE-OCR] Parse falló en intento', intento, '- reintentando...');
+          // seguir al siguiente intento
+        }
+
+      } catch (error: any) {
+        clearTimeout(timeoutId);
+        ultimoError = error?.name === 'AbortError' ? 'Timeout (45s)' : (error?.message || 'Error de red');
+        console.error(`❌ [INVOICE-OCR] Error intento ${intento}:`, ultimoError);
+        // seguir al siguiente intento
       }
-
-    } catch (error: any) {
-      console.error('❌ [INVOICE-OCR] Error al llamar Vision API:', error);
-      return NextResponse.json(
-        { 
-          success: false,
-          error: 'Error al procesar el documento con IA',
-          details: error.message 
-        },
-        { status: 500 }
-      );
     }
 
-    // Procesar respuesta
-    let aiResponse;
-    try {
-      aiResponse = await visionResponse.json();
-      console.log('📦 [INVOICE-OCR] Respuesta completa de la API:', JSON.stringify(aiResponse, null, 2));
-    } catch (error) {
-      console.error('❌ [INVOICE-OCR] Error al parsear respuesta JSON:', error);
-      return NextResponse.json(
-        { 
-          success: false,
-          error: 'Error al procesar respuesta de IA' 
-        },
-        { status: 500 }
-      );
-    }
-
-    // Extraer contenido de la respuesta
-    const content = aiResponse.choices?.[0]?.message?.content;
-    
-    if (!content) {
-      console.error('❌ [INVOICE-OCR] No se recibió contenido de la IA');
-      return NextResponse.json(
-        { 
-          success: false,
-          error: 'No se pudo extraer datos del documento' 
-        },
-        { status: 500 }
-      );
-    }
-
-    console.log('📄 [INVOICE-OCR] Contenido extraído:', content);
-
-    // Parsear JSON de la respuesta
-    let extractedData;
-    try {
-      // Limpiar markdown si existe
-      const cleanedContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      extractedData = JSON.parse(cleanedContent);
-      console.log('✅ [INVOICE-OCR] Datos parseados exitosamente:', extractedData);
-    } catch (error) {
-      console.error('❌ [INVOICE-OCR] Error al parsear JSON:', error);
-      console.error('❌ [INVOICE-OCR] Contenido que falló:', content);
-      return NextResponse.json(
-        { 
-          success: false,
-          error: 'Error al parsear datos extraídos',
-          rawContent: content
-        },
-        { status: 500 }
-      );
+    // Si tras los reintentos NO hay datos → devolver éxito parcial (formulario manual)
+    // en vez de un 500 que bloquea la pantalla de recorte.
+    if (!extractedData) {
+      console.warn('⚠️ [INVOICE-OCR] Sin datos tras reintentos. Devolviendo formulario vacío. Último error:', ultimoError);
+      return NextResponse.json({
+        success: true,
+        parcial: true,
+        mensaje: 'No se pudieron leer los datos automáticamente. Rellena los campos a mano.',
+        data: {
+          tipo_documento: 'TICKET',
+          fecha: null,
+          numero_factura: '',
+          proveedor: '',
+          proveedor_cif: '',
+          proveedor_direccion: '',
+          proveedor_codigo_postal: '',
+          proveedor_ciudad: '',
+          proveedor_provincia: '',
+          concepto: '',
+          base_imponible: null,
+          iva_porcentaje: 21,
+          iva_importe: null,
+          total: 0,
+          categoria: 'Otros',
+          metodo_pago: 'Efectivo'
+        }
+      });
     }
 
     // Normalizar datos para ServyAuto

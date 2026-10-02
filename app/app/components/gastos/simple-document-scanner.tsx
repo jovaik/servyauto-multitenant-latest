@@ -6,7 +6,7 @@ import { FileText, Upload, Loader2, Camera, Crop, X, Check } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import Image from 'next/image'
 import type { ExtractedInvoiceData, Point } from '@/types/invoice-types'
-import { applyPerspectiveTransform, detectDocumentCorners } from '@/lib/perspective-transform'
+import { applyPerspectiveTransform } from '@/lib/perspective-transform'
 
 export interface SimpleDocumentScannerProps {
   onExtractedDataChange?: (data: ExtractedInvoiceData) => void
@@ -83,35 +83,18 @@ export function SimpleDocumentScanner({
   }
 
   const detectAndShowBorders = async (file: File, width: number, height: number) => {
-    setIsDetecting(true)
-    toast.loading('🔍 Detectando bordes del documento...', { id: 'detect' })
-
-    try {
-      const detectedCorners = await detectDocumentCorners(file, width, height)
-      
-      if (detectedCorners) {
-        setCorners(detectedCorners)
-        setShowCropper(true)
-        toast.success('✅ Bordes detectados! Ajusta si es necesario', { id: 'detect' })
-      } else {
-        // Si no se detectan bordes, usar toda la imagen
-        setCorners({
-          topLeft: { x: width * 0.05, y: height * 0.05 },
-          topRight: { x: width * 0.95, y: height * 0.05 },
-          bottomRight: { x: width * 0.95, y: height * 0.95 },
-          bottomLeft: { x: width * 0.05, y: height * 0.95 }
-        })
-        setShowCropper(true)
-        toast.success('✅ Ajusta los bordes manualmente', { id: 'detect' })
-      }
-    } catch (error) {
-      console.error('❌ Error al detectar bordes:', error)
-      toast.error('❌ Error en la detección. Procesa sin recorte', { id: 'detect' })
-      // Procesar sin cropper
-      await extractDataFromImage(file)
-    } finally {
-      setIsDetecting(false)
-    }
+    // Antes se llamaba a la IA para "detectar bordes" automáticamente, pero esa
+    // llamada era lenta (varios segundos) y luego venía otra espera para el OCR.
+    // Ahora el recorte se abre AL INSTANTE con las esquinas en casi toda la
+    // imagen; el usuario las arrastra o pulsa "Toda la imagen". Así solo queda
+    // una espera (el OCR al escanear).
+    setCorners({
+      topLeft: { x: width * 0.03, y: height * 0.03 },
+      topRight: { x: width * 0.97, y: height * 0.03 },
+      bottomRight: { x: width * 0.97, y: height * 0.97 },
+      bottomLeft: { x: width * 0.03, y: height * 0.97 },
+    })
+    setShowCropper(true)
   }
 
   const applyCropAndExtract = async () => {
