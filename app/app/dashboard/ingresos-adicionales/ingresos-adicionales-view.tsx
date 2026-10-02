@@ -355,7 +355,7 @@ export default function IngresosAdicionalesView() {
                     </SelectItem>
                     <SelectItem value="REVOLUT">
                       <span className="flex items-center gap-2">
-                        <CreditCard className="h-4 w-4" /> Revolut
+                        <CreditCard className="h-4 w-4" /> TPV REVOLUT
                       </span>
                     </SelectItem>
                   </SelectContent>

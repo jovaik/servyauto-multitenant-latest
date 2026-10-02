@@ -389,7 +389,7 @@ export default function DiarioCajaView() {
           <CardContent className="pt-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 font-medium">📱 Revolut</p>
+                <p className="text-sm text-gray-600 font-medium">📱 TPV REVOLUT</p>
                 <p className={`text-2xl font-bold ${totales.revolut >= 0 ? 'text-slate-800' : 'text-red-600'}`}>
                   €{totales.revolut.toFixed(2)}
                 </p>

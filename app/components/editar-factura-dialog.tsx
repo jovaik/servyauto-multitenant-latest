@@ -475,7 +475,7 @@ export function EditarFacturaDialog({ facturaId, facturaNumero, onFacturaActuali
                     <SelectItem value="EFECTIVO">Efectivo</SelectItem>
                     <SelectItem value="TPV_SUMUP">TPV SUMUP</SelectItem>
                     <SelectItem value="TPV_UNICAJA">TPV UNICAJA</SelectItem>
-                    <SelectItem value="REVOLUT">Revolut</SelectItem>
+                    <SelectItem value="REVOLUT">TPV REVOLUT</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

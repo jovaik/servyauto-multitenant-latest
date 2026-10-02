@@ -252,7 +252,7 @@ export function FacturacionView() {
       'EFECTIVO': 'Efectivo',
       'TPV_SUMUP': 'TPV SUMUP',
       'TPV_UNICAJA': 'TPV UNICAJA',
-      'REVOLUT': 'Revolut'
+      'REVOLUT': 'TPV REVOLUT'
     }
     return metodos[metodoPago] || metodoPago
   }
@@ -548,7 +548,7 @@ export function FacturacionView() {
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center">
                     <CreditCard className="h-5 w-5 text-slate-700 mr-2" />
-                    <span className="text-base font-semibold text-gray-700">REVOLUT</span>
+                    <span className="text-base font-semibold text-gray-700">TPV REVOLUT</span>
                   </div>
                 </div>
                 <div className="text-3xl font-bold text-slate-700">

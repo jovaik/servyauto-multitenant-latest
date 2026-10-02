@@ -411,7 +411,7 @@ export default function ServiciosTallerView() {
                   <SelectItem value="EFECTIVO">Efectivo → Genera TICKET</SelectItem>
                   <SelectItem value="TPV_SUMUP">TPV SumUp → Genera TICKET</SelectItem>
                   <SelectItem value="TPV_UNICAJA">TPV Unicaja → Genera FACTURA</SelectItem>
-                  <SelectItem value="REVOLUT">Revolut → Genera TICKET</SelectItem>
+                  <SelectItem value="REVOLUT">TPV REVOLUT → Genera TICKET</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">

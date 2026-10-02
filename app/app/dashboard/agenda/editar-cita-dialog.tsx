@@ -760,7 +760,7 @@ export function EditarCitaDialog({
             {formData.metodoPago && (
               <div className="flex items-center gap-2 p-2 bg-green-50 rounded-lg border border-green-200">
                 <Badge variant="outline" className="bg-green-100 text-green-800">
-                  ✅ Pagado: {formData.metodoPago === 'EFECTIVO' ? 'Efectivo' : formData.metodoPago === 'TPV_SUMUP' ? 'TPV SumUp' : formData.metodoPago === 'REVOLUT' ? 'Revolut' : 'TPV Unicaja'}
+                  ✅ Pagado: {formData.metodoPago === 'EFECTIVO' ? 'Efectivo' : formData.metodoPago === 'TPV_SUMUP' ? 'TPV SumUp' : formData.metodoPago === 'REVOLUT' ? 'TPV REVOLUT' : 'TPV Unicaja'}
                 </Badge>
                 <Button 
                   type="button" 

@@ -281,7 +281,7 @@ export function NuevaFacturaDialog({ onFacturaCreada }: NuevaFacturaDialogProps)
                 <SelectItem value="EFECTIVO">Efectivo (TICKET)</SelectItem>
                 <SelectItem value="TPV_SUMUP">TPV SUMUP (TICKET)</SelectItem>
                 <SelectItem value="TPV_UNICAJA">TPV UNICAJA (FACTURA)</SelectItem>
-                <SelectItem value="REVOLUT">Revolut (FACTURA)</SelectItem>
+                <SelectItem value="REVOLUT">TPV REVOLUT (FACTURA)</SelectItem>
               </SelectContent>
             </Select>
           </div>

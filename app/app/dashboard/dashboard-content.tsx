@@ -308,7 +308,7 @@ export function DashboardContent({ session }: DashboardContentProps) {
                   TPV_SUMUP: 'SumUp',
                   UNICAJA: 'Unicaja',
                   TPV_UNICAJA: 'Unicaja',
-                  REVOLUT: 'Revolut',
+                  REVOLUT: 'TPV REVOLUT',
                   TRANSFERENCIA: 'Transferencia',
                   BIZUM: 'Bizum',
                   'SIN ESPECIFICAR': 'Sin especificar',
