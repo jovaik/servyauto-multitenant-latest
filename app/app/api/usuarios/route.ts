@@ -20,7 +20,12 @@ export async function GET(request: NextRequest) {
 
     const whereClause: any = {}
     if (localId) {
-      whereClause.localId = localId
+      // Incluir usuarios cuyo local primario sea este, O que lo tengan asignado
+      // (grupos Admin/multi-local usan la relación many-to-many localesAsignados)
+      whereClause.OR = [
+        { localId: localId },
+        { localesAsignados: { some: { localId: localId } } },
+      ]
     }
 
     const usuarios = await prisma.user.findMany({
