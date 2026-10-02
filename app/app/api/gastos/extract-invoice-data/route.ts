@@ -72,7 +72,7 @@ FORMATO DE RESPUESTA (JSON únicamente, sin markdown):
   "iva_porcentaje": 21 (o el porcentaje real si aparece),
   "iva_importe": número decimal del IVA,
   "total": número decimal total OBLIGATORIO,
-  "categoria": "Combustible | Mantenimiento | Productos Lavado | Repuestos | Alquiler | Seguros | Limpieza | Suministros | Administración | Otros",
+  "categoria": "Combustible | Mantenimiento | Productos Lavado | Repuestos | Equipamiento | Alquiler | Seguros | Limpieza | Suministros | Administración | Otros",
   "metodo_pago": "Efectivo | Tarjeta | Transferencia | Otro"
 }
 

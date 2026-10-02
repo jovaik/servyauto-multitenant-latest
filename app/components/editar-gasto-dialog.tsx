@@ -296,6 +296,7 @@ export function EditarGastoDialog({ gasto, onGastoActualizado }: EditarGastoDial
                   <SelectItem value="Mantenimiento">🔧 Mantenimiento</SelectItem>
                   <SelectItem value="Productos Lavado">🧽 Productos Lavado</SelectItem>
                   <SelectItem value="Repuestos">⚙️ Repuestos</SelectItem>
+                  <SelectItem value="Equipamiento">🛠️ Equipamiento</SelectItem>
                   <SelectItem value="Alquiler">🏢 Alquiler</SelectItem>
                   <SelectItem value="Seguros">🛡️ Seguros</SelectItem>
                   <SelectItem value="Limpieza">🧹 Limpieza</SelectItem>

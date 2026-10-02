@@ -82,18 +82,107 @@ export function SimpleDocumentScanner({
     }
   }
 
+  // Detección AUTOMÁTICA de bordes del documento, 100% local en canvas
+  // (sin IA, instantánea). Busca el recuadro del documento por contraste con
+  // el fondo y devuelve las 4 esquinas. Si no detecta nada fiable, devuelve
+  // null para usar el recorte por defecto.
+  const autoDetectEdges = (img: HTMLImageElement, width: number, height: number): Corners | null => {
+    try {
+      const maxW = 500
+      const scale = Math.min(1, maxW / width)
+      const w = Math.max(1, Math.round(width * scale))
+      const h = Math.max(1, Math.round(height * scale))
+      const canvas = document.createElement('canvas')
+      canvas.width = w
+      canvas.height = h
+      const ctx = canvas.getContext('2d', { willReadFrequently: true })
+      if (!ctx) return null
+      ctx.drawImage(img, 0, 0, w, h)
+      const { data } = ctx.getImageData(0, 0, w, h)
+
+      const lum = (i: number) => 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]
+
+      // Luminancia de fondo = mediana de una muestra del borde exterior
+      const bordeMuestras: number[] = []
+      for (let x = 0; x < w; x += 2) {
+        bordeMuestras.push(lum((0 * w + x) * 4))
+        bordeMuestras.push(lum(((h - 1) * w + x) * 4))
+      }
+      for (let y = 0; y < h; y += 2) {
+        bordeMuestras.push(lum((y * w + 0) * 4))
+        bordeMuestras.push(lum((y * w + (w - 1)) * 4))
+      }
+      bordeMuestras.sort((a, b) => a - b)
+      const fondo = bordeMuestras[Math.floor(bordeMuestras.length / 2)]
+
+      const UMBRAL = 32 // diferencia de luminancia para considerar "contenido"
+      const MIN_PIXELES = 0.04 // % de píxeles distintos para marcar fila/columna
+
+      let top = -1, bottom = -1, left = -1, right = -1
+
+      for (let y = 0; y < h; y++) {
+        let cuenta = 0
+        for (let x = 0; x < w; x++) {
+          if (Math.abs(lum((y * w + x) * 4) - fondo) > UMBRAL) cuenta++
+        }
+        if (cuenta > w * MIN_PIXELES) { if (top === -1) top = y; bottom = y }
+      }
+      for (let x = 0; x < w; x++) {
+        let cuenta = 0
+        for (let y = 0; y < h; y++) {
+          if (Math.abs(lum((y * w + x) * 4) - fondo) > UMBRAL) cuenta++
+        }
+        if (cuenta > h * MIN_PIXELES) { if (left === -1) left = x; right = x }
+      }
+
+      if (top === -1 || left === -1 || bottom <= top || right <= left) return null
+
+      // Descartar detecciones degeneradas (demasiado pequeñas)
+      const anchoDet = (right - left) / w
+      const altoDet = (bottom - top) / h
+      if (anchoDet < 0.2 || altoDet < 0.2) return null
+
+      // Pequeño margen y volver a coordenadas originales
+      const margen = 0.01
+      const mx = w * margen
+      const my = h * margen
+      const x0 = Math.max(0, (left - mx)) / scale
+      const y0 = Math.max(0, (top - my)) / scale
+      const x1 = Math.min(w, (right + mx)) / scale
+      const y1 = Math.min(h, (bottom + my)) / scale
+
+      return {
+        topLeft: { x: x0, y: y0 },
+        topRight: { x: x1, y: y0 },
+        bottomRight: { x: x1, y: y1 },
+        bottomLeft: { x: x0, y: y1 },
+      }
+    } catch (err) {
+      console.warn('[SCANNER] autoDetectEdges falló:', err)
+      return null
+    }
+  }
+
   const detectAndShowBorders = async (file: File, width: number, height: number) => {
-    // Antes se llamaba a la IA para "detectar bordes" automáticamente, pero esa
-    // llamada era lenta (varios segundos) y luego venía otra espera para el OCR.
-    // Ahora el recorte se abre AL INSTANTE con las esquinas en casi toda la
-    // imagen; el usuario las arrastra o pulsa "Toda la imagen". Así solo queda
-    // una espera (el OCR al escanear).
-    setCorners({
-      topLeft: { x: width * 0.03, y: height * 0.03 },
-      topRight: { x: width * 0.97, y: height * 0.03 },
-      bottomRight: { x: width * 0.97, y: height * 0.97 },
-      bottomLeft: { x: width * 0.03, y: height * 0.97 },
-    })
+    // Recorte AUTOMÁTICO local e instantáneo: detectamos el documento por
+    // contraste con el fondo (sin IA, sin esperas). Si no se detecta algo
+    // fiable, caemos a un recuadro casi completo. El usuario siempre puede
+    // ajustar las esquinas o pulsar "Toda la imagen".
+    const detectadas = imageRef.current
+      ? autoDetectEdges(imageRef.current, width, height)
+      : null
+    if (detectadas) {
+      console.log('✅ [SCANNER] Bordes detectados automáticamente')
+      setCorners(detectadas)
+    } else {
+      console.log('ℹ️ [SCANNER] Sin detección fiable, usando recuadro por defecto')
+      setCorners({
+        topLeft: { x: width * 0.03, y: height * 0.03 },
+        topRight: { x: width * 0.97, y: height * 0.03 },
+        bottomRight: { x: width * 0.97, y: height * 0.97 },
+        bottomLeft: { x: width * 0.03, y: height * 0.97 },
+      })
+    }
     setShowCropper(true)
   }
 

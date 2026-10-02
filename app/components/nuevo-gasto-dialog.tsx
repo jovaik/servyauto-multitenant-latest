@@ -254,7 +254,7 @@ export function NuevoGastoDialog({ onGastoCreado }: NuevoGastoDialogProps) {
             />
             
             {/* Mostrar preview de datos extraídos */}
-            {formData.importe && parseFloat(formData.importe) > 0 && (
+            {formData.importe && parseFloat(formData.importe) !== 0 && (
               <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
                 <h3 className="font-semibold text-green-800 mb-2 flex items-center gap-2">
                   ✅ Datos Extraídos
@@ -304,7 +304,6 @@ export function NuevoGastoDialog({ onGastoCreado }: NuevoGastoDialogProps) {
                 id="importe"
                 type="number"
                 step="0.01"
-                min="0"
                 placeholder="0.00"
                 value={formData.importe}
                 onChange={(e) => setFormData({ ...formData, importe: e.target.value })}
@@ -371,6 +370,7 @@ export function NuevoGastoDialog({ onGastoCreado }: NuevoGastoDialogProps) {
                 <SelectItem value="Mantenimiento">🔧 Mantenimiento</SelectItem>
                 <SelectItem value="Productos Lavado">🧽 Productos Lavado</SelectItem>
                 <SelectItem value="Repuestos">⚙️ Repuestos</SelectItem>
+                <SelectItem value="Equipamiento">🛠️ Equipamiento</SelectItem>
                 <SelectItem value="Alquiler">🏢 Alquiler</SelectItem>
                 <SelectItem value="Seguros">🛡️ Seguros</SelectItem>
                 <SelectItem value="Limpieza">🧹 Limpieza</SelectItem>

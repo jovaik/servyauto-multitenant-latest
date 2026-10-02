@@ -41,6 +41,8 @@ export function mapearCategoriaGasto(tipoGasto: string): string {
     'REPUESTOS': 'REPUESTOS',
     'PIEZAS': 'REPUESTOS',
     'MATERIALES': 'REPUESTOS',
+    'EQUIPAMIENTO': 'REPUESTOS',
+    'EQUIPO': 'REPUESTOS',
     'SEGURO': 'SEGUROS',
     'SEGUROS': 'SEGUROS',
     // 📌 NUEVAS CATEGORÍAS DE GASTOS INTERNOS
