@@ -375,12 +375,10 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       console.log('=== CREANDO FACTURA/TICKET AUTOMÁTICA ===')
       console.log('Método de pago:', cita.metodoPago)
       
-      // Determinar tipo según método de pago
-      // EFECTIVO o TPV_SUMUP → TICKET
-      // TPV_UNICAJA → FACTURA
-      const esTicket = cita.metodoPago === 'EFECTIVO' || cita.metodoPago === 'TPV_SUMUP'
-      const tipoDocumento = esTicket ? 'TICKET' : 'FACTURA'
-      const prefijo = esTicket ? 'TICK' : 'FAC'
+      // Toda reserva cobrada genera un TICKET por defecto.
+      // La factura se emite después (bajo petición) convirtiendo el ticket.
+      const tipoDocumento: 'TICKET' | 'FACTURA' = 'TICKET'
+      const prefijo = 'TICK'
       
       console.log('Tipo de documento:', tipoDocumento, '- Prefijo:', prefijo)
       
@@ -491,7 +489,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
           importe: factura.total,
           descripcion: descripcionFactura,
           documentType: tipoDocumento as 'FACTURA' | 'TICKET',
-          invoiceNumber: tipoDocumento === 'FACTURA' ? numeroDocumento : undefined,
+          invoiceNumber: undefined, // Siempre TICKET al crear desde cita; la factura se emite al convertir
+
           clientName: clienteNombreCompleto || undefined,
           clientDni: cita.cliente.documento || undefined
         })
