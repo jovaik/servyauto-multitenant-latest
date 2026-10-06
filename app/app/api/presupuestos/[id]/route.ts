@@ -16,6 +16,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         items: true,
         local: true,
         cliente: { select: { id: true, nombre: true, apellido: true, telefono: true, email: true } },
+        vehiculo: { select: { id: true, marca: true, modelo: true, matricula: true } },
       },
     })
     if (!presupuesto) return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
@@ -32,13 +33,61 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
     const body = await req.json()
-    const { clienteNombre, clienteTelefono, clienteEmail, clienteId, vehiculoInfo, validoHasta, observaciones, items, estado } = body
+    const { clienteNombre, clienteTelefono, clienteEmail, vehiculoInfo, validoHasta, observaciones, items, estado, nuevoVehiculo } = body
+    let { clienteId, vehiculoId } = body
+
+    // ── Resolver/crear CLIENTE nuevo si llega nombre+telefono sin clienteId ──
+    if (clienteId === null && clienteNombre) {
+      const presActual = await prisma.presupuesto.findUnique({ where: { id: params.id }, select: { localId: true } })
+      const localIdPres = presActual?.localId || null
+      const telefono = (clienteTelefono || '').trim()
+      let clienteExistente = null
+      if (telefono) {
+        clienteExistente = await prisma.cliente.findFirst({ where: { telefono, ...(localIdPres ? { localId: localIdPres } : {}) } })
+      }
+      if (clienteExistente) {
+        clienteId = clienteExistente.id
+      } else {
+        const nuevoCliente = await prisma.cliente.create({
+          data: {
+            nombre: (clienteNombre || 'CLIENTE').trim().toUpperCase(),
+            telefono: telefono || 'SIN TELÉFONO',
+            email: clienteEmail || null,
+            localId: localIdPres,
+          },
+        })
+        clienteId = nuevoCliente.id
+      }
+    }
+
+    // ── Resolver/crear VEHÍCULO nuevo ──
+    if (!vehiculoId && nuevoVehiculo && nuevoVehiculo.marca && clienteId) {
+      const presActual = await prisma.presupuesto.findUnique({ where: { id: params.id }, select: { localId: true } })
+      const localIdPres = presActual?.localId || null
+      const marcaUp = String(nuevoVehiculo.marca).trim().toUpperCase()
+      const modeloUp = String(nuevoVehiculo.modelo || '').trim().toUpperCase() || 'SIN MODELO'
+      const matUp = nuevoVehiculo.matricula ? String(nuevoVehiculo.matricula).trim().toUpperCase() : null
+      let vehiculo = await prisma.vehiculo.findFirst({ where: { clienteId, marca: marcaUp, modelo: modeloUp } })
+      if (!vehiculo) {
+        try {
+          vehiculo = await prisma.vehiculo.create({
+            data: { marca: marcaUp, modelo: modeloUp, matricula: matUp || `PEND-${Date.now().toString(36).toUpperCase()}`, anio: new Date().getFullYear(), clienteId, localId: localIdPres },
+          })
+        } catch (e: any) {
+          vehiculo = await prisma.vehiculo.create({
+            data: { marca: marcaUp, modelo: modeloUp, matricula: `PEND-${Date.now().toString(36).toUpperCase()}`, anio: new Date().getFullYear(), clienteId, localId: localIdPres },
+          })
+        }
+      }
+      vehiculoId = vehiculo.id
+    }
 
     const updateData: any = {}
     if (clienteNombre !== undefined) updateData.clienteNombre = clienteNombre
     if (clienteTelefono !== undefined) updateData.clienteTelefono = clienteTelefono
     if (clienteEmail !== undefined) updateData.clienteEmail = clienteEmail
     if (clienteId !== undefined) updateData.clienteId = clienteId || null
+    if (vehiculoId !== undefined) updateData.vehiculoId = vehiculoId || null
     if (vehiculoInfo !== undefined) updateData.vehiculoInfo = vehiculoInfo
     if (validoHasta !== undefined) updateData.validoHasta = validoHasta ? new Date(validoHasta) : null
     if (observaciones !== undefined) updateData.observaciones = observaciones

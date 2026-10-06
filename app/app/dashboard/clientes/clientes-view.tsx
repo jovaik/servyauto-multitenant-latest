@@ -3,7 +3,8 @@
 
 import React, { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
-import { Users, User, Car, Phone, Mail, Plus, Edit, Trash2, X, Download } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Users, User, Car, Phone, Mail, Plus, Edit, Trash2, X, Download, ExternalLink } from 'lucide-react'
 import { exportarClientesExcel } from '@/lib/excel-generator'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -44,12 +45,20 @@ interface Vehiculo {
 
 export function ClientesView() {
   const { data: session } = useSession() || {}
+  const router = useRouter()
   const userRole = (session?.user as any)?.role || ''
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editingCliente, setEditingCliente] = useState<Cliente | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+
+  // Filtro inicial desde la URL (?buscar=...) para cross-link desde Vehículos
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const buscar = params.get('buscar')
+    if (buscar) setSearchTerm(buscar)
+  }, [])
   const [formData, setFormData] = useState({
     nombre: '',
     apellido: '',
@@ -404,12 +413,15 @@ export function ClientesView() {
                       </h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                         {cliente.vehiculos.map((vehiculo) => (
-                          <div 
+                          <button
                             key={vehiculo.id}
-                            className="bg-gray-50 p-3 rounded text-sm"
+                            onClick={() => router.push(`/dashboard/vehiculos?buscar=${encodeURIComponent(vehiculo.matricula)}`)}
+                            className="bg-gray-50 p-3 rounded text-sm text-left hover:bg-blue-50 hover:ring-1 hover:ring-blue-200 transition group"
+                            title="Ver este vehículo"
                           >
-                            <div className="font-medium text-gray-900">
-                              {vehiculo.marca} {vehiculo.modelo} ({vehiculo.anio})
+                            <div className="font-medium text-gray-900 flex items-center justify-between">
+                              <span>{vehiculo.marca} {vehiculo.modelo} ({vehiculo.anio})</span>
+                              <ExternalLink className="h-3 w-3 text-blue-500 opacity-0 group-hover:opacity-100" />
                             </div>
                             <div className="text-gray-600">
                               {vehiculo.matricula} {vehiculo.color && `- ${vehiculo.color}`}
@@ -419,7 +431,7 @@ export function ClientesView() {
                                 {vehiculo.kilometraje.toLocaleString()} km
                               </div>
                             )}
-                          </div>
+                          </button>
                         ))}
                       </div>
                     </div>

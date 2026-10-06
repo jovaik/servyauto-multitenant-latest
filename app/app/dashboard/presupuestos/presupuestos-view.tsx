@@ -6,7 +6,7 @@ import { es } from 'date-fns/locale'
 import {
   FileText, Plus, Download, Send, Trash2, Edit, Eye,
   Phone, Mail, MessageSquare, Search, X, ChevronDown,
-  Receipt, FileCheck
+  CalendarCheck
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -59,7 +59,7 @@ export default function PresupuestosView() {
   const [editingPres, setEditingPres] = useState<Presupuesto | null>(null)
   const [busqueda, setBusqueda] = useState('')
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
-  const [convirtiendoId, setConvirtiendoId] = useState<string | null>(null)
+  const [aceptandoId, setAceptandoId] = useState<string | null>(null)
 
   const fetchPresupuestos = useCallback(async () => {
     try {
@@ -119,32 +119,26 @@ export default function PresupuestosView() {
     } catch { toast({ title: 'Error', variant: 'destructive' }) }
   }
 
-  const handleConvertir = async (pres: Presupuesto, tipo: 'TICKET' | 'FACTURA') => {
-    if (pres.estado === 'CONVERTIDO') {
-      toast({ title: 'Ya convertido', description: 'Este presupuesto ya se convirtió en un documento.', variant: 'destructive' })
-      return
-    }
-    const etiqueta = tipo === 'FACTURA' ? 'factura' : 'ticket'
-    if (!confirm(`¿Convertir el presupuesto ${pres.numero} en ${etiqueta}? Se generará un documento en Facturación.`)) return
-    setConvirtiendoId(pres.id)
+  const handleAceptar = async (pres: Presupuesto) => {
+    if (!confirm(`¿Aceptar el presupuesto ${pres.numero} y meterlo en la agenda? Se creará una cita pendiente con el cliente, vehículo y servicios.`)) return
+    setAceptandoId(pres.id)
     try {
-      const res = await fetch(`/api/presupuestos/${pres.id}/convertir`, {
+      const res = await fetch(`/api/presupuestos/${pres.id}/aceptar`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tipo }),
+        body: JSON.stringify({}),
       })
       if (res.ok) {
-        const doc = await res.json()
-        toast({ title: `Convertido a ${etiqueta}`, description: `Documento ${doc.numero} creado en Facturación.` })
+        toast({ title: 'Presupuesto aceptado', description: 'Se ha metido en la agenda como cita pendiente.' })
         fetchPresupuestos()
       } else {
         const err = await res.json().catch(() => ({}))
-        toast({ title: 'Error al convertir', description: err.error || 'Inténtalo de nuevo', variant: 'destructive' })
+        toast({ title: 'Error al aceptar', description: err.error || 'Inténtalo de nuevo', variant: 'destructive' })
       }
     } catch {
-      toast({ title: 'Error al convertir', variant: 'destructive' })
+      toast({ title: 'Error al aceptar', variant: 'destructive' })
     } finally {
-      setConvirtiendoId(null)
+      setAceptandoId(null)
     }
   }
 
@@ -325,32 +319,19 @@ export default function PresupuestosView() {
                       <Button size="sm" variant="outline" onClick={() => { setEditingPres(pres); setShowNuevo(true) }}>
                         <Edit className="h-3.5 w-3.5" />
                       </Button>
-                      {/* Convertir a Ticket / Factura */}
-                      {pres.estado !== 'CONVERTIDO' && (
-                        <>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleConvertir(pres, 'TICKET')}
-                            disabled={convirtiendoId === pres.id}
-                            title="Convertir en Ticket"
-                            className="border-emerald-200 text-emerald-700 hover:bg-emerald-50"
-                          >
-                            <Receipt className="h-3.5 w-3.5 mr-1" />
-                            Ticket
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleConvertir(pres, 'FACTURA')}
-                            disabled={convirtiendoId === pres.id}
-                            title="Convertir en Factura"
-                            className="border-indigo-200 text-indigo-700 hover:bg-indigo-50"
-                          >
-                            <FileCheck className="h-3.5 w-3.5 mr-1" />
-                            Factura
-                          </Button>
-                        </>
+                      {/* Aceptar → meter en agenda */}
+                      {!['ACEPTADO', 'CONVERTIDO', 'RECHAZADO'].includes(pres.estado) && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleAceptar(pres)}
+                          disabled={aceptandoId === pres.id}
+                          title="Aceptar y meter en agenda"
+                          className="border-green-200 text-green-700 hover:bg-green-50"
+                        >
+                          <CalendarCheck className="h-3.5 w-3.5 mr-1" />
+                          Aceptar
+                        </Button>
                       )}
                       {/* Estado dropdown */}
                       <select

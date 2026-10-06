@@ -37,7 +37,8 @@ export async function POST(req: NextRequest) {
     if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
     const body = await req.json()
-    const { clienteNombre, clienteTelefono, clienteEmail, clienteId, vehiculoInfo, validoHasta, observaciones, items } = body
+    const { clienteNombre, clienteTelefono, clienteEmail, vehiculoInfo, validoHasta, observaciones, items, nuevoVehiculo } = body
+    let { clienteId, vehiculoId } = body
 
     if (!clienteNombre || !items || items.length === 0) {
       return NextResponse.json({ error: 'Se requiere nombre del cliente y al menos un concepto' }, { status: 400 })
@@ -48,6 +49,76 @@ export async function POST(req: NextRequest) {
 
     const userEmail = session?.user?.email || ''
     const user = await prisma.user.findUnique({ where: { email: userEmail }, select: { id: true, name: true } })
+    const userName = user?.name || session?.user?.name || userEmail
+
+    // ── Resolver/crear CLIENTE (si no viene clienteId, crear uno nuevo) ──
+    if (!clienteId) {
+      const telefono = (clienteTelefono || '').trim()
+      const nombreMayus = (clienteNombre || 'CLIENTE').trim().toUpperCase()
+      let clienteExistente = null
+      if (telefono) {
+        clienteExistente = await prisma.cliente.findFirst({
+          where: { telefono, ...(localId ? { localId } : {}) },
+        })
+      }
+      if (clienteExistente) {
+        clienteId = clienteExistente.id
+      } else {
+        const nuevoCliente = await prisma.cliente.create({
+          data: {
+            nombre: nombreMayus,
+            telefono: telefono || 'SIN TELÉFONO',
+            email: clienteEmail || null,
+            localId: localId || null,
+            creadoPorId: user?.id || null,
+            creadoPorNombre: userName,
+          },
+        })
+        clienteId = nuevoCliente.id
+      }
+    }
+
+    // ── Resolver/crear VEHÍCULO (si no viene vehiculoId pero sí datos de alta) ──
+    if (!vehiculoId && nuevoVehiculo && nuevoVehiculo.marca && clienteId) {
+      const marcaUp = String(nuevoVehiculo.marca).trim().toUpperCase()
+      const modeloUp = String(nuevoVehiculo.modelo || '').trim().toUpperCase() || 'SIN MODELO'
+      const matUp = nuevoVehiculo.matricula ? String(nuevoVehiculo.matricula).trim().toUpperCase() : null
+      // Buscar vehículo existente del cliente con misma marca/modelo
+      let vehiculo = await prisma.vehiculo.findFirst({
+        where: { clienteId, marca: marcaUp, modelo: modeloUp },
+      })
+      if (!vehiculo) {
+        try {
+          vehiculo = await prisma.vehiculo.create({
+            data: {
+              marca: marcaUp,
+              modelo: modeloUp,
+              matricula: matUp || `PEND-${Date.now().toString(36).toUpperCase()}`,
+              anio: new Date().getFullYear(),
+              clienteId,
+              localId: localId || null,
+              creadoPorId: user?.id || null,
+              creadoPorNombre: userName,
+            },
+          })
+        } catch (e: any) {
+          // Matrícula duplicada (@@unique matricula+localId): reintentar con placeholder
+          vehiculo = await prisma.vehiculo.create({
+            data: {
+              marca: marcaUp,
+              modelo: modeloUp,
+              matricula: `PEND-${Date.now().toString(36).toUpperCase()}`,
+              anio: new Date().getFullYear(),
+              clienteId,
+              localId: localId || null,
+              creadoPorId: user?.id || null,
+              creadoPorNombre: userName,
+            },
+          })
+        }
+      }
+      vehiculoId = vehiculo.id
+    }
 
     // Generate sequential number: PRES-YYYY-NNNN
     const year = new Date().getFullYear()
@@ -87,6 +158,7 @@ export async function POST(req: NextRequest) {
         clienteTelefono: clienteTelefono || null,
         clienteEmail: clienteEmail || null,
         clienteId: clienteId || null,
+        vehiculoId: vehiculoId || null,
         vehiculoInfo: vehiculoInfo || null,
         validoHasta: validoHasta ? new Date(validoHasta) : null,
         observaciones: observaciones || null,

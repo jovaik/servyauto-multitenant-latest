@@ -3,7 +3,8 @@
 
 import React, { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
-import { Car, User, Plus, Calendar, Wrench, Edit, Trash2, X, Download } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Car, User, Plus, Calendar, Wrench, Edit, Trash2, X, Download, ExternalLink } from 'lucide-react'
 import { exportarVehiculosExcel } from '@/lib/excel-generator'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -51,6 +52,7 @@ interface Vehiculo {
 
 export function VehiculosView() {
   const { data: session } = useSession() || {}
+  const router = useRouter()
   const userRole = (session?.user as any)?.role || ''
   const [vehiculos, setVehiculos] = useState<Vehiculo[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
@@ -58,6 +60,13 @@ export function VehiculosView() {
   const [showModal, setShowModal] = useState(false)
   const [editingVehiculo, setEditingVehiculo] = useState<Vehiculo | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+
+  // Filtro inicial desde la URL (?buscar=...) para cross-link desde Clientes
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const buscar = params.get('buscar')
+    if (buscar) setSearchTerm(buscar)
+  }, [])
   const [formData, setFormData] = useState({
     marca: '',
     modelo: '',
@@ -479,10 +488,15 @@ export function VehiculosView() {
                     )}
                     {vehiculo.cliente && (
                       <div className="pt-2 border-t border-gray-100">
-                        <div className="flex items-center text-blue-600">
+                        <button
+                          onClick={() => router.push(`/dashboard/clientes?buscar=${encodeURIComponent(vehiculo.cliente!.telefono || vehiculo.cliente!.nombre)}`)}
+                          className="flex items-center text-blue-600 hover:text-blue-800 hover:underline group"
+                          title="Ver ficha del cliente"
+                        >
                           <User className="mr-1 h-3 w-3" />
-                          <strong>Propietario:</strong> {vehiculo.cliente.nombre} {vehiculo.cliente.apellido}
-                        </div>
+                          <strong>Propietario:</strong>&nbsp;{vehiculo.cliente.nombre} {vehiculo.cliente.apellido}
+                          <ExternalLink className="ml-1 h-3 w-3 opacity-0 group-hover:opacity-100" />
+                        </button>
                       </div>
                     )}
                     {vehiculo.observaciones && (

@@ -192,6 +192,7 @@ model Vehiculo {
   serviciosRapidos ServicioTaller[]
   cliente          Cliente          @relation(fields: [clienteId], references: [id], onDelete: Cascade)
   local            Local?           @relation(fields: [localId], references: [id])
+  presupuestos     Presupuesto[]
 
   @@unique([matricula, localId])
   @@map("vehiculos")
@@ -667,7 +668,9 @@ model Presupuesto {
   clienteNombre   String
   clienteTelefono String?
   clienteEmail    String?
-  vehiculoInfo    String?             // "MARCA MODELO - MATRICULA" texto libre
+  vehiculoInfo    String?             // "MARCA MODELO - MATRICULA" texto libre (compat/PDF)
+  vehiculoId      String?
+  vehiculo        Vehiculo?           @relation(fields: [vehiculoId], references: [id])
   subtotal        Float               @default(0)
   iva             Float               @default(0)
   total           Float               @default(0)
