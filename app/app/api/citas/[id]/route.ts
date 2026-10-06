@@ -66,6 +66,12 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       realizadoPorId,
       tpvUserId,
       tpvNombre,
+      clienteNombre,
+      clienteApellido,
+      clienteTelefono,
+      vehiculoMarca,
+      vehiculoModelo,
+      vehiculoMatricula,
     } = body
 
     console.log('=== INICIO ACTUALIZACIÓN CITA ===')
@@ -83,6 +89,49 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         { error: 'Cita no encontrada' },
         { status: 404 }
       )
+    }
+
+    // Actualizar datos del cliente enlazado (editar nombre/apellido/teléfono erróneos, p.ej. reserva rápida)
+    if (citaExistente.clienteId && (clienteNombre !== undefined || clienteApellido !== undefined || clienteTelefono !== undefined)) {
+      const clienteUpdate: any = {}
+      if (clienteNombre !== undefined) clienteUpdate.nombre = String(clienteNombre).toUpperCase()
+      if (clienteApellido !== undefined) clienteUpdate.apellido = clienteApellido ? String(clienteApellido).toUpperCase() : null
+      if (clienteTelefono !== undefined) clienteUpdate.telefono = clienteTelefono
+      if (Object.keys(clienteUpdate).length > 0) {
+        try {
+          await prisma.cliente.update({ where: { id: citaExistente.clienteId }, data: clienteUpdate })
+        } catch (e) {
+          console.error('Error actualizando cliente de la cita:', e)
+        }
+      }
+    }
+
+    // Actualizar datos del vehículo enlazado (editar marca/modelo/matrícula erróneos)
+    if (citaExistente.vehiculoId && (vehiculoMarca !== undefined || vehiculoModelo !== undefined || vehiculoMatricula !== undefined)) {
+      const vehiculoUpdate: any = {}
+      if (vehiculoMarca !== undefined) vehiculoUpdate.marca = String(vehiculoMarca).toUpperCase()
+      if (vehiculoModelo !== undefined) vehiculoUpdate.modelo = String(vehiculoModelo).toUpperCase()
+      if (vehiculoMatricula !== undefined) vehiculoUpdate.matricula = String(vehiculoMatricula).toUpperCase()
+      if (Object.keys(vehiculoUpdate).length > 0) {
+        try {
+          await prisma.vehiculo.update({ where: { id: citaExistente.vehiculoId }, data: vehiculoUpdate })
+        } catch (e: any) {
+          // Si falla por matrícula duplicada (@@unique matricula+localId), reintentar sin matrícula
+          if (e?.code === 'P2002' && vehiculoUpdate.matricula) {
+            console.error('Matrícula duplicada, actualizando vehículo sin cambiar matrícula')
+            delete vehiculoUpdate.matricula
+            if (Object.keys(vehiculoUpdate).length > 0) {
+              try {
+                await prisma.vehiculo.update({ where: { id: citaExistente.vehiculoId }, data: vehiculoUpdate })
+              } catch (e2) {
+                console.error('Error actualizando vehículo de la cita:', e2)
+              }
+            }
+          } else {
+            console.error('Error actualizando vehículo de la cita:', e)
+          }
+        }
+      }
     }
 
     // Calcular nuevo precio final si hay servicios

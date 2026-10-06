@@ -129,6 +129,12 @@ export function EditarCitaDialog({
     realizadoPorId: '',
     tpvUserId: '',
     tpvNombre: '',
+    clienteNombre: '',
+    clienteApellido: '',
+    clienteTelefono: '',
+    vehiculoMarca: '',
+    vehiculoModelo: '',
+    vehiculoMatricula: '',
   })
 
   // Franjas horarias removidas - ahora se usa input type="time" para mayor flexibilidad
@@ -219,6 +225,12 @@ export function EditarCitaDialog({
           realizadoPorId: (cita as any).realizadoPorId || '',
           tpvUserId: (cita as any).tpvUserId || '',
           tpvNombre: (cita as any).tpvNombre || '',
+          clienteNombre: cita.cliente?.nombre || '',
+          clienteApellido: cita.cliente?.apellido || '',
+          clienteTelefono: cita.cliente?.telefono || '',
+          vehiculoMarca: cita.vehiculo?.marca || '',
+          vehiculoModelo: cita.vehiculo?.modelo || '',
+          vehiculoMatricula: cita.vehiculo?.matricula || '',
         })
         // Cargar colaboradores del local de la cita (o todos si no hay local)
         const citaLocalId = (cita as any).localId
@@ -314,6 +326,12 @@ export function EditarCitaDialog({
         realizadoPorId: formData.realizadoPorId || null,
         tpvUserId: formData.tpvUserId || null,
         tpvNombre: formData.tpvNombre || null,
+        clienteNombre: formData.clienteNombre && formData.clienteNombre.trim() !== '' ? formData.clienteNombre.trim() : undefined,
+        clienteApellido: formData.clienteApellido !== undefined ? formData.clienteApellido.trim() : undefined,
+        clienteTelefono: formData.clienteTelefono && formData.clienteTelefono.trim() !== '' ? formData.clienteTelefono.trim() : undefined,
+        vehiculoMarca: formData.vehiculoMarca && formData.vehiculoMarca.trim() !== '' ? formData.vehiculoMarca.trim() : undefined,
+        vehiculoModelo: formData.vehiculoModelo && formData.vehiculoModelo.trim() !== '' ? formData.vehiculoModelo.trim() : undefined,
+        vehiculoMatricula: formData.vehiculoMatricula && formData.vehiculoMatricula.trim() !== '' ? formData.vehiculoMatricula.trim() : undefined,
       }
 
       console.log('Enviando datos:', dataToSend)
@@ -511,26 +529,82 @@ export function EditarCitaDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {/* Client and Vehicle Info */}
-        <div className="bg-gray-50 p-4 rounded-lg space-y-2">
-          <div className="flex items-center">
+        {/* Client and Vehicle Info - EDITABLE */}
+        <div className="bg-gray-50 p-4 rounded-lg space-y-3">
+          <div className="flex items-center text-sm font-semibold text-gray-700">
             <User className="mr-2 h-4 w-4 text-gray-600" />
-            <span className="font-medium">
-              {cita?.cliente?.nombre} {cita?.cliente?.apellido}
-            </span>
+            Datos del cliente
           </div>
-          <div className="flex items-center gap-2">
-            <Car className="mr-2 h-4 w-4 text-gray-600" />
-            <span>
-              {cita?.vehiculo?.marca} {cita?.vehiculo?.modelo} - {cita?.vehiculo?.matricula}
-            </span>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label htmlFor="clienteNombre" className="text-xs">Nombre</Label>
+              <Input
+                id="clienteNombre"
+                value={formData.clienteNombre}
+                onChange={(e) => setFormData({ ...formData, clienteNombre: e.target.value.toUpperCase() })}
+                placeholder="NOMBRE"
+              />
+            </div>
+            <div>
+              <Label htmlFor="clienteApellido" className="text-xs">Apellido</Label>
+              <Input
+                id="clienteApellido"
+                value={formData.clienteApellido}
+                onChange={(e) => setFormData({ ...formData, clienteApellido: e.target.value.toUpperCase() })}
+                placeholder="APELLIDO"
+              />
+            </div>
+          </div>
+          <div>
+            <Label htmlFor="clienteTelefono" className="text-xs">Teléfono</Label>
+            <Input
+              id="clienteTelefono"
+              value={formData.clienteTelefono}
+              onChange={(e) => setFormData({ ...formData, clienteTelefono: e.target.value })}
+              placeholder="TELÉFONO"
+            />
+          </div>
+
+          <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 pt-1">
+            <Car className="mr-0 h-4 w-4 text-gray-600" />
+            Datos del vehículo
             {categoriaVehiculo && (
               <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${CATEGORY_COLORS[categoriaVehiculo].bg} ${CATEGORY_COLORS[categoriaVehiculo].text}`}>
                 {CATEGORY_EMOJIS[categoriaVehiculo]} {CATEGORY_LABELS[categoriaVehiculo]}
               </span>
             )}
           </div>
-          <div className="flex items-center">
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label htmlFor="vehiculoMarca" className="text-xs">Marca</Label>
+              <Input
+                id="vehiculoMarca"
+                value={formData.vehiculoMarca}
+                onChange={(e) => setFormData({ ...formData, vehiculoMarca: e.target.value.toUpperCase() })}
+                placeholder="MARCA"
+              />
+            </div>
+            <div>
+              <Label htmlFor="vehiculoModelo" className="text-xs">Modelo</Label>
+              <Input
+                id="vehiculoModelo"
+                value={formData.vehiculoModelo}
+                onChange={(e) => setFormData({ ...formData, vehiculoModelo: e.target.value.toUpperCase() })}
+                placeholder="MODELO"
+              />
+            </div>
+          </div>
+          <div>
+            <Label htmlFor="vehiculoMatricula" className="text-xs">Matrícula</Label>
+            <Input
+              id="vehiculoMatricula"
+              value={formData.vehiculoMatricula}
+              onChange={(e) => setFormData({ ...formData, vehiculoMatricula: e.target.value.toUpperCase() })}
+              placeholder="MATRÍCULA"
+            />
+          </div>
+
+          <div className="flex items-center pt-1">
             <Clock className="mr-2 h-4 w-4 text-gray-600" />
             <span>Estado actual: </span>
             <span className="ml-2">{getEstadoBadge(cita?.estado)}</span>
