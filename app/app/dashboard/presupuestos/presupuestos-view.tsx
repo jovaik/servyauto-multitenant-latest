@@ -5,7 +5,8 @@ import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import {
   FileText, Plus, Download, Send, Trash2, Edit, Eye,
-  Phone, Mail, MessageSquare, Search, X, ChevronDown
+  Phone, Mail, MessageSquare, Search, X, ChevronDown,
+  Receipt, FileCheck
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -58,6 +59,7 @@ export default function PresupuestosView() {
   const [editingPres, setEditingPres] = useState<Presupuesto | null>(null)
   const [busqueda, setBusqueda] = useState('')
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
+  const [convirtiendoId, setConvirtiendoId] = useState<string | null>(null)
 
   const fetchPresupuestos = useCallback(async () => {
     try {
@@ -115,6 +117,35 @@ export default function PresupuestosView() {
         fetchPresupuestos()
       }
     } catch { toast({ title: 'Error', variant: 'destructive' }) }
+  }
+
+  const handleConvertir = async (pres: Presupuesto, tipo: 'TICKET' | 'FACTURA') => {
+    if (pres.estado === 'CONVERTIDO') {
+      toast({ title: 'Ya convertido', description: 'Este presupuesto ya se convirtió en un documento.', variant: 'destructive' })
+      return
+    }
+    const etiqueta = tipo === 'FACTURA' ? 'factura' : 'ticket'
+    if (!confirm(`¿Convertir el presupuesto ${pres.numero} en ${etiqueta}? Se generará un documento en Facturación.`)) return
+    setConvirtiendoId(pres.id)
+    try {
+      const res = await fetch(`/api/presupuestos/${pres.id}/convertir`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tipo }),
+      })
+      if (res.ok) {
+        const doc = await res.json()
+        toast({ title: `Convertido a ${etiqueta}`, description: `Documento ${doc.numero} creado en Facturación.` })
+        fetchPresupuestos()
+      } else {
+        const err = await res.json().catch(() => ({}))
+        toast({ title: 'Error al convertir', description: err.error || 'Inténtalo de nuevo', variant: 'destructive' })
+      }
+    } catch {
+      toast({ title: 'Error al convertir', variant: 'destructive' })
+    } finally {
+      setConvirtiendoId(null)
+    }
   }
 
   const handleWhatsApp = (pres: Presupuesto) => {
@@ -294,6 +325,33 @@ export default function PresupuestosView() {
                       <Button size="sm" variant="outline" onClick={() => { setEditingPres(pres); setShowNuevo(true) }}>
                         <Edit className="h-3.5 w-3.5" />
                       </Button>
+                      {/* Convertir a Ticket / Factura */}
+                      {pres.estado !== 'CONVERTIDO' && (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleConvertir(pres, 'TICKET')}
+                            disabled={convirtiendoId === pres.id}
+                            title="Convertir en Ticket"
+                            className="border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                          >
+                            <Receipt className="h-3.5 w-3.5 mr-1" />
+                            Ticket
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleConvertir(pres, 'FACTURA')}
+                            disabled={convirtiendoId === pres.id}
+                            title="Convertir en Factura"
+                            className="border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                          >
+                            <FileCheck className="h-3.5 w-3.5 mr-1" />
+                            Factura
+                          </Button>
+                        </>
+                      )}
                       {/* Estado dropdown */}
                       <select
                         value={pres.estado}

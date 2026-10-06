@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
-import { Wrench, Plus, Edit, Trash2, FileText } from 'lucide-react'
+import { Wrench, Plus, Edit, Trash2, FileText, FileCheck } from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -60,6 +60,7 @@ interface ServicioTaller {
     matricula: string
   }
   factura: {
+    id: string
     numero: string
     tipo: string
     total: number
@@ -81,6 +82,7 @@ export default function ServiciosTallerView() {
   const [servicioToDelete, setServicioToDelete] = useState<ServicioTaller | null>(null)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [convirtiendoId, setConvirtiendoId] = useState<string | null>(null)
 
   // Campos del formulario
   const [clienteId, setClienteId] = useState('')
@@ -242,16 +244,41 @@ export default function ServiciosTallerView() {
     }
   }
 
+  const handleConvertirFactura = async (servicio: ServicioTaller) => {
+    if (!servicio.factura || servicio.factura.tipo !== 'TICKET') return
+    if (!confirm(`¿Convertir el ticket ${servicio.factura.numero} en factura?`)) return
+    setConvirtiendoId(servicio.id)
+    try {
+      const response = await fetch(`/api/facturas/${servicio.factura.id}/convertir`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}))
+        throw new Error(error.error || 'Error al convertir a factura')
+      }
+      const doc = await response.json()
+      toast.success(`Convertido a factura ${doc.numero}`)
+      fetchServicios()
+    } catch (error: any) {
+      console.error('Error:', error)
+      toast.error(error.message || 'Error al convertir a factura')
+    } finally {
+      setConvirtiendoId(null)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
             <Wrench className="h-8 w-8" />
-            Servicios de Taller
+            Servicios Extras
           </h1>
           <p className="text-muted-foreground mt-1">
-            Gestión rápida de servicios: cambios de batería, frenos, neumáticos, etc.
+            Gestión rápida de servicios extras: cambios de batería, frenos, neumáticos, etc.
           </p>
         </div>
         <Button onClick={() => setShowForm(!showForm)}>
@@ -499,9 +526,21 @@ export default function ServiciosTallerView() {
                             variant="ghost"
                             size="sm"
                             onClick={() => handleViewFactura(servicio)}
-                            title="Ver factura"
+                            title="Ver documento"
                           >
                             <FileText className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {servicio.factura?.tipo === 'TICKET' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleConvertirFactura(servicio)}
+                            disabled={convirtiendoId === servicio.id}
+                            title="Convertir a factura"
+                            className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+                          >
+                            <FileCheck className="h-4 w-4" />
                           </Button>
                         )}
                         <Button
