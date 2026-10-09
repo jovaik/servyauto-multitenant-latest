@@ -197,9 +197,11 @@ export default function NuevoPresupuestoDialog({ open, onOpenChange, onSuccess, 
   }
 
   const sumaLineas = items.reduce((sum, i) => sum + (i.cantidad * i.precioUnitario), 0)
-  const total = Math.round((ivaIncluido ? sumaLineas : sumaLineas * 1.21) * 100) / 100
-  const subtotal = ivaIncluido ? Math.round((sumaLineas / 1.21) * 100) / 100 : Math.round(sumaLineas * 100) / 100
-  const iva = Math.round((total - subtotal) * 100) / 100
+  // El precio introducido ES SIEMPRE el total final. El toggle solo decide si ese total
+  // lleva IVA desglosado o no — nunca suma ni descuenta nada al precio.
+  const total = Math.round(sumaLineas * 100) / 100
+  const subtotal = ivaIncluido ? Math.round((total / 1.21) * 100) / 100 : total
+  const iva = ivaIncluido ? Math.round((total - subtotal) * 100) / 100 : 0
 
   const handleSubmit = async () => {
     if (!clienteNombre.trim()) {
@@ -504,13 +506,13 @@ export default function NuevoPresupuestoDialog({ open, onOpenChange, onSuccess, 
                   onChange={e => setIvaIncluido(e.target.checked)}
                   className="h-4 w-4 accent-blue-600"
                 />
-                <span className="font-medium">El precio ya lleva IVA incluido</span>
+                <span className="font-medium">Este precio lleva IVA</span>
               </label>
             </div>
             <p className="text-xs text-muted-foreground text-right mt-1">
               {ivaIncluido
-                ? 'Los precios introducidos son el total final (IVA incluido). Se desglosa la base automáticamente.'
-                : 'Se añadirá el 21% de IVA sobre los precios introducidos.'}
+                ? 'El precio es el total final e incluye IVA. Se desglosa la base automáticamente (el total no cambia).'
+                : 'El precio es el total final y va sin IVA (el total no cambia).'}
             </p>
 
             {/* Totals */}

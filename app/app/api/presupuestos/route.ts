@@ -149,17 +149,17 @@ export async function POST(req: NextRequest) {
         servicioId: item.servicioId || null,
       }
     })
-    // Si el precio ya lleva IVA incluido, la suma de líneas es el TOTAL (bruto) y la base se desglosa
+    // El precio introducido ES SIEMPRE el total final. El flag solo decide si ese total
+    // lleva IVA desglosado (base + 21%) o va sin IVA. Nunca se suma ni descuenta nada al precio.
     let iva: number
-    let total: number
+    let total: number = Math.round(subtotal * 100) / 100
     if (ivaIncluido) {
-      total = Math.round(subtotal * 100) / 100
       const base = Math.round((total / 1.21) * 100) / 100
       iva = Math.round((total - base) * 100) / 100
       subtotal = base
     } else {
-      iva = Math.round(subtotal * 0.21 * 100) / 100
-      total = Math.round((subtotal + iva) * 100) / 100
+      iva = 0
+      subtotal = total
     }
 
     const presupuesto = await prisma.presupuesto.create({

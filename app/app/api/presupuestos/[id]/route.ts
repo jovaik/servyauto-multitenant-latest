@@ -111,17 +111,17 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
           servicioId: item.servicioId || null,
         }
       })
+      // El precio introducido ES SIEMPRE el total final: el flag solo decide si ese total
+      // lleva IVA desglosado o va sin IVA. Nunca se suma ni descuenta nada al precio.
+      const total = Math.round(subtotal * 100) / 100
+      updateData.total = total
       if (ivaIncluido) {
-        const total = Math.round(subtotal * 100) / 100
         const base = Math.round((total / 1.21) * 100) / 100
         updateData.subtotal = base
         updateData.iva = Math.round((total - base) * 100) / 100
-        updateData.total = total
       } else {
-        const iva = Math.round(subtotal * 0.21 * 100) / 100
-        updateData.subtotal = subtotal
-        updateData.iva = iva
-        updateData.total = Math.round((subtotal + iva) * 100) / 100
+        updateData.subtotal = total
+        updateData.iva = 0
       }
 
       // Replace items
