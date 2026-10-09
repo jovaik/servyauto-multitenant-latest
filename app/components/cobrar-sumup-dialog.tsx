@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { useSession } from 'next-auth/react'
 import { CreditCard, Loader2, CheckCircle, XCircle, RefreshCw, Link2, QrCode, Smartphone } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -39,6 +40,9 @@ interface CobrarSumUpDialogProps {
 interface SumUpReader {
   id: string
   name: string
+  userId?: string | null
+  userNombre?: string | null
+  localNombre?: string | null
 }
 
 type PaymentStatus = 'idle' | 'loading_readers' | 'ready' | 'processing' | 'polling' | 'success' | 'failed' | 'cancelled'
@@ -66,6 +70,7 @@ export function CobrarSumUpDialog({
   const [activeTab, setActiveTab] = useState<'terminal' | 'link'>('terminal')
   const pollingRef = useRef<NodeJS.Timeout | null>(null)
   const { toast } = useToast()
+  const { data: session } = useSession() || {}
 
   // Cargar lectores cuando se abre el dialog
   useEffect(() => {
@@ -96,7 +101,13 @@ export function CobrarSumUpDialog({
         const data = await response.json()
         const readerList = (data.readers || []).filter((r: any) => r.id !== 'PAYMENT_LINK')
         setReaders(readerList)
-        if (readerList.length === 1) {
+        // Preseleccionar el TPV propio del usuario que cobra (si lo tiene asignado),
+        // si no, y solo hay uno, preseleccionar ese.
+        const myUserId = (session?.user as any)?.id
+        const propio = myUserId ? readerList.find((r: SumUpReader) => r.userId === myUserId) : null
+        if (propio) {
+          setSelectedReader(propio.id)
+        } else if (readerList.length === 1) {
           setSelectedReader(readerList[0].id)
         }
         // Si no hay terminales, cambiar a tab de link
@@ -315,6 +326,11 @@ export function CobrarSumUpDialog({
                         {readers.map((reader) => (
                           <SelectItem key={reader.id} value={reader.id}>
                             {reader.name}
+                            {reader.userNombre
+                              ? ` — DE ${reader.userNombre}`
+                              : reader.localNombre
+                                ? ` — ${reader.localNombre}`
+                                : ''}
                           </SelectItem>
                         ))}
                       </SelectContent>

@@ -49,9 +49,11 @@ export async function GET() {
     let filteredReaders = readers
 
     if (modoAsignacion === 'POR_LOCAL' && localContext?.selectedLocalId) {
-      // En modo POR_LOCAL, mostrar solo los del local actual + los compartidos (sin local)
+      // En modo POR_LOCAL, mostrar los del local actual + los compartidos (sin local)
+      // + SIEMPRE los TPV propios de un autónomo (userId), que deben aparecer tanto
+      // para el autónomo como para el local (regla de negocio).
       filteredReaders = readers.filter(
-        (r: any) => !r.localId || r.localId === localContext.selectedLocalId
+        (r: any) => !r.localId || r.localId === localContext.selectedLocalId || r.userId
       )
     }
 
