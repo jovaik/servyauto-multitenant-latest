@@ -111,18 +111,13 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
           servicioId: item.servicioId || null,
         }
       })
-      // El precio introducido ES SIEMPRE el total final: el flag solo decide si ese total
-      // lleva IVA desglosado o va sin IVA. Nunca se suma ni descuenta nada al precio.
-      const total = Math.round(subtotal * 100) / 100
-      updateData.total = total
-      if (ivaIncluido) {
-        const base = Math.round((total / 1.21) * 100) / 100
-        updateData.subtotal = base
-        updateData.iva = Math.round((total - base) * 100) / 100
-      } else {
-        updateData.subtotal = total
-        updateData.iva = 0
-      }
+      // El precio introducido es la base. Si ivaIncluido=true el cliente paga precio + 21%
+      // (con factura). Si false, paga el precio tal cual, sin IVA (pago sin factura).
+      const base = Math.round(subtotal * 100) / 100
+      const iva = ivaIncluido ? Math.round((base * 0.21) * 100) / 100 : 0
+      updateData.subtotal = base
+      updateData.iva = iva
+      updateData.total = Math.round((base + iva) * 100) / 100
 
       // Replace items
       await prisma.presupuestoItem.deleteMany({ where: { presupuestoId: params.id } })

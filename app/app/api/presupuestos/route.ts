@@ -149,18 +149,11 @@ export async function POST(req: NextRequest) {
         servicioId: item.servicioId || null,
       }
     })
-    // El precio introducido ES SIEMPRE el total final. El flag solo decide si ese total
-    // lleva IVA desglosado (base + 21%) o va sin IVA. Nunca se suma ni descuenta nada al precio.
-    let iva: number
-    let total: number = Math.round(subtotal * 100) / 100
-    if (ivaIncluido) {
-      const base = Math.round((total / 1.21) * 100) / 100
-      iva = Math.round((total - base) * 100) / 100
-      subtotal = base
-    } else {
-      iva = 0
-      subtotal = total
-    }
+    // El precio introducido es la base. Si ivaIncluido=true el cliente paga precio + 21%
+    // (con factura). Si false, paga el precio tal cual, sin IVA (pago sin factura).
+    subtotal = Math.round(subtotal * 100) / 100
+    const iva = ivaIncluido ? Math.round((subtotal * 0.21) * 100) / 100 : 0
+    const total = Math.round((subtotal + iva) * 100) / 100
 
     const presupuesto = await prisma.presupuesto.create({
       data: {
