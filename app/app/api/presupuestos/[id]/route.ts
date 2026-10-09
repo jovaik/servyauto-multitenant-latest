@@ -34,6 +34,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
     const body = await req.json()
     const { clienteNombre, clienteTelefono, clienteEmail, vehiculoInfo, validoHasta, observaciones, items, estado, nuevoVehiculo } = body
+    const ivaIncluido = body.ivaIncluido === true
     let { clienteId, vehiculoId } = body
 
     // ── Resolver/crear CLIENTE nuevo si llega nombre+telefono sin clienteId ──
@@ -92,6 +93,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     if (validoHasta !== undefined) updateData.validoHasta = validoHasta ? new Date(validoHasta) : null
     if (observaciones !== undefined) updateData.observaciones = observaciones
     if (estado !== undefined) updateData.estado = estado
+    if (body.ivaIncluido !== undefined) updateData.ivaIncluido = ivaIncluido
 
     // Recalculate if items changed
     if (items && Array.isArray(items)) {
@@ -109,10 +111,18 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
           servicioId: item.servicioId || null,
         }
       })
-      const iva = Math.round(subtotal * 0.21 * 100) / 100
-      updateData.subtotal = subtotal
-      updateData.iva = iva
-      updateData.total = Math.round((subtotal + iva) * 100) / 100
+      if (ivaIncluido) {
+        const total = Math.round(subtotal * 100) / 100
+        const base = Math.round((total / 1.21) * 100) / 100
+        updateData.subtotal = base
+        updateData.iva = Math.round((total - base) * 100) / 100
+        updateData.total = total
+      } else {
+        const iva = Math.round(subtotal * 0.21 * 100) / 100
+        updateData.subtotal = subtotal
+        updateData.iva = iva
+        updateData.total = Math.round((subtotal + iva) * 100) / 100
+      }
 
       // Replace items
       await prisma.presupuestoItem.deleteMany({ where: { presupuestoId: params.id } })

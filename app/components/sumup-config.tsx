@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { CreditCard, Plus, Trash2, RefreshCw, Wifi, Building2, Settings2, BarChart3 } from 'lucide-react'
+import { CreditCard, Plus, Trash2, RefreshCw, Wifi, Building2, Settings2, BarChart3, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -33,11 +33,20 @@ interface SumUpReader {
   status: string
   localId?: string | null
   localNombre?: string | null
+  userId?: string | null
+  userNombre?: string | null
 }
 
 interface Local {
   id: string
   nombre: string
+}
+
+interface Usuario {
+  id: string
+  name?: string | null
+  email: string
+  localId?: string | null
 }
 
 interface SumUpConfigData {
@@ -60,6 +69,7 @@ export function SumUpConfig() {
   const { data: session } = useSession()
   const [readers, setReaders] = useState<SumUpReader[]>([])
   const [locales, setLocales] = useState<Local[]>([])
+  const [usuarios, setUsuarios] = useState<Usuario[]>([])
   const [config, setConfig] = useState<SumUpConfigData>({ modoAsignacion: 'COMPARTIDO', trackingPorLocal: true })
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [totales, setTotales] = useState({ total: 0, pagadas: 0, pendientes: 0 })
@@ -93,6 +103,13 @@ export function SumUpConfig() {
       if (localesRes.ok) {
         const data = await localesRes.json()
         setLocales(data || [])
+      }
+
+      // Cargar usuarios (para asignar TPV a colaborador)
+      const usuariosRes = await fetch('/api/usuarios')
+      if (usuariosRes.ok) {
+        const data = await usuariosRes.json()
+        setUsuarios(Array.isArray(data) ? data : (data.usuarios || []))
       }
 
       // Cargar transacciones recientes
@@ -217,6 +234,22 @@ export function SumUpConfig() {
         description: 'No se pudo actualizar la asignación',
         variant: 'destructive',
       })
+    }
+  }
+
+  const handleAssignUser = async (readerId: string, userId: string | null) => {
+    try {
+      const response = await fetch(`/api/sumup/readers/${readerId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: userId || '' }),
+      })
+      if (response.ok) {
+        toast({ title: '✅ Responsable del TPV actualizado' })
+        loadData()
+      }
+    } catch (error) {
+      toast({ title: 'Error', description: 'No se pudo asignar el responsable', variant: 'destructive' })
     }
   }
 
@@ -373,14 +406,24 @@ export function SumUpConfig() {
                       </div>
                       <div>
                         <p className="font-medium">{reader.name}</p>
-                        {reader.localNombre ? (
-                          <Badge variant="outline" className="mt-1">
-                            <Building2 className="h-3 w-3 mr-1" />
-                            {reader.localNombre}
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary" className="mt-1">Compartido</Badge>
-                        )}
+                        <div className="flex flex-wrap items-center gap-1 mt-1">
+                          {reader.localNombre ? (
+                            <Badge variant="outline">
+                              <Building2 className="h-3 w-3 mr-1" />
+                              {reader.localNombre}
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary">Compartido</Badge>
+                          )}
+                          {reader.userNombre ? (
+                            <Badge className="bg-indigo-100 text-indigo-800 hover:bg-indigo-100">
+                              <User className="h-3 w-3 mr-1" />
+                              {reader.userNombre}
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-gray-400">Sin responsable</Badge>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -397,6 +440,24 @@ export function SumUpConfig() {
                             {locales.map((local) => (
                               <SelectItem key={local.id} value={local.id}>
                                 {local.nombre}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      {isSuperAdmin && (
+                        <Select
+                          value={reader.userId || ''}
+                          onValueChange={(value) => handleAssignUser(reader.id, value || null)}
+                        >
+                          <SelectTrigger className="w-[200px]">
+                            <SelectValue placeholder="Asignar responsable" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">Sin responsable</SelectItem>
+                            {usuarios.map((u) => (
+                              <SelectItem key={u.id} value={u.id}>
+                                {u.name || u.email}
                               </SelectItem>
                             ))}
                           </SelectContent>

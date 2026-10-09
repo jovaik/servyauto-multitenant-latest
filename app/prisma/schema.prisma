@@ -54,6 +54,7 @@ model User {
   local            Local?      @relation(fields: [localId], references: [id])
   localesAsignados UserLocal[]
   colaboradores    Colaborador[]
+  sumupReaders     SumUpReader[]
 }
 
 model Local {
@@ -93,6 +94,8 @@ model Local {
   precioOverrides     PrecioOverrideLocal[]
   colaboradores       Colaborador[]
   presupuestos        Presupuesto[]
+  transferenciasOrigen   TransferenciaCaja[] @relation("TransferenciaOrigen")
+  transferenciasDestino  TransferenciaCaja[] @relation("TransferenciaDestino")
 
   @@map("locales")
 }
@@ -528,10 +531,12 @@ model SumUpReader {
   sumupReaderId String             @unique
   nombre        String
   localId       String?
+  userId        String?
   activo        Boolean            @default(true)
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
   local         Local?             @relation(fields: [localId], references: [id])
+  user          User?              @relation(fields: [userId], references: [id])
   transacciones SumUpTransaction[]
 
   @@map("sumup_readers")
@@ -681,11 +686,34 @@ model Presupuesto {
   cliente         Cliente?            @relation(fields: [clienteId], references: [id])
   creadoPorId     String?
   creadoPorNombre String?
+  ivaIncluido     Boolean             @default(false)
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
   items           PresupuestoItem[]
 
   @@map("presupuestos")
+}
+
+model TransferenciaCaja {
+  id               String    @id @default(cuid())
+  fecha            DateTime  @default(now())
+  origenLocalId    String
+  destinoLocalId   String
+  importe          Float
+  concepto         String
+  tipo             String    @default("PRESTAMO") // PRESTAMO | APORTACION
+  estado           String    @default("PENDIENTE") // PENDIENTE | DEVUELTO
+  fechaDevolucion  DateTime?
+  observaciones    String?   @db.Text
+  creadoPorId      String?
+  creadoPorNombre  String?
+  devueltoPorNombre String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  origenLocal      Local     @relation("TransferenciaOrigen", fields: [origenLocalId], references: [id])
+  destinoLocal     Local     @relation("TransferenciaDestino", fields: [destinoLocalId], references: [id])
+
+  @@map("transferencias_caja")
 }
 
 model PresupuestoItem {

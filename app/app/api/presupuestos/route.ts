@@ -38,6 +38,7 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json()
     const { clienteNombre, clienteTelefono, clienteEmail, vehiculoInfo, validoHasta, observaciones, items, nuevoVehiculo } = body
+    const ivaIncluido = body.ivaIncluido === true
     let { clienteId, vehiculoId } = body
 
     if (!clienteNombre || !items || items.length === 0) {
@@ -148,8 +149,18 @@ export async function POST(req: NextRequest) {
         servicioId: item.servicioId || null,
       }
     })
-    const iva = Math.round(subtotal * 0.21 * 100) / 100
-    const total = Math.round((subtotal + iva) * 100) / 100
+    // Si el precio ya lleva IVA incluido, la suma de líneas es el TOTAL (bruto) y la base se desglosa
+    let iva: number
+    let total: number
+    if (ivaIncluido) {
+      total = Math.round(subtotal * 100) / 100
+      const base = Math.round((total / 1.21) * 100) / 100
+      iva = Math.round((total - base) * 100) / 100
+      subtotal = base
+    } else {
+      iva = Math.round(subtotal * 0.21 * 100) / 100
+      total = Math.round((subtotal + iva) * 100) / 100
+    }
 
     const presupuesto = await prisma.presupuesto.create({
       data: {
@@ -165,6 +176,7 @@ export async function POST(req: NextRequest) {
         subtotal,
         iva,
         total,
+        ivaIncluido,
         localId,
         creadoPorId: user?.id || null,
         creadoPorNombre: user?.name || session?.user?.name || userEmail,

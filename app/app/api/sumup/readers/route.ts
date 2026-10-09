@@ -26,7 +26,7 @@ export async function GET() {
 
     // Obtener lectores registrados en nuestra BD
     const dbReaders = await prisma.sumUpReader.findMany({
-      include: { local: true },
+      include: { local: true, user: { select: { id: true, name: true, email: true } } },
     })
 
     // Mapear y enriquecer con datos locales
@@ -38,6 +38,8 @@ export async function GET() {
         status: sr.status || 'unknown',
         localId: dbReader?.localId || null,
         localNombre: dbReader?.local?.nombre || null,
+        userId: dbReader?.userId || null,
+        userNombre: dbReader?.user?.name || dbReader?.user?.email || null,
         dbId: dbReader?.id || null,
       }
     })

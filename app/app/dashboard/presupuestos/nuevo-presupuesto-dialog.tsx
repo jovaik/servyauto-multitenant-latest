@@ -58,6 +58,7 @@ export default function NuevoPresupuestoDialog({ open, onOpenChange, onSuccess, 
   const [validoHasta, setValidoHasta] = useState('')
   const [observaciones, setObservaciones] = useState('')
   const [items, setItems] = useState<ItemLine[]>([{ descripcion: '', cantidad: 1, precioUnitario: 0 }])
+  const [ivaIncluido, setIvaIncluido] = useState(false)
 
   // Load clients and services
   useEffect(() => {
@@ -78,6 +79,7 @@ export default function NuevoPresupuestoDialog({ open, onOpenChange, onSuccess, 
       setClienteEmail(editing.clienteEmail || '')
       setValidoHasta(editing.validoHasta ? format(new Date(editing.validoHasta), 'yyyy-MM-dd') : '')
       setObservaciones(editing.observaciones || '')
+      setIvaIncluido(!!editing.ivaIncluido)
       setItems(editing.items?.length > 0
         ? editing.items.map((i: any) => ({ descripcion: i.descripcion, cantidad: i.cantidad, precioUnitario: i.precioUnitario, servicioId: i.servicioId }))
         : [{ descripcion: '', cantidad: 1, precioUnitario: 0 }]
@@ -122,6 +124,7 @@ export default function NuevoPresupuestoDialog({ open, onOpenChange, onSuccess, 
     setValidoHasta('')
     setObservaciones('')
     setItems([{ descripcion: '', cantidad: 1, precioUnitario: 0 }])
+    setIvaIncluido(false)
     setClientMode('existing')
     setSelectedCliente(null)
     setClientSearch('')
@@ -193,9 +196,10 @@ export default function NuevoPresupuestoDialog({ open, onOpenChange, onSuccess, 
     }
   }
 
-  const subtotal = items.reduce((sum, i) => sum + (i.cantidad * i.precioUnitario), 0)
-  const iva = Math.round(subtotal * 0.21 * 100) / 100
-  const total = Math.round((subtotal + iva) * 100) / 100
+  const sumaLineas = items.reduce((sum, i) => sum + (i.cantidad * i.precioUnitario), 0)
+  const total = Math.round((ivaIncluido ? sumaLineas : sumaLineas * 1.21) * 100) / 100
+  const subtotal = ivaIncluido ? Math.round((sumaLineas / 1.21) * 100) / 100 : Math.round(sumaLineas * 100) / 100
+  const iva = Math.round((total - subtotal) * 100) / 100
 
   const handleSubmit = async () => {
     if (!clienteNombre.trim()) {
@@ -247,6 +251,7 @@ export default function NuevoPresupuestoDialog({ open, onOpenChange, onSuccess, 
         vehiculoInfo,
         validoHasta: validoHasta || null,
         observaciones: observaciones.trim() || null,
+        ivaIncluido,
         items: validItems,
       }
 
@@ -490,8 +495,26 @@ export default function NuevoPresupuestoDialog({ open, onOpenChange, onSuccess, 
               ))}
             </div>
 
+            {/* IVA mode toggle */}
+            <div className="mt-4 flex items-center justify-end gap-2">
+              <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={ivaIncluido}
+                  onChange={e => setIvaIncluido(e.target.checked)}
+                  className="h-4 w-4 accent-blue-600"
+                />
+                <span className="font-medium">El precio ya lleva IVA incluido</span>
+              </label>
+            </div>
+            <p className="text-xs text-muted-foreground text-right mt-1">
+              {ivaIncluido
+                ? 'Los precios introducidos son el total final (IVA incluido). Se desglosa la base automáticamente.'
+                : 'Se añadirá el 21% de IVA sobre los precios introducidos.'}
+            </p>
+
             {/* Totals */}
-            <div className="mt-4 border-t pt-3 space-y-1">
+            <div className="mt-3 border-t pt-3 space-y-1">
               <div className="flex justify-end text-sm">
                 <span className="w-32 text-right text-muted-foreground">Base imponible:</span>
                 <span className="w-24 text-right font-medium">{subtotal.toFixed(2)}€</span>
