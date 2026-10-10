@@ -1,8 +1,6 @@
 export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -178,9 +176,9 @@ async function generatePDF(htmlContent: string): Promise<Buffer | null> {
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-
+    // Enlace PÚBLICO: el PDF de la proforma se comparte con el cliente por WhatsApp/email.
+    // El id es un cuid imposible de adivinar y actúa como token. No se exige sesión
+    // para que el cliente (sin login) pueda abrir el enlace.
     const pres = await prisma.presupuesto.findUnique({
       where: { id: params.id },
       include: { items: true, local: true, cliente: true },
