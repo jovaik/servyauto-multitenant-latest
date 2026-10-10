@@ -228,12 +228,12 @@ function generateFacturaHTML(factura: any, local: any, items: any[]): string {
     } catch (e) {}
   }
 
-  const clienteNombre = datosFacturacion.razonSocial || `${factura.cliente?.nombre || ''} ${factura.cliente?.apellido || ''}`.trim()
-  const clienteNif = datosFacturacion.nifCif || factura.cliente?.documento || ''
+  const clienteNombre = datosFacturacion.nombreFiscal || datosFacturacion.razonSocial || `${factura.cliente?.nombre || ''} ${factura.cliente?.apellido || ''}`.trim()
+  const clienteNif = datosFacturacion.nif || datosFacturacion.nifCif || factura.cliente?.documento || ''
   const clienteDireccion = datosFacturacion.direccion || factura.cliente?.direccion || ''
   const clienteCp = datosFacturacion.codigoPostal || ''
   const clienteCiudad = datosFacturacion.ciudad || ''
-  const clienteTelefono = factura.cliente?.telefono || ''
+  const clienteTelefono = datosFacturacion.telefono || factura.cliente?.telefono || ''
 
   const fechaFactura = format(new Date(factura.fecha), 'dd-MM-yyyy', { locale: es })
 
