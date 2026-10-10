@@ -10,10 +10,7 @@ function generateProformaHTML(pres: any): string {
   const naranja = '#F5A623'
   const naranjaOscuro = '#E8961E'
 
-  // Datos fiscales emisor (fijos)
-  const emisorComercial = 'SERVYAUTO'
-  const emisorNombre = 'JOSE M. MILLAN FERNÁNDEZ'
-  const emisorCif = '54322040L'
+  // Datos de contacto emisor (proforma: sin datos fiscales, logo en cabecera)
   const emisorDireccion = 'AVDA ARIAS MALDONADO S/N PARKING OCCIDENTAL -1'
   const emisorCpCiudad = '29602 - MARBELLA (MALAGA)'
   const emisorTelefono = '610543228'
@@ -51,9 +48,9 @@ function generateProformaHTML(pres: any): string {
     <table style="width:100%;border-collapse:collapse;margin-bottom:0;">
       <tr>
         <td style="vertical-align:top;width:60%;background:${naranja};padding:10px 14px;border:2px solid ${naranjaOscuro};">
-          <div style="font-size:16px;font-weight:bold;color:#000;letter-spacing:0.5px;">${emisorComercial}</div>
-          <div style="font-size:10px;color:#000;line-height:1.5;margin-top:2px;">
-            ${emisorNombre}<br>CIF/NIF: ${emisorCif}<br>${emisorDireccion}<br>${emisorCpCiudad}<br>Tel&eacute;fono: ${emisorTelefono}
+          <img src="${SERVYAUTO_LOGO_BASE64}" alt="SERVYAUTO" style="height:46px;width:auto;display:block;" />
+          <div style="font-size:10px;color:#000;line-height:1.5;margin-top:6px;">
+            ${emisorDireccion}<br>${emisorCpCiudad}<br>Tel&eacute;fono: ${emisorTelefono}
           </div>
         </td>
         <td style="vertical-align:top;width:40%;padding-left:8px;">
