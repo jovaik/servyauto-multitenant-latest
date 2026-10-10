@@ -25,6 +25,7 @@ import {
 } from 'lucide-react'
 import { generarPDFDiarioCaja } from '@/lib/pdf-generator'
 import { exportarDiarioCajaExcel } from '@/lib/excel-generator'
+import { getSelectedLocalId } from '@/lib/local-store'
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, subMonths, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 
@@ -116,8 +117,51 @@ export default function DiarioCajaView() {
         creadoEn: g.createdAt ? new Date(g.createdAt) : null
       }))
 
+      // Cargar transferencias de caja entre locales
+      // Una transferencia SALE de la caja del origen (GASTO) y ENTRA en la del destino (INGRESO).
+      // Cuando se marca DEVUELTA, se registra el movimiento inverso en su fecha de devolución.
+      let transferencias: any[] = []
+      try {
+        const resTransferencias = await fetch('/api/transferencias-caja')
+        transferencias = await resTransferencias.json()
+        if (!Array.isArray(transferencias)) transferencias = []
+      } catch (e) {
+        transferencias = []
+      }
+
+      const selectedLocalId = getSelectedLocalId()
+      const movimientosTransferencias: Movimiento[] = []
+      for (const t of transferencias) {
+        const origenNombre = t.origenLocal?.nombre || 'OTRO LOCAL'
+        const destinoNombre = t.destinoLocal?.nombre || 'OTRO LOCAL'
+        // Movimiento original (en la fecha de la transferencia)
+        const addSalida = (fecha: any, id: string) => movimientosTransferencias.push({
+          id, fecha: new Date(fecha), tipo: 'GASTO',
+          concepto: `TRANSFERENCIA A ${destinoNombre}${t.concepto ? ' - ' + t.concepto : ''}`,
+          categoria: 'Transferencia Caja', importe: t.importe, metodoPago: 'EFECTIVO',
+          referencia: undefined, creadoPor: t.creadoPorNombre || undefined,
+          creadoEn: t.createdAt ? new Date(t.createdAt) : undefined
+        })
+        const addEntrada = (fecha: any, id: string) => movimientosTransferencias.push({
+          id, fecha: new Date(fecha), tipo: 'INGRESO',
+          concepto: `TRANSFERENCIA DE ${origenNombre}${t.concepto ? ' - ' + t.concepto : ''}`,
+          categoria: 'Transferencia Caja', importe: t.importe, metodoPago: 'EFECTIVO',
+          referencia: undefined, creadoPor: t.creadoPorNombre || undefined,
+          creadoEn: t.createdAt ? new Date(t.createdAt) : undefined
+        })
+        // Sin local seleccionado (ver todo): mostramos ambos lados → el total neto es cero.
+        // Con un local seleccionado: solo el lado que corresponde a ese local.
+        if (!selectedLocalId || t.origenLocalId === selectedLocalId) addSalida(t.fecha, `TRF-OUT-${t.id}`)
+        if (!selectedLocalId || t.destinoLocalId === selectedLocalId) addEntrada(t.fecha, `TRF-IN-${t.id}`)
+        // Devolución: movimiento inverso en la fecha de devolución
+        if (t.estado === 'DEVUELTO' && t.fechaDevolucion) {
+          if (!selectedLocalId || t.origenLocalId === selectedLocalId) addEntrada(t.fechaDevolucion, `TRF-RET-IN-${t.id}`)
+          if (!selectedLocalId || t.destinoLocalId === selectedLocalId) addSalida(t.fechaDevolucion, `TRF-RET-OUT-${t.id}`)
+        }
+      }
+
       // Combinar y ordenar por fecha (más reciente primero)
-      const todoMovimientos = [...ingresosFacturas, ...movimientosIngresosAdicionales, ...movimientosGastos]
+      const todoMovimientos = [...ingresosFacturas, ...movimientosIngresosAdicionales, ...movimientosGastos, ...movimientosTransferencias]
         .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
 
       setMovimientos(todoMovimientos)
