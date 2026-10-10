@@ -25,7 +25,7 @@ import {
 } from 'lucide-react'
 import { generarPDFDiarioCaja } from '@/lib/pdf-generator'
 import { exportarDiarioCajaExcel } from '@/lib/excel-generator'
-import { getSelectedLocalId } from '@/lib/local-store'
+import { getSelectedLocalId, useLocalStore } from '@/lib/local-store'
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, subMonths, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 
@@ -172,9 +172,11 @@ export default function DiarioCajaView() {
     }
   }
 
+  const selectedLocalIdHook = useLocalStore((s) => s.selectedLocalId)
+
   useEffect(() => {
     cargarDatos()
-  }, [])
+  }, [selectedLocalIdHook])
 
   // Calcular rango de fechas según filtro de período
   const rangoFechas = useMemo(() => {

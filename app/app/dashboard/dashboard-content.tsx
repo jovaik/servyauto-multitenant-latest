@@ -24,6 +24,7 @@ import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { HorasServicioCard } from '@/components/horas-servicio-card'
+import { useLocalStore } from '@/lib/local-store'
 
 interface DashboardContentProps {
   session: Session | null
@@ -64,6 +65,7 @@ export function DashboardContent({ session }: DashboardContentProps) {
   
   const [citasRecientes, setCitasRecientes] = useState<CitaReciente[]>([])
   const [loading, setLoading] = useState(true)
+  const selectedLocalId = useLocalStore((s) => s.selectedLocalId)
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -100,7 +102,7 @@ export function DashboardContent({ session }: DashboardContentProps) {
     }
 
     fetchDashboardData()
-  }, [period])
+  }, [period, selectedLocalId])
 
   const getEstadoBadge = (estado: string) => {
     const variants = {

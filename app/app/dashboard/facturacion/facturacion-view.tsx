@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
+import { useLocalStore } from '@/lib/local-store'
 import { 
   CreditCard, 
   FileText, 
@@ -128,10 +129,12 @@ export function FacturacionView() {
     efectivoEnCaja: 0
   })
 
+  const selectedLocalId = useLocalStore((s) => s.selectedLocalId)
+
   useEffect(() => {
     loadFacturas()
     loadStats()
-  }, [])
+  }, [selectedLocalId])
 
   // Recargar estadísticas cuando cambian los filtros de fecha
   useEffect(() => {

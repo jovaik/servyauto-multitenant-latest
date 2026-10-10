@@ -39,6 +39,7 @@ import { NuevoGastoDialog } from '@/components/nuevo-gasto-dialog'
 import { EditarGastoDialog } from '@/components/editar-gasto-dialog'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { useLocalStore } from '@/lib/local-store'
 
 interface Gasto {
   id: string
@@ -66,10 +67,12 @@ export function GastosView() {
     totalGastos: 0
   })
 
+  const selectedLocalId = useLocalStore((s) => s.selectedLocalId)
+
   useEffect(() => {
     loadGastos()
     loadStats()
-  }, [])
+  }, [selectedLocalId])
 
   const loadGastos = async () => {
     try {

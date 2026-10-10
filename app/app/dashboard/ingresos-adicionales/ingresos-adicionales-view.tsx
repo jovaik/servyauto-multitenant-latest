@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useLocalStore } from '@/lib/local-store';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
@@ -117,9 +118,11 @@ export default function IngresosAdicionalesView() {
     }
   };
 
+  const selectedLocalId = useLocalStore((s) => s.selectedLocalId);
+
   useEffect(() => {
     loadIngresos();
-  }, [fechaInicio, fechaFin]);
+  }, [fechaInicio, fechaFin, selectedLocalId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

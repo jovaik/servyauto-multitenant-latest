@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useCallback } from 'react'
+import { useLocalStore } from '@/lib/local-store'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import {
@@ -61,6 +62,8 @@ export default function PresupuestosView() {
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
   const [aceptandoId, setAceptandoId] = useState<string | null>(null)
 
+  const selectedLocalId = useLocalStore((s) => s.selectedLocalId)
+
   const fetchPresupuestos = useCallback(async () => {
     try {
       const res = await fetch('/api/presupuestos')
@@ -73,7 +76,7 @@ export default function PresupuestosView() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [selectedLocalId])
 
   useEffect(() => { fetchPresupuestos() }, [fetchPresupuestos])
 

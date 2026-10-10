@@ -5,6 +5,7 @@ import React, { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Plus, Calendar, DollarSign, TrendingUp, FileText, Trash2 } from 'lucide-react'
+import { useLocalStore } from '@/lib/local-store'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { NuevoCierreDialog } from '@/components/nuevo-cierre-dialog'
@@ -42,9 +43,11 @@ export default function CierresCajaView() {
     }
   }
 
+  const selectedLocalId = useLocalStore((s) => s.selectedLocalId)
+
   useEffect(() => {
     fetchCierres()
-  }, [])
+  }, [selectedLocalId])
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-ES', {

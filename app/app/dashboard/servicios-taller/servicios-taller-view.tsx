@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 import { Wrench, Plus, Edit, Trash2, FileText, FileCheck } from 'lucide-react'
+import { useLocalStore } from '@/lib/local-store'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -98,11 +99,13 @@ export default function ServiciosTallerView() {
   const total = (parseFloat(precioProducto) || 0) + (parseFloat(precioManoObra) || 0)
   const margen = (parseFloat(precioProducto) || 0) - (parseFloat(costeProducto) || 0)
 
+  const selectedLocalId = useLocalStore((s) => s.selectedLocalId)
+
   useEffect(() => {
     fetchServicios()
     fetchClientes()
     fetchVehiculos()
-  }, [])
+  }, [selectedLocalId])
 
   useEffect(() => {
     // Filtrar vehículos cuando se selecciona un cliente
