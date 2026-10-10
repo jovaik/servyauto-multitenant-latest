@@ -108,14 +108,20 @@ export function EnviarFacturaDialog({
       // Enlace PÚBLICO al PDF: el cliente lo abre directamente desde WhatsApp sin necesidad de login.
       const pdfUrl = `${window.location.origin}/api/facturas/${facturaId}/pdf`
 
-      const numeroLimpio = telefono.replace(/\D/g, '')
-      const numeroCompleto = numeroLimpio.startsWith('34') ? numeroLimpio : `34${numeroLimpio}`
+      // Normalización robusta del teléfono (mismo criterio que presupuestos):
+      // respeta el prefijo internacional existente (+34, +48, etc.) y NO fuerza 34
+      // si el número ya trae código de país. Solo antepone 34 a números locales sin prefijo.
+      let phone = telefono.replace(/\s+/g, '')
+      if (phone.startsWith('00')) phone = '+' + phone.substring(2)
+      if (phone.startsWith('0')) phone = phone.substring(1)
+      if (!phone.startsWith('+') && !phone.startsWith('34')) phone = '34' + phone
+      phone = phone.replace(/\D/g, '')
 
       const mensajeWhatsApp = encodeURIComponent(
         `${mensaje}\n\nPuedes ver y descargar tu ${tipo.toLowerCase()} aquí:\n${pdfUrl}`
       )
 
-      const whatsappUrl = `https://wa.me/${numeroCompleto}?text=${mensajeWhatsApp}`
+      const whatsappUrl = `https://wa.me/${phone}?text=${mensajeWhatsApp}`
       window.open(whatsappUrl, '_blank')
 
       toast({
