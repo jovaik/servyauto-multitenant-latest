@@ -104,66 +104,32 @@ export function EnviarFacturaDialog({
 
     try {
       setLoading(true)
-      
-      // 1. Primero descargar automáticamente el PDF
+
+      // Enlace PÚBLICO al PDF: el cliente lo abre directamente desde WhatsApp sin necesidad de login.
+      const pdfUrl = `${window.location.origin}/api/facturas/${facturaId}/pdf`
+
+      const numeroLimpio = telefono.replace(/\D/g, '')
+      const numeroCompleto = numeroLimpio.startsWith('34') ? numeroLimpio : `34${numeroLimpio}`
+
+      const mensajeWhatsApp = encodeURIComponent(
+        `${mensaje}\n\nPuedes ver y descargar tu ${tipo.toLowerCase()} aquí:\n${pdfUrl}`
+      )
+
+      const whatsappUrl = `https://wa.me/${numeroCompleto}?text=${mensajeWhatsApp}`
+      window.open(whatsappUrl, '_blank')
+
       toast({
-        title: 'Preparando documento...',
-        description: 'Generando el PDF para compartir',
+        title: '✅ WhatsApp abierto',
+        description: 'El mensaje incluye el enlace al documento. El cliente puede abrirlo directamente.',
+        duration: 6000,
       })
-      
-      const response = await fetch(`/api/facturas/${facturaId}/pdf`)
-      if (response.ok) {
-        const contentType = response.headers.get('content-type') || ''
-        const blob = await response.blob()
-        const url = window.URL.createObjectURL(blob)
-        
-        // Determinar extensión según tipo de contenido
-        const extension = contentType.includes('application/pdf') ? 'pdf' : 'html'
-        
-        // Crear un link temporal y hacer click para descargar
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `${tipo}_${facturaNumero}.${extension}`
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        window.URL.revokeObjectURL(url)
-        
-        toast({
-          title: '✅ Documento descargado',
-          description: `El ${extension.toUpperCase()} se ha descargado. Abriendo WhatsApp...`,
-        })
-        
-        // 2. Esperar un momento para que el usuario vea la descarga
-        await new Promise(resolve => setTimeout(resolve, 1500))
-        
-        // 3. Ahora abrir WhatsApp
-        const numeroLimpio = telefono.replace(/\D/g, '')
-        const numeroCompleto = numeroLimpio.startsWith('34') ? numeroLimpio : `34${numeroLimpio}`
-        
-        // Mensaje mejorado con instrucciones
-        const mensajeWhatsApp = encodeURIComponent(
-          `${mensaje}\n\n📎 El ${tipo.toLowerCase()} ${facturaNumero}.${extension} se ha descargado. Adjúntalo en este chat.`
-        )
-        
-        const whatsappUrl = `https://wa.me/${numeroCompleto}?text=${mensajeWhatsApp}`
-        window.open(whatsappUrl, '_blank')
-        
-        toast({
-          title: '✅ ¡Todo listo!',
-          description: 'El documento está descargado y WhatsApp está abierto. Solo adjunta el archivo en el chat.',
-          duration: 6000
-        })
-      } else {
-        throw new Error('Error al generar el documento')
-      }
-      
+
       setOpen(false)
     } catch (error) {
       console.error('Error:', error)
       toast({
         title: 'Error',
-        description: 'Error al preparar el documento. Por favor intenta de nuevo.',
+        description: 'Error al preparar el enlace. Por favor intenta de nuevo.',
         variant: 'destructive',
       })
     } finally {
@@ -246,13 +212,13 @@ export function EnviarFacturaDialog({
               className="w-full bg-green-600 hover:bg-green-700"
             >
               <MessageCircle className="mr-2 h-4 w-4" />
-              {loading ? 'Preparando...' : 'Descargar y Abrir WhatsApp'}
+              {loading ? 'Preparando...' : 'Enviar por WhatsApp'}
             </Button>
             <div className="bg-green-50 border border-green-200 rounded p-3">
               <p className="text-xs text-green-800">
-                ✓ El documento se descargará automáticamente<br/>
-                ✓ WhatsApp se abrirá con el mensaje<br/>
-                ✓ Solo tienes que adjuntar el archivo descargado
+                ✓ WhatsApp se abrirá con el mensaje y el enlace<br/>
+                ✓ El cliente abre el documento directamente desde el enlace<br/>
+                ✓ No necesitas descargar ni adjuntar nada
               </p>
             </div>
           </div>

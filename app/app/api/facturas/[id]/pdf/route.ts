@@ -1,7 +1,5 @@
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -511,10 +509,8 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-    }
+    // Enlace PÚBLICO: el PDF de la factura/ticket se comparte con el cliente por WhatsApp/email.
+    // El id es un cuid imposible de adivinar y actúa como token de acceso, por eso no requiere sesión.
 
     // Obtener factura completa con local e items
     const factura = await prisma.factura.findUnique({
@@ -562,7 +558,7 @@ export async function GET(
       return new NextResponse(pdfBuffer, {
         headers: {
           'Content-Type': 'application/pdf',
-          'Content-Disposition': `attachment; filename="${filename}.pdf"`
+          'Content-Disposition': `inline; filename="${filename}.pdf"`
         }
       })
     } else {
