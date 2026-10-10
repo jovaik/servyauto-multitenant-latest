@@ -73,6 +73,32 @@ interface Factura {
   estado: 'PENDIENTE' | 'PAGADA' | 'VENCIDA' | 'CANCELADA'
   metodoPago?: string
   pdfPath?: string
+  datosFacturacion?: string
+}
+
+// Para FACTURA se priorizan los DATOS DE FACTURACIÓN (nombre fiscal, teléfono de facturación)
+// que introdujo el usuario al convertir el ticket, NO los datos de la cita/agenda del cliente.
+// Para TICKET (sin datos de facturación) se usan los datos del cliente.
+function getDatosEnvio(factura: Factura): { nombre: string; telefono: string; email?: string } {
+  const clienteNombre = `${factura.cliente?.nombre || ''} ${factura.cliente?.apellido || ''}`.trim()
+  const fallback = {
+    nombre: clienteNombre,
+    telefono: factura.cliente?.telefono || '',
+    email: factura.cliente?.email,
+  }
+  if (factura.tipo !== 'FACTURA' || !factura.datosFacturacion) return fallback
+  try {
+    const d = typeof factura.datosFacturacion === 'string'
+      ? JSON.parse(factura.datosFacturacion)
+      : factura.datosFacturacion
+    return {
+      nombre: d.nombreFiscal || d.razonSocial || fallback.nombre,
+      telefono: d.telefono || fallback.telefono,
+      email: d.email || fallback.email,
+    }
+  } catch {
+    return fallback
+  }
 }
 
 export function FacturacionView() {
@@ -812,9 +838,9 @@ export function FacturacionView() {
                             <EnviarFacturaDialog 
                               facturaId={factura.id}
                               facturaNumero={factura.numero}
-                              clienteNombre={`${factura.cliente.nombre} ${factura.cliente.apellido || ''}`}
-                              clienteEmail={factura.cliente.email}
-                              clienteTelefono={factura.cliente.telefono}
+                              clienteNombre={getDatosEnvio(factura).nombre}
+                              clienteEmail={getDatosEnvio(factura).email}
+                              clienteTelefono={getDatosEnvio(factura).telefono}
                               tipo={factura.tipo}
                             />
                           </DropdownMenuItem>
