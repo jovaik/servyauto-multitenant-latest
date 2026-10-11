@@ -6,7 +6,7 @@ import {
   getReaderTransactionStatus,
   cancelCheckout,
   terminateReaderTransaction,
-  getLocalSumUpKeys,
+  resolveSumUpKeys,
 } from '@/lib/sumup'
 import { prisma } from '@/lib/db'
 import { requireSuperAdminForDelete } from '@/lib/activity-logger'
@@ -15,15 +15,17 @@ import { requireSuperAdminForDelete } from '@/lib/activity-logger'
 async function reconcile({
   citaId,
   facturaId,
+  tpvNombre,
 }: {
   citaId?: string | null
   facturaId?: string | null
+  tpvNombre?: string | null
 }) {
   try {
     if (citaId) {
       await prisma.cita.update({
         where: { id: citaId },
-        data: { metodoPago: 'TPV_SUMUP' },
+        data: { metodoPago: 'TPV_SUMUP', ...(tpvNombre ? { tpvNombre } : {}) },
       })
     }
   } catch (e) {
@@ -33,7 +35,7 @@ async function reconcile({
     if (facturaId) {
       await prisma.factura.update({
         where: { id: facturaId },
-        data: { metodoPago: 'TPV_SUMUP', estado: 'PAGADA' },
+        data: { metodoPago: 'TPV_SUMUP', estado: 'PAGADA', ...(tpvNombre ? { tpvNombre } : {}) },
       })
     }
   } catch (e) {
@@ -63,9 +65,12 @@ export async function GET(
         amount: true,
         citaId: true,
         facturaId: true,
+        cuentaTpvId: true,
+        cuentaTpvNombre: true,
       },
     })
-    const localKeys = await getLocalSumUpKeys(dbTxn?.localId)
+    // IMPRESCINDIBLE: consultar /me/transactions con la MISMA cuenta que cobró.
+    const localKeys = await resolveSumUpKeys({ cuentaTpvId: dbTxn?.cuentaTpvId, localId: dbTxn?.localId })
 
     // Los cobros iniciados en el terminal (Cloud API) NO se consultan por
     // /checkouts/{id} (devuelve NOT_FOUND). Hay que consultarlos por
@@ -108,7 +113,11 @@ export async function GET(
 
       // Al pagar, conciliar la cita/factura asociada.
       if (checkout.status === 'PAID') {
-        await reconcile({ citaId: dbTxn?.citaId, facturaId: dbTxn?.facturaId })
+        await reconcile({
+          citaId: dbTxn?.citaId,
+          facturaId: dbTxn?.facturaId,
+          tpvNombre: dbTxn?.cuentaTpvNombre,
+        })
       }
     }
 
@@ -142,7 +151,7 @@ export async function DELETE(
       where: { checkoutId: params.id },
       include: { reader: true },
     })
-    const localKeys = await getLocalSumUpKeys(dbTxn?.localId)
+    const localKeys = await resolveSumUpKeys({ cuentaTpvId: dbTxn?.cuentaTpvId, localId: dbTxn?.localId })
 
     // Si es un cobro iniciado en el terminal, se aborta en el propio datáfono.
     if (dbTxn?.clientTransactionId && dbTxn.reader?.sumupReaderId) {

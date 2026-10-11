@@ -532,14 +532,37 @@ model SumUpReader {
   nombre        String
   localId       String?
   userId        String?
+  cuentaTpvId   String?
   activo        Boolean            @default(true)
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
   local         Local?             @relation(fields: [localId], references: [id])
   user          User?              @relation(fields: [userId], references: [id])
+  cuentaTpv     CuentaTpv?         @relation(fields: [cuentaTpvId], references: [id])
   transacciones SumUpTransaction[]
 
   @@map("sumup_readers")
+}
+
+// Cuenta TPV: una cuenta de cobro (SumUp, Unicaja, Revolut, otros) con sus
+// propias claves. Permite cobrar a la cuenta de cada colaborador autónomo
+// (p.ej. SUMUP SERVYAUTO = cuenta de Jose, SUMUP BARTO = cuenta de Barto).
+// A nivel de app y de local porque los colaboradores rotan de local.
+model CuentaTpv {
+  id                String        @id @default(cuid())
+  nombre            String        // MAYÚSCULAS, ej: SUMUP SERVYAUTO
+  proveedor         String        @default("SUMUP") // SUMUP | UNICAJA | REVOLUT | OTRO
+  sumupApiKey       String?
+  sumupAffiliateKey String?
+  userId            String?       // responsable autónomo (User) opcional
+  localId           String?       // local por defecto opcional
+  activo            Boolean       @default(true)
+  esDefault         Boolean       @default(false)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  readers           SumUpReader[]
+
+  @@map("cuentas_tpv")
 }
 
 model revolut_transactions {
@@ -579,6 +602,8 @@ model SumUpTransaction {
   reference       String?
   facturaId       String?
   citaId          String?
+  cuentaTpvId     String?
+  cuentaTpvNombre String?
   creadoPorId     String?
   creadoPorNombre String?
   createdAt       DateTime    @default(now())

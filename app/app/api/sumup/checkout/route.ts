@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { initiateReaderPayment, getLocalSumUpKeys } from '@/lib/sumup'
+import { initiateReaderPayment, getLocalSumUpKeys, resolveSumUpKeys } from '@/lib/sumup'
 import { prisma } from '@/lib/db'
 import { getLocalContext } from '@/lib/local-context'
 import { randomUUID } from 'crypto'
@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
-    const { amount, description, reference, readerId, citaId, facturaId } = await request.json()
+    const { amount, description, reference, readerId, citaId, facturaId, cuentaTpvId: cuentaTpvIdBody } = await request.json()
 
     if (!amount || amount <= 0) {
       return NextResponse.json(
@@ -90,8 +90,19 @@ export async function POST(request: NextRequest) {
       where: { sumupReaderId: readerId },
     })
 
-    // Obtener API keys del local (si tiene propias)
-    const localKeys = await getLocalSumUpKeys(localId)
+    // Determinar la CUENTA TPV que cobra: override del body, o la del datáfono
+    const cuentaTpvId: string | null = cuentaTpvIdBody || dbReader?.cuentaTpvId || null
+    let cuentaTpvNombre: string | null = null
+    if (cuentaTpvId) {
+      const cuenta = await prisma.cuentaTpv.findUnique({
+        where: { id: cuentaTpvId },
+        select: { nombre: true },
+      })
+      cuentaTpvNombre = cuenta?.nombre || null
+    }
+
+    // Obtener API keys: prioridad a la cuenta TPV, si no, las del local (o central)
+    const localKeys = await resolveSumUpKeys({ cuentaTpvId, localId })
 
     // 1. Enviar el cobro DIRECTAMENTE al terminal (Cloud API).
     // La Cloud API inicia el cobro en el datáfono con el IMPORTE y DEVUELVE el
@@ -124,6 +135,8 @@ export async function POST(request: NextRequest) {
         citaId: citaId || null,
         creadoPorId: user?.id || null,
         creadoPorNombre: user?.name || session.user?.name || null,
+        cuentaTpvId: cuentaTpvId,
+        cuentaTpvNombre: cuentaTpvNombre,
       },
     })
 

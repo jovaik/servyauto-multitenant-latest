@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { CreditCard, Plus, Trash2, RefreshCw, Wifi, Building2, Settings2, BarChart3, User } from 'lucide-react'
+import { CreditCard, Plus, Trash2, RefreshCw, Wifi, Building2, Settings2, BarChart3, User, Wallet, KeyRound } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -35,6 +35,22 @@ interface SumUpReader {
   localNombre?: string | null
   userId?: string | null
   userNombre?: string | null
+  cuentaTpvId?: string | null
+  cuentaTpvNombre?: string | null
+}
+
+interface CuentaTpv {
+  id: string
+  nombre: string
+  proveedor: string
+  userId?: string | null
+  userNombre?: string | null
+  localId?: string | null
+  localNombre?: string | null
+  activo: boolean
+  esDefault: boolean
+  tieneApiKey?: boolean
+  tieneAffiliateKey?: boolean
 }
 
 interface Local {
@@ -70,7 +86,13 @@ export function SumUpConfig() {
   const [readers, setReaders] = useState<SumUpReader[]>([])
   const [locales, setLocales] = useState<Local[]>([])
   const [usuarios, setUsuarios] = useState<Usuario[]>([])
+  const [cuentas, setCuentas] = useState<CuentaTpv[]>([])
   const [config, setConfig] = useState<SumUpConfigData>({ modoAsignacion: 'COMPARTIDO', trackingPorLocal: true })
+  // Dialogo cuenta TPV
+  const [cuentaDialogOpen, setCuentaDialogOpen] = useState(false)
+  const [savingCuenta, setSavingCuenta] = useState(false)
+  const [editingCuenta, setEditingCuenta] = useState<CuentaTpv | null>(null)
+  const [cuentaForm, setCuentaForm] = useState<{ nombre: string; proveedor: string; sumupApiKey: string; sumupAffiliateKey: string; userId: string; localId: string }>({ nombre: '', proveedor: 'SUMUP', sumupApiKey: '', sumupAffiliateKey: '', userId: '', localId: '' })
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [totales, setTotales] = useState({ total: 0, pagadas: 0, pendientes: 0 })
   const [loading, setLoading] = useState(true)
@@ -110,6 +132,13 @@ export function SumUpConfig() {
       if (usuariosRes.ok) {
         const data = await usuariosRes.json()
         setUsuarios(Array.isArray(data) ? data : (data.usuarios || []))
+      }
+
+      // Cargar cuentas TPV
+      const cuentasRes = await fetch('/api/cuentas-tpv')
+      if (cuentasRes.ok) {
+        const data = await cuentasRes.json()
+        setCuentas(Array.isArray(data) ? data : (data.cuentas || []))
       }
 
       // Cargar transacciones recientes
@@ -253,6 +282,99 @@ export function SumUpConfig() {
     }
   }
 
+  const handleAssignCuenta = async (readerId: string, cuentaTpvId: string | null) => {
+    try {
+      const response = await fetch(`/api/sumup/readers/${readerId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cuentaTpvId: cuentaTpvId || '' }),
+      })
+      if (response.ok) {
+        toast({ title: '✅ Cuenta TPV del datáfono actualizada' })
+        loadData()
+      }
+    } catch (error) {
+      toast({ title: 'Error', description: 'No se pudo asignar la cuenta TPV', variant: 'destructive' })
+    }
+  }
+
+  const openCuentaDialog = (cuenta: CuentaTpv | null) => {
+    if (cuenta) {
+      setEditingCuenta(cuenta)
+      setCuentaForm({
+        nombre: cuenta.nombre,
+        proveedor: cuenta.proveedor || 'SUMUP',
+        sumupApiKey: '',
+        sumupAffiliateKey: '',
+        userId: cuenta.userId || '',
+        localId: cuenta.localId || '',
+      })
+    } else {
+      setEditingCuenta(null)
+      setCuentaForm({ nombre: '', proveedor: 'SUMUP', sumupApiKey: '', sumupAffiliateKey: '', userId: '', localId: '' })
+    }
+    setCuentaDialogOpen(true)
+  }
+
+  const handleSaveCuenta = async () => {
+    if (!cuentaForm.nombre.trim()) {
+      toast({ title: 'Error', description: 'El nombre de la cuenta es obligatorio', variant: 'destructive' })
+      return
+    }
+    try {
+      setSavingCuenta(true)
+      const isEdit = !!editingCuenta
+      const url = isEdit ? `/api/cuentas-tpv/${editingCuenta!.id}` : '/api/cuentas-tpv'
+      const method = isEdit ? 'PUT' : 'POST'
+      // Las claves solo se envían si el usuario las ha escrito (para no borrarlas al editar)
+      const payload: any = {
+        nombre: cuentaForm.nombre.trim().toUpperCase(),
+        proveedor: cuentaForm.proveedor,
+        userId: cuentaForm.userId || null,
+        localId: cuentaForm.localId || null,
+      }
+      if (cuentaForm.sumupApiKey.trim()) payload.sumupApiKey = cuentaForm.sumupApiKey.trim()
+      if (cuentaForm.sumupAffiliateKey.trim()) payload.sumupAffiliateKey = cuentaForm.sumupAffiliateKey.trim()
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (response.ok) {
+        toast({ title: isEdit ? '✅ Cuenta TPV actualizada' : '✅ Cuenta TPV creada' })
+        setCuentaDialogOpen(false)
+        loadData()
+      } else {
+        const error = await response.json()
+        toast({ title: 'Error', description: error.error || 'No se pudo guardar la cuenta', variant: 'destructive' })
+      }
+    } catch (error) {
+      toast({ title: 'Error', description: 'Error de conexión', variant: 'destructive' })
+    } finally {
+      setSavingCuenta(false)
+    }
+  }
+
+  const handleDeleteCuenta = async (cuenta: CuentaTpv) => {
+    if (cuenta.esDefault) {
+      toast({ title: 'No permitido', description: 'No se puede eliminar la cuenta por defecto', variant: 'destructive' })
+      return
+    }
+    if (!confirm(`¿Eliminar la cuenta TPV "${cuenta.nombre}"?`)) return
+    try {
+      const response = await fetch(`/api/cuentas-tpv/${cuenta.id}`, { method: 'DELETE' })
+      if (response.ok) {
+        toast({ title: 'Cuenta TPV eliminada' })
+        loadData()
+      } else {
+        const error = await response.json()
+        toast({ title: 'Error', description: error.error || 'No se pudo eliminar', variant: 'destructive' })
+      }
+    } catch (error) {
+      toast({ title: 'Error', description: 'Error de conexión', variant: 'destructive' })
+    }
+  }
+
   const handleUnpairReader = async (readerId: string, readerName: string) => {
     if (!confirm(`¿Desemparejar el terminal "${readerName}"?`)) return
 
@@ -291,6 +413,12 @@ export function SumUpConfig() {
           <CreditCard className="h-4 w-4" />
           Terminales
         </TabsTrigger>
+        {isSuperAdmin && (
+          <TabsTrigger value="cuentas" className="flex items-center gap-2">
+            <Wallet className="h-4 w-4" />
+            Cuentas TPV
+          </TabsTrigger>
+        )}
         {isSuperAdmin && (
           <TabsTrigger value="configuracion" className="flex items-center gap-2">
             <Settings2 className="h-4 w-4" />
@@ -423,6 +551,14 @@ export function SumUpConfig() {
                           ) : (
                             <Badge variant="outline" className="text-gray-400">Sin responsable</Badge>
                           )}
+                          {reader.cuentaTpvNombre ? (
+                            <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">
+                              <Wallet className="h-3 w-3 mr-1" />
+                              {reader.cuentaTpvNombre}
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-gray-400">Sin cuenta TPV</Badge>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -463,6 +599,24 @@ export function SumUpConfig() {
                           </SelectContent>
                         </Select>
                       )}
+                      {isSuperAdmin && (
+                        <Select
+                          value={reader.cuentaTpvId || ''}
+                          onValueChange={(value) => handleAssignCuenta(reader.id, value || null)}
+                        >
+                          <SelectTrigger className="w-[200px]">
+                            <SelectValue placeholder="Asignar cuenta TPV" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">Sin cuenta TPV</SelectItem>
+                            {cuentas.filter((c) => c.activo).map((c) => (
+                              <SelectItem key={c.id} value={c.id}>
+                                {c.nombre}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
                       <Button
                         variant="ghost"
                         size="sm"
@@ -488,6 +642,191 @@ export function SumUpConfig() {
           </CardContent>
         </Card>
       </TabsContent>
+
+      {/* TAB: Cuentas TPV (solo SUPER_ADMIN) */}
+      {isSuperAdmin && (
+        <TabsContent value="cuentas">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Wallet className="h-5 w-5" />
+                    Cuentas TPV
+                  </CardTitle>
+                  <CardDescription>
+                    Cada cuenta es una pasarela de cobro (p. ej. una cuenta SumUp de un colaborador). Varios datáfonos pueden compartir la misma cuenta. El dinero se reporta por cuenta.
+                  </CardDescription>
+                </div>
+                <Button size="sm" onClick={() => openCuentaDialog(null)}>
+                  <Plus className="h-4 w-4 mr-1" />
+                  Nueva Cuenta
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="text-center py-8 text-gray-500">Cargando cuentas...</div>
+              ) : cuentas.length === 0 ? (
+                <div className="text-center py-8">
+                  <Wallet className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+                  <p className="text-gray-500">No hay cuentas TPV</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {cuentas.map((c) => (
+                    <div key={c.id} className="flex items-center justify-between p-4 border rounded-lg bg-gray-50">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-emerald-100 rounded-full">
+                          <Wallet className="h-5 w-5 text-emerald-600" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium">{c.nombre}</p>
+                            {c.esDefault && <Badge variant="secondary">Por defecto</Badge>}
+                            {!c.activo && <Badge variant="outline" className="text-gray-400">Inactiva</Badge>}
+                          </div>
+                          <div className="flex flex-wrap items-center gap-1 mt-1">
+                            <Badge variant="outline">{c.proveedor}</Badge>
+                            <Badge className={c.tieneApiKey ? 'bg-green-100 text-green-800 hover:bg-green-100' : 'bg-amber-100 text-amber-800 hover:bg-amber-100'}>
+                              <KeyRound className="h-3 w-3 mr-1" />
+                              {c.tieneApiKey ? 'Clave propia' : 'Usa clave central'}
+                            </Badge>
+                            {c.userNombre && (
+                              <Badge className="bg-indigo-100 text-indigo-800 hover:bg-indigo-100">
+                                <User className="h-3 w-3 mr-1" />
+                                {c.userNombre}
+                              </Badge>
+                            )}
+                            {c.localNombre && (
+                              <Badge variant="outline">
+                                <Building2 className="h-3 w-3 mr-1" />
+                                {c.localNombre}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button variant="outline" size="sm" onClick={() => openCuentaDialog(c)}>
+                          Editar
+                        </Button>
+                        {!c.esDefault && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteCuenta(c)}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h4 className="font-medium text-blue-900 mb-2">¿Cómo funciona?</h4>
+                <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
+                  <li>La cuenta <strong>por defecto</strong> usa la clave SumUp central de la aplicación.</li>
+                  <li>Para un colaborador autónomo con su propia cuenta SumUp, crea una cuenta nueva y pon su <strong>clave API</strong>.</li>
+                  <li>En la pestaña <strong>Terminales</strong>, asigna cada datáfono a la cuenta que le corresponda.</li>
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Dialogo crear/editar cuenta */}
+          <Dialog open={cuentaDialogOpen} onOpenChange={setCuentaDialogOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{editingCuenta ? 'Editar cuenta TPV' : 'Nueva cuenta TPV'}</DialogTitle>
+                <DialogDescription>
+                  Una cuenta agrupa los cobros de una pasarela concreta. El dinero se reporta por cuenta.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 pt-4">
+                <div className="space-y-2">
+                  <Label>Nombre de la cuenta</Label>
+                  <Input
+                    value={cuentaForm.nombre}
+                    onChange={(e) => setCuentaForm({ ...cuentaForm, nombre: e.target.value.toUpperCase() })}
+                    placeholder="Ej: SUMUP BARTO"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Proveedor</Label>
+                  <Select value={cuentaForm.proveedor} onValueChange={(v) => setCuentaForm({ ...cuentaForm, proveedor: v })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="SUMUP">SumUp</SelectItem>
+                      <SelectItem value="UNICAJA" disabled>Unicaja (próximamente)</SelectItem>
+                      <SelectItem value="REVOLUT" disabled>Revolut (próximamente)</SelectItem>
+                      <SelectItem value="OTRO" disabled>Otro (próximamente)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Clave API SumUp {editingCuenta && <span className="text-xs text-gray-400">(déjala vacía para no cambiarla)</span>}</Label>
+                  <Input
+                    type="password"
+                    value={cuentaForm.sumupApiKey}
+                    onChange={(e) => setCuentaForm({ ...cuentaForm, sumupApiKey: e.target.value })}
+                    placeholder={editingCuenta?.tieneApiKey ? '•••••• (ya configurada)' : 'sup_sk_...'}
+                    autoComplete="new-password"
+                  />
+                  <p className="text-xs text-gray-500">Si la dejas vacía, la cuenta usará la clave SumUp central de la aplicación.</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>Affiliate key SumUp <span className="text-xs text-gray-400">(opcional)</span></Label>
+                  <Input
+                    type="password"
+                    value={cuentaForm.sumupAffiliateKey}
+                    onChange={(e) => setCuentaForm({ ...cuentaForm, sumupAffiliateKey: e.target.value })}
+                    placeholder={editingCuenta?.tieneAffiliateKey ? '•••••• (ya configurada)' : ''}
+                    autoComplete="new-password"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Responsable (colaborador) <span className="text-xs text-gray-400">(opcional)</span></Label>
+                  <Select value={cuentaForm.userId} onValueChange={(v) => setCuentaForm({ ...cuentaForm, userId: v })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sin responsable" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Sin responsable</SelectItem>
+                      {usuarios.map((u) => (
+                        <SelectItem key={u.id} value={u.id}>{u.name || u.email}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Local por defecto <span className="text-xs text-gray-400">(opcional)</span></Label>
+                  <Select value={cuentaForm.localId} onValueChange={(v) => setCuentaForm({ ...cuentaForm, localId: v })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sin local" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Sin local</SelectItem>
+                      {locales.map((l) => (
+                        <SelectItem key={l.id} value={l.id}>{l.nombre}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button onClick={handleSaveCuenta} disabled={savingCuenta || !cuentaForm.nombre.trim()} className="w-full">
+                  {savingCuenta ? 'Guardando...' : (editingCuenta ? 'Guardar cambios' : 'Crear cuenta')}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </TabsContent>
+      )}
 
       {/* TAB: Configuración (solo SUPER_ADMIN) */}
       {isSuperAdmin && (

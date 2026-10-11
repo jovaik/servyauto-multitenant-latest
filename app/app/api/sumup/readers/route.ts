@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { listReaders, pairReader, getLocalSumUpKeys } from '@/lib/sumup'
+import { listReaders, pairReader, getLocalSumUpKeys, resolveSumUpKeys } from '@/lib/sumup'
 import { prisma } from '@/lib/db'
 import { getLocalContext } from '@/lib/local-context'
 
@@ -17,21 +17,59 @@ export async function GET() {
     const config = await prisma.sumUpConfig.findFirst()
     const modoAsignacion = config?.modoAsignacion || 'COMPARTIDO'
 
-    // Obtener contexto local para determinar qué API key usar
+    // Obtener contexto local para determinar qué API key usar como fallback
     const localContextForKey = await getLocalContext()
-    const localKeysForReaders = await getLocalSumUpKeys(localContextForKey?.selectedLocalId)
 
-    // Obtener lectores de SumUp API (usando la key del local si tiene)
-    const sumupReaders = await listReaders(localKeysForReaders.apiKey)
+    // Obtener lectores de TODAS las cuentas TPV SumUp activas. Cada cuenta
+    // (p.ej. SUMUP SERVYAUTO, SUMUP BARTO) tiene su propia clave y, por tanto,
+    // su propio conjunto de datafonos. Los mergeamos etiquetando cada lector
+    // con la cuenta a la que pertenece.
+    const cuentas = await prisma.cuentaTpv.findMany({
+      where: { activo: true, proveedor: 'SUMUP' },
+    })
+
+    let sumupReaders: any[] = []
+    const seen = new Set<string>()
+
+    if (cuentas.length > 0) {
+      for (const cuenta of cuentas) {
+        const keys = await resolveSumUpKeys({
+          cuentaTpvId: cuenta.id,
+          localId: localContextForKey?.selectedLocalId,
+        })
+        try {
+          const rs = await listReaders(keys.apiKey)
+          for (const r of rs) {
+            if (seen.has(r.id)) continue // evitar duplicados si dos cuentas comparten clave
+            seen.add(r.id)
+            sumupReaders.push({ ...r, _cuentaId: cuenta.id, _cuentaNombre: cuenta.nombre })
+          }
+        } catch (e) {
+          console.error(`Error listando lectores de la cuenta ${cuenta.nombre}:`, e)
+        }
+      }
+    } else {
+      // Sin cuentas configuradas: comportamiento anterior (clave del local / central)
+      const localKeysForReaders = await getLocalSumUpKeys(localContextForKey?.selectedLocalId)
+      sumupReaders = await listReaders(localKeysForReaders.apiKey)
+    }
 
     // Obtener lectores registrados en nuestra BD
     const dbReaders = await prisma.sumUpReader.findMany({
-      include: { local: true, user: { select: { id: true, name: true, email: true } } },
+      include: {
+        local: true,
+        user: { select: { id: true, name: true, email: true } },
+        cuentaTpv: { select: { id: true, nombre: true } },
+      },
     })
 
     // Mapear y enriquecer con datos locales
     const readers = sumupReaders.map((sr: any) => {
       const dbReader = dbReaders.find((r: any) => r.sumupReaderId === sr.id)
+      // La cuenta autoritativa es la que listó el datafono (su clave). Si no
+      // viniera del listado (modo compat), usar la de BD.
+      const cuentaTpvId = sr._cuentaId || dbReader?.cuentaTpvId || null
+      const cuentaTpvNombre = sr._cuentaNombre || dbReader?.cuentaTpv?.nombre || null
       return {
         id: sr.id,
         name: dbReader?.nombre || sr.name || `Terminal ${sr.id.slice(-4)}`,
@@ -40,6 +78,8 @@ export async function GET() {
         localNombre: dbReader?.local?.nombre || null,
         userId: dbReader?.userId || null,
         userNombre: dbReader?.user?.name || dbReader?.user?.email || null,
+        cuentaTpvId,
+        cuentaTpvNombre,
         dbId: dbReader?.id || null,
       }
     })
@@ -78,7 +118,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
-    const { pairingCode, name, localId } = await request.json()
+    const { pairingCode, name, localId, cuentaTpvId } = await request.json()
 
     if (!pairingCode) {
       return NextResponse.json(
@@ -87,11 +127,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Obtener API key del local si se especifica
-    const localKeysForPair = await getLocalSumUpKeys(localId)
+    // Clave: la de la cuenta TPV elegida (p.ej. SUMUP BARTO) con fallback al
+    // local / central. El datafono se empareja en la cuenta correcta.
+    const keysForPair = await resolveSumUpKeys({ cuentaTpvId, localId })
 
     // Emparejar en SumUp
-    const reader = await pairReader(pairingCode, name || 'ServyAuto Terminal', localKeysForPair.apiKey)
+    const reader = await pairReader(pairingCode, name || 'ServyAuto Terminal', keysForPair.apiKey)
 
     // Registrar en nuestra BD
     const dbReader = await prisma.sumUpReader.create({
@@ -99,6 +140,7 @@ export async function POST(request: NextRequest) {
         sumupReaderId: reader.id,
         nombre: name || 'ServyAuto Terminal',
         localId: localId || null, // null = compartido
+        cuentaTpvId: cuentaTpvId || null,
         activo: true,
       },
       include: { local: true },

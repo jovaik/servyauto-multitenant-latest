@@ -43,6 +43,8 @@ interface SumUpReader {
   userId?: string | null
   userNombre?: string | null
   localNombre?: string | null
+  cuentaTpvId?: string | null
+  cuentaTpvNombre?: string | null
 }
 
 type PaymentStatus = 'idle' | 'loading_readers' | 'ready' | 'processing' | 'polling' | 'success' | 'failed' | 'cancelled'
@@ -148,6 +150,7 @@ export function CobrarSumUpDialog({
           description,
           reference,
           readerId: selectedReader,
+          cuentaTpvId: readers.find((r) => r.id === selectedReader)?.cuentaTpvId || null,
           citaId,
           facturaId,
         }),
@@ -326,10 +329,11 @@ export function CobrarSumUpDialog({
                         {readers.map((reader) => (
                           <SelectItem key={reader.id} value={reader.id}>
                             {reader.name}
+                            {reader.cuentaTpvNombre ? ` — ${reader.cuentaTpvNombre}` : ''}
                             {reader.userNombre
-                              ? ` — DE ${reader.userNombre}`
+                              ? ` (DE ${reader.userNombre})`
                               : reader.localNombre
-                                ? ` — ${reader.localNombre}`
+                                ? ` (${reader.localNombre})`
                                 : ''}
                           </SelectItem>
                         ))}

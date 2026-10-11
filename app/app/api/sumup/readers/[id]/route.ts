@@ -16,7 +16,7 @@ export async function PUT(
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
-    const { nombre, localId, userId } = await request.json()
+    const { nombre, localId, userId, cuentaTpvId } = await request.json()
 
     // Buscar el lector en nuestra BD por sumupReaderId
     let dbReader = await prisma.sumUpReader.findUnique({
@@ -31,6 +31,7 @@ export async function PUT(
           nombre: nombre || `Terminal ${params.id.slice(-4)}`,
           localId: localId || null,
           userId: userId || null,
+          cuentaTpvId: cuentaTpvId || null,
           activo: true,
         },
       })
@@ -42,6 +43,7 @@ export async function PUT(
           nombre: nombre !== undefined ? nombre : dbReader.nombre,
           localId: localId !== undefined ? localId : dbReader.localId,
           userId: userId !== undefined ? (userId || null) : dbReader.userId,
+          cuentaTpvId: cuentaTpvId !== undefined ? (cuentaTpvId || null) : dbReader.cuentaTpvId,
         },
       })
     }
@@ -49,7 +51,7 @@ export async function PUT(
     // Obtener con local
     const reader = await prisma.sumUpReader.findUnique({
       where: { id: dbReader.id },
-      include: { local: true, user: { select: { id: true, name: true, email: true } } },
+      include: { local: true, user: { select: { id: true, name: true, email: true } }, cuentaTpv: { select: { id: true, nombre: true } } },
     })
 
     return NextResponse.json({ 
@@ -60,6 +62,8 @@ export async function PUT(
         localNombre: reader?.local?.nombre || null,
         userId: reader?.userId || null,
         userNombre: reader?.user?.name || reader?.user?.email || null,
+        cuentaTpvId: reader?.cuentaTpvId || null,
+        cuentaTpvNombre: reader?.cuentaTpv?.nombre || null,
       }
     })
   } catch (error: any) {

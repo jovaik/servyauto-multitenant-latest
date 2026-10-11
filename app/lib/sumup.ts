@@ -77,6 +77,33 @@ export async function getLocalSumUpKeys(localId: string | null | undefined): Pro
   return result
 }
 
+/**
+ * Resolver las claves SumUp a usar para un cobro/consulta.
+ * Prioridad: clave propia de la CuentaTpv seleccionada (p.ej. SUMUP BARTO) ->
+ * clave del local -> clave central del .env.
+ * Esto permite que el dinero vaya a la cuenta correcta (la del colaborador
+ * dueño del datafono) aunque se cobre desde cualquier local.
+ */
+export async function resolveSumUpKeys(opts: {
+  cuentaTpvId?: string | null
+  localId?: string | null
+}): Promise<{ apiKey?: string; affiliateKey?: string }> {
+  if (opts.cuentaTpvId) {
+    const cuenta = await prisma.cuentaTpv.findUnique({
+      where: { id: opts.cuentaTpvId },
+      select: { sumupApiKey: true, sumupAffiliateKey: true, nombre: true },
+    })
+    if (cuenta?.sumupApiKey) {
+      console.log(`[SumUp] Usando API key de la cuenta TPV: ${cuenta.nombre}`)
+      return {
+        apiKey: cuenta.sumupApiKey,
+        affiliateKey: cuenta.sumupAffiliateKey || undefined,
+      }
+    }
+  }
+  return getLocalSumUpKeys(opts.localId)
+}
+
 export type ModoAsignacion = 'COMPARTIDO' | 'POR_LOCAL'
 export type MetodoCobro = 'TERMINAL' | 'LINK'
 
