@@ -488,12 +488,12 @@ export function SumUpConfig() {
                       {config.modoAsignacion === 'POR_LOCAL' && (
                         <div className="space-y-2">
                           <Label>Asignar a local</Label>
-                          <Select value={selectedLocalForReader} onValueChange={setSelectedLocalForReader}>
+                          <Select value={selectedLocalForReader || '__none'} onValueChange={(v) => setSelectedLocalForReader(v === '__none' ? '' : v)}>
                             <SelectTrigger>
                               <SelectValue placeholder="Compartido (todos los locales)" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="">Compartido (todos los locales)</SelectItem>
+                              <SelectItem value="__none">Compartido (todos los locales)</SelectItem>
                               {locales.map((local) => (
                                 <SelectItem key={local.id} value={local.id}>
                                   {local.nombre}
@@ -565,14 +565,14 @@ export function SumUpConfig() {
                     <div className="flex items-center gap-2">
                       {config.modoAsignacion === 'POR_LOCAL' && isSuperAdmin && (
                         <Select
-                          value={reader.localId || ''}
-                          onValueChange={(value) => handleAssignLocal(reader.id, value || null)}
+                          value={reader.localId || '__none'}
+                          onValueChange={(value) => handleAssignLocal(reader.id, value === '__none' ? null : value)}
                         >
                           <SelectTrigger className="w-[180px]">
                             <SelectValue placeholder="Asignar local" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">Compartido</SelectItem>
+                            <SelectItem value="__none">Compartido</SelectItem>
                             {locales.map((local) => (
                               <SelectItem key={local.id} value={local.id}>
                                 {local.nombre}
@@ -583,14 +583,14 @@ export function SumUpConfig() {
                       )}
                       {isSuperAdmin && (
                         <Select
-                          value={reader.userId || ''}
-                          onValueChange={(value) => handleAssignUser(reader.id, value || null)}
+                          value={reader.userId || '__none'}
+                          onValueChange={(value) => handleAssignUser(reader.id, value === '__none' ? null : value)}
                         >
                           <SelectTrigger className="w-[200px]">
                             <SelectValue placeholder="Asignar responsable" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">Sin responsable</SelectItem>
+                            <SelectItem value="__none">Sin responsable</SelectItem>
                             {usuarios.map((u) => (
                               <SelectItem key={u.id} value={u.id}>
                                 {u.name || u.email}
@@ -601,14 +601,14 @@ export function SumUpConfig() {
                       )}
                       {isSuperAdmin && (
                         <Select
-                          value={reader.cuentaTpvId || ''}
-                          onValueChange={(value) => handleAssignCuenta(reader.id, value || null)}
+                          value={reader.cuentaTpvId || '__none'}
+                          onValueChange={(value) => handleAssignCuenta(reader.id, value === '__none' ? null : value)}
                         >
                           <SelectTrigger className="w-[200px]">
                             <SelectValue placeholder="Asignar cuenta TPV" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">Sin cuenta TPV</SelectItem>
+                            <SelectItem value="__none">Sin cuenta TPV</SelectItem>
                             {cuentas.filter((c) => c.activo).map((c) => (
                               <SelectItem key={c.id} value={c.id}>
                                 {c.nombre}
@@ -793,12 +793,12 @@ export function SumUpConfig() {
                 </div>
                 <div className="space-y-2">
                   <Label>Responsable (colaborador) <span className="text-xs text-gray-400">(opcional)</span></Label>
-                  <Select value={cuentaForm.userId} onValueChange={(v) => setCuentaForm({ ...cuentaForm, userId: v })}>
+                  <Select value={cuentaForm.userId || '__none'} onValueChange={(v) => setCuentaForm({ ...cuentaForm, userId: v === '__none' ? '' : v })}>
                     <SelectTrigger>
                       <SelectValue placeholder="Sin responsable" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Sin responsable</SelectItem>
+                      <SelectItem value="__none">Sin responsable</SelectItem>
                       {usuarios.map((u) => (
                         <SelectItem key={u.id} value={u.id}>{u.name || u.email}</SelectItem>
                       ))}
@@ -807,12 +807,12 @@ export function SumUpConfig() {
                 </div>
                 <div className="space-y-2">
                   <Label>Local por defecto <span className="text-xs text-gray-400">(opcional)</span></Label>
-                  <Select value={cuentaForm.localId} onValueChange={(v) => setCuentaForm({ ...cuentaForm, localId: v })}>
+                  <Select value={cuentaForm.localId || '__none'} onValueChange={(v) => setCuentaForm({ ...cuentaForm, localId: v === '__none' ? '' : v })}>
                     <SelectTrigger>
                       <SelectValue placeholder="Sin local" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Sin local</SelectItem>
+                      <SelectItem value="__none">Sin local</SelectItem>
                       {locales.map((l) => (
                         <SelectItem key={l.id} value={l.id}>{l.nombre}</SelectItem>
                       ))}
