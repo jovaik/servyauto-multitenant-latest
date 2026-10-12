@@ -4,7 +4,7 @@
 import React, { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { format } from 'date-fns'
-import { Calendar, Clock, User, Car, CreditCard, Trash2, Smartphone, Banknote, Building2, ToggleLeft, ToggleRight } from 'lucide-react'
+import { Calendar, Clock, User, Car, CreditCard, Trash2, Smartphone, Banknote, Building2, ToggleLeft, ToggleRight, Plus, X } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -115,6 +115,7 @@ export function EditarCitaDialog({
   const [precioOverrides, setPrecioOverrides] = useState<{ servicioId: string; precio: number }[]>([])
   const [colaboradores, setColaboradores] = useState<{ id: string; nombre: string; rol: string }[]>([])
   const [tpvsDisponibles, setTpvsDisponibles] = useState<{ id: string; name: string | null; tpvNombre: string }[]>([])
+  const [lineasManuales, setLineasManuales] = useState<{ descripcion: string; cantidad: number; precioUnitario: number }[]>([])
   
   const [formData, setFormData] = useState({
     fecha: '',
@@ -264,6 +265,16 @@ export function EditarCitaDialog({
             } else {
               setServiciosSeleccionados([])
             }
+            // Cargar líneas manuales existentes
+            if (citaCompleta.lineasManuales && citaCompleta.lineasManuales.length > 0) {
+              setLineasManuales(citaCompleta.lineasManuales.map((lm: any) => ({
+                descripcion: lm.descripcion,
+                cantidad: lm.cantidad,
+                precioUnitario: lm.precioUnitario
+              })))
+            } else {
+              setLineasManuales([])
+            }
             // Actualizar localId desde la cita completa si está disponible
             if (citaCompleta.localId) {
               setLocalIdSeleccionado(citaCompleta.localId)
@@ -296,11 +307,15 @@ export function EditarCitaDialog({
     )
   }
 
-  // Calcular precio total de los servicios seleccionados (con override local)
+  // Calcular precio total de los servicios seleccionados + líneas manuales (con override local)
   const calcularPrecioTotal = () => {
-    return serviciosSeleccionados.reduce((sum, servicioId) => {
+    const totalServicios = serviciosSeleccionados.reduce((sum, servicioId) => {
       return sum + getPrecioEfectivo(servicioId)
     }, 0)
+    const totalManuales = lineasManuales.reduce((sum, lm) => {
+      return sum + (lm.cantidad * lm.precioUnitario)
+    }, 0)
+    return totalServicios + totalManuales
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -320,6 +335,7 @@ export function EditarCitaDialog({
         metodoPago: formData.metodoPago && formData.metodoPago.trim() !== '' ? formData.metodoPago : undefined,
         observaciones: formData.observaciones && formData.observaciones.trim() !== '' ? formData.observaciones : undefined,
         servicios: serviciosData,
+        lineasManuales: lineasManuales.filter(lm => lm.descripcion.trim() !== ''),
         total: calcularPrecioTotal(),
         localId: localIdSeleccionado || undefined,
         prescriptorId: formData.prescriptorId || null,
@@ -830,11 +846,83 @@ export function EditarCitaDialog({
                 ))
               )}
             </div>
-            {serviciosSeleccionados.length > 0 && (
+          </div>
+
+          {/* Líneas Manuales */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>Líneas manuales</Label>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setLineasManuales(prev => [...prev, { descripcion: '', cantidad: 1, precioUnitario: 0 }])}
+                className="h-7 text-xs"
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                Añadir línea
+              </Button>
+            </div>
+            {lineasManuales.length > 0 && (
+              <div className="border rounded-md p-3 space-y-2 bg-amber-50/50">
+                {lineasManuales.map((lm, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <Input
+                      placeholder="Descripción"
+                      value={lm.descripcion}
+                      onChange={(e) => {
+                        const updated = [...lineasManuales]
+                        updated[index] = { ...updated[index], descripcion: e.target.value }
+                        setLineasManuales(updated)
+                      }}
+                      className="flex-1 h-8 text-sm bg-white"
+                    />
+                    <Input
+                      type="number"
+                      placeholder="Ud."
+                      min="1"
+                      value={lm.cantidad}
+                      onChange={(e) => {
+                        const updated = [...lineasManuales]
+                        updated[index] = { ...updated[index], cantidad: parseFloat(e.target.value) || 1 }
+                        setLineasManuales(updated)
+                      }}
+                      className="w-16 h-8 text-sm bg-white"
+                    />
+                    <Input
+                      type="number"
+                      placeholder="€"
+                      step="0.01"
+                      min="0"
+                      value={lm.precioUnitario || ''}
+                      onChange={(e) => {
+                        const updated = [...lineasManuales]
+                        updated[index] = { ...updated[index], precioUnitario: parseFloat(e.target.value) || 0 }
+                        setLineasManuales(updated)
+                      }}
+                      className="w-20 h-8 text-sm bg-white"
+                    />
+                    <span className="text-sm font-semibold text-green-600 w-16 text-right">
+                      {(lm.cantidad * lm.precioUnitario).toFixed(2)}€
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setLineasManuales(prev => prev.filter((_, i) => i !== index))}
+                      className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {(serviciosSeleccionados.length > 0 || lineasManuales.length > 0) && (
               <div className="flex justify-between items-center pt-2 border-t">
-                <span className="text-sm font-medium">Total:</span>
+                <span className="text-sm font-medium">Total (servicios + manuales):</span>
                 <span className="text-lg font-bold text-green-600">
-                  {calcularPrecioTotal()}€
+                  {calcularPrecioTotal().toFixed(2)}€
                 </span>
               </div>
             )}

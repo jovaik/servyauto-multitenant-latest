@@ -249,8 +249,22 @@ model Cita {
   realizadoPorId      String?
   prescriptor         Colaborador?     @relation("CitaPrescriptor", fields: [prescriptorId], references: [id])
   realizadoPor        Colaborador?     @relation("CitaRealizadoPor", fields: [realizadoPorId], references: [id])
+  lineasManuales      CitaLineaManual[]
 
   @@map("citas")
+}
+
+model CitaLineaManual {
+  id             String   @id @default(cuid())
+  citaId         String
+  descripcion    String
+  cantidad       Int      @default(1)
+  precioUnitario Float
+  total          Float
+  createdAt      DateTime @default(now())
+  cita           Cita     @relation(fields: [citaId], references: [id], onDelete: Cascade)
+
+  @@map("cita_lineas_manuales")
 }
 
 model Factura {

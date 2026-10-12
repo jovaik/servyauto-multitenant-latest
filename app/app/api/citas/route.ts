@@ -92,6 +92,7 @@ export async function POST(req: NextRequest) {
       observaciones,
       metodoPago,
       descuentoManual,
+      lineasManuales: bodyLineasManuales,
       prescriptorId,
       realizadoPorId,
       tpvUserId,
@@ -172,6 +173,15 @@ export async function POST(req: NextRequest) {
             precio: precio
           })
         }
+      }
+    }
+
+    // Sumar líneas manuales al total
+    if (bodyLineasManuales && Array.isArray(bodyLineasManuales) && bodyLineasManuales.length > 0) {
+      for (const lm of bodyLineasManuales) {
+        const cantidad = parseFloat(lm.cantidad) || 1
+        const precioUnit = parseFloat(lm.precioUnitario) || 0
+        precioTotal += cantidad * precioUnit
       }
     }
 
@@ -284,6 +294,23 @@ export async function POST(req: NextRequest) {
         }
       },
     })
+
+    // Crear líneas manuales si vienen
+    if (Array.isArray(bodyLineasManuales)) {
+      for (const lm of bodyLineasManuales) {
+        if (lm.descripcion && lm.precioUnitario > 0) {
+          await prisma.citaLineaManual.create({
+            data: {
+              citaId: cita.id,
+              descripcion: lm.descripcion,
+              cantidad: lm.cantidad || 1,
+              precioUnitario: lm.precioUnitario,
+              total: (lm.cantidad || 1) * lm.precioUnitario,
+            }
+          })
+        }
+      }
+    }
 
     // Registrar el consumo de tickets en el inventario (por local)
     if (ticketsASolicitar > 0) {

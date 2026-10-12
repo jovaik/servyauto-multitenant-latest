@@ -27,6 +27,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
             servicios: true
           }
         },
+        lineasManuales: true,
         facturas: true,
       },
     })
@@ -60,6 +61,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       observaciones,
       metodoPago,
       servicios,
+      lineasManuales: bodyLineasManuales,
       ticketsUsados,
       localId,
       prescriptorId,
@@ -290,7 +292,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
           where: { facturaId: facturaExistente.id }
         })
         
-        // Crear nuevos items
+        // Crear nuevos items de servicios
         for (let i = 0; i < servicios.length; i++) {
           const svc = servicios[i]
           const servicioInfo = serviciosInfo.find((s: any) => s.id === svc.servicioId)
@@ -306,9 +308,27 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
             }
           })
         }
+
+        // Añadir líneas manuales de la cita a la factura
+        const lmActuales = await prisma.citaLineaManual.findMany({ where: { citaId: params.id } })
+        let sumaLineasManualesFactura = 0
+        for (const lm of lmActuales) {
+          const lmItemId = `fi_${Date.now()}_lm_${Math.random().toString(36).substring(2, 9)}`
+          await prisma.factura_items.create({
+            data: {
+              id: lmItemId,
+              facturaId: facturaExistente.id,
+              descripcion: lm.descripcion,
+              cantidad: lm.cantidad,
+              precio: lm.precioUnitario,
+              total: lm.total,
+            }
+          })
+          sumaLineasManualesFactura += lm.total
+        }
         
         // Calcular totales - usar el total de la cita (ya con descuentos) si está disponible
-        const sumaServiciosFactura = servicios.reduce((sum: number, s: any) => sum + s.precio, 0)
+        const sumaServiciosFactura = servicios.reduce((sum: number, s: any) => sum + s.precio, 0) + sumaLineasManualesFactura
         const totalFactura = precioFinal !== undefined && precioFinal !== null ? precioFinal : sumaServiciosFactura
         const subtotal = totalFactura / 1.21  // Base imponible
         const iva = totalFactura - subtotal   // IVA incluido en el precio
@@ -367,6 +387,27 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       }
     }
     
+    // Gestionar líneas manuales
+    if (bodyLineasManuales !== undefined) {
+      // Borrar existentes y recrear
+      await prisma.citaLineaManual.deleteMany({ where: { citaId: params.id } })
+      if (Array.isArray(bodyLineasManuales)) {
+        for (const lm of bodyLineasManuales) {
+          if (lm.descripcion && lm.precioUnitario > 0) {
+            await prisma.citaLineaManual.create({
+              data: {
+                citaId: params.id,
+                descripcion: lm.descripcion,
+                cantidad: lm.cantidad || 1,
+                precioUnitario: lm.precioUnitario,
+                total: (lm.cantidad || 1) * lm.precioUnitario,
+              }
+            })
+          }
+        }
+      }
+    }
+
     // Actualizar la cita
     const cita = await prisma.cita.update({
       where: { id: params.id },
@@ -379,6 +420,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
             servicios: true
           }
         },
+        lineasManuales: true,
         facturas: true,
       },
     })
@@ -486,19 +528,38 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       })
       
       // Crear los items de la factura basados en los servicios de la cita
+      const facturaItems: any[] = []
       if (cita.cita_servicios && cita.cita_servicios.length > 0) {
-        const facturaItems = cita.cita_servicios.map((cs: any, index: number) => ({
-          id: `${factura.id}_item_${index}`,
-          facturaId: factura.id,
-          descripcion: cs.servicios.nombre,
-          cantidad: 1,
-          precio: cs.servicios.precio,
-          total: cs.servicios.precio,
-        }))
-        
-        // Calcular si hay descuento (diferencia entre suma de servicios y total de la cita)
-        const sumaServicios = cita.cita_servicios.reduce((sum: number, cs: any) => sum + (cs.servicios?.precio || cs.precio || 0), 0)
-        const descuentoAplicado = sumaServicios - total
+        cita.cita_servicios.forEach((cs: any, index: number) => {
+          facturaItems.push({
+            id: `${factura.id}_item_${index}`,
+            facturaId: factura.id,
+            descripcion: cs.servicios.nombre,
+            cantidad: 1,
+            precio: cs.servicios.precio,
+            total: cs.servicios.precio,
+          })
+        })
+      }
+
+      // Añadir líneas manuales a la factura
+      if (cita.lineasManuales && cita.lineasManuales.length > 0) {
+        cita.lineasManuales.forEach((lm: any, index: number) => {
+          facturaItems.push({
+            id: `${factura.id}_lm_${index}`,
+            facturaId: factura.id,
+            descripcion: lm.descripcion,
+            cantidad: lm.cantidad,
+            precio: lm.precioUnitario,
+            total: lm.total,
+          })
+        })
+      }
+
+      if (facturaItems.length > 0) {
+        // Calcular si hay descuento (diferencia entre suma de líneas y total de la cita)
+        const sumaLineas = facturaItems.reduce((sum: number, fi: any) => sum + fi.total, 0)
+        const descuentoAplicado = sumaLineas - total
         
         if (descuentoAplicado > 0.01) {
           facturaItems.push({

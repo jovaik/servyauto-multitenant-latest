@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/use-toast'
 import NuevoPresupuestoDialog from './nuevo-presupuesto-dialog'
+import { AceptarPresupuestoDialog } from './aceptar-presupuesto-dialog'
 
 interface Presupuesto {
   id: string
@@ -61,6 +62,7 @@ export default function PresupuestosView() {
   const [busqueda, setBusqueda] = useState('')
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
   const [aceptandoId, setAceptandoId] = useState<string | null>(null)
+  const [presAceptar, setPresAceptar] = useState<Presupuesto | null>(null)
 
   const selectedLocalId = useLocalStore((s) => s.selectedLocalId)
 
@@ -122,27 +124,8 @@ export default function PresupuestosView() {
     } catch { toast({ title: 'Error', variant: 'destructive' }) }
   }
 
-  const handleAceptar = async (pres: Presupuesto) => {
-    if (!confirm(`¿Aceptar el presupuesto ${pres.numero} y meterlo en la agenda? Se creará una cita pendiente con el cliente, vehículo y servicios.`)) return
-    setAceptandoId(pres.id)
-    try {
-      const res = await fetch(`/api/presupuestos/${pres.id}/aceptar`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      })
-      if (res.ok) {
-        toast({ title: 'Presupuesto aceptado', description: 'Se ha metido en la agenda como cita pendiente.' })
-        fetchPresupuestos()
-      } else {
-        const err = await res.json().catch(() => ({}))
-        toast({ title: 'Error al aceptar', description: err.error || 'Inténtalo de nuevo', variant: 'destructive' })
-      }
-    } catch {
-      toast({ title: 'Error al aceptar', variant: 'destructive' })
-    } finally {
-      setAceptandoId(null)
-    }
+  const handleAceptar = (pres: Presupuesto) => {
+    setPresAceptar(pres)
   }
 
   const handleWhatsApp = (pres: Presupuesto) => {
@@ -360,6 +343,14 @@ export default function PresupuestosView() {
           ))}
         </div>
       )}
+
+      {/* Dialog Aceptar */}
+      <AceptarPresupuestoDialog
+        open={!!presAceptar}
+        onOpenChange={(open) => { if (!open) setPresAceptar(null) }}
+        presupuesto={presAceptar}
+        onSuccess={fetchPresupuestos}
+      />
 
       {/* Dialog */}
       <NuevoPresupuestoDialog

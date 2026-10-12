@@ -5,7 +5,7 @@ import React, { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { Calendar, Clock, User, Car, CreditCard, Settings, ToggleLeft, ToggleRight } from 'lucide-react'
+import { Calendar, Clock, User, Car, CreditCard, Settings, ToggleLeft, ToggleRight, Plus, X } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -149,6 +149,9 @@ export function NuevaCitaDialog({
   const [colaboradores, setColaboradores] = useState<{ id: string; nombre: string; rol: string }[]>([])
   // TPVs propios (usuarios con tpvNombre)
   const [tpvsDisponibles, setTpvsDisponibles] = useState<{ id: string; name: string | null; tpvNombre: string }[]>([])
+
+  // Líneas manuales
+  const [lineasManuales, setLineasManuales] = useState<{ descripcion: string; cantidad: number; precioUnitario: number }[]>([])
 
   // Autocomplete de matrícula
   const [matriculaBusqueda, setMatriculaBusqueda] = useState('')
@@ -638,7 +641,8 @@ export function NuevaCitaDialog({
         servicios: formData.servicios.map(servicioId => ({
           servicioId,
           precio: getPrecioEfectivo(servicioId)
-        }))
+        })),
+        lineasManuales: lineasManuales.filter(lm => lm.descripcion.trim() !== '')
       }
 
       const response = await fetch('/api/citas', {
@@ -761,6 +765,7 @@ export function NuevaCitaDialog({
     })
     setClienteSeleccionadoInfo(null)
     setDescuentoManual(0)
+    setLineasManuales([])
     setNewCliente({
       nombre: '',
       apellido: '',
@@ -1411,11 +1416,87 @@ export function NuevaCitaDialog({
             </div>
           </div>
 
+          {/* Líneas Manuales */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>Líneas manuales</Label>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setLineasManuales(prev => [...prev, { descripcion: '', cantidad: 1, precioUnitario: 0 }])}
+                className="h-7 text-xs"
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                Añadir línea
+              </Button>
+            </div>
+            {lineasManuales.length > 0 && (
+              <div className="border rounded-md p-3 space-y-2 bg-amber-50/50">
+                {lineasManuales.map((lm, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <Input
+                      placeholder="Descripción"
+                      value={lm.descripcion}
+                      onChange={(e) => {
+                        const updated = [...lineasManuales]
+                        updated[index] = { ...updated[index], descripcion: e.target.value }
+                        setLineasManuales(updated)
+                      }}
+                      className="flex-1 h-8 text-sm bg-white"
+                    />
+                    <Input
+                      type="number"
+                      placeholder="Ud."
+                      min="1"
+                      value={lm.cantidad}
+                      onChange={(e) => {
+                        const updated = [...lineasManuales]
+                        updated[index] = { ...updated[index], cantidad: parseFloat(e.target.value) || 1 }
+                        setLineasManuales(updated)
+                      }}
+                      className="w-16 h-8 text-sm bg-white"
+                    />
+                    <Input
+                      type="number"
+                      placeholder="€"
+                      step="0.01"
+                      min="0"
+                      value={lm.precioUnitario || ''}
+                      onChange={(e) => {
+                        const updated = [...lineasManuales]
+                        updated[index] = { ...updated[index], precioUnitario: parseFloat(e.target.value) || 0 }
+                        setLineasManuales(updated)
+                      }}
+                      className="w-20 h-8 text-sm bg-white"
+                    />
+                    <span className="text-sm font-semibold text-green-600 w-16 text-right">
+                      {(lm.cantidad * lm.precioUnitario).toFixed(2)}€
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setLineasManuales(prev => prev.filter((_, i) => i !== index))}
+                      className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Resumen de precios */}
-          {formData.servicios.length > 0 && (() => {
-            const subtotal = formData.servicios.reduce((sum, servicioId) => {
+          {(formData.servicios.length > 0 || lineasManuales.length > 0) && (() => {
+            const subtotalServicios = formData.servicios.reduce((sum, servicioId) => {
               return sum + getPrecioEfectivo(servicioId)
             }, 0)
+            const subtotalManuales = lineasManuales.reduce((sum, lm) => {
+              return sum + (lm.cantidad * lm.precioUnitario)
+            }, 0)
+            const subtotal = subtotalServicios + subtotalManuales
             
             // Calcular descuentos automáticos
             let descuentoParkingAplicado = 0
@@ -1453,10 +1534,18 @@ export function NuevaCitaDialog({
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Subtotal servicios:</span>
-                    <span className="font-medium">€{subtotal.toFixed(2)}</span>
-                  </div>
+                  {subtotalServicios > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Subtotal servicios:</span>
+                      <span className="font-medium">€{subtotalServicios.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {subtotalManuales > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Subtotal líneas manuales:</span>
+                      <span className="font-medium">€{subtotalManuales.toFixed(2)}</span>
+                    </div>
+                  )}
                   
                   {/* Descuentos automáticos */}
                   {descuentoParkingAplicado > 0 && (

@@ -17,6 +17,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const body = await req.json().catch(() => ({}))
     const fechaBody: string | undefined = body?.fecha
     const horaInicioBody: string | undefined = body?.horaInicio
+    const horaFinBody: string | undefined = body?.horaFin
+    const boxBody: string | undefined = body?.box
 
     const presupuesto = await prisma.presupuesto.findUnique({
       where: { id: params.id },
@@ -96,19 +98,22 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         vehiculoId = vehiculo.id
       }
 
-      // 3. Fecha/hora de la cita (hoy por defecto, 09:00-10:00)
+      // 3. Fecha/hora de la cita
       const fechaCita = fechaBody ? new Date(fechaBody) : new Date()
       const horaInicio = horaInicioBody || '09:00'
-      const [h, m] = horaInicio.split(':').map(Number)
-      const endH = Math.min((h || 9) + 1, 23)
-      const horaFin = `${String(endH).padStart(2, '0')}:${String(m || 0).padStart(2, '0')}`
+      const horaFin = horaFinBody || (() => {
+        const [h, m] = horaInicio.split(':').map(Number)
+        const endH = Math.min((h || 9) + 1, 23)
+        return `${String(endH).padStart(2, '0')}:${String(m || 0).padStart(2, '0')}`
+      })()
+      const boxCita = boxBody || 'Box 1'
 
-      // 4. Observaciones: nº presupuesto + líneas manuales (sin servicio de catálogo)
-      const lineasManuales = presupuesto.items
+      // 4. Observaciones: nº presupuesto + líneas manuales como texto informativo
+      const lineasManualesTexto = presupuesto.items
         .filter((it: any) => !it.servicioId)
         .map((it: any) => `${it.descripcion} (${it.cantidad} x ${it.precioUnitario.toFixed(2)}€)`)
       const obsPartes = [`Desde presupuesto ${presupuesto.numero}`]
-      if (lineasManuales.length) obsPartes.push(`Conceptos: ${lineasManuales.join('; ')}`)
+      if (lineasManualesTexto.length) obsPartes.push(`Conceptos: ${lineasManualesTexto.join('; ')}`)
       if (presupuesto.observaciones) obsPartes.push(presupuesto.observaciones)
       const observaciones = obsPartes.join('\n')
 
@@ -118,7 +123,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
           fecha: fechaCita,
           horaInicio,
           horaFin,
-          box: 'Box 1',
+          box: boxCita,
           estado: 'PENDIENTE',
           observaciones,
           total: presupuesto.total || 0,
@@ -145,6 +150,20 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         } catch (e) {
           // ignorar duplicados (@@unique citaId+servicioId)
         }
+      }
+
+      // 6b. Líneas manuales (sin servicioId) → CitaLineaManual
+      const lineasManualesItems = presupuesto.items.filter((it: any) => !it.servicioId)
+      for (const it of lineasManualesItems) {
+        await tx.citaLineaManual.create({
+          data: {
+            citaId: nuevaCita.id,
+            descripcion: it.descripcion,
+            cantidad: it.cantidad || 1,
+            precioUnitario: it.precioUnitario,
+            total: (it.cantidad || 1) * it.precioUnitario,
+          },
+        })
       }
 
       // 7. Marcar presupuesto como ACEPTADO
