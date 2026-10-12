@@ -115,6 +115,7 @@ export function NuevaCitaDialog({
   
   const [formData, setFormData] = useState({
     fecha: format(selectedDate, 'yyyy-MM-dd'),
+    fechaDevolucion: '',
     horaInicio: preselectedSlot?.time || '',
     horaFin: '',
     box: preselectedSlot?.box || '',
@@ -633,6 +634,7 @@ export function NuevaCitaDialog({
     try {
       const payload = {
         ...formData,
+        fechaDevolucion: formData.fechaDevolucion || undefined,
         descuentoManual: descuentoManual || 0,
         prescriptorId: formData.prescriptorId || null,
         realizadoPorId: formData.realizadoPorId || null,
@@ -749,6 +751,7 @@ export function NuevaCitaDialog({
   const resetForm = () => {
     setFormData({
       fecha: format(selectedDate, 'yyyy-MM-dd'),
+      fechaDevolucion: '',
       horaInicio: preselectedSlot?.time || '',
       horaFin: '',
       box: preselectedSlot?.box || '',
@@ -850,6 +853,23 @@ export function NuevaCitaDialog({
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="fechaDevolucion">
+                  Fecha de recogida / devolución
+                  <span className="text-xs text-gray-500 ml-2">(opcional – para trabajos de varios días)</span>
+                </Label>
+                <Input
+                  id="fechaDevolucion"
+                  type="date"
+                  value={formData.fechaDevolucion}
+                  min={formData.fecha}
+                  onChange={(e) => setFormData(prev => ({ ...prev, fechaDevolucion: e.target.value }))}
+                />
+                <p className="text-xs text-gray-500">
+                  Déjalo vacío si el coche se entrega el mismo día.
+                </p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">

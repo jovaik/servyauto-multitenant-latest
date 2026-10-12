@@ -16,6 +16,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
     const body = await req.json().catch(() => ({}))
     const fechaBody: string | undefined = body?.fecha
+    const fechaDevolucionBody: string | undefined = body?.fechaDevolucion
     const horaInicioBody: string | undefined = body?.horaInicio
     const horaFinBody: string | undefined = body?.horaFin
     const boxBody: string | undefined = body?.box
@@ -107,10 +108,29 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         return `${String(endH).padStart(2, '0')}:${String(m || 0).padStart(2, '0')}`
       })()
       const boxCita = boxBody || 'Box 1'
+      const fechaDevolucion = fechaDevolucionBody ? new Date(fechaDevolucionBody) : null
+
+      // 3b. Clasificar items: solo son "servicio de catálogo" (cita_servicios) los que
+      // apuntan a un servicio REAL del catálogo con precio > 0, misma descripción y mismo
+      // precio. Todo lo demás (servicio genérico 'Servicio de Taller', precios/descripciones
+      // personalizados) va como LÍNEA MANUAL para conservar su descripción e importe exactos.
+      const serviciosIds = presupuesto.items.map((it: any) => it.servicioId).filter(Boolean)
+      const catalogo = serviciosIds.length
+        ? await tx.servicio.findMany({ where: { id: { in: serviciosIds } } })
+        : []
+      const catalogoMap = new Map<string, any>(catalogo.map((s: any) => [s.id, s]))
+      const esServicioCatalogo = (it: any): boolean => {
+        if (!it.servicioId) return false
+        const s = catalogoMap.get(it.servicioId)
+        if (!s || !s.precio || s.precio <= 0) return false
+        if (Math.abs((it.precioUnitario || 0) - s.precio) > 0.01) return false
+        if ((it.descripcion || '').trim().toUpperCase() !== (s.nombre || '').trim().toUpperCase()) return false
+        return true
+      }
 
       // 4. Observaciones: nº presupuesto + líneas manuales como texto informativo
       const lineasManualesTexto = presupuesto.items
-        .filter((it: any) => !it.servicioId)
+        .filter((it: any) => !esServicioCatalogo(it))
         .map((it: any) => `${it.descripcion} (${it.cantidad} x ${it.precioUnitario.toFixed(2)}€)`)
       const obsPartes = [`Desde presupuesto ${presupuesto.numero}`]
       if (lineasManualesTexto.length) obsPartes.push(`Conceptos: ${lineasManualesTexto.join('; ')}`)
@@ -121,6 +141,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       const nuevaCita = await tx.cita.create({
         data: {
           fecha: fechaCita,
+          fechaDevolucion,
           horaInicio,
           horaFin,
           box: boxCita,
@@ -136,7 +157,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       })
 
       // 6. Servicios de catálogo → cita_servicios
-      const serviciosCatalogo = presupuesto.items.filter((it: any) => it.servicioId)
+      const serviciosCatalogo = presupuesto.items.filter((it: any) => esServicioCatalogo(it))
       for (const it of serviciosCatalogo) {
         try {
           await tx.cita_servicios.create({
@@ -152,8 +173,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         }
       }
 
-      // 6b. Líneas manuales (sin servicioId) → CitaLineaManual
-      const lineasManualesItems = presupuesto.items.filter((it: any) => !it.servicioId)
+      // 6b. Líneas manuales (genérico/personalizado) → CitaLineaManual
+      const lineasManualesItems = presupuesto.items.filter((it: any) => !esServicioCatalogo(it))
       for (const it of lineasManualesItems) {
         await tx.citaLineaManual.create({
           data: {

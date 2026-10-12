@@ -220,6 +220,7 @@ model Servicio {
 model Cita {
   id                  String           @id @default(cuid())
   fecha               DateTime
+  fechaDevolucion     DateTime?
   horaInicio          String
   horaFin             String
   box                 String

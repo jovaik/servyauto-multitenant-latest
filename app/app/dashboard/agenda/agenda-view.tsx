@@ -472,6 +472,12 @@ export function AgendaView() {
                                   <div className="text-xs font-medium">
                                     {cita.horaInicio} - {cita.horaFin}
                                   </div>
+                                  {(cita as any).fechaDevolucion && (
+                                    <div className="flex items-center text-[10px] text-amber-700 font-medium truncate" title="Fecha de recogida / devolución">
+                                      <CalendarIcon className="mr-1 h-2.5 w-2.5" />
+                                      <span className="truncate">Devol: {format(new Date((cita as any).fechaDevolucion), 'dd/MM')}</span>
+                                    </div>
+                                  )}
                                   {/* Indicador de Local */}
                                   {(cita as any).local?.nombre && (
                                     <div className="flex items-center text-[10px] text-blue-600 truncate" title={(cita as any).local.nombre}>

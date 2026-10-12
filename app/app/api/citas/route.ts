@@ -82,6 +82,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const {
       fecha,
+      fechaDevolucion,
       horaInicio,
       horaFin,
       clienteId,
@@ -261,6 +262,7 @@ export async function POST(req: NextRequest) {
     const cita = await prisma.cita.create({
       data: {
         fecha: fechaCita,
+        fechaDevolucion: fechaDevolucion ? new Date(fechaDevolucion) : null,
         horaInicio,
         horaFin,
         clienteId,

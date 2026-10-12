@@ -49,6 +49,7 @@ export function AceptarPresupuestoDialog({
   const [loading, setLoading] = useState(false)
   const [boxes, setBoxes] = useState(['Box 1', 'Box 2', 'Box 3'])
   const [fecha, setFecha] = useState(format(new Date(), 'yyyy-MM-dd'))
+  const [fechaDevolucion, setFechaDevolucion] = useState('')
   const [horaInicio, setHoraInicio] = useState('09:00')
   const [horaFin, setHoraFin] = useState('10:00')
   const [box, setBox] = useState('Box 1')
@@ -56,6 +57,7 @@ export function AceptarPresupuestoDialog({
   useEffect(() => {
     if (open) {
       setFecha(format(new Date(), 'yyyy-MM-dd'))
+      setFechaDevolucion('')
       setHoraInicio('09:00')
       setHoraFin('10:00')
       setBox('Box 1')
@@ -90,7 +92,7 @@ export function AceptarPresupuestoDialog({
       const res = await fetch(`/api/presupuestos/${presupuesto.id}/aceptar`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fecha, horaInicio, horaFin, box }),
+        body: JSON.stringify({ fecha, fechaDevolucion: fechaDevolucion || undefined, horaInicio, horaFin, box }),
       })
       if (res.ok) {
         toast({
@@ -174,6 +176,21 @@ export function AceptarPresupuestoDialog({
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="fechaDevolucion" className="flex items-center gap-1">
+              <Calendar className="h-4 w-4" /> Fecha de recogida / devolución
+              <span className="text-xs text-gray-500 ml-1">(opcional – para trabajos de varios días)</span>
+            </Label>
+            <Input
+              id="fechaDevolucion"
+              type="date"
+              value={fechaDevolucion}
+              min={fecha}
+              onChange={(e) => setFechaDevolucion(e.target.value)}
+            />
+            <p className="text-xs text-gray-500">Déjalo vacío si el coche se entrega el mismo día.</p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

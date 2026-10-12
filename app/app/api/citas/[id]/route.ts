@@ -54,6 +54,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     const body = await req.json()
     const {
       fecha,
+      fechaDevolucion,
       horaInicio,
       horaFin,
       box,
@@ -198,6 +199,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     const updateData: any = {}
     
     if (fecha) updateData.fecha = new Date(fecha)
+    if (fechaDevolucion !== undefined) updateData.fechaDevolucion = fechaDevolucion ? new Date(fechaDevolucion) : null
     if (horaInicio) updateData.horaInicio = horaInicio
     if (horaFin) updateData.horaFin = horaFin
     if (box) updateData.box = box

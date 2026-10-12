@@ -113,12 +113,14 @@ export function EditarCitaDialog({
   const isSuperAdmin = (session?.user as any)?.role === 'SUPER_ADMIN'
   const [categoriaOverrides, setCategoriaOverrides] = useState<{ marca: string; modelo: string; categoria: string }[]>([])
   const [precioOverrides, setPrecioOverrides] = useState<{ servicioId: string; precio: number }[]>([])
+  const [preciosGuardados, setPreciosGuardados] = useState<Record<string, number>>({})
   const [colaboradores, setColaboradores] = useState<{ id: string; nombre: string; rol: string }[]>([])
   const [tpvsDisponibles, setTpvsDisponibles] = useState<{ id: string; name: string | null; tpvNombre: string }[]>([])
   const [lineasManuales, setLineasManuales] = useState<{ descripcion: string; cantidad: number; precioUnitario: number }[]>([])
   
   const [formData, setFormData] = useState({
     fecha: '',
+    fechaDevolucion: '',
     horaInicio: '',
     horaFin: '',
     box: '',
@@ -157,6 +159,8 @@ export function EditarCitaDialog({
   const getPrecioEfectivo = (servicioId: string): number => {
     const po = precioOverrides.find(o => o.servicioId === servicioId)
     if (po) return po.precio
+    // Preferir el precio guardado en la cita (p.ej. precio pactado en el presupuesto)
+    if (preciosGuardados[servicioId] !== undefined) return preciosGuardados[servicioId]
     return servicios?.find(s => s.id === servicioId)?.precio || 0
   }
 
@@ -215,6 +219,7 @@ export function EditarCitaDialog({
       if (open && cita) {
         setFormData({
           fecha: format(new Date(cita.fecha), 'yyyy-MM-dd'),
+          fechaDevolucion: (cita as any).fechaDevolucion ? format(new Date((cita as any).fechaDevolucion), 'yyyy-MM-dd') : '',
           horaInicio: cita.horaInicio,
           horaFin: cita.horaFin,
           box: cita.box,
@@ -262,8 +267,15 @@ export function EditarCitaDialog({
             const citaCompleta = await response.json()
             if (citaCompleta.cita_servicios && citaCompleta.cita_servicios.length > 0) {
               setServiciosSeleccionados(citaCompleta.cita_servicios.map((cs: any) => cs.servicioId))
+              // Guardar el precio real registrado en la cita por servicio
+              const pg: Record<string, number> = {}
+              for (const cs of citaCompleta.cita_servicios) {
+                if (cs.servicioId != null && cs.precio != null) pg[cs.servicioId] = cs.precio
+              }
+              setPreciosGuardados(pg)
             } else {
               setServiciosSeleccionados([])
+              setPreciosGuardados({})
             }
             // Cargar líneas manuales existentes
             if (citaCompleta.lineasManuales && citaCompleta.lineasManuales.length > 0) {
@@ -332,6 +344,7 @@ export function EditarCitaDialog({
       // Limpiar datos: convertir strings vacíos a undefined
       const dataToSend = {
         ...formData,
+        fechaDevolucion: formData.fechaDevolucion && formData.fechaDevolucion.trim() !== '' ? formData.fechaDevolucion : null,
         metodoPago: formData.metodoPago && formData.metodoPago.trim() !== '' ? formData.metodoPago : undefined,
         observaciones: formData.observaciones && formData.observaciones.trim() !== '' ? formData.observaciones : undefined,
         servicios: serviciosData,
@@ -645,6 +658,17 @@ export function EditarCitaDialog({
                 onChange={(e) => setFormData(prev => ({ ...prev, fecha: e.target.value }))}
                 required
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="fechaDevolucion">Fecha de recogida / devolución</Label>
+              <Input
+                id="fechaDevolucion"
+                type="date"
+                value={formData.fechaDevolucion}
+                min={formData.fecha}
+                onChange={(e) => setFormData(prev => ({ ...prev, fechaDevolucion: e.target.value }))}
+              />
+              <p className="text-xs text-gray-500">Opcional – para trabajos de varios días.</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="box">Box</Label>
