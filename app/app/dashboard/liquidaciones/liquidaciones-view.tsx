@@ -64,6 +64,7 @@ interface LiquidacionData {
   periodo: { desde: string; hasta: string }
   vistaRestringida?: boolean
   propietarioPct?: number
+  reparto?: { numPartes: number; porParte: number } | null
   simulacion?: SimulacionData
   resumen: {
     ingresosTotales: number
@@ -220,7 +221,7 @@ export default function LiquidacionesView() {
       ['Total Comisiones Operarios', '', '', data.resumen.totalComisionesOperario.toFixed(2)],
       ['Total Comisiones Encargados', '', '', data.resumen.totalComisionesResponsable.toFixed(2)],
       ['Total Comisiones (neto)', '', '', data.resumen.totalComisiones.toFixed(2)],
-      [`Propietario (${data.propietarioPct ?? 50}% del neto)`, '', '', data.resumen.resultadoPropietario.toFixed(2)],
+      [data.reparto ? `REPARTO ENTRE ${data.reparto.numPartes}: IMPORTE POR PARTE` : `Propietario (${data.propietarioPct ?? 50}% del neto)`, '', '', data.resumen.resultadoPropietario.toFixed(2)],
       ...(data.simulacion ? [
         [],
         ['SIMULADOR DE REPARTO'],
@@ -379,8 +380,8 @@ export default function LiquidacionesView() {
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-2 flex-wrap">
                       <Euro className="h-5 w-5 text-green-700" />
-                      <span className="text-lg font-bold">Propietario</span>
-                      <div className="flex items-center gap-1">
+                      <span className="text-lg font-bold">{data.reparto ? `CADA PARTE · NETO ÷ ${data.reparto.numPartes}` : 'Propietario'}</span>
+                      {!data.reparto && <div className="flex items-center gap-1">
                         <Input
                           type="number"
                           min={0}
@@ -396,7 +397,7 @@ export default function LiquidacionesView() {
                             {savingPct ? '...' : 'Guardar'}
                           </Button>
                         )}
-                      </div>
+                      </div>}
                     </div>
                     <span className={`text-2xl font-bold ${data.resumen.resultadoPropietario >= 0 ? 'text-green-700' : 'text-red-600'}`}>
                       {data.resumen.resultadoPropietario.toFixed(2)} €
@@ -621,14 +622,14 @@ export default function LiquidacionesView() {
             <CardContent className="py-4">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <FileText className="h-4 w-4" />
-                <span>
+                {data.reparto ? <span>REPARTO DEFINITIVO: (INGRESOS − TODOS LOS GASTOS) ÷ {data.reparto.numPartes}. SIN COMISIONES POR ROL. LOS GASTOS ATRIBUIDOS YA ESTÁN INCLUIDOS Y NO SE DESCUENTAN OTRA VEZ.</span> : <span>
                   Comisión <strong>por acción</strong>: cada colaborador cobra por cada función que realiza en una cita. |
                   <strong> Prescriptor</strong>: % × bruto de citas que prescribió |
                   <strong> Operario</strong>: % × bruto de lavados que realizó |
                   <strong> Responsable</strong>: % × (Ingresos − Gastos generales del local) |
                   si prescribe Y ejecuta la misma cita, cobra ambas. Menos sus gastos atribuidos. |
                   <strong> Propietario</strong>: % configurable × Neto del local (Ingresos − Gastos)
-                </span>
+                </span>}
               </div>
             </CardContent>
           </Card>

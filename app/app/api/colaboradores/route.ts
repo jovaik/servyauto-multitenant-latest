@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { repartoIgualitario } from '@/lib/reparto-local';
 
 export async function GET(req: NextRequest) {
   try {
@@ -26,7 +27,7 @@ export async function GET(req: NextRequest) {
       orderBy: { nombre: "asc" },
     });
 
-    return NextResponse.json(colaboradores);
+    return NextResponse.json(colaboradores.map(c => repartoIgualitario(c.localId) ? { ...c, comisionPct: 0 } : c));
   } catch (error: unknown) {
     console.error("Error fetching colaboradores:", error);
     return NextResponse.json({ error: "Error al obtener colaboradores" }, { status: 500 });
@@ -56,7 +57,7 @@ export async function POST(req: NextRequest) {
         telefono: telefono || null,
         email: email || null,
         rol,
-        comisionPct: comisionPct ?? 0,
+        comisionPct: repartoIgualitario(localId) ? 0 : comisionPct ?? 0,
         localId,
         userId: userId || null,
       },

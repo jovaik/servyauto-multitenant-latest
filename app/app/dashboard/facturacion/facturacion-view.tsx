@@ -126,6 +126,8 @@ export function FacturacionView() {
     ventasTPVUnicaja: 0,
     ventasRevolut: 0,
     gastosEfectivo: 0,
+    transferenciasEntrada: 0,
+    transferenciasSalida: 0,
     efectivoEnCaja: 0
   })
 
@@ -519,10 +521,19 @@ export function FacturacionView() {
                       <span>Gastos efectivo:</span>
                       <span className="font-medium">-€{stats.gastosEfectivo.toFixed(2)}</span>
                     </div>
+                    <div className="flex justify-between">
+                      <span>ENTRADAS POR TRANSFERENCIAS:</span>
+                      <span className="font-medium">+€{(stats.transferenciasEntrada || 0).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-red-700">
+                      <span>SALIDAS POR TRANSFERENCIAS:</span>
+                      <span className="font-medium">-€{(stats.transferenciasSalida || 0).toFixed(2)}</span>
+                    </div>
                     <div className="border-t border-green-300 pt-1 mt-1"></div>
                     <div className="text-sm font-bold text-green-800">
-                      👉 Debe haber esta cantidad en la caja
+                      NETO DE EFECTIVO DEL PERIODO
                     </div>
+                    <div>NO INCLUYE EL SALDO ANTERIOR AL PERIODO.</div>
                   </div>
                 </div>
               </div>

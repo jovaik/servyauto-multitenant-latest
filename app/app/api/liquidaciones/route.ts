@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { repartoIgualitario, PARTES_REPARTO } from '@/lib/reparto-local';
 
 // POST /api/liquidaciones — actualizar configuración (propietarioPct)
 export async function POST(req: NextRequest) {
@@ -174,7 +175,9 @@ export async function GET(req: NextRequest) {
     //   - Operario:    % sobre el bruto de las citas que ejecutó   (realizadoPorId)
     //   - Responsable: % sobre el neto de su local (ingresos − gastos generales del local)
     // Si la misma persona prescribe Y ejecuta una cita, cobra por ambas acciones (es justo).
-    const liquidaciones = colaboradores.map(col => {
+    const liquidaciones = colaboradores.map(colOriginal => {
+      const sinComisiones = repartoIgualitario(colOriginal.localId);
+      const col = { ...colOriginal, comisionPct: sinComisiones ? 0 : colOriginal.comisionPct };
       // Gastos atribuidos a este colaborador
       const gastosColaboradorDetalle = gastos.filter(g => g.colaboradorId === col.id);
       const gastosColaborador = gastosColaboradorDetalle.reduce((sum, g) => sum + g.importe, 0);
@@ -201,7 +204,7 @@ export async function GET(req: NextRequest) {
 
       const comisionBruta = comisionPrescriptor + comisionOperario + comisionResponsable;
       const baseCalculo = basePrescriptor + baseOperario + baseResponsable;
-      const comisionNeta = comisionBruta - gastosColaborador;
+      const comisionNeta = sinComisiones ? 0 : comisionBruta - gastosColaborador;
 
       // Citas relacionadas = unión (sin duplicar) de prescritas + realizadas
       // (+ las de su local si es responsable, para dar contexto de su base)
@@ -256,7 +259,8 @@ export async function GET(req: NextRequest) {
 
     // 6. Leer % propietario de la configuración
     const configProp = await prisma.configuracion.findUnique({ where: { clave: 'liquidaciones.propietarioPct' } });
-    const propietarioPct = configProp ? parseFloat(configProp.valor) : 50; // default 50%
+    const repartoActivo = repartoIgualitario(localId);
+    const propietarioPct = repartoActivo ? 100 / PARTES_REPARTO : (configProp ? parseFloat(configProp.valor) : 50);
 
     // 7. Totales por rol/acción
     const totalComisionesPrescriptor = liquidaciones.reduce((sum, l) => sum + l.desglose.prescriptor.comision, 0);
@@ -266,7 +270,7 @@ export async function GET(req: NextRequest) {
 
     // Resultado propietario = su % sobre el neto (Ingresos - Gastos)
     const netoLocal = ingresosTotales - gastosTotales;
-    const resultadoPropietario = (netoLocal * propietarioPct) / 100;
+    const resultadoPropietario = repartoActivo ? netoLocal / PARTES_REPARTO : (netoLocal * propietarioPct) / 100;
 
     // 7b. SIMULADOR DE MODELOS DE REPARTO (para comparar cuál interesa más)
     //   Modelo A (actual): se pagan comisiones por acción (incluida la del prescriptor
@@ -315,7 +319,8 @@ export async function GET(req: NextRequest) {
       periodo: { desde: fechaDesde, hasta: fechaHasta },
       vistaRestringida: !!colaboradorIdUsuario,
       propietarioPct,
-      simulacion,
+      simulacion: repartoActivo ? null : simulacion,
+      reparto: repartoActivo ? { numPartes: PARTES_REPARTO, porParte: round2(netoLocal / PARTES_REPARTO) } : null,
       resumen: {
         ingresosTotales: round2(ingresosTotales),
         gastosTotales: round2(gastosTotales),

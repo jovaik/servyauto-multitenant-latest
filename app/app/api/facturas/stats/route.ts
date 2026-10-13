@@ -22,7 +22,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         totalFacturas: 0, totalTickets: 0, ingresosMes: 0, pendientesCobro: 0,
         totalVentas: 0, ventasEfectivo: 0, ventasTPVSumup: 0, ventasTPVUnicaja: 0, ventasRevolut: 0,
-        gastosEfectivo: 0, efectivoEnCaja: 0, totalCitasCompletadasSinFactura: 0
+        gastosEfectivo: 0, transferenciasEntrada: 0, transferenciasSalida: 0,
+        efectivoEnCaja: 0, totalCitasCompletadasSinFactura: 0
       })
     }
     
@@ -254,8 +255,46 @@ export async function GET(request: NextRequest) {
       .filter((g: any) => g.metodoPago === 'EFECTIVO')
       .reduce((sum: number, g: any) => sum + g.importe, 0)
 
-    // Efectivo real en caja = Ventas en efectivo - Gastos en efectivo
-    const efectivoEnCaja = ventasEfectivo - gastosEfectivo
+    // Mismo criterio que el Diario: salida en origen, entrada en destino,
+    // e inversión en la fecha de devolución. Sin local, el movimiento interno es neutro.
+    let transferenciasEntrada = 0
+    let transferenciasSalida = 0
+    const selectedLocalId = localContext.selectedLocalId
+    if (selectedLocalId) {
+      const rango = { gte: fechaDesdeDate, lte: fechaHastaDate }
+      const transferencias = await prisma.transferenciaCaja.findMany({
+        where: {
+          AND: [
+            { OR: [{ origenLocalId: selectedLocalId }, { destinoLocalId: selectedLocalId }] },
+            { OR: [
+              { fecha: rango },
+              { estado: 'DEVUELTO', fechaDevolucion: { not: null, ...rango } }
+            ] }
+          ]
+        },
+        select: {
+          origenLocalId: true, destinoLocalId: true, importe: true,
+          fecha: true, estado: true, fechaDevolucion: true
+        }
+      })
+      const enPeriodo = (fecha: Date) =>
+        (!fechaDesdeDate || fecha >= fechaDesdeDate) && (!fechaHastaDate || fecha <= fechaHastaDate)
+      for (const t of transferencias) {
+        if (enPeriodo(t.fecha)) {
+          if (t.origenLocalId === selectedLocalId) transferenciasSalida += t.importe
+          if (t.destinoLocalId === selectedLocalId) transferenciasEntrada += t.importe
+        }
+        if (t.estado === 'DEVUELTO' && t.fechaDevolucion && enPeriodo(t.fechaDevolucion)) {
+          if (t.origenLocalId === selectedLocalId) transferenciasEntrada += t.importe
+          if (t.destinoLocalId === selectedLocalId) transferenciasSalida += t.importe
+        }
+      }
+    }
+
+    // Las transferencias mueven efectivo, pero no son ventas ni gastos operativos.
+    const efectivoEnCaja = Math.round(
+      (ventasEfectivo - gastosEfectivo + transferenciasEntrada - transferenciasSalida) * 100
+    ) / 100
 
     const stats = {
       totalFacturas,
@@ -270,6 +309,8 @@ export async function GET(request: NextRequest) {
       ventasRevolut,
       // Gastos
       gastosEfectivo,
+      transferenciasEntrada,
+      transferenciasSalida,
       efectivoEnCaja, // Efectivo real que debe haber en caja
       // Info adicional para verificación
       totalCitasCompletadasSinFactura: citasCompletadasSinFactura.length
