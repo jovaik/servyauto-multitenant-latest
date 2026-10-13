@@ -4,7 +4,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { repartoIgualitario } from '@/lib/reparto-local';
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -29,8 +28,6 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     if (localId !== undefined) data.localId = localId;
     if (body.userId !== undefined) data.userId = body.userId || null;
 
-    const existente = await prisma.colaborador.findUnique({ where: { id: params.id }, select: { localId: true } });
-    if (repartoIgualitario(localId ?? existente?.localId)) data.comisionPct = 0;
     const colaborador = await prisma.colaborador.update({
       where: { id: params.id },
       data,
