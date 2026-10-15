@@ -37,7 +37,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json(colaborador);
   } catch (error: unknown) {
     console.error("Error updating colaborador:", error);
-    return NextResponse.json({ error: "Error al actualizar colaborador" }, { status: 500 });
+    return NextResponse.json({ error: "ERROR AL ACTUALIZAR AUTÓNOMO" }, { status: 500 });
   }
 }
 
@@ -72,6 +72,6 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     return NextResponse.json({ ok: true });
   } catch (error: unknown) {
     console.error("Error deleting colaborador:", error);
-    return NextResponse.json({ error: "Error al eliminar colaborador" }, { status: 500 });
+    return NextResponse.json({ error: "ERROR AL ELIMINAR AUTÓNOMO" }, { status: 500 });
   }
 }

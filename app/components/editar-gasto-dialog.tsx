@@ -428,7 +428,7 @@ export function EditarGastoDialog({ gasto, onGastoActualizado }: EditarGastoDial
           {/* Atribuir gasto a colaborador */}
           {colaboradores.length > 0 && (
             <div className="space-y-2">
-              <Label className="flex items-center gap-2"><Handshake className="h-4 w-4" /> Atribuir a colaborador</Label>
+              <Label className="flex items-center gap-2"><Handshake className="h-4 w-4" /> ATRIBUIR A AUTÓNOMO</Label>
               <Select value={formData.colaboradorId || "_none"} onValueChange={(v) => setFormData({ ...formData, colaboradorId: v === '_none' ? '' : v })}>
                 <SelectTrigger><SelectValue placeholder="Sin atribuir" /></SelectTrigger>
                 <SelectContent>

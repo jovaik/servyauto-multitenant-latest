@@ -166,18 +166,18 @@ export default function ColaboradoresView() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Handshake className="h-7 w-7 text-primary" />
-          <h1 className="text-2xl font-bold">Colaboradores</h1>
+          <h1 className="text-2xl font-bold">AUTÓNOMOS</h1>
           <Badge variant="secondary">{activos.length} activos</Badge>
         </div>
         <Button onClick={openNew}>
-          <Plus className="h-4 w-4 mr-2" /> Nuevo Colaborador
+          <Plus className="h-4 w-4 mr-2" /> NUEVO AUTÓNOMO
         </Button>
       </div>
 
       {!selectedLocalId && (
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">
-            Selecciona un local para ver sus colaboradores
+            SELECCIONA UN LOCAL PARA VER SUS AUTÓNOMOS
           </CardContent>
         </Card>
       )}
@@ -190,9 +190,9 @@ export default function ColaboradoresView() {
         <Card>
           <CardContent className="py-12 text-center">
             <Handshake className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">No hay colaboradores en este local</p>
+            <p className="text-muted-foreground">NO HAY AUTÓNOMOS EN ESTE LOCAL</p>
             <Button className="mt-4" onClick={openNew}>
-              <Plus className="h-4 w-4 mr-2" /> Añadir primer colaborador
+              <Plus className="h-4 w-4 mr-2" /> AÑADIR PRIMER AUTÓNOMO
             </Button>
           </CardContent>
         </Card>
@@ -276,7 +276,7 @@ export default function ColaboradoresView() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{editingId ? 'Editar Colaborador' : 'Nuevo Colaborador'}</DialogTitle>
+            <DialogTitle>{editingId ? 'EDITAR AUTÓNOMO' : 'NUEVO AUTÓNOMO'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div>

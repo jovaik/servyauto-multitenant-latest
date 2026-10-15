@@ -655,7 +655,7 @@ export function SumUpConfig() {
                     Cuentas TPV
                   </CardTitle>
                   <CardDescription>
-                    Cada cuenta es una pasarela de cobro (p. ej. una cuenta SumUp de un colaborador). Varios datáfonos pueden compartir la misma cuenta. El dinero se reporta por cuenta.
+                    CADA CUENTA ES UNA PASARELA DE COBRO (P. EJ. UNA CUENTA SUMUP DE UN AUTÓNOMO). VARIOS DATÁFONOS PUEDEN COMPARTIR LA MISMA CUENTA. EL DINERO SE REPORTA POR CUENTA.
                   </CardDescription>
                 </div>
                 <Button size="sm" onClick={() => openCuentaDialog(null)}>
@@ -731,7 +731,7 @@ export function SumUpConfig() {
                 <h4 className="font-medium text-blue-900 mb-2">¿Cómo funciona?</h4>
                 <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
                   <li>La cuenta <strong>por defecto</strong> usa la clave SumUp central de la aplicación.</li>
-                  <li>Para un colaborador autónomo con su propia cuenta SumUp, crea una cuenta nueva y pon su <strong>clave API</strong>.</li>
+                  <li>PARA UN AUTÓNOMO CON SU PROPIA CUENTA SUMUP, CREA UNA CUENTA NUEVA Y PON SU <strong>CLAVE API</strong>.</li>
                   <li>En la pestaña <strong>Terminales</strong>, asigna cada datáfono a la cuenta que le corresponda.</li>
                 </ul>
               </div>
@@ -792,7 +792,7 @@ export function SumUpConfig() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Responsable (colaborador) <span className="text-xs text-gray-400">(opcional)</span></Label>
+                  <Label>RESPONSABLE (AUTÓNOMO) <span className="text-xs text-gray-400">(opcional)</span></Label>
                   <Select value={cuentaForm.userId || '__none'} onValueChange={(v) => setCuentaForm({ ...cuentaForm, userId: v === '__none' ? '' : v })}>
                     <SelectTrigger>
                       <SelectValue placeholder="Sin responsable" />

@@ -566,7 +566,7 @@ export function NuevoGastoDialog({ onGastoCreado }: NuevoGastoDialogProps) {
           {/* Atribuir gasto a colaborador */}
           {colaboradores.length > 0 && (
             <div className="space-y-2">
-              <Label className="flex items-center gap-2"><Handshake className="h-4 w-4" /> Atribuir a colaborador</Label>
+              <Label className="flex items-center gap-2"><Handshake className="h-4 w-4" /> ATRIBUIR A AUTÓNOMO</Label>
               <Select value={formData.colaboradorId || "_none"} onValueChange={(v) => setFormData({ ...formData, colaboradorId: v === '_none' ? '' : v })}>
                 <SelectTrigger><SelectValue placeholder="Sin atribuir (gasto general)" /></SelectTrigger>
                 <SelectContent>
@@ -576,7 +576,7 @@ export function NuevoGastoDialog({ onGastoCreado }: NuevoGastoDialogProps) {
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground">Si este gasto es de un colaborador, se descontará de su liquidación</p>
+              <p className="text-xs text-muted-foreground">SI ESTE GASTO ES DE UN AUTÓNOMO, SE DESCONTARÁ DE SU LIQUIDACIÓN</p>
             </div>
           )}
 

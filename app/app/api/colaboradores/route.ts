@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(colaboradores);
   } catch (error: unknown) {
     console.error("Error fetching colaboradores:", error);
-    return NextResponse.json({ error: "Error al obtener colaboradores" }, { status: 500 });
+    return NextResponse.json({ error: "ERROR AL OBTENER AUTÓNOMOS" }, { status: 500 });
   }
 }
 
@@ -66,6 +66,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(colaborador, { status: 201 });
   } catch (error: unknown) {
     console.error("Error creating colaborador:", error);
-    return NextResponse.json({ error: "Error al crear colaborador" }, { status: 500 });
+    return NextResponse.json({ error: "ERROR AL CREAR AUTÓNOMO" }, { status: 500 });
   }
 }

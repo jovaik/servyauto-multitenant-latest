@@ -202,7 +202,7 @@ export default function LiquidacionesView() {
   const exportCSV = () => {
     if (!data) return
     const rows = [
-      ['Colaborador', 'Rol', '% Configurado', 'Com. Prescriptor (€)', 'Com. Operario (€)', 'Com. Responsable (€)', 'Comisión Bruta (€)', 'Gastos Atribuidos (€)', 'Comisión Neta (€)', 'Nº Citas', 'PARTICIPACIÓN EN NETO (€)', 'IMPORTE LIQUIDACIÓN (€)'],
+      ['AUTÓNOMO', 'Rol', '% Configurado', 'Com. Prescriptor (€)', 'Com. Operario (€)', 'Com. Responsable (€)', 'Comisión Bruta (€)', 'Gastos Atribuidos (€)', 'Comisión Neta (€)', 'Nº Citas', 'PARTICIPACIÓN EN NETO (€)', 'IMPORTE LIQUIDACIÓN (€)'],
       ...data.liquidaciones.map(l => [
         l.colaborador.nombre,
         ROL_LABELS[l.colaborador.rol],
@@ -499,9 +499,9 @@ export default function LiquidacionesView() {
 
           {/* Liquidación por colaborador */}
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold">Detalle por Colaborador</h2>
+            <h2 className="text-lg font-semibold">DETALLE POR AUTÓNOMO</h2>
             {data.liquidaciones.length === 0 && (
-              <Card><CardContent className="py-8 text-center text-muted-foreground">No hay colaboradores registrados en este local</CardContent></Card>
+              <Card><CardContent className="py-8 text-center text-muted-foreground">NO HAY AUTÓNOMOS REGISTRADOS EN ESTE LOCAL</CardContent></Card>
             )}
             {data.liquidaciones.map(liq => {
               const isExpanded = expandedColaborador === liq.colaborador.id
@@ -634,7 +634,7 @@ export default function LiquidacionesView() {
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <FileText className="h-4 w-4" />
                 {data.reparto ? <span>REPARTO DEFINITIVO: (INGRESOS − TODOS LOS GASTOS) ÷ {data.reparto.numPartes}. SIN COMISIONES POR ROL. LOS GASTOS ATRIBUIDOS YA ESTÁN INCLUIDOS Y NO SE DESCUENTAN OTRA VEZ.</span> : <span>
-                  Comisión <strong>por acción</strong>: cada colaborador cobra por cada función que realiza en una cita. |
+                  COMISIÓN <strong>POR ACCIÓN</strong>: CADA AUTÓNOMO COBRA POR CADA FUNCIÓN QUE REALIZA EN UNA CITA. |
                   <strong> Prescriptor</strong>: % × bruto de citas que prescribió |
                   <strong> Operario</strong>: % × bruto de lavados que realizó |
                   <strong> Responsable</strong>: % × (Ingresos − Gastos generales del local) |

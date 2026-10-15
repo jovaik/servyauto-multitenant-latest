@@ -80,7 +80,7 @@ export async function GET(req: NextRequest) {
         select: { id: true },
       });
       if (!miColaborador) {
-        return NextResponse.json({ error: "Tu usuario no está vinculado a ningún colaborador. Contacta al administrador." }, { status: 403 });
+        return NextResponse.json({ error: "TU USUARIO NO ESTÁ VINCULADO A NINGÚN AUTÓNOMO. CONTACTA AL ADMINISTRADOR." }, { status: 403 });
       }
       colaboradorIdUsuario = miColaborador.id;
     }

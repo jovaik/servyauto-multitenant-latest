@@ -84,7 +84,7 @@ const gestionSection: NavSection = {
     { name: 'Gastos', href: '/dashboard/gastos', icon: TrendingDown, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.GRUPO_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
     { name: 'Ingresos Extra', href: '/dashboard/ingresos-adicionales', icon: ParkingCircle, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.GRUPO_ADMIN, RolUsuario.ADMIN] },
     { name: 'Proveedores', href: '/dashboard/proveedores', icon: Building2, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.GRUPO_ADMIN, RolUsuario.ADMIN] },
-    { name: 'Colaboradores', href: '/dashboard/colaboradores', icon: Handshake, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN] },
+    { name: 'AUTÓNOMOS', href: '/dashboard/colaboradores', icon: Handshake, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN] },
     { name: 'Liquidaciones', href: '/dashboard/liquidaciones', icon: Calculator, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
     { name: 'Transferencias Caja', href: '/dashboard/transferencias-caja', icon: ArrowLeftRight, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.GRUPO_ADMIN, RolUsuario.ADMIN] },
   ]
