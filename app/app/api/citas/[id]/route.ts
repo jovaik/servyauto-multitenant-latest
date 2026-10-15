@@ -85,6 +85,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     // Verificar si la cita existe
     const citaExistente = await prisma.cita.findUnique({
       where: { id: params.id },
+      include: { cita_servicios: true, lineasManuales: true },
     })
 
     if (!citaExistente) {
@@ -137,19 +138,25 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       }
     }
 
-    // Calcular nuevo precio final si hay servicios
+    // Un catálogo vacío no significa cita vacía: también cuentan las líneas manuales.
+    const serviciosEfectivos = servicios ?? citaExistente.cita_servicios
+    const manualesEfectivas = bodyLineasManuales ?? citaExistente.lineasManuales
+    const cambianLineas = servicios !== undefined || bodyLineasManuales !== undefined
     let precioFinal = body.total !== undefined ? body.total : citaExistente.total
-    if (servicios && servicios.length > 0) {
+    if (cambianLineas) {
       // Si el frontend envía el total directamente (ya incluye descuentos), usarlo
       // Si no, recalcular desde los servicios con descuentos
       if (body.total === undefined) {
         const serviciosData = await prisma.servicio.findMany({
           where: {
-            id: { in: servicios.map((s: any) => s.servicioId) },
+            id: { in: serviciosEfectivos.map((s: any) => s.servicioId) },
           },
         })
         
-        precioFinal = serviciosData.reduce((sum: number, servicio: any) => sum + servicio.precio, 0)
+        precioFinal = serviciosEfectivos.reduce((sum: number, svc: any) =>
+          sum + (svc.precio ?? serviciosData.find(s => s.id === svc.servicioId)?.precio ?? 0), 0)
+          + manualesEfectivas.reduce((sum: number, lm: any) =>
+            sum + (lm.descripcion && lm.precioUnitario > 0 ? (lm.cantidad || 1) * lm.precioUnitario : 0), 0)
         
         // Aplicar descuentos automáticos según tipo de cliente
         const cliente = await prisma.cliente.findUnique({
@@ -252,8 +259,28 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
     console.log('=== EJECUTANDO PRISMA UPDATE ===')
     
-    // Si hay servicios, actualizar cita_servicios
-    if (servicios && servicios.length > 0) {
+    // Persistir primero las manuales para que el ticket use las líneas de ESTA edición.
+    if (bodyLineasManuales !== undefined) {
+      await prisma.citaLineaManual.deleteMany({ where: { citaId: params.id } })
+      if (Array.isArray(bodyLineasManuales)) {
+        for (const lm of bodyLineasManuales) {
+          if (lm.descripcion && lm.precioUnitario > 0) {
+            await prisma.citaLineaManual.create({
+              data: {
+                citaId: params.id,
+                descripcion: lm.descripcion,
+                cantidad: lm.cantidad || 1,
+                precioUnitario: lm.precioUnitario,
+                total: (lm.cantidad || 1) * lm.precioUnitario,
+              }
+            })
+          }
+        }
+      }
+    }
+
+    // El array vacío elimina solo el catálogo, no las líneas manuales ni su importe.
+    if (servicios !== undefined) {
       console.log('Actualizando servicios de la cita...')
       
       // Eliminar servicios existentes
@@ -275,7 +302,11 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       }
       
       console.log(`Servicios actualizados: ${servicios.length} servicios`)
-      
+    }
+
+    // Sincronizar con ambas clases de líneas, aunque solo cambien las manuales.
+    if (cambianLineas || body.total !== undefined) {
+      const servicios = await prisma.cita_servicios.findMany({ where: { citaId: params.id } })
       // ✅ ACTUALIZAR TAMBIÉN LA FACTURA/TICKET SI EXISTE
       const facturaExistente = await prisma.factura.findFirst({
         where: { citaId: params.id }
@@ -364,52 +395,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         
         console.log(`Factura ${facturaExistente.numero} actualizada: Total ${totalFactura}€`)
       }
-    } else if (servicios && servicios.length === 0) {
-      // Si se envía un array vacío, eliminar todos los servicios
-      console.log('Eliminando todos los servicios de la cita...')
-      await prisma.cita_servicios.deleteMany({
-        where: { citaId: params.id }
-      })
-      updateData.total = 0
-      
-      // También actualizar la factura si existe
-      const facturaExistente = await prisma.factura.findFirst({
-        where: { citaId: params.id }
-      })
-      
-      if (facturaExistente) {
-        await prisma.factura_items.deleteMany({
-          where: { facturaId: facturaExistente.id }
-        })
-        await prisma.factura.update({
-          where: { id: facturaExistente.id },
-          data: { subtotal: 0, iva: 0, total: 0 }
-        })
-        console.log(`Factura ${facturaExistente.numero} vaciada`)
-      }
     }
     
-    // Gestionar líneas manuales
-    if (bodyLineasManuales !== undefined) {
-      // Borrar existentes y recrear
-      await prisma.citaLineaManual.deleteMany({ where: { citaId: params.id } })
-      if (Array.isArray(bodyLineasManuales)) {
-        for (const lm of bodyLineasManuales) {
-          if (lm.descripcion && lm.precioUnitario > 0) {
-            await prisma.citaLineaManual.create({
-              data: {
-                citaId: params.id,
-                descripcion: lm.descripcion,
-                cantidad: lm.cantidad || 1,
-                precioUnitario: lm.precioUnitario,
-                total: (lm.cantidad || 1) * lm.precioUnitario,
-              }
-            })
-          }
-        }
-      }
-    }
-
     // Actualizar la cita
     const cita = await prisma.cita.update({
       where: { id: params.id },
@@ -538,8 +525,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
             facturaId: factura.id,
             descripcion: cs.servicios.nombre,
             cantidad: 1,
-            precio: cs.servicios.precio,
-            total: cs.servicios.precio,
+            precio: cs.precio,
+            total: cs.precio,
           })
         })
       }
