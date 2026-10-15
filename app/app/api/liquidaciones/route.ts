@@ -158,6 +158,8 @@ export async function GET(req: NextRequest) {
     const gastosGeneralesPorLocal: Record<string, number> = {};
     gastos.filter(g => !g.colaboradorId).forEach(g => { const k = g.localId || ''; gastosGeneralesPorLocal[k] = (gastosGeneralesPorLocal[k] || 0) + g.importe; });
 
+    const gastosPorLocal: Record<string, number> = {};
+    gastos.forEach(g => { const k = g.localId || ''; gastosPorLocal[k] = (gastosPorLocal[k] || 0) + g.importe; });
     const round2 = (n: number) => Math.round(n * 100) / 100;
 
     const citaResumen = (c: (typeof citas)[number]) => ({
@@ -205,6 +207,11 @@ export async function GET(req: NextRequest) {
       const comisionBruta = comisionPrescriptor + comisionOperario + comisionResponsable;
       const baseCalculo = basePrescriptor + baseOperario + baseResponsable;
       const comisionNeta = sinComisiones ? 0 : comisionBruta - gastosColaborador;
+      // El reparto del neto NO es una comisión por acción. Los responsables
+      // con participación configurada reciben una de las tres partes acordadas.
+      const participaEnReparto = sinComisiones && colOriginal.rol === 'RESPONSABLE' && colOriginal.comisionPct > 0;
+      const netoReparto = (ingresosPorLocal[col.localId] || 0) - (gastosPorLocal[col.localId] || 0);
+      const participacionNeto = participaEnReparto ? round2(netoReparto / PARTES_REPARTO) : 0;
 
       // Citas relacionadas = unión (sin duplicar) de prescritas + realizadas
       // (+ las de su local si es responsable, para dar contexto de su base)
@@ -221,7 +228,7 @@ export async function GET(req: NextRequest) {
           id: col.id,
           nombre: col.nombre,
           rol: col.rol,
-          comisionPct: col.comisionPct,
+          comisionPct: colOriginal.comisionPct,
           telefono: col.telefono,
           email: col.email,
         },
@@ -235,6 +242,14 @@ export async function GET(req: NextRequest) {
           fecha: g.fecha,
         })),
         comisionNeta: round2(comisionNeta),
+        reparto: sinComisiones ? {
+          numPartes: PARTES_REPARTO,
+          participa: participaEnReparto,
+          netoLocal: round2(netoReparto),
+          porParte: participacionNeto,
+        } : null,
+        participacionNeto,
+        importeLiquidacion: sinComisiones ? participacionNeto : round2(comisionNeta),
         // Desglose por acción (una persona puede cobrar por varias)
         desglose: {
           prescriptor: {

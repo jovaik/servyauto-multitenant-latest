@@ -26,6 +26,9 @@ interface LiquidacionColaborador {
   gastosAtribuidos: number
   gastosDetalle: { id: string; concepto: string; importe: number; fecha: string }[]
   comisionNeta: number
+  reparto?: { numPartes: number; participa: boolean; netoLocal: number; porParte: number } | null
+  participacionNeto: number
+  importeLiquidacion: number
   desglose: {
     prescriptor: { base: number; comision: number; numCitas: number }
     operario: { base: number; comision: number; numCitas: number }
@@ -199,7 +202,7 @@ export default function LiquidacionesView() {
   const exportCSV = () => {
     if (!data) return
     const rows = [
-      ['Colaborador', 'Rol', '% Comisión', 'Com. Prescriptor (€)', 'Com. Operario (€)', 'Com. Responsable (€)', 'Comisión Bruta (€)', 'Gastos Atribuidos (€)', 'Comisión Neta (€)', 'Nº Citas'],
+      ['Colaborador', 'Rol', '% Configurado', 'Com. Prescriptor (€)', 'Com. Operario (€)', 'Com. Responsable (€)', 'Comisión Bruta (€)', 'Gastos Atribuidos (€)', 'Comisión Neta (€)', 'Nº Citas', 'PARTICIPACIÓN EN NETO (€)', 'IMPORTE LIQUIDACIÓN (€)'],
       ...data.liquidaciones.map(l => [
         l.colaborador.nombre,
         ROL_LABELS[l.colaborador.rol],
@@ -211,6 +214,8 @@ export default function LiquidacionesView() {
         l.gastosAtribuidos.toFixed(2),
         l.comisionNeta.toFixed(2),
         l.numCitas.toString(),
+        l.participacionNeto.toFixed(2),
+        l.importeLiquidacion.toFixed(2),
       ]),
       [],
       ['RESUMEN'],
@@ -221,7 +226,7 @@ export default function LiquidacionesView() {
       ['Total Comisiones Operarios', '', '', data.resumen.totalComisionesOperario.toFixed(2)],
       ['Total Comisiones Encargados', '', '', data.resumen.totalComisionesResponsable.toFixed(2)],
       ['Total Comisiones (neto)', '', '', data.resumen.totalComisiones.toFixed(2)],
-      [data.reparto ? `REPARTO ENTRE ${data.reparto.numPartes}: IMPORTE POR PARTE` : `Propietario (${data.propietarioPct ?? 50}% del neto)`, '', '', data.resumen.resultadoPropietario.toFixed(2)],
+      [data.reparto ? `PROPIETARIO: 1 DE ${data.reparto.numPartes} PARTES` : `Propietario (${data.propietarioPct ?? 50}% del neto)`, '', '', data.resumen.resultadoPropietario.toFixed(2)],
       ...(data.simulacion ? [
         [],
         ['SIMULADOR DE REPARTO'],
@@ -380,7 +385,7 @@ export default function LiquidacionesView() {
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-2 flex-wrap">
                       <Euro className="h-5 w-5 text-green-700" />
-                      <span className="text-lg font-bold">{data.reparto ? `CADA PARTE · NETO ÷ ${data.reparto.numPartes}` : 'Propietario'}</span>
+                      <span className="text-lg font-bold">{data.reparto ? `PROPIETARIO · NETO ÷ ${data.reparto.numPartes}` : 'Propietario'}</span>
                       {!data.reparto && <div className="flex items-center gap-1">
                         <Input
                           type="number"
@@ -507,13 +512,14 @@ export default function LiquidacionesView() {
                       <div className="flex items-center gap-3">
                         <CardTitle className="text-lg">{liq.colaborador.nombre}</CardTitle>
                         <Badge className={ROL_COLORS[liq.colaborador.rol]}>{ROL_LABELS[liq.colaborador.rol]}</Badge>
-                        <span className="text-sm text-muted-foreground">{liq.colaborador.comisionPct}%</span>
+                        <span className="text-sm text-muted-foreground">{liq.reparto?.participa ? `1/${liq.reparto.numPartes} DEL NETO (${liq.colaborador.comisionPct}% CONFIGURADO)` : `${liq.colaborador.comisionPct}%`}</span>
                       </div>
                       <div className="flex items-center gap-4">
                         <div className="text-right">
-                          <div className={`text-xl font-bold ${liq.comisionNeta >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {liq.comisionNeta.toFixed(2)} €
+                          <div className={`text-xl font-bold ${liq.importeLiquidacion >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {liq.importeLiquidacion.toFixed(2)} €
                           </div>
+                          {liq.reparto && <div className="text-xs text-muted-foreground">PARTICIPACIÓN EN BENEFICIO NETO</div>}
                           <div className="text-xs text-muted-foreground">{liq.numCitas} citas</div>
                         </div>
                         {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
@@ -523,9 +529,14 @@ export default function LiquidacionesView() {
 
                   {isExpanded && (
                     <CardContent className="space-y-4">
+                      {liq.reparto && <div className="p-4 bg-green-50 text-green-900 rounded-lg space-y-1">
+                        <h4 className="text-sm font-semibold">PARTICIPACIÓN EN BENEFICIO NETO</h4>
+                        <p>{liq.reparto.participa ? `${liq.reparto.netoLocal.toFixed(2)} € ÷ ${liq.reparto.numPartes} = ${liq.participacionNeto.toFixed(2)} €` : 'SIN PARTICIPACIÓN CONFIGURADA EN EL REPARTO'}</p>
+                        <p className="text-xs">TRAS DESCONTAR TODOS LOS GASTOS. NO SE RESTAN OTRA VEZ LOS GASTOS ATRIBUIDOS. COMISIONES POR ROL: 0 €.</p>
+                      </div>}
                       {/* Desglose por acción */}
                       <div>
-                        <h4 className="text-sm font-medium mb-2">Comisión por acción ({liq.colaborador.comisionPct}%)</h4>
+                        <h4 className="text-sm font-medium mb-2">{liq.reparto ? 'COMISIONES POR ACCIÓN (0%)' : `Comisión por acción (${liq.colaborador.comisionPct}%)`}</h4>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                           <div className="p-3 bg-purple-50 rounded-lg">
                             <div className="text-xs text-purple-700 font-medium">Como Prescriptor</div>
@@ -552,13 +563,13 @@ export default function LiquidacionesView() {
                           <div className="font-semibold">{liq.comisionBruta.toFixed(2)} €</div>
                         </div>
                         <div>
-                          <div className="text-xs text-muted-foreground">Gastos atribuidos</div>
+                          <div className="text-xs text-muted-foreground">{liq.reparto ? 'GASTOS YA INCLUIDOS EN EL NETO' : 'Gastos atribuidos'}</div>
                           <div className="font-semibold text-red-600">-{liq.gastosAtribuidos.toFixed(2)} €</div>
                         </div>
                         <div>
-                          <div className="text-xs text-muted-foreground">Comisión neta</div>
-                          <div className={`font-bold text-lg ${liq.comisionNeta >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {liq.comisionNeta.toFixed(2)} €
+                          <div className="text-xs text-muted-foreground">{liq.reparto ? 'IMPORTE DEL REPARTO' : 'Comisión neta'}</div>
+                          <div className={`font-bold text-lg ${liq.importeLiquidacion >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {liq.importeLiquidacion.toFixed(2)} €
                           </div>
                         </div>
                       </div>
