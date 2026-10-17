@@ -118,6 +118,14 @@ export function EditarCitaDialog({
   const [tpvsDisponibles, setTpvsDisponibles] = useState<{ id: string; name: string | null; tpvNombre: string }[]>([])
   const [lineasManuales, setLineasManuales] = useState<{ descripcion: string; cantidad: number; precioUnitario: number }[]>([])
   
+  // Pagos parciales / a cuenta
+  const [pagosParciales, setPagosParciales] = useState<any[]>([])
+  const [totalPagado, setTotalPagado] = useState(0)
+  const [saldoPendiente, setSaldoPendiente] = useState(0)
+  const [nuevoPago, setNuevoPago] = useState({ importe: '', metodoPago: '', fecha: format(new Date(), 'yyyy-MM-dd'), concepto: '' })
+  const [addingPago, setAddingPago] = useState(false)
+  const [showAddPago, setShowAddPago] = useState(false)
+  
   const [formData, setFormData] = useState({
     fecha: '',
     fechaDevolucion: '',
@@ -139,6 +147,54 @@ export function EditarCitaDialog({
     vehiculoModelo: '',
     vehiculoMatricula: '',
   })
+
+  // Cargar pagos parciales
+  const cargarPagos = async () => {
+    if (!cita?.id) return
+    try {
+      const res = await fetch(`/api/citas/${cita.id}/pagos`)
+      if (res.ok) {
+        const data = await res.json()
+        setPagosParciales(data.pagos || [])
+        setTotalPagado(data.totalPagado || 0)
+        setSaldoPendiente(data.saldoPendiente ?? (cita.total || 0))
+      }
+    } catch {}
+  }
+
+  useEffect(() => { if (open && cita?.id) cargarPagos() }, [open, cita?.id])
+
+  const handleAddPago = async () => {
+    if (!nuevoPago.importe || !nuevoPago.metodoPago) return
+    setAddingPago(true)
+    try {
+      const res = await fetch(`/api/citas/${cita.id}/pagos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(nuevoPago),
+      })
+      if (res.ok) {
+        toast({ title: 'Pago registrado', description: `${parseFloat(nuevoPago.importe).toFixed(2)}€ a cuenta` })
+        setNuevoPago({ importe: '', metodoPago: '', fecha: format(new Date(), 'yyyy-MM-dd'), concepto: '' })
+        setShowAddPago(false)
+        await cargarPagos()
+      } else {
+        const err = await res.json().catch(() => ({}))
+        toast({ title: 'Error', description: err.error || 'No se pudo registrar', variant: 'destructive' })
+      }
+    } catch { toast({ title: 'Error', variant: 'destructive' }) }
+    finally { setAddingPago(false) }
+  }
+
+  const handleDeletePago = async (pagoId: string) => {
+    try {
+      const res = await fetch(`/api/citas/${cita.id}/pagos?pagoId=${pagoId}`, { method: 'DELETE' })
+      if (res.ok) {
+        toast({ title: 'Pago eliminado' })
+        await cargarPagos()
+      }
+    } catch {}
+  }
 
   // Franjas horarias removidas - ahora se usa input type="time" para mayor flexibilidad
 
@@ -952,9 +1008,94 @@ export function EditarCitaDialog({
             )}
           </div>
 
+          {/* Pagos a cuenta / parciales */}
+          <div className="space-y-3 border rounded-lg p-3 bg-amber-50/50">
+            <div className="flex items-center justify-between">
+              <Label className="text-base font-semibold">💰 Pagos a cuenta</Label>
+              <Button type="button" variant="outline" size="sm" onClick={() => setShowAddPago(!showAddPago)}>
+                <Plus className="h-4 w-4 mr-1" /> Añadir pago
+              </Button>
+            </div>
+
+            {/* Resumen saldo */}
+            {(pagosParciales.length > 0 || (cita?.total || 0) > 0) && (
+              <div className="grid grid-cols-3 gap-2 text-center text-sm">
+                <div className="bg-white rounded p-2">
+                  <div className="text-gray-500">Total</div>
+                  <div className="font-bold">{(cita?.total || 0).toFixed(2)}€</div>
+                </div>
+                <div className="bg-green-100 rounded p-2">
+                  <div className="text-gray-500">Pagado</div>
+                  <div className="font-bold text-green-700">{totalPagado.toFixed(2)}€</div>
+                </div>
+                <div className={`rounded p-2 ${saldoPendiente > 0 ? 'bg-red-100' : 'bg-green-200'}`}>
+                  <div className="text-gray-500">Pendiente</div>
+                  <div className={`font-bold ${saldoPendiente > 0 ? 'text-red-700' : 'text-green-800'}`}>{saldoPendiente.toFixed(2)}€</div>
+                </div>
+              </div>
+            )}
+
+            {/* Lista de pagos registrados */}
+            {pagosParciales.length > 0 && (
+              <div className="space-y-1">
+                {pagosParciales.map((p: any) => (
+                  <div key={p.id} className="flex items-center justify-between bg-white rounded px-3 py-2 text-sm border">
+                    <div className="flex-1">
+                      <span className="font-medium">{p.importe.toFixed(2)}€</span>
+                      <span className="text-gray-500 ml-2">
+                        {p.metodoPago === 'EFECTIVO' ? 'Efectivo' : p.metodoPago === 'TPV_SUMUP' ? 'TPV SumUp' : p.metodoPago === 'TPV_UNICAJA' ? 'TPV Unicaja' : 'Revolut'}
+                      </span>
+                      <span className="text-gray-400 ml-2">{format(new Date(p.fecha), 'dd/MM/yyyy')}</span>
+                      {p.concepto && <span className="text-gray-400 ml-2">({p.concepto})</span>}
+                    </div>
+                    <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0 text-red-500" onClick={() => handleDeletePago(p.id)}>
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Formulario para añadir pago */}
+            {showAddPago && (
+              <div className="bg-white border rounded-lg p-3 space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs">Importe *</Label>
+                    <Input type="number" step="0.01" min="0.01" placeholder="0.00" value={nuevoPago.importe} onChange={(e) => setNuevoPago(prev => ({ ...prev, importe: e.target.value }))} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Fecha</Label>
+                    <Input type="date" value={nuevoPago.fecha} onChange={(e) => setNuevoPago(prev => ({ ...prev, fecha: e.target.value }))} />
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs">Método *</Label>
+                  <div className="grid grid-cols-4 gap-1 mt-1">
+                    {[{v:'EFECTIVO',l:'Efectivo',c:'green'},{v:'TPV_SUMUP',l:'SumUp',c:'blue'},{v:'TPV_UNICAJA',l:'Unicaja',c:'purple'},{v:'REVOLUT',l:'Revolut',c:'slate'}].map(m => (
+                      <Button key={m.v} type="button" variant={nuevoPago.metodoPago === m.v ? 'default' : 'outline'} size="sm" className="text-xs h-8" onClick={() => setNuevoPago(prev => ({ ...prev, metodoPago: m.v }))}>
+                        {m.l}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs">Concepto (opcional)</Label>
+                  <Input placeholder="Ej: SEÑAL, ANTICIPO..." value={nuevoPago.concepto} onChange={(e) => setNuevoPago(prev => ({ ...prev, concepto: e.target.value }))} />
+                </div>
+                <div className="flex gap-2">
+                  <Button type="button" size="sm" onClick={handleAddPago} disabled={addingPago || !nuevoPago.importe || !nuevoPago.metodoPago} className="bg-green-600 hover:bg-green-700">
+                    {addingPago ? 'Registrando...' : 'Registrar pago'}
+                  </Button>
+                  <Button type="button" size="sm" variant="ghost" onClick={() => setShowAddPago(false)}>Cancelar</Button>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Método de Pago - Botones de Cobro */}
           <div className="space-y-3">
-            <Label>💳 Cobrar ({cita?.total ? `${cita.total.toFixed(2)}€` : 'Sin total'})</Label>
+            <Label>💳 Cobrar ({cita?.total ? `${cita.total.toFixed(2)}€` : 'Sin total'}) {saldoPendiente <= 0 && pagosParciales.length > 0 && '✅ SALDADO'}</Label>
             
             {formData.metodoPago && (
               <div className="flex items-center gap-2 p-2 bg-green-50 rounded-lg border border-green-200">

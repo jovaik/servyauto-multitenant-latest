@@ -251,8 +251,24 @@ model Cita {
   prescriptor         Colaborador?     @relation("CitaPrescriptor", fields: [prescriptorId], references: [id])
   realizadoPor        Colaborador?     @relation("CitaRealizadoPor", fields: [realizadoPorId], references: [id])
   lineasManuales      CitaLineaManual[]
+  pagosParciales      PagoParcial[]
 
   @@map("citas")
+}
+
+model PagoParcial {
+  id              String     @id @default(cuid())
+  citaId          String
+  importe         Float
+  metodoPago      MetodoPago
+  fecha           DateTime   @default(now())
+  concepto        String?
+  creadoPorId     String?
+  creadoPorNombre String?
+  createdAt       DateTime   @default(now())
+  cita            Cita       @relation(fields: [citaId], references: [id], onDelete: Cascade)
+
+  @@map("pagos_parciales")
 }
 
 model CitaLineaManual {

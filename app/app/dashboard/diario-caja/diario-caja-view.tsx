@@ -117,6 +117,27 @@ export default function DiarioCajaView() {
         creadoEn: g.createdAt ? new Date(g.createdAt) : null
       }))
 
+      // Cargar pagos parciales / a cuenta (de citas con total pendiente)
+      let pagosParciales: Movimiento[] = []
+      try {
+        const resPagos = await fetch('/api/pagos-parciales')
+        const pagosData = await resPagos.json()
+        if (Array.isArray(pagosData)) {
+          pagosParciales = pagosData.map((p: any) => ({
+            id: `PAG-${p.id}`,
+            fecha: new Date(p.fecha),
+            tipo: 'INGRESO' as const,
+            concepto: `PAGO A CUENTA${p.concepto ? ' - ' + p.concepto : ''} (${p.clienteNombre || 'Cliente'})`,
+            categoria: 'Pago a cuenta',
+            importe: p.importe,
+            metodoPago: p.metodoPago,
+            referencia: undefined,
+            creadoPor: p.creadoPorNombre || undefined,
+            creadoEn: p.createdAt ? new Date(p.createdAt) : undefined
+          }))
+        }
+      } catch {}
+
       // Cargar transferencias de caja entre locales
       // Una transferencia SALE de la caja del origen (GASTO) y ENTRA en la del destino (INGRESO).
       // Cuando se marca DEVUELTA, se registra el movimiento inverso en su fecha de devolución.
@@ -161,7 +182,7 @@ export default function DiarioCajaView() {
       }
 
       // Combinar y ordenar por fecha (más reciente primero)
-      const todoMovimientos = [...ingresosFacturas, ...movimientosIngresosAdicionales, ...movimientosGastos, ...movimientosTransferencias]
+      const todoMovimientos = [...ingresosFacturas, ...movimientosIngresosAdicionales, ...movimientosGastos, ...pagosParciales, ...movimientosTransferencias]
         .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
 
       setMovimientos(todoMovimientos)
