@@ -26,7 +26,7 @@ interface LiquidacionColaborador {
   gastosAtribuidos: number
   gastosDetalle: { id: string; concepto: string; importe: number; fecha: string }[]
   comisionNeta: number
-  reparto?: { numPartes: number; participa: boolean; netoLocal: number; porParte: number } | null
+  reparto?: { numPartes: number; participa: boolean; netoLocal: number; gananciaPorParte: number; prestamoFuera: number; repartible: number; porParte: number; pendienteRecuperar: number; pendienteRecuperarPorParte: number } | null
   participacionNeto: number
   importeLiquidacion: number
   desglose: {
@@ -67,13 +67,15 @@ interface LiquidacionData {
   periodo: { desde: string; hasta: string }
   vistaRestringida?: boolean
   propietarioPct?: number
-  reparto?: { numPartes: number; porParte: number } | null
+  reparto?: { numPartes: number; netoLocal: number; gananciaPorParte: number; prestamoFuera: number; repartible: number; porParte: number; pendienteRecuperar: number; pendienteRecuperarPorParte: number } | null
   simulacion?: SimulacionData
   resumen: {
     ingresosTotales: number
     gastosTotales: number
     gastosGenerales: number
     netoLocal: number
+    prestamosFuera: number
+    netoRepartible: number
     totalComisiones: number
     totalComisionesPrescriptor: number
     totalComisionesOperario: number
@@ -226,7 +228,13 @@ export default function LiquidacionesView() {
       ['Total Comisiones Operarios', '', '', data.resumen.totalComisionesOperario.toFixed(2)],
       ['Total Comisiones Encargados', '', '', data.resumen.totalComisionesResponsable.toFixed(2)],
       ['Total Comisiones (neto)', '', '', data.resumen.totalComisiones.toFixed(2)],
-      [data.reparto ? `PROPIETARIO: 1 DE ${data.reparto.numPartes} PARTES` : `Propietario (${data.propietarioPct ?? 50}% del neto)`, '', '', data.resumen.resultadoPropietario.toFixed(2)],
+      ...(data.reparto && data.reparto.prestamoFuera > 0 ? [
+        ['Beneficio ganado por parte', '', '', data.reparto.gananciaPorParte.toFixed(2)],
+        ['(-) Prestamo/inversion en otro local (no esta en caja)', '', '', data.reparto.prestamoFuera.toFixed(2)],
+        ['A repartir hoy (total)', '', '', data.reparto.repartible.toFixed(2)],
+        ['Pendiente de recuperar del otro local', '', '', data.reparto.pendienteRecuperar.toFixed(2)],
+      ] : []),
+      [data.reparto ? (data.reparto.prestamoFuera > 0 ? `A REPARTIR HOY: 1 DE ${data.reparto.numPartes} PARTES` : `PROPIETARIO: 1 DE ${data.reparto.numPartes} PARTES`) : `Propietario (${data.propietarioPct ?? 50}% del neto)`, '', '', data.resumen.resultadoPropietario.toFixed(2)],
       ...(data.simulacion ? [
         [],
         ['SIMULADOR DE REPARTO'],
@@ -380,12 +388,30 @@ export default function LiquidacionesView() {
 
                 <Separator className="my-0" />
 
+                {/* Préstamo / inversión fuera: se descuenta de lo repartible hoy */}
+                {data.reparto && data.reparto.prestamoFuera > 0 && (
+                  <div className="py-3 space-y-2 border-t">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-muted-foreground">Beneficio ganado ÷ {data.reparto.numPartes}</span>
+                      <span className="font-semibold">{data.reparto.gananciaPorParte.toFixed(2)} € / socio</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm text-amber-700">
+                      <span>− Préstamo/inversión en otro local (no está en caja)</span>
+                      <span className="font-semibold">-{data.reparto.prestamoFuera.toFixed(2)} €</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm text-blue-700">
+                      <span>Pendiente de recuperar del otro local</span>
+                      <span className="font-semibold">{data.reparto.pendienteRecuperar.toFixed(2)} € ({data.reparto.pendienteRecuperarPorParte.toFixed(2)} €/socio)</span>
+                    </div>
+                  </div>
+                )}
+
                 {/* Propietario con % editable */}
                 <div className="py-4 bg-green-50/60 -mx-6 px-6 rounded-b-lg">
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-2 flex-wrap">
                       <Euro className="h-5 w-5 text-green-700" />
-                      <span className="text-lg font-bold">{data.reparto ? `PROPIETARIO · NETO ÷ ${data.reparto.numPartes}` : 'Propietario'}</span>
+                      <span className="text-lg font-bold">{data.reparto ? (data.reparto.prestamoFuera > 0 ? `A REPARTIR HOY ÷ ${data.reparto.numPartes}` : `PROPIETARIO · NETO ÷ ${data.reparto.numPartes}`) : 'Propietario'}</span>
                       {!data.reparto && <div className="flex items-center gap-1">
                         <Input
                           type="number"
@@ -531,7 +557,18 @@ export default function LiquidacionesView() {
                     <CardContent className="space-y-4">
                       {liq.reparto && <div className="p-4 bg-green-50 text-green-900 rounded-lg space-y-1">
                         <h4 className="text-sm font-semibold">PARTICIPACIÓN EN BENEFICIO NETO</h4>
-                        <p>{liq.reparto.participa ? `${liq.reparto.netoLocal.toFixed(2)} € ÷ ${liq.reparto.numPartes} = ${liq.participacionNeto.toFixed(2)} €` : 'SIN PARTICIPACIÓN CONFIGURADA EN EL REPARTO'}</p>
+                        {!liq.reparto.participa ? (
+                          <p>SIN PARTICIPACIÓN CONFIGURADA EN EL REPARTO</p>
+                        ) : liq.reparto.prestamoFuera > 0 ? (
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-sm"><span>Beneficio ganado ÷ {liq.reparto.numPartes}</span><span className="font-semibold">{liq.reparto.gananciaPorParte.toFixed(2)} €</span></div>
+                            <div className="flex justify-between text-sm text-amber-700"><span>− Préstamo/inversión en otro local (÷ {liq.reparto.numPartes})</span><span className="font-semibold">-{(liq.reparto.prestamoFuera / liq.reparto.numPartes).toFixed(2)} €</span></div>
+                            <div className="flex justify-between text-sm font-bold border-t border-green-200 pt-1"><span>A repartir hoy</span><span>{liq.participacionNeto.toFixed(2)} €</span></div>
+                            <div className="flex justify-between text-xs text-blue-700"><span>Pendiente de recuperar del otro local</span><span>{liq.reparto.pendienteRecuperarPorParte.toFixed(2)} €</span></div>
+                          </div>
+                        ) : (
+                          <p>{`${liq.reparto.netoLocal.toFixed(2)} € ÷ ${liq.reparto.numPartes} = ${liq.participacionNeto.toFixed(2)} €`}</p>
+                        )}
                         <p className="text-xs">TRAS DESCONTAR TODOS LOS GASTOS. NO SE RESTAN OTRA VEZ LOS GASTOS ATRIBUIDOS. COMISIONES POR ROL: 0 €.</p>
                       </div>}
                       {/* Desglose por acción */}

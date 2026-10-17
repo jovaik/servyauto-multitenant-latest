@@ -162,6 +162,22 @@ export async function GET(req: NextRequest) {
     gastos.forEach(g => { const k = g.localId || ''; gastosPorLocal[k] = (gastosPorLocal[k] || 0) + g.importe; });
     const round2 = (n: number) => Math.round(n * 100) / 100;
 
+    // 4b. Préstamos / inversiones SALIENTES pendientes de devolver.
+    // Ese dinero NO está físicamente en la caja (está invertido en otro local),
+    // así que NO se puede repartir hoy, aunque sigue siendo beneficio ganado y
+    // recuperable en el futuro. Se descuenta del importe repartible, no del neto.
+    const transferenciasSalientes = await prisma.transferenciaCaja.findMany({
+      where: {
+        ...(localId ? { origenLocalId: localId } : {}),
+        estado: 'PENDIENTE',
+        fecha: { gte: fechaDesde, lte: fechaHasta },
+      },
+      select: { origenLocalId: true, destinoLocalId: true, importe: true, concepto: true, fecha: true, tipo: true },
+    });
+    const prestamosFueraPorLocal: Record<string, number> = {};
+    transferenciasSalientes.forEach(t => { prestamosFueraPorLocal[t.origenLocalId] = (prestamosFueraPorLocal[t.origenLocalId] || 0) + t.importe; });
+    const prestamosFueraTotal = transferenciasSalientes.reduce((s, t) => s + t.importe, 0);
+
     const citaResumen = (c: (typeof citas)[number]) => ({
       id: c.id,
       fecha: c.fecha,
@@ -211,7 +227,9 @@ export async function GET(req: NextRequest) {
       // con participación configurada reciben una de las tres partes acordadas.
       const participaEnReparto = sinComisiones && colOriginal.rol === 'RESPONSABLE' && colOriginal.comisionPct > 0;
       const netoReparto = (ingresosPorLocal[col.localId] || 0) - (gastosPorLocal[col.localId] || 0);
-      const participacionNeto = participaEnReparto ? round2(netoReparto / PARTES_REPARTO) : 0;
+      const prestamoFueraLocal = prestamosFueraPorLocal[col.localId] || 0;
+      const repartibleLocal = netoReparto - prestamoFueraLocal; // lo que hay en caja para repartir hoy
+      const participacionNeto = participaEnReparto ? round2(repartibleLocal / PARTES_REPARTO) : 0;
 
       // Citas relacionadas = unión (sin duplicar) de prescritas + realizadas
       // (+ las de su local si es responsable, para dar contexto de su base)
@@ -246,7 +264,12 @@ export async function GET(req: NextRequest) {
           numPartes: PARTES_REPARTO,
           participa: participaEnReparto,
           netoLocal: round2(netoReparto),
+          gananciaPorParte: round2(netoReparto / PARTES_REPARTO),
+          prestamoFuera: round2(prestamoFueraLocal),
+          repartible: round2(repartibleLocal),
           porParte: participacionNeto,
+          pendienteRecuperar: round2(prestamoFueraLocal),
+          pendienteRecuperarPorParte: participaEnReparto ? round2(prestamoFueraLocal / PARTES_REPARTO) : 0,
         } : null,
         participacionNeto,
         importeLiquidacion: sinComisiones ? participacionNeto : round2(comisionNeta),
@@ -285,7 +308,8 @@ export async function GET(req: NextRequest) {
 
     // Resultado propietario = su % sobre el neto (Ingresos - Gastos)
     const netoLocal = ingresosTotales - gastosTotales;
-    const resultadoPropietario = repartoActivo ? netoLocal / PARTES_REPARTO : (netoLocal * propietarioPct) / 100;
+    const netoRepartible = netoLocal - prestamosFueraTotal; // beneficio menos lo invertido fuera (no está en caja)
+    const resultadoPropietario = repartoActivo ? netoRepartible / PARTES_REPARTO : (netoLocal * propietarioPct) / 100;
 
     // 7b. SIMULADOR DE MODELOS DE REPARTO (para comparar cuál interesa más)
     //   Modelo A (actual): se pagan comisiones por acción (incluida la del prescriptor
@@ -335,12 +359,23 @@ export async function GET(req: NextRequest) {
       vistaRestringida: !!colaboradorIdUsuario,
       propietarioPct,
       simulacion: repartoActivo ? null : simulacion,
-      reparto: repartoActivo ? { numPartes: PARTES_REPARTO, porParte: round2(netoLocal / PARTES_REPARTO) } : null,
+      reparto: repartoActivo ? {
+        numPartes: PARTES_REPARTO,
+        netoLocal: round2(netoLocal),
+        gananciaPorParte: round2(netoLocal / PARTES_REPARTO),
+        prestamoFuera: round2(prestamosFueraTotal),
+        repartible: round2(netoRepartible),
+        porParte: round2(netoRepartible / PARTES_REPARTO),
+        pendienteRecuperar: round2(prestamosFueraTotal),
+        pendienteRecuperarPorParte: round2(prestamosFueraTotal / PARTES_REPARTO),
+      } : null,
       resumen: {
         ingresosTotales: round2(ingresosTotales),
         gastosTotales: round2(gastosTotales),
         gastosGenerales: round2(gastosGenerales),
         netoLocal: round2(netoLocal),
+        prestamosFuera: round2(prestamosFueraTotal),
+        netoRepartible: round2(netoRepartible),
         totalComisiones: round2(totalComisiones),
         totalComisionesPrescriptor: round2(totalComisionesPrescriptor),
         totalComisionesOperario: round2(totalComisionesOperario),
