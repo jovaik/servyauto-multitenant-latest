@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import * as XLSX from 'xlsx'
+import { calcularModelo303, calcularModelo130 } from '@/lib/modelo-303'
 
 export const dynamic = 'force-dynamic'
 
@@ -172,6 +173,39 @@ export async function GET(request: NextRequest) {
     }, 0)
     const totalComprasTotal = compras.reduce((s: number, c: any) => s + (c.importe || 0), 0)
 
+    // ---- MODELO 303 (casillas oficiales) ----
+    const formato = searchParams.get('formato') || ''
+    const m303 = calcularModelo303(ventas, compras)
+
+    // Si se piden las casillas en JSON (resumen en pantalla para la Sede)
+    if (formato === 'json303') {
+      let m130: any = null
+      if (!esPersonalizado) {
+        const inicioAnio = new Date(anio, 0, 1)
+        const ventasAnio = await prisma.factura.findMany({
+          where: { tipo: 'FACTURA', fecha: { gte: inicioAnio, lte: endDate } },
+          select: { subtotal: true }
+        })
+        const gastosAnio = await prisma.gasto.findMany({
+          where: { tipo: 'FACTURA', fecha: { gte: inicioAnio, lte: endDate } },
+          select: { importe: true, iva: true }
+        })
+        const ingresosAcum = ventasAnio.reduce((s: number, v: any) => s + (v.subtotal || 0), 0)
+        const gastosAcum = gastosAnio.reduce((s: number, g: any) => {
+          const rate = (g.iva || 0) / 100
+          return s + ((g.importe || 0) / (1 + rate))
+        }, 0)
+        m130 = calcularModelo130(ingresosAcum, gastosAcum)
+      }
+      return NextResponse.json({
+        periodo: etiquetaPeriodo.toUpperCase(),
+        numVentas: ventas.length,
+        numCompras: compras.length,
+        modelo303: m303,
+        modelo130: m130,
+      })
+    }
+
     if (ventas.length > 0) {
       ventasData.push({
         'Fecha': '', 'Nº Factura': '', 'Cliente / Razón Social': 'TOTAL', 'NIF / CIF / NIE': '',
@@ -224,6 +258,47 @@ export async function GET(request: NextRequest) {
     const resumenSheet = XLSX.utils.json_to_sheet(resumenData)
     resumenSheet['!cols'] = [{ wch: 30 }, { wch: 22 }]
     XLSX.utils.book_append_sheet(workbook, resumenSheet, 'Resumen IVA')
+
+    // ---- HOJA MODELO 303 (casillas oficiales) ----
+    const casillasData: any[] = [
+      { 'Casilla': '', 'Concepto': 'IVA DEVENGADO (REPERCUTIDO)', 'Importe': '' },
+      { 'Casilla': '01', 'Concepto': `BASE IMPONIBLE (TIPO ${m303.casilla02}%)`, 'Importe': m303.casilla01 },
+      { 'Casilla': '02', 'Concepto': 'TIPO %', 'Importe': m303.casilla02 },
+      { 'Casilla': '03', 'Concepto': 'CUOTA', 'Importe': m303.casilla03 },
+    ]
+    if (m303.casilla04 || m303.casilla06) {
+      casillasData.push(
+        { 'Casilla': '04', 'Concepto': `BASE IMPONIBLE (TIPO ${m303.casilla05}%)`, 'Importe': m303.casilla04 },
+        { 'Casilla': '05', 'Concepto': 'TIPO %', 'Importe': m303.casilla05 },
+        { 'Casilla': '06', 'Concepto': 'CUOTA', 'Importe': m303.casilla06 },
+      )
+    }
+    if (m303.casilla07 || m303.casilla09) {
+      casillasData.push(
+        { 'Casilla': '07', 'Concepto': `BASE IMPONIBLE (TIPO ${m303.casilla08}%)`, 'Importe': m303.casilla07 },
+        { 'Casilla': '08', 'Concepto': 'TIPO %', 'Importe': m303.casilla08 },
+        { 'Casilla': '09', 'Concepto': 'CUOTA', 'Importe': m303.casilla09 },
+      )
+    }
+    casillasData.push(
+      { 'Casilla': '27', 'Concepto': 'TOTAL CUOTA DEVENGADA', 'Importe': m303.casilla27 },
+      { 'Casilla': '', 'Concepto': '', 'Importe': '' },
+      { 'Casilla': '', 'Concepto': 'IVA DEDUCIBLE (SOPORTADO)', 'Importe': '' },
+      { 'Casilla': '28', 'Concepto': 'BASE OPERACIONES INTERIORES CORRIENTES', 'Importe': m303.casilla28 },
+      { 'Casilla': '29', 'Concepto': 'CUOTA SOPORTADA DEDUCIBLE', 'Importe': m303.casilla29 },
+      { 'Casilla': '45', 'Concepto': 'TOTAL A DEDUCIR', 'Importe': m303.casilla45 },
+      { 'Casilla': '', 'Concepto': '', 'Importe': '' },
+      { 'Casilla': '', 'Concepto': 'RESULTADO', 'Importe': '' },
+      { 'Casilla': '46', 'Concepto': 'RESULTADO REGIMEN GENERAL (27 - 45)', 'Importe': m303.casilla46 },
+      { 'Casilla': '64', 'Concepto': 'SUMA DE RESULTADOS', 'Importe': m303.casilla64 },
+      { 'Casilla': '65', 'Concepto': '% ATRIBUIBLE A LA ADMINISTRACION DEL ESTADO', 'Importe': m303.casilla65 },
+      { 'Casilla': '66', 'Concepto': 'RESULTADO', 'Importe': m303.casilla66 },
+      { 'Casilla': '67', 'Concepto': 'CUOTAS A COMPENSAR DE PERIODOS ANTERIORES (RELLENAR A MANO)', 'Importe': '' },
+      { 'Casilla': '71', 'Concepto': 'RESULTADO DE LA AUTOLIQUIDACION', 'Importe': m303.casilla71 },
+    )
+    const casillasSheet = XLSX.utils.json_to_sheet(casillasData)
+    casillasSheet['!cols'] = [{ wch: 10 }, { wch: 52 }, { wch: 16 }]
+    XLSX.utils.book_append_sheet(workbook, casillasSheet, 'Modelo 303')
 
     // Resumen Anual (Modelo 390) - solo en exportación ANUAL
     if (esAnual) {
