@@ -1,0 +1,42 @@
+{
+  "citaId": "cmv5dh5y4001jlg07bb13im1h",
+  "total": 2260,
+  "factura": {
+    "id": "cmvclf226001npr08j4ij2413",
+    "numero": "TICK-2026-0909",
+    "tipo": "TICKET",
+    "fecha": "2026-10-12T00:00:00.000Z",
+    "subtotal": 1867.77,
+    "iva": 392.23,
+    "total": 2260,
+    "estado": "PAGADA",
+    "metodoPago": "EFECTIVO",
+    "clienteId": "cmuqr18240006pw088agjkp7u",
+    "citaId": "cmv5dh5y4001jlg07bb13im1h",
+    "datosFacturacion": null,
+    "pdfPath": null,
+    "createdAt": "2026-10-17T16:10:31.087Z",
+    "updatedAt": "2026-10-17T16:11:03.758Z",
+    "creadoPorId": null,
+    "creadoPorNombre": null,
+    "fechaPago": null,
+    "localId": "cmm9arii40000on1r1znffzhv",
+    "tpvUserId": null,
+    "tpvNombre": null
+  },
+  "pagosAntes": [
+    {
+      "id": "cmvcf3p2c0003xcyfmu9zeqw1",
+      "citaId": "cmv5dh5y4001jlg07bb13im1h",
+      "importe": 1260,
+      "metodoPago": "EFECTIVO",
+      "fecha": "2026-10-16T12:00:00.000Z",
+      "concepto": "RESTO EFECTIVO",
+      "tpvUserId": null,
+      "tpvNombre": null,
+      "creadoPorId": null,
+      "creadoPorNombre": "SISTEMA",
+      "createdAt": "2026-10-17T13:13:43.332Z"
+    }
+  ]
+}

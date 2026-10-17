@@ -60,6 +60,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
     const fecha = body.fecha ? new Date(body.fecha + 'T12:00:00') : new Date()
     const concepto = (body.concepto || '').trim().toUpperCase() || null
+    // Cuenta/TPV concreta (autónomo) que recibe el pago. Solo aplica a pagos con tarjeta.
+    const tpvUserId = ['TPV_SUMUP', 'TPV_UNICAJA', 'REVOLUT'].includes(metodoPago) ? (body.tpvUserId || null) : null
+    const tpvNombre = tpvUserId ? ((body.tpvNombre || '').trim().toUpperCase() || null) : null
 
     const pago = await prisma.pagoParcial.create({
       data: {
@@ -68,6 +71,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         metodoPago,
         fecha,
         concepto,
+        tpvUserId,
+        tpvNombre,
         creadoPorId: user?.id || null,
         creadoPorNombre: userName,
       },

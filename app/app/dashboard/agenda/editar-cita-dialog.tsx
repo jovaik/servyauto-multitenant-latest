@@ -122,7 +122,7 @@ export function EditarCitaDialog({
   const [pagosParciales, setPagosParciales] = useState<any[]>([])
   const [totalPagado, setTotalPagado] = useState(0)
   const [saldoPendiente, setSaldoPendiente] = useState(0)
-  const [nuevoPago, setNuevoPago] = useState({ importe: '', metodoPago: '', fecha: format(new Date(), 'yyyy-MM-dd'), concepto: '' })
+  const [nuevoPago, setNuevoPago] = useState({ importe: '', metodoPago: '', fecha: format(new Date(), 'yyyy-MM-dd'), concepto: '', tpvUserId: '', tpvNombre: '' })
   const [addingPago, setAddingPago] = useState(false)
   const [showAddPago, setShowAddPago] = useState(false)
   
@@ -175,7 +175,7 @@ export function EditarCitaDialog({
       })
       if (res.ok) {
         toast({ title: 'Pago registrado', description: `${parseFloat(nuevoPago.importe).toFixed(2)}€ a cuenta` })
-        setNuevoPago({ importe: '', metodoPago: '', fecha: format(new Date(), 'yyyy-MM-dd'), concepto: '' })
+        setNuevoPago({ importe: '', metodoPago: '', fecha: format(new Date(), 'yyyy-MM-dd'), concepto: '', tpvUserId: '', tpvNombre: '' })
         setShowAddPago(false)
         await cargarPagos()
       } else {
@@ -1043,7 +1043,7 @@ export function EditarCitaDialog({
                     <div className="flex-1">
                       <span className="font-medium">{p.importe.toFixed(2)}€</span>
                       <span className="text-gray-500 ml-2">
-                        {p.metodoPago === 'EFECTIVO' ? 'Efectivo' : p.metodoPago === 'TPV_SUMUP' ? 'TPV SumUp' : p.metodoPago === 'TPV_UNICAJA' ? 'TPV Unicaja' : 'Revolut'}
+                        {p.tpvNombre ? p.tpvNombre : p.metodoPago === 'EFECTIVO' ? 'Efectivo' : p.metodoPago === 'TPV_SUMUP' ? 'TPV SumUp' : p.metodoPago === 'TPV_UNICAJA' ? 'TPV Unicaja' : 'Revolut'}
                       </span>
                       <span className="text-gray-400 ml-2">{format(new Date(p.fecha), 'dd/MM/yyyy')}</span>
                       {p.concepto && <span className="text-gray-400 ml-2">({p.concepto})</span>}
@@ -1073,12 +1073,37 @@ export function EditarCitaDialog({
                   <Label className="text-xs">Método *</Label>
                   <div className="grid grid-cols-4 gap-1 mt-1">
                     {[{v:'EFECTIVO',l:'Efectivo',c:'green'},{v:'TPV_SUMUP',l:'SumUp',c:'blue'},{v:'TPV_UNICAJA',l:'Unicaja',c:'purple'},{v:'REVOLUT',l:'Revolut',c:'slate'}].map(m => (
-                      <Button key={m.v} type="button" variant={nuevoPago.metodoPago === m.v ? 'default' : 'outline'} size="sm" className="text-xs h-8" onClick={() => setNuevoPago(prev => ({ ...prev, metodoPago: m.v }))}>
+                      <Button key={m.v} type="button" variant={nuevoPago.metodoPago === m.v ? 'default' : 'outline'} size="sm" className="text-xs h-8" onClick={() => setNuevoPago(prev => ({ ...prev, metodoPago: m.v, ...(m.v === 'EFECTIVO' ? { tpvUserId: '', tpvNombre: '' } : {}) }))}>
                         {m.l}
                       </Button>
                     ))}
                   </div>
                 </div>
+                {/* Cuenta / TPV concreto (autónomo) que recibe el pago con tarjeta */}
+                {tpvsDisponibles.length > 0 && ['TPV_SUMUP', 'TPV_UNICAJA', 'REVOLUT'].includes(nuevoPago.metodoPago) && (
+                  <div>
+                    <Label className="text-xs">💳 TPV / cuenta que recibe el pago</Label>
+                    <Select
+                      value={nuevoPago.tpvUserId || '_none'}
+                      onValueChange={(v) => {
+                        if (v === '_none') {
+                          setNuevoPago(prev => ({ ...prev, tpvUserId: '', tpvNombre: '' }))
+                        } else {
+                          const t = tpvsDisponibles.find(x => x.id === v)
+                          setNuevoPago(prev => ({ ...prev, tpvUserId: v, tpvNombre: t?.tpvNombre || '' }))
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="h-8"><SelectValue placeholder="Sin especificar" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="_none">Sin especificar</SelectItem>
+                        {tpvsDisponibles.map(t => (
+                          <SelectItem key={t.id} value={t.id}>{t.tpvNombre}{t.name ? ` (${t.name})` : ''}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <div>
                   <Label className="text-xs">Concepto (opcional)</Label>
                   <Input placeholder="Ej: SEÑAL, ANTICIPO..." value={nuevoPago.concepto} onChange={(e) => setNuevoPago(prev => ({ ...prev, concepto: e.target.value }))} />

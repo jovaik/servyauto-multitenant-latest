@@ -70,22 +70,44 @@ export default function DiarioCajaView() {
       const resIngresosAdicionales = await fetch('/api/ingresos-adicionales')
       const ingresosAdicionales = await resIngresosAdicionales.json()
 
-      // Transformar facturas a movimientos (solo pagadas)
-      const ingresosFacturas = (facturas || []).filter((f: any) => f.estado === 'PAGADA').map((f: any) => ({
-        id: `FAC-${f.id}`,
-        fecha: new Date(f.fechaPago || f.fecha),
-        tipo: 'INGRESO' as const,
-        concepto: f.tipo === 'TICKET' 
-          ? `Ticket #${f.numero}` 
-          : `Factura #${f.numero}`,
-        categoria: f.tipo === 'TICKET' ? 'Ticket' : 'Factura',
-        importe: f.total,
-        metodoPago: f.metodoPago,
-        referencia: f.numero,
-        // Trazabilidad
-        creadoPor: f.creadoPorNombre || null,
-        creadoEn: f.createdAt ? new Date(f.createdAt) : null
-      }))
+      // Cargar pagos parciales / a cuenta ANTES de las facturas, para poder deduplicar.
+      // Una cita puede cobrarse en varios tramos/cuentas (pagos parciales). Si además existe
+      // su factura/ticket PAGADA, contar ambos duplica el ingreso. Los pagos parciales son el
+      // desglose real (método + cuenta/TPV concreto); la factura solo lleva un método único.
+      let pagosData: any[] = []
+      try {
+        const resPagos = await fetch('/api/pagos-parciales')
+        const pd = await resPagos.json()
+        if (Array.isArray(pd)) pagosData = pd
+      } catch {}
+      const sumPagosPorCita: Record<string, number> = {}
+      for (const p of pagosData) {
+        if (!p.citaId) continue
+        sumPagosPorCita[p.citaId] = (sumPagosPorCita[p.citaId] || 0) + (p.importe || 0)
+      }
+
+      // Transformar facturas a movimientos (solo pagadas).
+      // Si la cita tiene pagos parciales, se muestran ESTOS (con su cuenta/TPV) y la factura
+      // solo aporta el RESTO no cubierto por los pagos (para no contar doble ni perder importe).
+      const ingresosFacturas = (facturas || []).filter((f: any) => f.estado === 'PAGADA').flatMap((f: any) => {
+        const sumPagos = f.citaId ? (sumPagosPorCita[f.citaId] || 0) : 0
+        const importeFactura = sumPagos > 0 ? Math.round(((f.total || 0) - sumPagos) * 100) / 100 : (f.total || 0)
+        if (sumPagos > 0 && importeFactura <= 0.01) return [] // cubierto por los pagos parciales
+        const base = f.tipo === 'TICKET' ? `Ticket #${f.numero}` : `Factura #${f.numero}`
+        return [{
+          id: `FAC-${f.id}`,
+          fecha: new Date(f.fechaPago || f.fecha),
+          tipo: 'INGRESO' as const,
+          concepto: sumPagos > 0 ? `${base} (resto)` : base,
+          categoria: f.tipo === 'TICKET' ? 'Ticket' : 'Factura',
+          importe: importeFactura,
+          metodoPago: f.metodoPago,
+          referencia: f.numero,
+          // Trazabilidad
+          creadoPor: f.creadoPorNombre || null,
+          creadoEn: f.createdAt ? new Date(f.createdAt) : null
+        }]
+      })
 
       // Transformar ingresos adicionales a movimientos
       const movimientosIngresosAdicionales = (ingresosAdicionales || []).map((i: any) => ({
@@ -117,26 +139,20 @@ export default function DiarioCajaView() {
         creadoEn: g.createdAt ? new Date(g.createdAt) : null
       }))
 
-      // Cargar pagos parciales / a cuenta (de citas con total pendiente)
-      let pagosParciales: Movimiento[] = []
-      try {
-        const resPagos = await fetch('/api/pagos-parciales')
-        const pagosData = await resPagos.json()
-        if (Array.isArray(pagosData)) {
-          pagosParciales = pagosData.map((p: any) => ({
-            id: `PAG-${p.id}`,
-            fecha: new Date(p.fecha),
-            tipo: 'INGRESO' as const,
-            concepto: `PAGO A CUENTA${p.concepto ? ' - ' + p.concepto : ''} (${p.clienteNombre || 'Cliente'})`,
-            categoria: 'Pago a cuenta',
-            importe: p.importe,
-            metodoPago: p.metodoPago,
-            referencia: undefined,
-            creadoPor: p.creadoPorNombre || undefined,
-            creadoEn: p.createdAt ? new Date(p.createdAt) : undefined
-          }))
-        }
-      } catch {}
+      // Movimientos de pagos parciales / a cuenta (ya cargados arriba en pagosData).
+      // El método real de caja es p.metodoPago; p.tpvNombre identifica la cuenta/TPV concreto.
+      const pagosParciales: Movimiento[] = pagosData.map((p: any) => ({
+        id: `PAG-${p.id}`,
+        fecha: new Date(p.fecha),
+        tipo: 'INGRESO' as const,
+        concepto: `PAGO A CUENTA${p.concepto ? ' - ' + p.concepto : ''} (${p.clienteNombre || 'Cliente'})${p.tpvNombre ? ' [' + p.tpvNombre + ']' : ''}`,
+        categoria: 'Pago a cuenta',
+        importe: p.importe,
+        metodoPago: p.metodoPago,
+        referencia: undefined,
+        creadoPor: p.creadoPorNombre || undefined,
+        creadoEn: p.createdAt ? new Date(p.createdAt) : undefined
+      }))
 
       // Cargar transferencias de caja entre locales
       // Una transferencia SALE de la caja del origen (GASTO) y ENTRA en la del destino (INGRESO).

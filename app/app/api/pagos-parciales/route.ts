@@ -30,6 +30,7 @@ export async function GET() {
       citaId: p.citaId,
       importe: p.importe,
       metodoPago: p.metodoPago,
+      tpvNombre: p.tpvNombre || null,
       fecha: p.fecha,
       concepto: p.concepto,
       creadoPorNombre: p.creadoPorNombre,

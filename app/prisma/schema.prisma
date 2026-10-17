@@ -263,6 +263,8 @@ model PagoParcial {
   metodoPago      MetodoPago
   fecha           DateTime   @default(now())
   concepto        String?
+  tpvUserId       String?
+  tpvNombre       String?
   creadoPorId     String?
   creadoPorNombre String?
   createdAt       DateTime   @default(now())
