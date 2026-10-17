@@ -12,20 +12,20 @@ export function Providers({ children }: { children: React.ReactNode }) {
     setMounted(true)
   }, [])
 
-  if (!mounted) {
-    return <div suppressHydrationWarning>{children}</div>
-  }
-
   return (
     <SessionProvider>
-      <ThemeProvider
-        attribute="class"
-        defaultTheme="light"
-        enableSystem
-        disableTransitionOnChange
-      >
-        {children}
-      </ThemeProvider>
+      {mounted ? (
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+        </ThemeProvider>
+      ) : (
+        <div suppressHydrationWarning>{children}</div>
+      )}
     </SessionProvider>
   )
 }
