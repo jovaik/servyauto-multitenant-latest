@@ -4,7 +4,7 @@
 import React, { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { Car, User, Plus, Calendar, Wrench, Edit, Trash2, X, Download, ExternalLink } from 'lucide-react'
+import { Car, User, Plus, Calendar, Wrench, Edit, Trash2, X, Download, ExternalLink, CreditCard } from 'lucide-react'
 import { exportarVehiculosExcel } from '@/lib/excel-generator'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -438,6 +438,15 @@ export function VehiculosView() {
                       <Badge variant="outline">
                         {vehiculo.anio}
                       </Badge>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => router.push(`/dashboard/facturacion?buscar=${encodeURIComponent(vehiculo.matricula)}`)}
+                        className="text-green-700 hover:text-green-800 hover:bg-green-50"
+                        title="VER MOVIMIENTOS"
+                      >
+                        <CreditCard className="h-3 w-3 mr-1" /> VER MOVIMIENTOS
+                      </Button>
                       <Button
                         size="sm"
                         variant="outline"

@@ -75,6 +75,13 @@ interface Factura {
   metodoPago?: string
   pdfPath?: string
   datosFacturacion?: string
+  citas?: {
+    vehiculo?: {
+      matricula?: string
+      marca?: string
+      modelo?: string
+    }
+  }
 }
 
 // Para FACTURA se priorizan los DATOS DE FACTURACIÓN (nombre fiscal, teléfono de facturación)
@@ -132,6 +139,13 @@ export function FacturacionView() {
   })
 
   const selectedLocalId = useLocalStore((s) => s.selectedLocalId)
+
+  // Prefijar el buscador si llegamos con ?buscar= (cruce desde Cliente / Vehículo)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const buscar = params.get('buscar')
+    if (buscar) setSearchTerm(buscar)
+  }, [])
 
   useEffect(() => {
     loadFacturas()
@@ -289,9 +303,18 @@ export function FacturacionView() {
   }
 
   const filteredFacturas = facturas.filter(factura => {
-    const matchesSearch = searchTerm === '' || 
-      factura.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      `${factura.cliente.nombre} ${factura.cliente.apellido || ''}`.toLowerCase().includes(searchTerm.toLowerCase())
+    const term = searchTerm.trim().toLowerCase()
+    const termNum = term.replace(',', '.').replace(/[€\s]/g, '')
+    const matricula = (factura.citas?.vehiculo?.matricula || '').toLowerCase()
+    const vehiculoDesc = `${factura.citas?.vehiculo?.marca || ''} ${factura.citas?.vehiculo?.modelo || ''}`.toLowerCase()
+    const totalStr = factura.total.toFixed(2)
+    const totalStrEntero = Math.round(factura.total).toString()
+    const matchesSearch = term === '' || 
+      factura.numero.toLowerCase().includes(term) ||
+      `${factura.cliente.nombre} ${factura.cliente.apellido || ''}`.toLowerCase().includes(term) ||
+      matricula.includes(term) ||
+      vehiculoDesc.includes(term) ||
+      (termNum !== '' && (totalStr.includes(termNum) || totalStrEntero.includes(termNum)))
     
     const matchesType = filterType === 'ALL' || factura.tipo === filterType
     
@@ -636,7 +659,7 @@ export function FacturacionView() {
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                 <Input
-                  placeholder="Buscar por número o cliente..."
+                  placeholder="Buscar por número, cliente, matrícula o importe..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-9"
@@ -788,6 +811,7 @@ export function FacturacionView() {
                   <TableHead>Número</TableHead>
                   <TableHead>Tipo</TableHead>
                   <TableHead>Cliente</TableHead>
+                  <TableHead>Vehículo</TableHead>
                   <TableHead>Fecha</TableHead>
                   <TableHead>Total</TableHead>
                   <TableHead>Estado</TableHead>
@@ -808,6 +832,20 @@ export function FacturacionView() {
                     </TableCell>
                     <TableCell>
                       {factura.cliente.nombre} {factura.cliente.apellido || ''}
+                    </TableCell>
+                    <TableCell>
+                      {factura.citas?.vehiculo?.matricula ? (
+                        <div className="flex flex-col">
+                          <span className="font-medium">{factura.citas.vehiculo.matricula}</span>
+                          {(factura.citas.vehiculo.marca || factura.citas.vehiculo.modelo) && (
+                            <span className="text-xs text-muted-foreground">
+                              {factura.citas.vehiculo.marca || ''} {factura.citas.vehiculo.modelo || ''}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       {format(new Date(factura.fecha), 'dd/MM/yyyy', { locale: es })}

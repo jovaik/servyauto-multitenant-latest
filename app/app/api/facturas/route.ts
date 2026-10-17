@@ -49,6 +49,13 @@ export async function GET(request: NextRequest) {
             direccion: true,
           }
         },
+        citas: {
+          select: {
+            vehiculo: {
+              select: { matricula: true, marca: true, modelo: true }
+            }
+          }
+        },
         local: true,
       },
       orderBy: {

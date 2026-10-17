@@ -4,7 +4,7 @@
 import React, { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { Users, User, Car, Phone, Mail, Plus, Edit, Trash2, X, Download, ExternalLink } from 'lucide-react'
+import { Users, User, Car, Phone, Mail, Plus, Edit, Trash2, X, Download, ExternalLink, CreditCard } from 'lucide-react'
 import { exportarClientesExcel } from '@/lib/excel-generator'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -353,9 +353,15 @@ export function ClientesView() {
                       <Badge variant="secondary">
                         {cliente?.vehiculos?.length || 0} vehículo{(cliente?.vehiculos?.length || 0) !== 1 ? 's' : ''}
                       </Badge>
-                      <Badge variant="default" className="bg-green-600 hover:bg-green-700">
-                        {cliente?.totalVisitas || 0} visita{(cliente?.totalVisitas || 0) !== 1 ? 's' : ''}
-                      </Badge>
+                      <button
+                        onClick={() => router.push(`/dashboard/facturacion?buscar=${encodeURIComponent(`${cliente.nombre} ${cliente.apellido || ''}`.trim())}`)}
+                        title="VER MOVIMIENTOS DE ESTE CLIENTE"
+                        className="focus:outline-none"
+                      >
+                        <Badge variant="default" className="bg-green-600 hover:bg-green-700 cursor-pointer">
+                          {cliente?.totalVisitas || 0} visita{(cliente?.totalVisitas || 0) !== 1 ? 's' : ''}
+                        </Badge>
+                      </button>
                       {cliente.clienteParking && (
                         <Badge variant="default" className="bg-blue-600 hover:bg-blue-700">
                           Parking
@@ -366,6 +372,15 @@ export function ClientesView() {
                           📍 {(cliente as any).local.nombre.replace('SERVYAUTO ', '')}
                         </Badge>
                       )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => router.push(`/dashboard/facturacion?buscar=${encodeURIComponent(`${cliente.nombre} ${cliente.apellido || ''}`.trim())}`)}
+                        className="text-green-700 hover:text-green-800 hover:bg-green-50"
+                        title="VER MOVIMIENTOS"
+                      >
+                        <CreditCard className="h-3 w-3 mr-1" /> VER MOVIMIENTOS
+                      </Button>
                       <Button
                         size="sm"
                         variant="outline"
