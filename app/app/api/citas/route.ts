@@ -28,6 +28,8 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url)
     const fecha = searchParams.get('fecha')
+    const desde = searchParams.get('desde')
+    const pendientes = searchParams.get('pendientes')
 
     let whereClause: any = {
       ...localFilter // Aplicar filtro de local
@@ -42,6 +44,15 @@ export async function GET(req: NextRequest) {
         gte: fechaInicio,
         lte: fechaFin,
       }
+    } else if (desde) {
+      const fechaInicio = new Date(desde)
+      fechaInicio.setHours(0, 0, 0, 0)
+      whereClause.fecha = { gte: fechaInicio }
+    }
+
+    // Operaciones sin completar: excluye completadas, canceladas y no-show
+    if (pendientes === 'true') {
+      whereClause.estado = { notIn: ['COMPLETADA', 'CANCELADA', 'NO_SHOW'] }
     }
 
     const citas = await prisma.cita.findMany({

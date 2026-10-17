@@ -85,9 +85,33 @@ export function AgendaView() {
     mensaje: string
   } | null>(null)
 
+  const [pendingOpenCitaId, setPendingOpenCitaId] = useState<string | null>(null)
+
   useEffect(() => {
     setMounted(true)
+    // Soporte para abrir la agenda en una fecha/cita concreta vía query params
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const fechaParam = params.get('fecha')
+      const citaIdParam = params.get('citaId')
+      if (fechaParam) {
+        const d = new Date(fechaParam + 'T00:00:00')
+        if (!isNaN(d.getTime())) setSelectedDate(startOfDay(d))
+      }
+      if (citaIdParam) setPendingOpenCitaId(citaIdParam)
+    } catch (e) {}
   }, [])
+
+  // Abrir automáticamente la cita indicada en el query param una vez cargadas
+  useEffect(() => {
+    if (!pendingOpenCitaId || citas.length === 0) return
+    const target = citas.find(c => c.id === pendingOpenCitaId)
+    if (target) {
+      setSelectedCita(target)
+      setShowEditarCita(true)
+      setPendingOpenCitaId(null)
+    }
+  }, [citas, pendingOpenCitaId])
 
   // ❌ ESTADO DESHABILITADO: Ya no se usan franjas horarias fijas
   // const [timeSlots, setTimeSlots] = useState<string[]>([])
