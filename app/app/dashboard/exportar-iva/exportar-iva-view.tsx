@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Input } from '@/components/ui/input'
 
 export function ExportarIVAView() {
   const { data: session } = useSession() || {}
@@ -21,15 +22,29 @@ export function ExportarIVAView() {
   const currentYear = new Date().getFullYear()
   const [trimestre, setTrimestre] = useState('Q1')
   const [anio, setAnio] = useState(currentYear.toString())
+  const [fechaDesde, setFechaDesde] = useState('')
+  const [fechaHasta, setFechaHasta] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
   const handleExport = async () => {
+    if (trimestre === 'PERSONALIZADO' && (!fechaDesde || !fechaHasta)) {
+      setMessage({ type: 'error', text: 'Selecciona la fecha de inicio y la fecha de fin del rango personalizado.' })
+      return
+    }
+    if (trimestre === 'PERSONALIZADO' && fechaDesde > fechaHasta) {
+      setMessage({ type: 'error', text: 'La fecha de inicio no puede ser posterior a la fecha de fin.' })
+      return
+    }
+
     setLoading(true)
     setMessage(null)
 
     try {
-      const response = await fetch(`/api/exportar-iva?trimestre=${trimestre}&anio=${anio}`)
+      const url_api = trimestre === 'PERSONALIZADO'
+        ? `/api/exportar-iva?trimestre=PERSONALIZADO&fechaDesde=${fechaDesde}&fechaHasta=${fechaHasta}`
+        : `/api/exportar-iva?trimestre=${trimestre}&anio=${anio}`
+      const response = await fetch(url_api)
 
       if (response.ok) {
         // Descargar el archivo
@@ -37,7 +52,9 @@ export function ExportarIVAView() {
         const url = window.URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
-        a.download = `IVA_${trimestre}_${anio}_ServyAuto.xlsx`
+        a.download = trimestre === 'PERSONALIZADO'
+          ? `IVA_${fechaDesde}_${fechaHasta}_ServyAuto.xlsx`
+          : `IVA_${trimestre}_${anio}_ServyAuto.xlsx`
         document.body.appendChild(a)
         a.click()
         document.body.removeChild(a)
@@ -67,7 +84,8 @@ export function ExportarIVAView() {
       'Q2': 'Q2 (Abril - Junio)',
       'Q3': 'Q3 (Julio - Septiembre)',
       'Q4': 'Q4 (Octubre - Diciembre)',
-      'ANUAL': 'Resumen Anual (Modelo 390)'
+      'ANUAL': 'Resumen Anual (Modelo 390)',
+      'PERSONALIZADO': 'Rango de fechas personalizado'
     }
     return labels[q] || q
   }
@@ -107,10 +125,12 @@ export function ExportarIVAView() {
                   <SelectItem value="Q3">Q3 (Julio - Septiembre)</SelectItem>
                   <SelectItem value="Q4">Q4 (Octubre - Diciembre)</SelectItem>
                   <SelectItem value="ANUAL">Anual (Resumen Modelo 390)</SelectItem>
+                  <SelectItem value="PERSONALIZADO">Rango personalizado</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
+            {trimestre !== 'PERSONALIZADO' && (
             <div className="space-y-2">
               <label className="text-sm font-medium">Año</label>
               <Select value={anio} onValueChange={setAnio}>
@@ -126,12 +146,28 @@ export function ExportarIVAView() {
                 </SelectContent>
               </Select>
             </div>
+            )}
           </div>
+
+          {trimestre === 'PERSONALIZADO' && (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Fecha desde</label>
+                <Input type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Fecha hasta</label>
+                <Input type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} />
+              </div>
+            </div>
+          )}
 
           <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
             <h4 className="font-semibold text-blue-900 mb-2">Período seleccionado:</h4>
             <p className="text-blue-800">
-              {getTrimestreLabel(trimestre)} de {anio}
+              {trimestre === 'PERSONALIZADO'
+                ? (fechaDesde && fechaHasta ? `Del ${fechaDesde} al ${fechaHasta}` : 'Selecciona el rango de fechas')
+                : `${getTrimestreLabel(trimestre)} de ${anio}`}
             </p>
           </div>
 
