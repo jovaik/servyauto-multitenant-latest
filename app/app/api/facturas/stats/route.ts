@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         totalFacturas: 0, totalTickets: 0, ingresosMes: 0, pendientesCobro: 0,
         totalVentas: 0, ventasEfectivo: 0, ventasTPVSumup: 0, ventasTPVUnicaja: 0, ventasRevolut: 0,
-        gastosEfectivo: 0, transferenciasEntrada: 0, transferenciasSalida: 0,
+        gastosEfectivo: 0, gastosTotal: 0, transferenciasEntrada: 0, transferenciasSalida: 0,
         efectivoEnCaja: 0, totalCitasCompletadasSinFactura: 0
       })
     }
@@ -137,7 +137,8 @@ export async function GET(request: NextRequest) {
         total: true,
         estado: true,
         fecha: true,
-        metodoPago: true
+        metodoPago: true,
+        citaId: true
       }
     })
 
@@ -193,50 +194,54 @@ export async function GET(request: NextRequest) {
       .filter((f: any) => f.estado === 'PENDIENTE' || f.estado === 'VENCIDA')
       .reduce((sum: number, f: any) => sum + f.total, 0)
 
-    // ====== DESGLOSE POR MÉTODO DE PAGO ======
-    // Incluye facturas pagadas + citas completadas SIN factura (evita duplicados)
-    
-    // FACTURAS pagadas
+    // ====== DESGLOSE POR MÉTODO DE PAGO (ALINEADO CON EL DIARIO DE CAJA) ======
+    // Una cita puede cobrarse en varios métodos/cuentas mediante PAGOS PARCIALES. El ticket
+    // guarda un único método, pero el desglose real está en los pagos parciales. Para que
+    // Facturación coincida EXACTAMENTE con el Diario: la factura solo aporta el RESTO no
+    // cubierto por pagos parciales (en su método), y cada pago parcial se suma por su método real.
     const facturasPagadas = todasFacturas.filter((f: any) => f.estado === 'PAGADA')
-    const ventasEfectivoFacturas = facturasPagadas
-      .filter((f: any) => f.metodoPago === 'EFECTIVO')
-      .reduce((sum: number, f: any) => sum + f.total, 0)
-    
-    const ventasTPVSumupFacturas = facturasPagadas
-      .filter((f: any) => f.metodoPago === 'TPV_SUMUP')
-      .reduce((sum: number, f: any) => sum + f.total, 0)
-    
-    const ventasTPVUnicajaFacturas = facturasPagadas
-      .filter((f: any) => f.metodoPago === 'TPV_UNICAJA')
-      .reduce((sum: number, f: any) => sum + f.total, 0)
 
-    const ventasRevolutFacturas = facturasPagadas
-      .filter((f: any) => f.metodoPago === 'REVOLUT')
-      .reduce((sum: number, f: any) => sum + f.total, 0)
+    // Suma de TODOS los pagos parciales por cita (sin filtro de fecha) para deducir el resto
+    const pagosTodosDeCita = await prisma.pagoParcial.findMany({
+      where: { cita: localFilter },
+      select: { citaId: true, importe: true }
+    })
+    const sumPagosPorCita: Record<string, number> = {}
+    for (const p of pagosTodosDeCita) {
+      if (!p.citaId) continue
+      sumPagosPorCita[p.citaId] = (sumPagosPorCita[p.citaId] || 0) + (p.importe || 0)
+    }
+    // Pagos parciales DENTRO del periodo (por su método real)
+    const pagosParcialesPeriodo = await prisma.pagoParcial.findMany({
+      where: { cita: localFilter, ...dateFilterGastos },
+      select: { importe: true, metodoPago: true }
+    })
 
-    // CITAS completadas SIN factura (evita duplicados)
-    const ventasEfectivoCitas = citasCompletadasSinFactura
-      .filter((c: any) => c.metodoPago === 'EFECTIVO')
-      .reduce((sum: number, c: any) => sum + (c.total || 0), 0)
-    
-    const ventasTPVSumupCitas = citasCompletadasSinFactura
-      .filter((c: any) => c.metodoPago === 'TPV_SUMUP')
-      .reduce((sum: number, c: any) => sum + (c.total || 0), 0)
-    
-    const ventasTPVUnicajaCitas = citasCompletadasSinFactura
-      .filter((c: any) => c.metodoPago === 'TPV_UNICAJA')
-      .reduce((sum: number, c: any) => sum + (c.total || 0), 0)
+    const buckets: Record<string, number> = { EFECTIVO: 0, TPV_SUMUP: 0, TPV_UNICAJA: 0, REVOLUT: 0 }
+    // Facturas pagadas: solo el RESTO no cubierto por pagos parciales, en el método de la factura
+    for (const f of facturasPagadas) {
+      const sp = (f as any).citaId ? (sumPagosPorCita[(f as any).citaId] || 0) : 0
+      const imp = sp > 0 ? Math.round((((f as any).total || 0) - sp) * 100) / 100 : ((f as any).total || 0)
+      if (sp > 0 && imp <= 0.01) continue
+      const m = (f as any).metodoPago
+      if (m && buckets[m] !== undefined) buckets[m] += imp
+    }
+    // Citas completadas SIN factura: su método completo
+    for (const c of citasCompletadasSinFactura) {
+      const m = (c as any).metodoPago
+      if (m && buckets[m] !== undefined) buckets[m] += ((c as any).total || 0)
+    }
+    // Pagos parciales del periodo: por su método/cuenta real (efectivo, SumUp de Barto, etc.)
+    for (const p of pagosParcialesPeriodo) {
+      const m = (p as any).metodoPago
+      if (m && buckets[m] !== undefined) buckets[m] += ((p as any).importe || 0)
+    }
 
-    const ventasRevolutCitas = citasCompletadasSinFactura
-      .filter((c: any) => c.metodoPago === 'REVOLUT')
-      .reduce((sum: number, c: any) => sum + (c.total || 0), 0)
-
-    // TOTALES combinados (facturas + citas sin factura - evita duplicados)
-    const ventasEfectivo = ventasEfectivoFacturas + ventasEfectivoCitas
-    const ventasTPVSumup = ventasTPVSumupFacturas + ventasTPVSumupCitas
-    const ventasTPVUnicaja = ventasTPVUnicajaFacturas + ventasTPVUnicajaCitas
-    const ventasRevolut = ventasRevolutFacturas + ventasRevolutCitas
-    const totalVentas = ventasEfectivo + ventasTPVSumup + ventasTPVUnicaja + ventasRevolut
+    const ventasEfectivo = Math.round(buckets.EFECTIVO * 100) / 100
+    const ventasTPVSumup = Math.round(buckets.TPV_SUMUP * 100) / 100
+    const ventasTPVUnicaja = Math.round(buckets.TPV_UNICAJA * 100) / 100
+    const ventasRevolut = Math.round(buckets.REVOLUT * 100) / 100
+    const totalVentas = Math.round((ventasEfectivo + ventasTPVSumup + ventasTPVUnicaja + ventasRevolut) * 100) / 100
 
     // ====== OBTENER GASTOS PARA RESTAR DEL EFECTIVO ====== (filtrado por local)
     const todosGastos = await prisma.gasto.findMany({
@@ -291,6 +296,11 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Total de gastos del periodo (TODOS los métodos + transferencias de salida).
+    // Coincide con el "Total Gastos" que muestra el Diario de Caja.
+    const gastosTodosMetodos = todosGastos.reduce((sum: number, g: any) => sum + (g.importe || 0), 0)
+    const gastosTotal = Math.round((gastosTodosMetodos + transferenciasSalida) * 100) / 100
+
     // Las transferencias mueven efectivo, pero no son ventas ni gastos operativos.
     const efectivoEnCaja = Math.round(
       (ventasEfectivo - gastosEfectivo + transferenciasEntrada - transferenciasSalida) * 100
@@ -309,6 +319,7 @@ export async function GET(request: NextRequest) {
       ventasRevolut,
       // Gastos
       gastosEfectivo,
+      gastosTotal,
       transferenciasEntrada,
       transferenciasSalida,
       efectivoEnCaja, // Efectivo real que debe haber en caja

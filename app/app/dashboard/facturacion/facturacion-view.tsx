@@ -133,6 +133,7 @@ export function FacturacionView() {
     ventasTPVUnicaja: 0,
     ventasRevolut: 0,
     gastosEfectivo: 0,
+    gastosTotal: 0,
     transferenciasEntrada: 0,
     transferenciasSalida: 0,
     efectivoEnCaja: 0
@@ -559,6 +560,28 @@ export function FacturacionView() {
                     <div>NO INCLUYE EL SALDO ANTERIOR AL PERIODO.</div>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            {/* Total de gastos del periodo - TODOS los métodos (cuadra con el Diario de Caja) */}
+            <div className="bg-white rounded-lg p-5 shadow-sm border-2 border-red-200">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center">
+                  <TrendingUp className="h-5 w-5 text-red-600 mr-2 rotate-180" />
+                  <span className="text-base font-semibold text-gray-700">GASTOS DEL PERIODO (TODOS LOS MÉTODOS)</span>
+                </div>
+                <div className="text-2xl font-bold text-red-600">€{(stats.gastosTotal || 0).toFixed(2)}</div>
+              </div>
+              <div className="text-xs text-gray-600 space-y-1 border-t pt-2">
+                <div className="flex justify-between">
+                  <span>Pagados en efectivo:</span>
+                  <span className="font-medium">€{stats.gastosEfectivo.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Pagados con tarjeta / transferencia:</span>
+                  <span className="font-medium">€{Math.max(0, (stats.gastosTotal || 0) - stats.gastosEfectivo).toFixed(2)}</span>
+                </div>
+                <div className="text-[11px] text-gray-400 pt-1">Incluye tarjeta (TPV), transferencias de caja y cualquier otro método. Coincide con el "Total Gastos" del Diario de Caja.</div>
               </div>
             </div>
 
