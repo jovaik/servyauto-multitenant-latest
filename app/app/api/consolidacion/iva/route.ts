@@ -19,7 +19,10 @@ export const dynamic = 'force-dynamic'
  * PARÁMETROS (query string, todos opcionales):
  *   fechaDesde=YYYY-MM-DD   fechaHasta=YYYY-MM-DD   (rango personalizado)
  *   trimestre=Q1|Q2|Q3|Q4|ANUAL   anio=YYYY           (si no hay rango)
- *   localId=<id>            (filtra por local; si se omite, todos)
+ *   localId=<id1,id2>       (locales concretos, separados por coma)
+ *   todos=1                 (todos los locales; por defecto solo Arias + La Ermita)
+ *   tipo=FACTURA|TICKET     (por defecto TODOS los movimientos)
+ * Por defecto SOLO incluye los locales Arias Maldonado y La Ermita.
  * Si no se indica período, por defecto el año natural en curso.
  */
 
@@ -73,6 +76,9 @@ export async function GET(request: NextRequest) {
     const fechaDesdeParam = searchParams.get('fechaDesde')
     const fechaHastaParam = searchParams.get('fechaHasta')
     const localId = searchParams.get('localId') || ''
+    // tipo de movimiento: FACTURA | TICKET | (vacío = TODOS)
+    const tipoParam = (searchParams.get('tipo') || '').toUpperCase().trim()
+    const tipoFilter = (tipoParam === 'FACTURA' || tipoParam === 'TICKET') ? { tipo: tipoParam as any } : {}
 
     // ---- Resolver rango de fechas ----
     let startDate: Date
@@ -99,12 +105,33 @@ export async function GET(request: NextRequest) {
       etiquetaPeriodo = `${trimestre || 'ANUAL'} ${anio}`
     }
 
-    const localFilter = localId ? { localId } : {}
+    // ---- Resolver locales objetivo ----
+    // Por defecto SOLO Arias Maldonado y La Ermita. Override:
+    //   localId=id1,id2  -> locales concretos
+    //   todos=1          -> todos los locales
+    const incluirTodos = searchParams.get('todos') === '1'
+    let localFilter: any = {}
+    let localesIncluidos: { id: string; nombre: string }[] = []
+    const todosLocales = await prisma.local.findMany({ select: { id: true, nombre: true } })
+    if (localId) {
+      const ids = localId.split(',').map((s) => s.trim()).filter(Boolean)
+      localFilter = ids.length === 1 ? { localId: ids[0] } : { localId: { in: ids } }
+      localesIncluidos = todosLocales.filter((l) => ids.includes(l.id))
+    } else if (incluirTodos) {
+      localesIncluidos = todosLocales
+    } else {
+      const objetivo = todosLocales.filter((l) => {
+        const n = (l.nombre || '').toUpperCase()
+        return n.includes('ARIAS') || n.includes('ERMITA')
+      })
+      localFilter = { localId: { in: objetivo.map((l) => l.id) } }
+      localesIncluidos = objetivo
+    }
 
-    // ---- VENTAS (IVA repercutido) — solo FACTURAS, no tickets ----
+    // ---- VENTAS (IVA repercutido) — TODOS los movimientos (FACTURA y TICKET), TODOS los locales ----
     const ventas = await prisma.factura.findMany({
       where: {
-        tipo: 'FACTURA',
+        ...tipoFilter,
         fecha: { gte: startDate, lte: endDate },
         ...localFilter,
       },
@@ -112,10 +139,10 @@ export async function GET(request: NextRequest) {
       orderBy: { fecha: 'asc' },
     })
 
-    // ---- COMPRAS (IVA soportado) — solo gastos tipo FACTURA ----
+    // ---- COMPRAS (IVA soportado) — TODOS los gastos (FACTURA y TICKET), TODOS los locales ----
     const compras = await prisma.gasto.findMany({
       where: {
-        tipo: 'FACTURA',
+        ...tipoFilter,
         fecha: { gte: startDate, lte: endDate },
         ...localFilter,
       },
@@ -130,6 +157,7 @@ export async function GET(request: NextRequest) {
       const fiscal = getDatosFiscales(v)
       return {
         fecha: new Date(v.fecha).toISOString(),
+        tipo: v.tipo || null,
         numeroFactura: up(v.numero),
         cliente: up(fiscal.nombre),
         nif: up(fiscal.nif),
@@ -152,6 +180,7 @@ export async function GET(request: NextRequest) {
       const ivaAmount = (c.importe || 0) - base
       return {
         fecha: new Date(c.fecha).toISOString(),
+        tipo: c.tipo || null,
         numeroFactura: up(c.numeroFactura),
         proveedor: up(c.proveedor),
         cif: up(c.proveedorCIF),
@@ -171,15 +200,20 @@ export async function GET(request: NextRequest) {
 
     // ---- Totales de control ----
     const sum = (arr: any[], k: string) => Number(arr.reduce((s, x) => s + (x[k] || 0), 0).toFixed(2))
+    const countTipo = (arr: any[], t: string) => arr.filter((x) => x.tipo === t).length
     const resumen = {
       ventas: {
-        numFacturas: ventasData.length,
+        numMovimientos: ventasData.length,
+        numFacturas: countTipo(ventasData, 'FACTURA'),
+        numTickets: countTipo(ventasData, 'TICKET'),
         baseImponible: sum(ventasData, 'baseImponible'),
         cuotaIVA: sum(ventasData, 'cuotaIVA'),
         total: sum(ventasData, 'total'),
       },
       compras: {
-        numFacturas: comprasData.length,
+        numMovimientos: comprasData.length,
+        numFacturas: countTipo(comprasData, 'FACTURA'),
+        numTickets: countTipo(comprasData, 'TICKET'),
         baseImponible: sum(comprasData, 'baseImponible'),
         cuotaIVA: sum(comprasData, 'cuotaIVA'),
         total: sum(comprasData, 'total'),
@@ -194,6 +228,7 @@ export async function GET(request: NextRequest) {
       fechaDesde: startDate.toISOString(),
       fechaHasta: endDate.toISOString(),
       localId: localId || null,
+      localesIncluidos,
       generadoEn: new Date().toISOString(),
       resumen,
       ventas: ventasData,
