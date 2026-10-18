@@ -80,6 +80,17 @@ export async function GET(request: NextRequest) {
     const tipoParam = (searchParams.get('tipo') || '').toUpperCase().trim()
     const tipoFilter = (tipoParam === 'FACTURA' || tipoParam === 'TICKET') ? { tipo: tipoParam as any } : {}
 
+    // ---- Exclusión del periodo del ARRENDADOR (no son datos fiscales de ServyAuto) ----
+    // Del 1-mar-2026 al 6-sep-2026 los locales estuvieron arrendados a un tercero
+    // (ficha "by Gallardo Park"). Esos movimientos NO pertenecen a ServyAuto y se
+    // excluyen SIEMPRE de la consolidación fiscal. Override: incluirArrendador=1.
+    const ARRENDADOR_INICIO = new Date('2026-03-01T00:00:00')
+    const ARRENDADOR_FIN = new Date('2026-09-06T23:59:59')
+    const incluirArrendador = searchParams.get('incluirArrendador') === '1'
+    const arrendadorExclusion = incluirArrendador
+      ? {}
+      : { NOT: { fecha: { gte: ARRENDADOR_INICIO, lte: ARRENDADOR_FIN } } }
+
     // ---- Resolver rango de fechas ----
     let startDate: Date
     let endDate: Date
@@ -134,6 +145,7 @@ export async function GET(request: NextRequest) {
         ...tipoFilter,
         fecha: { gte: startDate, lte: endDate },
         ...localFilter,
+        ...arrendadorExclusion,
       },
       include: { cliente: true, local: { select: { id: true, nombre: true } } },
       orderBy: { fecha: 'asc' },
@@ -145,6 +157,7 @@ export async function GET(request: NextRequest) {
         ...tipoFilter,
         fecha: { gte: startDate, lte: endDate },
         ...localFilter,
+        ...arrendadorExclusion,
       },
       include: { local: { select: { id: true, nombre: true } } },
       orderBy: { fecha: 'asc' },
@@ -229,6 +242,9 @@ export async function GET(request: NextRequest) {
       fechaHasta: endDate.toISOString(),
       localId: localId || null,
       localesIncluidos,
+      arrendadorExcluido: !incluirArrendador
+        ? { desde: ARRENDADOR_INICIO.toISOString(), hasta: ARRENDADOR_FIN.toISOString(), nota: 'Periodo arrendado a tercero (no fiscal de ServyAuto)' }
+        : null,
       generadoEn: new Date().toISOString(),
       resumen,
       ventas: ventasData,
