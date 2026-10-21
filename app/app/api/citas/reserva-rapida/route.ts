@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { fecha, horaInicio, box, nombre, telefono, marca, modelo, observaciones } = body
+    const { fecha, horaInicio, box, nombre, telefono, marca, modelo, matricula, observaciones, clienteId, vehiculoId } = body
 
     if (!fecha || !horaInicio || !nombre || !telefono) {
       return NextResponse.json({ error: 'Faltan campos requeridos (fecha, hora, nombre, teléfono)' }, { status: 400 })
@@ -47,68 +47,67 @@ export async function POST(req: NextRequest) {
     const boxFinal = box || 'Box 1'
 
     // Transaction: find/create client, find/create vehicle, create cita
-    const result = await prisma.$transaction(async (tx: any) => {
-      // 1. Find or create client by phone
-      const telefonoClean = telefono.trim()
-      let cliente = await tx.cliente.findFirst({
-        where: { telefono: telefonoClean },
-      })
+    const telefonoClean = (telefono || '').trim()
+    const matriculaUp = (matricula || '').trim().toUpperCase()
+    const matriculaReal = !!matriculaUp && !matriculaUp.startsWith('PEND-')
 
-      if (!cliente) {
-        cliente = await tx.cliente.create({
-          data: {
-            nombre: nombre.trim(),
-            telefono: telefonoClean,
-            localId,
-            creadoPorId: user?.id || null,
-            creadoPorNombre: userName,
-          }
-        })
+    const result = await prisma.$transaction(async (tx: any) => {
+      let cliente: any = null
+      let vehiculo: any = null
+
+      // A) Reutilizar ficha existente seleccionada en el autocompletar (por vehiculoId)
+      if (vehiculoId) {
+        vehiculo = await tx.vehiculo.findUnique({ where: { id: vehiculoId }, include: { cliente: true } })
+        if (vehiculo?.cliente) cliente = vehiculo.cliente
       }
 
-      // 2. Find or create vehicle
-      let vehiculo
-      const hasCar = marca && marca.trim()
-      if (hasCar) {
-        const marcaUp = marca.trim().toUpperCase()
-        const modeloUp = (modelo || '').trim().toUpperCase() || 'SIN MODELO'
-        // Try to find existing vehicle for this client with same brand/model
-        vehiculo = await tx.vehiculo.findFirst({
-          where: {
-            clienteId: cliente.id,
-            marca: marcaUp,
-            modelo: modeloUp,
-          }
-        })
-        if (!vehiculo) {
-          vehiculo = await tx.vehiculo.create({
+      // B) Reutilizar cliente seleccionado (por clienteId)
+      if (!cliente && clienteId) {
+        cliente = await tx.cliente.findUnique({ where: { id: clienteId } })
+      }
+
+      // C) Si hay matrícula real y aún no tenemos vehículo, buscar vehículo existente por matrícula
+      if (!vehiculo && matriculaReal) {
+        vehiculo = await tx.vehiculo.findFirst({ where: { matricula: matriculaUp, localId }, include: { cliente: true } })
+        if (vehiculo?.cliente && !cliente) cliente = vehiculo.cliente
+      }
+
+      // D) Si seguimos sin cliente, buscar por teléfono o crear nuevo
+      if (!cliente) {
+        cliente = await tx.cliente.findFirst({ where: { telefono: telefonoClean } })
+        if (!cliente) {
+          cliente = await tx.cliente.create({
             data: {
-              marca: marcaUp,
-              modelo: modeloUp,
-              matricula: `PEND-${Date.now().toString(36).toUpperCase()}`,
-              anio: new Date().getFullYear(),
-              clienteId: cliente.id,
+              nombre: nombre.trim(),
+              telefono: telefonoClean,
               localId,
               creadoPorId: user?.id || null,
               creadoPorNombre: userName,
             }
           })
         }
-      } else {
-        // No car data — find existing placeholder or create one
-        vehiculo = await tx.vehiculo.findFirst({
-          where: {
-            clienteId: cliente.id,
-            marca: 'PENDIENTE',
-            modelo: 'PENDIENTE',
-          }
-        })
+      }
+
+      // E) Si seguimos sin vehículo, buscar/crear
+      if (!vehiculo) {
+        const hasCar = marca && marca.trim()
+        const marcaUp = hasCar ? marca.trim().toUpperCase() : 'PENDIENTE'
+        const modeloUp = hasCar ? ((modelo || '').trim().toUpperCase() || 'SIN MODELO') : 'PENDIENTE'
+
+        // Si NO hay matrícula real, intentar reutilizar vehículo del cliente con misma marca/modelo
+        if (!matriculaReal) {
+          vehiculo = await tx.vehiculo.findFirst({
+            where: { clienteId: cliente.id, marca: marcaUp, modelo: modeloUp }
+          })
+        }
+
         if (!vehiculo) {
+          const matriculaFinal = matriculaReal ? matriculaUp : `PEND-${Date.now().toString(36).toUpperCase()}`
           vehiculo = await tx.vehiculo.create({
             data: {
-              marca: 'PENDIENTE',
-              modelo: 'PENDIENTE',
-              matricula: `PEND-${Date.now().toString(36).toUpperCase()}`,
+              marca: marcaUp,
+              modelo: modeloUp,
+              matricula: matriculaFinal,
               anio: new Date().getFullYear(),
               clienteId: cliente.id,
               localId,

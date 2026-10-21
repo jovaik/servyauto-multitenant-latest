@@ -85,7 +85,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     // Verificar si la cita existe
     const citaExistente = await prisma.cita.findUnique({
       where: { id: params.id },
-      include: { cita_servicios: true, lineasManuales: true },
+      include: { cita_servicios: true, lineasManuales: true, vehiculo: true },
     })
 
     if (!citaExistente) {
@@ -95,8 +95,56 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       )
     }
 
+    // === RE-ENLACE ANTI-DUPLICADOS (completar cita rápida con cliente/matrícula ya existentes) ===
+    // Si al completar una cita se teclea una matrícula o teléfono que YA existe en otra ficha,
+    // en vez de duplicar, re-enlazamos la cita al vehículo/cliente real ya existente.
+    let relinkVehiculoId: string | null = null
+    let relinkClienteId: string | null = null
+
+    if (vehiculoMatricula !== undefined && String(vehiculoMatricula).trim() && citaExistente.vehiculoId) {
+      const matriculaUp = String(vehiculoMatricula).trim().toUpperCase()
+      if (!matriculaUp.startsWith('PEND-')) {
+        const vehiculoExistente = await prisma.vehiculo.findFirst({
+          where: {
+            matricula: matriculaUp,
+            localId: citaExistente.localId,
+            id: { not: citaExistente.vehiculoId },
+          },
+        })
+        if (vehiculoExistente) {
+          relinkVehiculoId = vehiculoExistente.id
+          // Adoptar también el cliente propietario de ese vehículo
+          if (vehiculoExistente.clienteId && vehiculoExistente.clienteId !== citaExistente.clienteId) {
+            relinkClienteId = vehiculoExistente.clienteId
+          }
+          console.log(`Re-enlace por matrícula ${matriculaUp}: vehículo ${relinkVehiculoId}, cliente ${relinkClienteId || '(sin cambio)'}`)
+        }
+      }
+    }
+
+    // Re-enlace por teléfono si no hubo match por matrícula.
+    // Solo cuando el vehículo actual sigue siendo un placeholder PEND- (cita rápida sin completar),
+    // para no re-enlazar por error al editar una cita normal que comparte teléfono (p.ej. familia).
+    const vehiculoEsPlaceholder = !!citaExistente.vehiculo?.matricula?.startsWith('PEND-')
+    if (!relinkClienteId && vehiculoEsPlaceholder && clienteTelefono !== undefined && String(clienteTelefono).trim() && citaExistente.clienteId) {
+      const telClean = String(clienteTelefono).trim()
+      const clienteExistente = await prisma.cliente.findFirst({
+        where: {
+          telefono: telClean,
+          id: { not: citaExistente.clienteId },
+        },
+      })
+      if (clienteExistente) {
+        relinkClienteId = clienteExistente.id
+        console.log(`Re-enlace por teléfono ${telClean}: cliente ${relinkClienteId}`)
+      }
+    }
+
+    const efectivoClienteId = relinkClienteId || citaExistente.clienteId
+
     // Actualizar datos del cliente enlazado (editar nombre/apellido/teléfono erróneos, p.ej. reserva rápida)
-    if (citaExistente.clienteId && (clienteNombre !== undefined || clienteApellido !== undefined || clienteTelefono !== undefined)) {
+    // Solo si NO estamos re-enlazando a un cliente ya existente (para no pisar su ficha real)
+    if (!relinkClienteId && citaExistente.clienteId && (clienteNombre !== undefined || clienteApellido !== undefined || clienteTelefono !== undefined)) {
       const clienteUpdate: any = {}
       if (clienteNombre !== undefined) clienteUpdate.nombre = String(clienteNombre).toUpperCase()
       if (clienteApellido !== undefined) clienteUpdate.apellido = clienteApellido ? String(clienteApellido).toUpperCase() : null
@@ -111,7 +159,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     }
 
     // Actualizar datos del vehículo enlazado (editar marca/modelo/matrícula erróneos)
-    if (citaExistente.vehiculoId && (vehiculoMarca !== undefined || vehiculoModelo !== undefined || vehiculoMatricula !== undefined)) {
+    // Solo si NO estamos re-enlazando a un vehículo ya existente
+    if (!relinkVehiculoId && citaExistente.vehiculoId && (vehiculoMarca !== undefined || vehiculoModelo !== undefined || vehiculoMatricula !== undefined)) {
       const vehiculoUpdate: any = {}
       if (vehiculoMarca !== undefined) vehiculoUpdate.marca = String(vehiculoMarca).toUpperCase()
       if (vehiculoModelo !== undefined) vehiculoUpdate.modelo = String(vehiculoModelo).toUpperCase()
@@ -160,7 +209,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         
         // Aplicar descuentos automáticos según tipo de cliente
         const cliente = await prisma.cliente.findUnique({
-          where: { id: citaExistente.clienteId },
+          where: { id: efectivoClienteId },
           select: { clienteParking: true, clienteVIP: true, clienteEmpresa: true }
         })
 
@@ -232,6 +281,10 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     if (tpvNombre !== undefined) updateData.tpvNombre = tpvNombre || null
     
     if (precioFinal !== undefined) updateData.total = precioFinal
+
+    // Aplicar re-enlace anti-duplicados a la cita
+    if (relinkVehiculoId) updateData.vehiculoId = relinkVehiculoId
+    if (relinkClienteId) updateData.clienteId = relinkClienteId
 
     // Trazabilidad: guardar quién completó la cita
     if (estado === 'COMPLETADA' || estado === 'LISTO_PARA_RECOGER') {
