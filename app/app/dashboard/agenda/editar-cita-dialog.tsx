@@ -411,7 +411,7 @@ export function EditarCitaDialog({
   }, [open, cita])
 
   const estadoLabel = (estado: string) =>
-    estado === 'PAGO_POSTERIOR' ? 'Pago posterior (crédito)' : estado.replace(/_/g, ' ')
+    estado === 'PAGO_POSTERIOR' ? 'PAGO POSTERIOR (CRÉDITO)' : estado.replace(/_/g, ' ')
 
   const getEstadoBadge = (estado: EstadoCita) => {
     const variants = {
