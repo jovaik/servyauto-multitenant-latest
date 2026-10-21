@@ -71,6 +71,14 @@ export async function PUT(
     if (estado !== undefined) updateData.estado = estado
     if (metodoPago !== undefined) updateData.metodoPago = metodoPago
     if (pagada !== undefined) updateData.pagada = pagada
+
+    // Si la factura pasa a PAGADA y aún no tenía fecha de cobro, registrarla.
+    // Esa fecha de cobro es la que usa el reparto ÷3 para saber en qué período
+    // entra el ingreso (las facturas agrupadas se suelen cobrar a mes vencido).
+    if (estado === 'PAGADA') {
+      const actual = await prisma.factura.findUnique({ where: { id: params.id }, select: { fechaPago: true } })
+      if (!actual?.fechaPago) updateData.fechaPago = new Date()
+    }
     if (observaciones !== undefined) updateData.observaciones = observaciones
     if (subtotal !== undefined) updateData.subtotal = subtotal
     if (iva !== undefined) updateData.iva = iva

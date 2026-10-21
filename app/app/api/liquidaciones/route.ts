@@ -106,10 +106,15 @@ export async function GET(req: NextRequest) {
     });
 
     // 2. Citas completadas en el período (del local, o de todos)
+    // IMPORTANTE: se excluyen las citas que ya están dentro de una FACTURA
+    // AGRUPADA (facturaAgrupadaId != null). Esas no se reparten por la cita;
+    // se reparten cuando la factura agrupada se cobra (ver bloque 2b). Así se
+    // evita el doble conteo.
     const citas = await prisma.cita.findMany({
       where: {
         ...(localId ? { localId } : {}),
         estado: "COMPLETADA",
+        facturaAgrupadaId: null,
         fecha: { gte: fechaDesde, lte: fechaHasta },
       },
       select: {
@@ -124,6 +129,35 @@ export async function GET(req: NextRequest) {
         cita_servicios: { include: { servicios: { select: { nombre: true } } } },
       },
     });
+
+    // 2b. Facturas AGRUPADAS ya COBRADAS (PAGADA) en el período.
+    // Cuando una factura agrupada se cobra, su importe pasa a estar disponible
+    // para el reparto habitual ÷3. Sus citas llevan facturaAgrupadaId y se
+    // excluyen del bloque 2 anterior, así que sumar la factura NO produce doble
+    // conteo. Se usa la fecha real de cobro (fechaPago) y, si faltara, la fecha
+    // de la factura, para que entre en el período en que realmente se cobró.
+    const idsAgrupadas = (await prisma.cita.findMany({
+      where: { facturaAgrupadaId: { not: null } },
+      select: { facturaAgrupadaId: true },
+      distinct: ['facturaAgrupadaId'],
+    })).map(c => c.facturaAgrupadaId as string).filter(Boolean);
+
+    let facturasAgrupadasCobradas: Array<{ id: string; numero: string; total: number; localId: string | null; fecha: Date; fechaPago: Date | null }> = [];
+    if (idsAgrupadas.length > 0) {
+      const facturasAgr = await prisma.factura.findMany({
+        where: {
+          id: { in: idsAgrupadas },
+          estado: 'PAGADA',
+          ...(localId ? { localId } : {}),
+        },
+        select: { id: true, numero: true, total: true, localId: true, fecha: true, fechaPago: true },
+      });
+      facturasAgrupadasCobradas = facturasAgr.filter(f => {
+        const ref = f.fechaPago || f.fecha;
+        return ref >= fechaDesde && ref <= fechaHasta;
+      });
+    }
+    const ingresosFacturasAgrupadas = facturasAgrupadasCobradas.reduce((s, f) => s + (f.total || 0), 0);
 
     // 3. Gastos en el período (del local, o de todos)
     const gastos = await prisma.gasto.findMany({
@@ -141,8 +175,8 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    // 4. Calcular totales
-    const ingresosTotales = citas.reduce((sum, c) => sum + (c.total || 0), 0);
+    // 4. Calcular totales (citas completadas + facturas agrupadas cobradas)
+    const ingresosTotales = citas.reduce((sum, c) => sum + (c.total || 0), 0) + ingresosFacturasAgrupadas;
 
     // Gastos generales (sin colaborador asignado)
     const gastosGenerales = gastos
@@ -155,6 +189,7 @@ export async function GET(req: NextRequest) {
     // Mapas por local (para responsables cuando se agregan varios locales)
     const ingresosPorLocal: Record<string, number> = {};
     citas.forEach(c => { const k = c.localId || ''; ingresosPorLocal[k] = (ingresosPorLocal[k] || 0) + (c.total || 0); });
+    facturasAgrupadasCobradas.forEach(f => { const k = f.localId || ''; ingresosPorLocal[k] = (ingresosPorLocal[k] || 0) + (f.total || 0); });
     const gastosGeneralesPorLocal: Record<string, number> = {};
     gastos.filter(g => !g.colaboradorId).forEach(g => { const k = g.localId || ''; gastosGeneralesPorLocal[k] = (gastosGeneralesPorLocal[k] || 0) + g.importe; });
 
@@ -376,6 +411,8 @@ export async function GET(req: NextRequest) {
         netoLocal: round2(netoLocal),
         prestamosFuera: round2(prestamosFueraTotal),
         netoRepartible: round2(netoRepartible),
+        ingresosFacturasAgrupadas: round2(ingresosFacturasAgrupadas),
+        numFacturasAgrupadas: facturasAgrupadasCobradas.length,
         totalComisiones: round2(totalComisiones),
         totalComisionesPrescriptor: round2(totalComisionesPrescriptor),
         totalComisionesOperario: round2(totalComisionesOperario),
