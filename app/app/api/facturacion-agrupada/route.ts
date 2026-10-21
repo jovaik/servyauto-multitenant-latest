@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
     // Filtro base de citas facturables (trabajo hecho, sin factura individual ni ya agrupada)
     const baseWhere: any = {
       ...localFilter,
-      estado: { notIn: ['CANCELADA', 'NO_SHOW', 'PENDIENTE'] },
+      estado: { notIn: ['CANCELADA', 'NO_SHOW'] },
       total: { gt: 0 },
       facturas: { is: null },
       facturaAgrupadaId: null,

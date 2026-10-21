@@ -253,8 +253,24 @@ model Cita {
   realizadoPor        Colaborador?     @relation("CitaRealizadoPor", fields: [realizadoPorId], references: [id])
   lineasManuales      CitaLineaManual[]
   pagosParciales      PagoParcial[]
+  costesInternos      CitaCosteInterno[]
 
   @@map("citas")
+}
+
+model CitaCosteInterno {
+  id              String   @id @default(cuid())
+  citaId          String
+  descripcion     String
+  importe         Float
+  tipo            String   @default("OTRO")
+  proveedor       String?
+  creadoPorId     String?
+  creadoPorNombre String?
+  createdAt       DateTime @default(now())
+  cita            Cita     @relation(fields: [citaId], references: [id], onDelete: Cascade)
+
+  @@map("cita_costes_internos")
 }
 
 model PagoParcial {

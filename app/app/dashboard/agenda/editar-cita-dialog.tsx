@@ -125,6 +125,12 @@ export function EditarCitaDialog({
   const [nuevoPago, setNuevoPago] = useState({ importe: '', metodoPago: '', fecha: format(new Date(), 'yyyy-MM-dd'), concepto: '', tpvUserId: '', tpvNombre: '' })
   const [addingPago, setAddingPago] = useState(false)
   const [showAddPago, setShowAddPago] = useState(false)
+  // Costes internos (subcontratas / recambios) - NO visibles al cliente
+  const [costesInternos, setCostesInternos] = useState<any[]>([])
+  const [totalCostes, setTotalCostes] = useState(0)
+  const [nuevoCoste, setNuevoCoste] = useState({ descripcion: '', importe: '', tipo: 'RECAMBIO', proveedor: '' })
+  const [addingCoste, setAddingCoste] = useState(false)
+  const [showAddCoste, setShowAddCoste] = useState(false)
   
   const [formData, setFormData] = useState({
     fecha: '',
@@ -192,6 +198,53 @@ export function EditarCitaDialog({
       if (res.ok) {
         toast({ title: 'Pago eliminado' })
         await cargarPagos()
+      }
+    } catch {}
+  }
+
+  // Cargar costes internos (subcontratas / recambios)
+  const cargarCostes = async () => {
+    if (!cita?.id) return
+    try {
+      const res = await fetch(`/api/citas/${cita.id}/costes`)
+      if (res.ok) {
+        const data = await res.json()
+        setCostesInternos(data.costes || [])
+        setTotalCostes(data.totalCostes || 0)
+      }
+    } catch {}
+  }
+
+  useEffect(() => { if (open && cita?.id) cargarCostes() }, [open, cita?.id])
+
+  const handleAddCoste = async () => {
+    if (!nuevoCoste.descripcion || !nuevoCoste.importe) return
+    setAddingCoste(true)
+    try {
+      const res = await fetch(`/api/citas/${cita.id}/costes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(nuevoCoste),
+      })
+      if (res.ok) {
+        toast({ title: 'Coste registrado', description: `${parseFloat(nuevoCoste.importe).toFixed(2)}€ de coste interno` })
+        setNuevoCoste({ descripcion: '', importe: '', tipo: 'RECAMBIO', proveedor: '' })
+        setShowAddCoste(false)
+        await cargarCostes()
+      } else {
+        const err = await res.json().catch(() => ({}))
+        toast({ title: 'Error', description: err.error || 'No se pudo registrar', variant: 'destructive' })
+      }
+    } catch { toast({ title: 'Error', variant: 'destructive' }) }
+    finally { setAddingCoste(false) }
+  }
+
+  const handleDeleteCoste = async (costeId: string) => {
+    try {
+      const res = await fetch(`/api/citas/${cita.id}/costes?costeId=${costeId}`, { method: 'DELETE' })
+      if (res.ok) {
+        toast({ title: 'Coste eliminado' })
+        await cargarCostes()
       }
     } catch {}
   }
@@ -1113,6 +1166,92 @@ export function EditarCitaDialog({
                     {addingPago ? 'Registrando...' : 'Registrar pago'}
                   </Button>
                   <Button type="button" size="sm" variant="ghost" onClick={() => setShowAddPago(false)}>Cancelar</Button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Costes internos (subcontratas / recambios) - NO visibles al cliente */}
+          <div className="space-y-3 border rounded-lg p-3 bg-slate-100 border-slate-300">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-base font-semibold">🔒 Costes internos</Label>
+                <p className="text-xs text-gray-500">Subcontratas y recambios. Solo control interno — NO aparece al cliente.</p>
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={() => setShowAddCoste(!showAddCoste)}>
+                <Plus className="h-4 w-4 mr-1" /> Añadir coste
+              </Button>
+            </div>
+
+            {/* Resumen coste / margen */}
+            {((cita?.total || 0) > 0 || costesInternos.length > 0) && (
+              <div className="grid grid-cols-3 gap-2 text-center text-sm">
+                <div className="bg-white rounded p-2">
+                  <div className="text-gray-500">Cobrado al cliente</div>
+                  <div className="font-bold">{(cita?.total || 0).toFixed(2)}€</div>
+                </div>
+                <div className="bg-orange-100 rounded p-2">
+                  <div className="text-gray-500">Coste interno</div>
+                  <div className="font-bold text-orange-700">{totalCostes.toFixed(2)}€</div>
+                </div>
+                <div className={`rounded p-2 ${((cita?.total || 0) - totalCostes) >= 0 ? 'bg-green-100' : 'bg-red-100'}`}>
+                  <div className="text-gray-500">Margen</div>
+                  <div className={`font-bold ${((cita?.total || 0) - totalCostes) >= 0 ? 'text-green-700' : 'text-red-700'}`}>{((cita?.total || 0) - totalCostes).toFixed(2)}€</div>
+                </div>
+              </div>
+            )}
+
+            {/* Lista de costes registrados */}
+            {costesInternos.length > 0 && (
+              <div className="space-y-1">
+                {costesInternos.map((c: any) => (
+                  <div key={c.id} className="flex items-center justify-between bg-white rounded px-3 py-2 text-sm border">
+                    <div className="flex-1">
+                      <span className="font-medium text-orange-700">-{c.importe.toFixed(2)}€</span>
+                      <span className="ml-2">{c.descripcion}</span>
+                      <span className="text-gray-400 ml-2">[{c.tipo === 'SUBCONTRATA' ? 'Subcontrata' : c.tipo === 'RECAMBIO' ? 'Recambio' : 'Otro'}]</span>
+                      {c.proveedor && <span className="text-gray-400 ml-2">· {c.proveedor}</span>}
+                    </div>
+                    <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0 text-red-500" onClick={() => handleDeleteCoste(c.id)}>
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Formulario para añadir coste */}
+            {showAddCoste && (
+              <div className="bg-white border rounded-lg p-3 space-y-3">
+                <div>
+                  <Label className="text-xs">Descripción *</Label>
+                  <Input placeholder="Ej: PASTILLAS FRENO, PULIDO FAROS..." value={nuevoCoste.descripcion} onChange={(e) => setNuevoCoste(prev => ({ ...prev, descripcion: e.target.value }))} />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs">Importe (coste) *</Label>
+                    <Input type="number" step="0.01" min="0.01" placeholder="0.00" value={nuevoCoste.importe} onChange={(e) => setNuevoCoste(prev => ({ ...prev, importe: e.target.value }))} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Proveedor (opcional)</Label>
+                    <Input placeholder="Ej: TALLER X" value={nuevoCoste.proveedor} onChange={(e) => setNuevoCoste(prev => ({ ...prev, proveedor: e.target.value }))} />
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs">Tipo</Label>
+                  <div className="grid grid-cols-3 gap-1 mt-1">
+                    {[{v:'RECAMBIO',l:'Recambio'},{v:'SUBCONTRATA',l:'Subcontrata'},{v:'OTRO',l:'Otro'}].map(t => (
+                      <Button key={t.v} type="button" variant={nuevoCoste.tipo === t.v ? 'default' : 'outline'} size="sm" className="text-xs h-8" onClick={() => setNuevoCoste(prev => ({ ...prev, tipo: t.v }))}>
+                        {t.l}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button type="button" size="sm" onClick={handleAddCoste} disabled={addingCoste || !nuevoCoste.importe || !nuevoCoste.descripcion} className="bg-slate-700 hover:bg-slate-800">
+                    {addingCoste ? 'Registrando...' : 'Registrar coste'}
+                  </Button>
+                  <Button type="button" size="sm" variant="ghost" onClick={() => setShowAddCoste(false)}>Cancelar</Button>
                 </div>
               </div>
             )}
