@@ -29,6 +29,7 @@ const getEstadoColor = (estado?: string) => {
     case 'CONFIRMADA': return 'bg-blue-100 text-blue-800 border-blue-200'
     case 'EN_PROCESO': return 'bg-purple-100 text-purple-800 border-purple-200'
     case 'LISTO_PARA_RECOGER': return 'bg-orange-100 text-orange-800 border-orange-300'
+    case 'PAGO_POSTERIOR': return 'bg-indigo-100 text-indigo-800 border-indigo-300'
     default: return 'bg-gray-100 text-gray-800 border-gray-200'
   }
 }
@@ -39,6 +40,7 @@ const getEstadoLabel = (estado?: string) => {
     case 'CONFIRMADA': return 'CONFIRMADA'
     case 'EN_PROCESO': return 'EN PROCESO'
     case 'LISTO_PARA_RECOGER': return 'LISTO PARA RECOGER'
+    case 'PAGO_POSTERIOR': return 'PAGO POSTERIOR (CRÉDITO)'
     default: return estado || '-'
   }
 }

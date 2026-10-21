@@ -680,6 +680,7 @@ enum EstadoCita {
   CANCELADA
   NO_SHOW
   LISTO_PARA_RECOGER
+  PAGO_POSTERIOR
 }
 
 enum MetodoPago {

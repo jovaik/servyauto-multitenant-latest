@@ -410,6 +410,9 @@ export function EditarCitaDialog({
     cargarCitaCompleta()
   }, [open, cita])
 
+  const estadoLabel = (estado: string) =>
+    estado === 'PAGO_POSTERIOR' ? 'Pago posterior (crédito)' : estado.replace(/_/g, ' ')
+
   const getEstadoBadge = (estado: EstadoCita) => {
     const variants = {
       [EstadoCita.PENDIENTE]: 'default',
@@ -417,13 +420,14 @@ export function EditarCitaDialog({
       [EstadoCita.EN_PROCESO]: 'default',
       [EstadoCita.LISTO_PARA_RECOGER]: 'default',
       [EstadoCita.COMPLETADA]: 'default',
+      [EstadoCita.PAGO_POSTERIOR]: 'secondary',
       [EstadoCita.CANCELADA]: 'destructive',
       [EstadoCita.NO_SHOW]: 'destructive',
     } as const
 
     return (
       <Badge variant={variants[estado]}>
-        {estado.replace('_', ' ')}
+        {estadoLabel(estado)}
       </Badge>
     )
   }
@@ -889,7 +893,7 @@ export function EditarCitaDialog({
               <SelectContent>
                 {estados.map((estado) => (
                   <SelectItem key={estado} value={estado}>
-                    {estado.replace('_', ' ')}
+                    {estadoLabel(estado)}
                   </SelectItem>
                 ))}
               </SelectContent>

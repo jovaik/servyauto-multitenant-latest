@@ -111,12 +111,13 @@ export function DashboardContent({ session }: DashboardContentProps) {
       'EN_PROCESO': 'default',
       'LISTO_PARA_RECOGER': 'default',
       'COMPLETADA': 'default',
+      'PAGO_POSTERIOR': 'secondary',
       'CANCELADA': 'destructive',
     } as const
 
     return (
       <Badge variant={variants[estado as keyof typeof variants] || 'default'}>
-        {estado}
+        {estado === 'PAGO_POSTERIOR' ? 'PAGO POSTERIOR' : estado.replace(/_/g, ' ')}
       </Badge>
     )
   }
