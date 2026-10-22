@@ -660,6 +660,14 @@ export function EditarCitaDialog({
     }
   }
 
+  // La cita se considera COBRADA EN SU TOTALIDAD cuando tiene un método de cobro
+  // asignado o está marcada como COMPLETADA. En ese caso, el cuadro de "Pagos a
+  // cuenta" NO debe seguir mostrando saldo pendiente (los pagos a cuenta son
+  // depósitos parciales previos; el resto se cobró en el cuadro de cobro).
+  const citaCobradaTotal = !!formData.metodoPago || formData.estado === EstadoCita.COMPLETADA
+  const pagadoMostrado = citaCobradaTotal ? (cita?.total || 0) : totalPagado
+  const pendienteMostrado = citaCobradaTotal ? 0 : saldoPendiente
+
   return (
     <>
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -1108,11 +1116,11 @@ export function EditarCitaDialog({
                 </div>
                 <div className="bg-green-100 rounded p-2">
                   <div className="text-gray-500">Pagado</div>
-                  <div className="font-bold text-green-700">{totalPagado.toFixed(2)}€</div>
+                  <div className="font-bold text-green-700">{pagadoMostrado.toFixed(2)}€</div>
                 </div>
-                <div className={`rounded p-2 ${saldoPendiente > 0 ? 'bg-red-100' : 'bg-green-200'}`}>
+                <div className={`rounded p-2 ${pendienteMostrado > 0 ? 'bg-red-100' : 'bg-green-200'}`}>
                   <div className="text-gray-500">Pendiente</div>
-                  <div className={`font-bold ${saldoPendiente > 0 ? 'text-red-700' : 'text-green-800'}`}>{saldoPendiente.toFixed(2)}€</div>
+                  <div className={`font-bold ${pendienteMostrado > 0 ? 'text-red-700' : 'text-green-800'}`}>{pendienteMostrado.toFixed(2)}€</div>
                 </div>
               </div>
             )}
@@ -1288,7 +1296,7 @@ export function EditarCitaDialog({
 
           {/* Método de Pago - Botones de Cobro */}
           <div className="space-y-3">
-            <Label>💳 Cobrar ({cita?.total ? `${cita.total.toFixed(2)}€` : 'Sin total'}) {saldoPendiente <= 0 && pagosParciales.length > 0 && '✅ SALDADO'}</Label>
+            <Label>💳 Cobrar ({cita?.total ? `${cita.total.toFixed(2)}€` : 'Sin total'}) {pendienteMostrado <= 0 && (citaCobradaTotal || pagosParciales.length > 0) && '✅ SALDADO'}</Label>
             
             {formData.metodoPago && (
               <div className="flex items-center gap-2 p-2 bg-green-50 rounded-lg border border-green-200">
