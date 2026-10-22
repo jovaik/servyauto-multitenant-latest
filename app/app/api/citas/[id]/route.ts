@@ -270,8 +270,11 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     if (ticketsUsados !== undefined) updateData.ticketsUsados = parseInt(ticketsUsados) || 0
     
     // Manejar cambio de local
-    if (localId !== undefined) {
-      updateData.localId = localId || null
+    // IMPORTANTE: Solo cambiar el local si llega un valor REAL. Nunca borrar el local
+    // de una cita porque el formulario envíe localId vacío/null por error: eso dejaba
+    // tickets sin local -> la cita quedaba invisible en la facturación de su local.
+    if (localId !== undefined && localId !== null && localId !== '') {
+      updateData.localId = localId
       console.log('Cambiando local de la cita a:', localId)
     }
     
@@ -569,7 +572,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
           metodoPago: cita.metodoPago,
           clienteId: cita.clienteId,
           citaId: cita.id,
-          localId: cita.localId, // ✅ Asignar el local de la cita a la factura
+          localId: cita.localId ?? citaExistente.localId, // ✅ Asignar el local de la cita a la factura (con respaldo al local original)
           tpvUserId: cita.tpvUserId || null,
           tpvNombre: cita.tpvNombre || null,
         }
