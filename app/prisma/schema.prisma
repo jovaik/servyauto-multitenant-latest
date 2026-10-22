@@ -241,6 +241,7 @@ model Cita {
   tpvUserId           String?
   tpvNombre           String?
   facturaAgrupadaId   String?
+  vencimientoCredito  String?
   cita_servicios      cita_servicios[]
   cliente             Cliente          @relation(fields: [clienteId], references: [id])
   local               Local?           @relation(fields: [localId], references: [id])

@@ -18,9 +18,16 @@ interface CitaPendiente {
   estado: string
   total?: number
   observaciones?: string
+  vencimientoCredito?: string
   cliente?: { nombre?: string; apellido?: string; telefono?: string }
   vehiculo?: { marca?: string; modelo?: string; matricula?: string }
   local?: { nombre?: string }
+}
+
+const getVencimientoLabel = (v?: string) => {
+  if (v === 'SEMANA_VENCIDA') return 'SEMANA VENCIDA'
+  if (v === 'MES_VENCIDO') return 'MES VENCIDO'
+  return null
 }
 
 const getEstadoColor = (estado?: string) => {
@@ -185,9 +192,16 @@ export function OperacionesPendientesView() {
                           {c.horaInicio && <span className="text-xs text-gray-400">{c.horaInicio}</span>}
                         </td>
                         <td className="py-2 pr-3">
-                          <Badge variant="outline" className={getEstadoColor(c.estado)}>
-                            {getEstadoLabel(c.estado)}
-                          </Badge>
+                          <div className="flex flex-col gap-1">
+                            <Badge variant="outline" className={getEstadoColor(c.estado)}>
+                              {getEstadoLabel(c.estado)}
+                            </Badge>
+                            {c.estado === 'PAGO_POSTERIOR' && c.vencimientoCredito && (
+                              <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200 text-[10px]">
+                                💳 {getVencimientoLabel(c.vencimientoCredito)}
+                              </Badge>
+                            )}
+                          </div>
                         </td>
                         <td className="py-2 pr-3 font-medium">{cli}</td>
                         <td className="py-2 pr-3 text-gray-600">{veh}</td>

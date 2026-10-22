@@ -146,6 +146,7 @@ export function EditarCitaDialog({
     realizadoPorId: '',
     tpvUserId: '',
     tpvNombre: '',
+    vencimientoCredito: '',
     clienteNombre: '',
     clienteApellido: '',
     clienteTelefono: '',
@@ -340,6 +341,7 @@ export function EditarCitaDialog({
           realizadoPorId: (cita as any).realizadoPorId || '',
           tpvUserId: (cita as any).tpvUserId || '',
           tpvNombre: (cita as any).tpvNombre || '',
+          vencimientoCredito: (cita as any).vencimientoCredito || '',
           clienteNombre: cita.cliente?.nombre || '',
           clienteApellido: cita.cliente?.apellido || '',
           clienteTelefono: cita.cliente?.telefono || '',
@@ -468,6 +470,7 @@ export function EditarCitaDialog({
         realizadoPorId: formData.realizadoPorId || null,
         tpvUserId: formData.tpvUserId || null,
         tpvNombre: formData.tpvNombre || null,
+        vencimientoCredito: formData.estado === 'PAGO_POSTERIOR' ? (formData.vencimientoCredito || null) : null,
         clienteNombre: formData.clienteNombre && formData.clienteNombre.trim() !== '' ? formData.clienteNombre.trim() : undefined,
         clienteApellido: formData.clienteApellido !== undefined ? formData.clienteApellido.trim() : undefined,
         clienteTelefono: formData.clienteTelefono && formData.clienteTelefono.trim() !== '' ? formData.clienteTelefono.trim() : undefined,
@@ -899,6 +902,28 @@ export function EditarCitaDialog({
               </SelectContent>
             </Select>
           </div>
+
+          {/* Vencimiento crédito - Solo visible cuando estado es PAGO_POSTERIOR */}
+          {formData.estado === EstadoCita.PAGO_POSTERIOR && (
+            <div className="space-y-2 p-3 bg-indigo-50 rounded-lg border border-indigo-200">
+              <Label className="flex items-center gap-2">
+                <span className="text-indigo-600">💳</span>
+                Vencimiento del crédito
+              </Label>
+              <Select value={formData.vencimientoCredito || ''} onValueChange={(value) =>
+                setFormData(prev => ({ ...prev, vencimientoCredito: value }))
+              }>
+                <SelectTrigger className="bg-white">
+                  <SelectValue placeholder="Selecciona vencimiento" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="SEMANA_VENCIDA">SEMANA VENCIDA</SelectItem>
+                  <SelectItem value="MES_VENCIDO">MES VENCIDO</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-indigo-600">Indica cuándo vence el crédito de esta cita.</p>
+            </div>
+          )}
 
           {/* Tickets de Parking - Solo visible cuando el vehículo está listo o completado */}
           {(formData.estado === EstadoCita.LISTO_PARA_RECOGER || formData.estado === EstadoCita.COMPLETADA) && (

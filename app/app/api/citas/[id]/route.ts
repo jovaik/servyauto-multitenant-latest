@@ -61,6 +61,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       estado,
       observaciones,
       metodoPago,
+      vencimientoCredito,
       servicios,
       lineasManuales: bodyLineasManuales,
       ticketsUsados,
@@ -260,6 +261,11 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     if (horaFin) updateData.horaFin = horaFin
     if (box) updateData.box = box
     if (estado) updateData.estado = estado
+    // Si el estado ya no es PAGO_POSTERIOR, limpiar vencimientoCredito
+    if (estado && estado !== 'PAGO_POSTERIOR') {
+      updateData.vencimientoCredito = null
+    }
+    if (vencimientoCredito !== undefined) updateData.vencimientoCredito = vencimientoCredito || null
     if (observaciones !== undefined) updateData.observaciones = observaciones
     if (ticketsUsados !== undefined) updateData.ticketsUsados = parseInt(ticketsUsados) || 0
     
