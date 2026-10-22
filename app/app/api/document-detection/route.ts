@@ -31,11 +31,12 @@ export async function POST(request: NextRequest) {
     const mimeType = 'image/jpeg';
     console.log('✅ [API] Base64 recibido:', base64Image.length, 'caracteres');
 
-    // Obtener API key
-    const apiKey = process.env.ABACUSAI_API_KEY;
+    // Obtener API key: preferir OpenRouter (cuenta del usuario), si no Abacus
+    const useOpenRouter = !!process.env.OPENROUTER_API_KEY;
+    const apiKey = process.env.OPENROUTER_API_KEY || process.env.ABACUSAI_API_KEY;
     
     if (!apiKey) {
-      console.error('❌ [API] No se encontró ABACUSAI_API_KEY');
+      console.error('❌ [API] No se encontró OPENROUTER_API_KEY ni ABACUSAI_API_KEY');
       return NextResponse.json(
         { error: 'API key no configurada' },
         { status: 500 }
@@ -78,14 +79,18 @@ Return ONLY the JSON, no additional text or markdown formatting.`;
     
     let visionResponse;
     try {
-      visionResponse = await fetch('https://apps.abacus.ai/v1/chat/completions', {
+      const detectApiUrl = useOpenRouter
+        ? 'https://openrouter.ai/api/v1/chat/completions'
+        : 'https://apps.abacus.ai/v1/chat/completions';
+      visionResponse = await fetch(detectApiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
+          'Authorization': `Bearer ${apiKey}`,
+          ...(useOpenRouter ? { 'HTTP-Referer': 'https://app.servyauto.com', 'X-Title': 'ServyAuto' } : {})
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
+          model: useOpenRouter ? 'openai/gpt-4o-mini' : 'gpt-4o-mini',
           messages: [
             {
               role: 'user',

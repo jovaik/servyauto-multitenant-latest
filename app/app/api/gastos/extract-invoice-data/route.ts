@@ -34,17 +34,18 @@ export async function POST(request: NextRequest) {
     const mimeType = file.type || 'application/octet-stream';
     console.log('📄 [INVOICE-OCR] Tipo de archivo:', mimeType);
 
-    // Usar API de Abacus.AI para análisis de facturas
-    const apiKey = process.env.ABACUSAI_API_KEY;
+    // Preferir OpenRouter (cuenta del usuario); si no, usar Abacus.AI como respaldo
+    const useOpenRouter = !!process.env.OPENROUTER_API_KEY;
+    const apiKey = process.env.OPENROUTER_API_KEY || process.env.ABACUSAI_API_KEY;
     
     if (!apiKey) {
-      console.error('❌ [INVOICE-OCR] No se encontró ABACUSAI_API_KEY');
+      console.error('❌ [INVOICE-OCR] No se encontró OPENROUTER_API_KEY ni ABACUSAI_API_KEY');
       return NextResponse.json(
         { error: 'API key no configurada' },
         { status: 500 }
       );
     }
-    console.log('🔑 [INVOICE-OCR] API key encontrada');
+    console.log(`🔑 [INVOICE-OCR] API key encontrada (proveedor: ${useOpenRouter ? 'OpenRouter' : 'Abacus'})`);
 
     // ✅ PROMPT MEJORADO PARA SERVYAUTO - EXTRACCIÓN AGRESIVA DE CIF/NIF
     const extractionPrompt = `Analiza esta factura o ticket ESPAÑOL y extrae TODOS los datos en formato JSON.
@@ -86,7 +87,10 @@ REGLAS ESTRICTAS:
     // Llamar a la API de Vision CON REINTENTOS
     console.log('🚀 [INVOICE-OCR] Enviando petición a Abacus.AI Vision API...');
 
-    const apiUrl = 'https://apps.abacus.ai/v1/chat/completions';
+    const apiUrl = useOpenRouter
+      ? 'https://openrouter.ai/api/v1/chat/completions'
+      : 'https://apps.abacus.ai/v1/chat/completions';
+    const visionModel = useOpenRouter ? 'openai/gpt-4o-mini' : 'gpt-4o-mini';
     const MAX_INTENTOS = 2;
     let extractedData: any = null;
     let ultimoContenido = '';
@@ -102,10 +106,11 @@ REGLAS ESTRICTAS:
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            ...(useOpenRouter ? { 'HTTP-Referer': 'https://app.servyauto.com', 'X-Title': 'ServyAuto' } : {})
           },
           body: JSON.stringify({
-            model: 'gpt-4o-mini',
+            model: visionModel,
             messages: [
               {
                 role: 'user',
