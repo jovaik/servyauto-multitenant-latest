@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { syncProveedoresRepuesto, repuestoInclude } from '@/lib/repuesto-proveedores'
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -18,7 +19,11 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     if (body.precioVenta !== undefined) data.precioVenta = parseFloat(body.precioVenta) || 0
     if (body.stock !== undefined) data.stock = body.stock === '' || body.stock === null ? null : parseInt(body.stock)
     if (body.activo !== undefined) data.activo = !!body.activo
-    const repuesto = await prisma.repuesto.update({ where: { id: params.id }, data })
+    await prisma.repuesto.update({ where: { id: params.id }, data })
+    if (Array.isArray(body.proveedores)) {
+      await syncProveedoresRepuesto(params.id, body.proveedores)
+    }
+    const repuesto = await prisma.repuesto.findUnique({ where: { id: params.id }, include: repuestoInclude })
     return NextResponse.json(repuesto)
   } catch (e: any) {
     console.error('Error PUT repuesto:', e)

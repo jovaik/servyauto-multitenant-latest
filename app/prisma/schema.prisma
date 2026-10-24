@@ -400,6 +400,7 @@ model Proveedor {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   gastos       Gasto[]
+  repuestos    RepuestoProveedor[]
 
   @@map("proveedores")
 }
@@ -545,8 +546,26 @@ model Repuesto {
   activo      Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  proveedores RepuestoProveedor[]
 
   @@map("repuestos")
+}
+
+// Precios de compra de un repuesto por proveedor (a quién y a cuánto se compra)
+model RepuestoProveedor {
+  id           String    @id @default(cuid())
+  repuestoId   String
+  proveedorId  String
+  precioCompra Float     @default(0)
+  referencia   String?
+  ultimaCompra DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  repuesto     Repuesto  @relation(fields: [repuestoId], references: [id], onDelete: Cascade)
+  proveedor    Proveedor @relation(fields: [proveedorId], references: [id])
+
+  @@unique([repuestoId, proveedorId])
+  @@map("repuesto_proveedores")
 }
 
 model ServicioTaller {

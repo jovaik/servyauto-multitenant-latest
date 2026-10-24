@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { syncProveedoresRepuesto, repuestoInclude } from '@/lib/repuesto-proveedores'
 
 // Catálogo COMÚN de repuestos (no filtra por local: es compartido)
 export async function GET(req: NextRequest) {
@@ -15,6 +16,7 @@ export async function GET(req: NextRequest) {
     const repuestos = await prisma.repuesto.findMany({
       where: soloActivos ? { activo: true } : {},
       orderBy: [{ categoria: 'asc' }, { nombre: 'asc' }],
+      include: repuestoInclude,
     })
     return NextResponse.json(repuestos)
   } catch (e: any) {
@@ -42,7 +44,11 @@ export async function POST(req: NextRequest) {
         stock: stock === '' || stock === null || stock === undefined ? null : parseInt(stock),
       },
     })
-    return NextResponse.json(repuesto, { status: 201 })
+    if (Array.isArray(body.proveedores) && body.proveedores.length) {
+      await syncProveedoresRepuesto(repuesto.id, body.proveedores)
+    }
+    const conProveedores = await prisma.repuesto.findUnique({ where: { id: repuesto.id }, include: repuestoInclude })
+    return NextResponse.json(conProveedores, { status: 201 })
   } catch (e: any) {
     console.error('Error POST repuestos:', e)
     return NextResponse.json({ error: e.message || 'Error' }, { status: 500 })
