@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { AlertTriangle, Calendar, RefreshCw, ExternalLink, ClipboardList } from 'lucide-react'
+import { AlertTriangle, Calendar, RefreshCw, ExternalLink, ClipboardList, FileText } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { LOCAL_CHANGE_EVENT } from '@/lib/local-store'
@@ -19,7 +19,7 @@ interface CitaPendiente {
   total?: number
   observaciones?: string
   vencimientoCredito?: string
-  cliente?: { nombre?: string; apellido?: string; telefono?: string }
+  cliente?: { id?: string; nombre?: string; apellido?: string; telefono?: string }
   vehiculo?: { marca?: string; modelo?: string; matricula?: string }
   local?: { nombre?: string }
 }
@@ -208,10 +208,21 @@ export function OperacionesPendientesView() {
                         <td className="py-2 pr-3 text-gray-600">{c.local?.nombre || '—'}</td>
                         <td className="py-2 pr-3 text-right font-semibold">{(Number(c.total) || 0).toFixed(2)}€</td>
                         <td className="py-2 pr-3 text-right">
-                          <Button size="sm" variant="outline" onClick={() => abrirEnAgenda(c)}>
-                            <ExternalLink className="h-3.5 w-3.5 mr-1" />
-                            Abrir
-                          </Button>
+                          <div className="flex items-center justify-end gap-2">
+                            {c.estado === 'PAGO_POSTERIOR' && c.cliente?.id && (
+                              <Button
+                                size="sm"
+                                onClick={() => router.push(`/dashboard/facturacion-agrupada?clienteId=${c.cliente!.id}`)}
+                              >
+                                <FileText className="h-3.5 w-3.5 mr-1" />
+                                Facturar
+                              </Button>
+                            )}
+                            <Button size="sm" variant="outline" onClick={() => abrirEnAgenda(c)}>
+                              <ExternalLink className="h-3.5 w-3.5 mr-1" />
+                              Abrir
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     )

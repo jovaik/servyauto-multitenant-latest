@@ -58,6 +58,8 @@ export function FacturacionAgrupadaView() {
   const [hasta, setHasta] = useState('')
   const [metodoPago, setMetodoPago] = useState('PENDIENTE')
   const [generando, setGenerando] = useState(false)
+  const [datosEmpresa, setDatosEmpresa] = useState({ nombreFiscal: '', nif: '', direccion: '' })
+  const [autoSel, setAutoSel] = useState(false)
 
   const cargarClientes = useCallback(() => {
     setLoadingClientes(true)
@@ -72,6 +74,12 @@ export function FacturacionAgrupadaView() {
 
   const cargarCitas = useCallback((cliente: ClienteResumen) => {
     setClienteSel(cliente)
+    // Prefijar datos fiscales con los del cliente; se pueden sobreescribir con los de la empresa
+    setDatosEmpresa({
+      nombreFiscal: `${cliente.nombre} ${cliente.apellido || ''}`.trim().toUpperCase(),
+      nif: cliente.documento || '',
+      direccion: '',
+    })
     setLoadingCitas(true)
     const params = new URLSearchParams({ clienteId: cliente.id })
     if (desde) params.set('desde', desde)
@@ -94,6 +102,17 @@ export function FacturacionAgrupadaView() {
     if (clienteSel) cargarCitas(clienteSel)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [desde, hasta])
+
+  // Si venimos desde Operaciones sin completar con ?clienteId=... abrir ese cliente automáticamente
+  useEffect(() => {
+    if (autoSel || clientes.length === 0) return
+    const cid = new URLSearchParams(window.location.search).get('clienteId')
+    if (cid) {
+      const found = clientes.find(c => c.id === cid)
+      if (found) { cargarCitas(found); setAutoSel(true) }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientes, autoSel])
 
   const citasSeleccionadas = citas.filter(c => seleccion[c.id])
   const totalSeleccionado = citasSeleccionadas.reduce((s, c) => s + (c.total || 0), 0)
@@ -118,6 +137,13 @@ export function FacturacionAgrupadaView() {
           clienteId: clienteSel.id,
           citaIds: citasSeleccionadas.map(c => c.id),
           metodoPago: metodoPago === 'PENDIENTE' ? null : metodoPago,
+          datosFacturacion: (datosEmpresa.nombreFiscal.trim() || datosEmpresa.nif.trim())
+            ? {
+                nombreFiscal: datosEmpresa.nombreFiscal.trim().toUpperCase(),
+                nif: datosEmpresa.nif.trim().toUpperCase(),
+                direccion: datosEmpresa.direccion.trim(),
+              }
+            : undefined,
         }),
       })
       const data = await res.json()
@@ -279,6 +305,28 @@ export function FacturacionAgrupadaView() {
                       ))}
                     </tbody>
                   </table>
+                </div>
+
+                <div className="mt-4 rounded-lg border bg-blue-50/50 p-3">
+                  <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                    <Building2 className="h-4 w-4 text-blue-600" />
+                    <span className="text-sm font-semibold">Datos fiscales de la factura</span>
+                    <span className="text-xs text-muted-foreground">(para facturar a una empresa; déjalo con los del cliente si no hace falta)</span>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Razón social / Nombre fiscal</Label>
+                      <Input value={datosEmpresa.nombreFiscal} onChange={e => setDatosEmpresa(p => ({ ...p, nombreFiscal: e.target.value }))} placeholder="EMPRESA S.L." />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">NIF / CIF</Label>
+                      <Input value={datosEmpresa.nif} onChange={e => setDatosEmpresa(p => ({ ...p, nif: e.target.value }))} placeholder="B12345678" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Dirección</Label>
+                      <Input value={datosEmpresa.direccion} onChange={e => setDatosEmpresa(p => ({ ...p, direccion: e.target.value }))} placeholder="Calle..." />
+                    </div>
+                  </div>
                 </div>
 
                 <div className="mt-4 flex flex-col gap-4 border-t pt-4 sm:flex-row sm:items-end sm:justify-between">
