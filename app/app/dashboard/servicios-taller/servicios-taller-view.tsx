@@ -94,6 +94,9 @@ export default function ServiciosTallerView() {
   const [precioProducto, setPrecioProducto] = useState('')
   const [precioManoObra, setPrecioManoObra] = useState('')
   const [metodoPago, setMetodoPago] = useState('')
+  const [tiposServicio, setTiposServicio] = useState<{ id: number; nombre: string }[]>([])
+  const [repuestos, setRepuestos] = useState<any[]>([])
+  const [repuestoId, setRepuestoId] = useState('')
 
   // Calcular totales automáticamente
   const total = (parseFloat(precioProducto) || 0) + (parseFloat(precioManoObra) || 0)
@@ -105,7 +108,37 @@ export default function ServiciosTallerView() {
     fetchServicios()
     fetchClientes()
     fetchVehiculos()
+    fetchTipos()
+    fetchRepuestos()
   }, [selectedLocalId])
+
+  const fetchTipos = async () => {
+    try {
+      const res = await fetch('/api/tipos-servicio?activos=1')
+      if (res.ok) setTiposServicio(await res.json())
+    } catch {}
+  }
+
+  const fetchRepuestos = async () => {
+    try {
+      const res = await fetch('/api/repuestos?activos=1')
+      if (res.ok) setRepuestos(await res.json())
+    } catch {}
+  }
+
+  // Al elegir un repuesto del catálogo, rellena concepto y precios automáticamente
+  const aplicarRepuesto = (id: string) => {
+    setRepuestoId(id)
+    const r = repuestos.find((x) => x.id === id)
+    if (!r) return
+    if (!concepto.trim()) setConcepto(r.nombre)
+    setCosteProducto(String(r.costeInterno ?? 0))
+    setPrecioProducto(String(r.precioVenta ?? 0))
+    if (!tipoGasto && r.categoria) {
+      const match = tiposServicio.find((t) => t.nombre.toUpperCase().includes(String(r.categoria).toUpperCase()))
+      if (match) setTipoGasto(match.nombre)
+    }
+  }
 
   useEffect(() => {
     // Filtrar vehículos cuando se selecciona un cliente
@@ -278,10 +311,10 @@ export default function ServiciosTallerView() {
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
             <Wrench className="h-8 w-8" />
-            Servicios Extras
+            Taller Rápido
           </h1>
           <p className="text-muted-foreground mt-1">
-            Gestión rápida de servicios extras: cambios de batería, frenos, neumáticos, etc.
+            Servicios rápidos de taller: batería, frenos, neumáticos, aceite, etc. Puedes elegir un repuesto del catálogo para rellenar precios automáticamente.
           </p>
         </div>
         <Button onClick={() => setShowForm(!showForm)}>
@@ -330,6 +363,26 @@ export default function ServiciosTallerView() {
               </div>
             </div>
 
+            {/* Repuesto del catálogo (opcional) */}
+            {repuestos.length > 0 && (
+              <div className="space-y-2">
+                <Label htmlFor="repuesto">Repuesto del catálogo (opcional)</Label>
+                <Select value={repuestoId} onValueChange={aplicarRepuesto}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Elegir repuesto para rellenar precios (opcional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {repuestos.map((r) => (
+                      <SelectItem key={r.id} value={r.id}>
+                        {r.nombre}{r.referencia ? ` · ${r.referencia}` : ''} — {(r.precioVenta || 0).toFixed(2)}€
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">Al elegirlo se rellenan el coste interno y el precio de venta. Puedes ajustarlos después.</p>
+              </div>
+            )}
+
             {/* Concepto */}
             <div className="space-y-2">
               <Label htmlFor="concepto">Concepto / Descripción del Servicio *</Label>
@@ -350,14 +403,22 @@ export default function ServiciosTallerView() {
                   <SelectValue placeholder="Seleccionar tipo de servicio" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Batería">Batería</SelectItem>
-                  <SelectItem value="Frenos">Frenos</SelectItem>
-                  <SelectItem value="Neumáticos">Neumáticos</SelectItem>
-                  <SelectItem value="Aceite">Aceite y Filtros</SelectItem>
-                  <SelectItem value="Mecánica">Mecánica General</SelectItem>
-                  <SelectItem value="Electricidad">Electricidad</SelectItem>
-                  <SelectItem value="Chapa y Pintura">Chapa y Pintura</SelectItem>
-                  <SelectItem value="Otros">Otros</SelectItem>
+                  {tiposServicio.length > 0 ? (
+                    tiposServicio.map((t) => (
+                      <SelectItem key={t.id} value={t.nombre}>{t.nombre}</SelectItem>
+                    ))
+                  ) : (
+                    <>
+                      <SelectItem value="Batería">Batería</SelectItem>
+                      <SelectItem value="Frenos">Frenos</SelectItem>
+                      <SelectItem value="Neumáticos">Neumáticos</SelectItem>
+                      <SelectItem value="Aceite">Aceite y Filtros</SelectItem>
+                      <SelectItem value="Mecánica">Mecánica General</SelectItem>
+                      <SelectItem value="Electricidad">Electricidad</SelectItem>
+                      <SelectItem value="Chapa y Pintura">Chapa y Pintura</SelectItem>
+                      <SelectItem value="Otros">Otros</SelectItem>
+                    </>
+                  )}
                 </SelectContent>
               </Select>
             </div>

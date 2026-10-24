@@ -1,11 +1,11 @@
 import { Metadata } from 'next'
-import ServiciosTallerView from './servicios-taller-view'
+import { TallerRapidoHub } from './taller-rapido-hub'
 
 export const metadata: Metadata = {
-  title: 'Servicios Extras | ServyAuto',
-  description: 'Gestión de servicios extras (baterías, frenos, etc.)'
+  title: 'Taller Rápido | ServyAuto',
+  description: 'Taller rápido: servicios, catálogo de repuestos y línea rápida de servicios'
 }
 
-export default function ServiciosTallerPage() {
-  return <ServiciosTallerView />
+export default function TallerRapidoPage() {
+  return <TallerRapidoHub />
 }

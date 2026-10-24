@@ -532,6 +532,23 @@ model TipoServicio {
   @@map("tipos_servicio")
 }
 
+// Catálogo COMÚN de repuestos (compartido entre todos los locales).
+// costeInterno es el coste oculto al cliente; precioVenta es lo que se factura.
+model Repuesto {
+  id          String   @id @default(cuid())
+  nombre      String
+  referencia  String?
+  categoria   String   @default("OTROS")
+  costeInterno Float   @default(0)
+  precioVenta Float    @default(0)
+  stock       Int?
+  activo      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("repuestos")
+}
+
 model ServicioTaller {
   id                  String      @id @default(cuid())
   concepto            String

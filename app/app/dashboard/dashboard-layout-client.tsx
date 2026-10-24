@@ -96,7 +96,7 @@ const gestionSection: NavSection = {
 // Items adicionales después de Gestión
 // GRUPO_ADMIN = encargado de zona, ve operativa pero NO configuración/usuarios/locales
 const additionalNavigation: NavItem[] = [
-  { name: 'Servicios Extras', href: '/dashboard/servicios-taller', icon: Wrench, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.GRUPO_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
+  { name: 'Taller Rápido', href: '/dashboard/servicios-taller', icon: Wrench, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.GRUPO_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
   { name: 'Cierres de Caja', href: '/dashboard/cierres-caja', icon: Archive, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.GRUPO_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
   { name: 'Tickets Parking', href: '/dashboard/tickets', icon: Download, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.GRUPO_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
   { name: 'Importador', href: '/dashboard/importador', icon: Upload, roles: [RolUsuario.SUPER_ADMIN] },
