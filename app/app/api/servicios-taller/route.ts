@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { notificarCreacionGSControl, mapearCategoriaGasto } from '@/lib/gscontrol-sync'
+import { getLocalContext, getLocalIdForCreate } from '@/lib/local-context'
+import { syncGastoCosteServicio } from '@/lib/servicio-taller-gasto'
 
 export async function GET(request: NextRequest) {
   try {
@@ -68,9 +70,11 @@ export async function POST(request: NextRequest) {
       vehiculoId,
       tipoGasto,
       costeProducto,
+      costeManoObra,
       precioProducto,
       precioManoObra,
       metodoPago,
+      metodoPagoCoste,
       solicitaFactura
     } = body
 
@@ -95,11 +99,17 @@ export async function POST(request: NextRequest) {
 
     // Calcular totales
     const costoProductoNum = parseFloat(costeProducto) || 0
+    const costoManoObraNum = parseFloat(costeManoObra) || 0
     const precioProductoNum = parseFloat(precioProducto) || 0
     const precioManoObraNum = parseFloat(precioManoObra) || 0
     
     const importeTotal = precioProductoNum + precioManoObraNum
-    const margen = precioProductoNum - costoProductoNum
+    const costeInternoTotal = costoProductoNum + costoManoObraNum
+    const margen = importeTotal - costeInternoTotal
+
+    // Local para asignar a la cita y al gasto (coste) de este servicio
+    const localContext = await getLocalContext()
+    const localIdServicio = localContext ? getLocalIdForCreate(localContext) : null
     
     // ⭐ CORREGIR REGLA DE FACTURA/TICKET:
     // Efectivo o TPV_SUMUP → TICKET
@@ -163,6 +173,7 @@ export async function POST(request: NextRequest) {
         vehiculoId,
         box: boxAsignado,
         estado: 'COMPLETADA', // ⭐ El servicio ya está hecho
+        localId: localIdServicio, // ⭐ atribuir ingreso al local correcto
         ticketsUsados: 0,
         observaciones: `Servicio de taller: ${concepto}`,
         metodoPago: metodoPago,
@@ -196,7 +207,7 @@ export async function POST(request: NextRequest) {
       vehiculoId: vehiculoId,
       tipoGasto: tipoGasto.trim(),
       costeProducto: costoProductoNum,
-      costeManoObra: 0,
+      costeManoObra: costoManoObraNum,
       precioProducto: precioProductoNum,
       precioManoObra: precioManoObraNum,
       importe: importeTotal,
@@ -213,6 +224,24 @@ export async function POST(request: NextRequest) {
     })
 
     console.log('✅ Servicio de taller registrado:', servicio.id)
+
+    // 💸 CREAR GASTO DEL COSTE INTERNO (tapicero, pintor, repuesto, subcontrata…)
+    // para que entre en Gastos, cierres y liquidaciones. Enlazado al servicio (sin duplicar).
+    try {
+      await syncGastoCosteServicio({
+        servicioId: servicio.id,
+        concepto: concepto.trim(),
+        fecha: fechaCita,
+        tipoGasto: (tipoGasto || 'Otros').trim(),
+        coste: costeInternoTotal,
+        metodoPagoCoste: metodoPagoCoste || 'EFECTIVO',
+        localId: localIdServicio,
+        creadoPorId: (session.user as any)?.id || null,
+        creadoPorNombre: session.user?.name || session.user?.email || 'Taller Rápido',
+      })
+    } catch (e) {
+      console.error('⚠️ No se pudo crear el gasto del coste del servicio:', e)
+    }
 
     // 📄 GENERAR FACTURA O TICKET AUTOMÁTICAMENTE
     const items = []

@@ -433,7 +433,9 @@ model Gasto {
   proveedorRef          Proveedor?  @relation(fields: [proveedorId], references: [id])
   colaboradorId         String?
   colaborador           Colaborador? @relation(fields: [colaboradorId], references: [id])
+  servicioTallerId      String?
 
+  @@index([servicioTallerId])
   @@map("gastos")
 }
 
