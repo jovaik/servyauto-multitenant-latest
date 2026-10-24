@@ -1,7 +1,7 @@
 
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
-import { FacturacionView } from './facturacion-view'
+import { FacturacionHub } from './facturacion-hub'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,5 +12,5 @@ export default async function FacturacionPage() {
     return <div>No autorizado</div>
   }
 
-  return <FacturacionView />
+  return <FacturacionHub />
 }

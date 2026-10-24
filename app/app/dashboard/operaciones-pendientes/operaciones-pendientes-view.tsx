@@ -212,7 +212,7 @@ export function OperacionesPendientesView() {
                             {c.estado === 'PAGO_POSTERIOR' && c.cliente?.id && (
                               <Button
                                 size="sm"
-                                onClick={() => router.push(`/dashboard/facturacion-agrupada?clienteId=${c.cliente!.id}`)}
+                                onClick={() => router.push(`/dashboard/facturacion?tab=pendientes`)}
                               >
                                 <FileText className="h-3.5 w-3.5 mr-1" />
                                 Facturar

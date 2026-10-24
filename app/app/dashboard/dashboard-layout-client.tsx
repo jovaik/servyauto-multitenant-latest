@@ -68,7 +68,6 @@ interface NavSection {
 // Items de navegación simples (sin submenú) - OPERADOR y GRUPO_ADMIN tienen acceso a lo operativo
 const simpleNavigation: NavItem[] = [
   { name: 'Agenda', href: '/dashboard/agenda', icon: Calendar, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.GRUPO_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
-  { name: 'Op. sin completar', href: '/dashboard/operaciones-pendientes', icon: ClipboardList, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.GRUPO_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
   { name: 'Reservas', href: '/dashboard/reservas', icon: Clock, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.GRUPO_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
   { name: 'Clientes', href: '/dashboard/clientes', icon: Users, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.GRUPO_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
   { name: 'Vehículos', href: '/dashboard/vehiculos', icon: Car, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.GRUPO_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
@@ -81,9 +80,9 @@ const gestionSection: NavSection = {
   roles: [RolUsuario.SUPER_ADMIN, RolUsuario.GRUPO_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR],
   items: [
     { name: 'Dashboard', href: '/dashboard', icon: BarChart3, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.GRUPO_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
+    { name: 'Op. sin completar', href: '/dashboard/operaciones-pendientes', icon: ClipboardList, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.GRUPO_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
     { name: 'Diario de Caja', href: '/dashboard/diario-caja', icon: BookOpen, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.GRUPO_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
     { name: 'Facturación', href: '/dashboard/facturacion', icon: CreditCard, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.GRUPO_ADMIN, RolUsuario.ADMIN] },
-    { name: 'Factura Agrupada', href: '/dashboard/facturacion-agrupada', icon: Layers, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.GRUPO_ADMIN, RolUsuario.ADMIN] },
     { name: 'Presupuestos', href: '/dashboard/presupuestos', icon: FileText, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.GRUPO_ADMIN, RolUsuario.ADMIN] },
     { name: 'Gastos', href: '/dashboard/gastos', icon: TrendingDown, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.GRUPO_ADMIN, RolUsuario.ADMIN, RolUsuario.OPERADOR] },
     { name: 'Ingresos Extra', href: '/dashboard/ingresos-adicionales', icon: ParkingCircle, roles: [RolUsuario.SUPER_ADMIN, RolUsuario.GRUPO_ADMIN, RolUsuario.ADMIN] },

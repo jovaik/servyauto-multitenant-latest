@@ -56,6 +56,39 @@ export async function GET(req: NextRequest) {
     }
     if (Object.keys(fechaFilter).length > 0) baseWhere.fecha = fechaFilter
 
+    // ---- MODO LISTA PLANA (pendientes de facturar, una fila por venta) ----
+    if (searchParams.get('flat')) {
+      const citas = await prisma.cita.findMany({
+        where: baseWhere,
+        include: {
+          cliente: {
+            select: {
+              id: true, nombre: true, apellido: true, telefono: true,
+              documento: true, direccion: true, email: true, clienteEmpresa: true,
+            },
+          },
+          vehiculo: { select: { matricula: true, marca: true, modelo: true } },
+          cita_servicios: { include: { servicios: { select: { nombre: true } } } },
+          lineasManuales: true,
+          local: { select: { nombre: true } },
+        },
+        orderBy: { fecha: 'desc' },
+      })
+      const out = citas.map((c: any) => ({
+        id: c.id,
+        fecha: c.fecha,
+        estado: c.estado,
+        total: c.total || 0,
+        servicios: describirServicios(c),
+        vehiculo: c.vehiculo
+          ? { matricula: c.vehiculo.matricula, marca: c.vehiculo.marca, modelo: c.vehiculo.modelo }
+          : null,
+        local: c.local ? { nombre: c.local.nombre } : null,
+        cliente: c.cliente,
+      }))
+      return NextResponse.json({ citas: out })
+    }
+
     // ---- MODO CLIENTES ----
     if (!clienteId) {
       const citas = await prisma.cita.findMany({
