@@ -50,6 +50,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     }
     const tipo = TIPOS.includes(body.tipo) ? body.tipo : 'OTRO'
     const proveedor = (body.proveedor || '').trim().toUpperCase() || null
+    // Fecha del gasto: la que indique el usuario; si no, la de la cita; si no, hoy.
+    const fechaCoste = body.fecha ? new Date(body.fecha) : (cita.fecha || new Date())
 
     const userEmail = session?.user?.email || ''
     const user = await prisma.user.findUnique({ where: { email: userEmail }, select: { id: true, name: true } })
@@ -60,6 +62,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         citaId: params.id,
         descripcion,
         importe,
+        fecha: fechaCoste,
         tipo,
         proveedor,
         creadoPorId: user?.id || null,
@@ -74,7 +77,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         descripcion,
         importe,
         tipo,
-        fecha: cita.fecha || new Date(),
+        fecha: fechaCoste,
         localId: cita.localId,
         proveedor,
         metodoPago: 'EFECTIVO',

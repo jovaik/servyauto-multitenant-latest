@@ -264,6 +264,7 @@ model CitaCosteInterno {
   citaId          String
   descripcion     String
   importe         Float
+  fecha           DateTime?
   tipo            String   @default("OTRO")
   proveedor       String?
   creadoPorId     String?

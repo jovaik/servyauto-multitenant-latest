@@ -128,7 +128,7 @@ export function EditarCitaDialog({
   // Costes internos (subcontratas / recambios) - NO visibles al cliente
   const [costesInternos, setCostesInternos] = useState<any[]>([])
   const [totalCostes, setTotalCostes] = useState(0)
-  const [nuevoCoste, setNuevoCoste] = useState({ descripcion: '', importe: '', tipo: 'RECAMBIO', proveedor: '' })
+  const [nuevoCoste, setNuevoCoste] = useState({ descripcion: '', importe: '', tipo: 'RECAMBIO', proveedor: '', fecha: '' })
   const [addingCoste, setAddingCoste] = useState(false)
   const [showAddCoste, setShowAddCoste] = useState(false)
   
@@ -218,6 +218,9 @@ export function EditarCitaDialog({
 
   useEffect(() => { if (open && cita?.id) cargarCostes() }, [open, cita?.id])
 
+  // Fecha por defecto del coste = fecha de la cita (formato yyyy-mm-dd)
+  const citaFechaISO = cita?.fecha ? new Date(cita.fecha).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10)
+
   const handleAddCoste = async () => {
     if (!nuevoCoste.descripcion || !nuevoCoste.importe) return
     setAddingCoste(true)
@@ -225,11 +228,11 @@ export function EditarCitaDialog({
       const res = await fetch(`/api/citas/${cita.id}/costes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(nuevoCoste),
+        body: JSON.stringify({ ...nuevoCoste, fecha: nuevoCoste.fecha || citaFechaISO }),
       })
       if (res.ok) {
         toast({ title: 'Coste registrado', description: `${parseFloat(nuevoCoste.importe).toFixed(2)}€ de coste interno` })
-        setNuevoCoste({ descripcion: '', importe: '', tipo: 'RECAMBIO', proveedor: '' })
+        setNuevoCoste({ descripcion: '', importe: '', tipo: 'RECAMBIO', proveedor: '', fecha: '' })
         setShowAddCoste(false)
         await cargarCostes()
       } else {
@@ -1248,6 +1251,7 @@ export function EditarCitaDialog({
                       <span className="ml-2">{c.descripcion}</span>
                       <span className="text-gray-400 ml-2">[{c.tipo === 'SUBCONTRATA' ? 'Subcontrata' : c.tipo === 'RECAMBIO' ? 'Recambio' : 'Otro'}]</span>
                       {c.proveedor && <span className="text-gray-400 ml-2">· {c.proveedor}</span>}
+                      {c.fecha && <span className="text-gray-400 ml-2">· {new Date(c.fecha).toLocaleDateString('es-ES')}</span>}
                     </div>
                     <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0 text-red-500" onClick={() => handleDeleteCoste(c.id)}>
                       <X className="h-3 w-3" />
@@ -1270,9 +1274,13 @@ export function EditarCitaDialog({
                     <Input type="number" step="0.01" min="0.01" placeholder="0.00" value={nuevoCoste.importe} onChange={(e) => setNuevoCoste(prev => ({ ...prev, importe: e.target.value }))} />
                   </div>
                   <div>
-                    <Label className="text-xs">Proveedor (opcional)</Label>
-                    <Input placeholder="Ej: TALLER X" value={nuevoCoste.proveedor} onChange={(e) => setNuevoCoste(prev => ({ ...prev, proveedor: e.target.value }))} />
+                    <Label className="text-xs">Fecha del gasto *</Label>
+                    <Input type="date" value={nuevoCoste.fecha || citaFechaISO} onChange={(e) => setNuevoCoste(prev => ({ ...prev, fecha: e.target.value }))} />
                   </div>
+                </div>
+                <div>
+                  <Label className="text-xs">Proveedor (opcional)</Label>
+                  <Input placeholder="Ej: TALLER X" value={nuevoCoste.proveedor} onChange={(e) => setNuevoCoste(prev => ({ ...prev, proveedor: e.target.value }))} />
                 </div>
                 <div>
                   <Label className="text-xs">Tipo</Label>
