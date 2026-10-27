@@ -335,11 +335,16 @@ export default function DiarioCajaView() {
       ingresos,
       gastos,
       balance: ingresos - gastos,
-      // Por método de pago
+      // Por método de pago (neto)
       efectivo: ingresosEfectivo - gastosEfectivo,
       tpvSumUp: ingresosSumUp - gastosSumUp,
       tpvUnicaja: ingresosUnicaja - gastosUnicaja,
-      revolut: ingresosRevolut - gastosRevolut
+      revolut: ingresosRevolut - gastosRevolut,
+      // Desglose ingresos/gastos por método (para mostrar en las tarjetas)
+      ingresosEfectivo, gastosEfectivo,
+      ingresosSumUp, gastosSumUp,
+      ingresosUnicaja, gastosUnicaja,
+      ingresosRevolut, gastosRevolut
     }
   }, [movimientosFiltrados])
 
@@ -453,7 +458,11 @@ export default function DiarioCajaView() {
                 <p className={`text-2xl font-bold ${totales.efectivo >= 0 ? 'text-yellow-700' : 'text-red-600'}`}>
                   €{totales.efectivo.toFixed(2)}
                 </p>
-                <p className="text-xs text-gray-500">Ingresos - Gastos</p>
+                <p className="text-xs text-gray-500">
+                  <span className="text-green-600 font-medium">+€{totales.ingresosEfectivo.toFixed(2)}</span>
+                  {' − '}
+                  <span className="text-red-600 font-medium">€{totales.gastosEfectivo.toFixed(2)}</span>
+                </p>
               </div>
               <Wallet className="h-10 w-10 text-yellow-600 opacity-50" />
             </div>
@@ -468,7 +477,11 @@ export default function DiarioCajaView() {
                 <p className={`text-2xl font-bold ${totales.tpvSumUp >= 0 ? 'text-purple-700' : 'text-red-600'}`}>
                   €{totales.tpvSumUp.toFixed(2)}
                 </p>
-                <p className="text-xs text-gray-500">Ingresos - Gastos</p>
+                <p className="text-xs text-gray-500">
+                  <span className="text-green-600 font-medium">+€{totales.ingresosSumUp.toFixed(2)}</span>
+                  {' − '}
+                  <span className="text-red-600 font-medium">€{totales.gastosSumUp.toFixed(2)}</span>
+                </p>
               </div>
               <CreditCard className="h-10 w-10 text-purple-600 opacity-50" />
             </div>
@@ -483,7 +496,11 @@ export default function DiarioCajaView() {
                 <p className={`text-2xl font-bold ${totales.tpvUnicaja >= 0 ? 'text-cyan-700' : 'text-red-600'}`}>
                   €{totales.tpvUnicaja.toFixed(2)}
                 </p>
-                <p className="text-xs text-gray-500">Ingresos - Gastos</p>
+                <p className="text-xs text-gray-500">
+                  <span className="text-green-600 font-medium">+€{totales.ingresosUnicaja.toFixed(2)}</span>
+                  {' − '}
+                  <span className="text-red-600 font-medium">€{totales.gastosUnicaja.toFixed(2)}</span>
+                </p>
               </div>
               <Building2 className="h-10 w-10 text-cyan-600 opacity-50" />
             </div>
@@ -498,7 +515,11 @@ export default function DiarioCajaView() {
                 <p className={`text-2xl font-bold ${totales.revolut >= 0 ? 'text-slate-800' : 'text-red-600'}`}>
                   €{totales.revolut.toFixed(2)}
                 </p>
-                <p className="text-xs text-gray-500">Ingresos - Gastos</p>
+                <p className="text-xs text-gray-500">
+                  <span className="text-green-600 font-medium">+€{totales.ingresosRevolut.toFixed(2)}</span>
+                  {' − '}
+                  <span className="text-red-600 font-medium">€{totales.gastosRevolut.toFixed(2)}</span>
+                </p>
               </div>
               <CreditCard className="h-10 w-10 text-slate-700 opacity-50" />
             </div>
