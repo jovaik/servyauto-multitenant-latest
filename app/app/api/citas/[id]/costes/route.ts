@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { syncGastoCosteCita, eliminarGastoCosteCita } from '@/lib/cita-coste-gasto'
 
 const TIPOS = ['SUBCONTRATA', 'RECAMBIO', 'OTRO']
 
@@ -32,7 +33,10 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const session = await getServerSession(authOptions)
     if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
-    const cita = await prisma.cita.findUnique({ where: { id: params.id }, select: { id: true } })
+    const cita = await prisma.cita.findUnique({
+      where: { id: params.id },
+      select: { id: true, fecha: true, localId: true, metodoPago: true, vehiculo: { select: { matricula: true } } },
+    })
     if (!cita) return NextResponse.json({ error: 'Cita no encontrada' }, { status: 404 })
 
     const body = await req.json()
@@ -63,6 +67,25 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       },
     })
 
+    // 🔁 Registrar automáticamente el coste en GASTOS (para cierres y liquidaciones)
+    try {
+      await syncGastoCosteCita({
+        costeId: coste.id,
+        descripcion,
+        importe,
+        tipo,
+        fecha: cita.fecha || new Date(),
+        localId: cita.localId,
+        proveedor,
+        metodoPago: 'EFECTIVO',
+        creadoPorId: user?.id || null,
+        creadoPorNombre: userName,
+        matricula: cita.vehiculo?.matricula || null,
+      })
+    } catch (e) {
+      console.error('Error sincronizando coste interno con Gastos:', e)
+    }
+
     const costes = await prisma.citaCosteInterno.findMany({ where: { citaId: params.id } })
     const totalCostes = costes.reduce((s: number, c: any) => s + (c.importe || 0), 0)
 
@@ -86,6 +109,9 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     if (!coste || coste.citaId !== params.id) {
       return NextResponse.json({ error: 'Coste no encontrado' }, { status: 404 })
     }
+
+    // Eliminar también el gasto vinculado (si existe)
+    try { await eliminarGastoCosteCita(costeId) } catch (e) { console.error('Error eliminando gasto vinculado:', e) }
 
     await prisma.citaCosteInterno.delete({ where: { id: costeId } })
 

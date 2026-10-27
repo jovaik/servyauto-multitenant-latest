@@ -434,8 +434,10 @@ model Gasto {
   colaboradorId         String?
   colaborador           Colaborador? @relation(fields: [colaboradorId], references: [id])
   servicioTallerId      String?
+  citaCosteInternoId    String?
 
   @@index([servicioTallerId])
+  @@index([citaCosteInternoId])
   @@map("gastos")
 }
 
