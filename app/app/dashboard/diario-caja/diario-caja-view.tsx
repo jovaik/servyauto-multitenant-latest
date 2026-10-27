@@ -26,7 +26,7 @@ import {
 import { generarPDFDiarioCaja } from '@/lib/pdf-generator'
 import { exportarDiarioCajaExcel } from '@/lib/excel-generator'
 import { getSelectedLocalId, useLocalStore } from '@/lib/local-store'
-import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, subMonths, parseISO } from 'date-fns'
+import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, subMonths, subWeeks, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 
 interface Movimiento {
@@ -215,6 +215,22 @@ export default function DiarioCajaView() {
     cargarDatos()
   }, [selectedLocalIdHook])
 
+  // Auto-refrescar al volver a la pestaña/ventana, para reflejar gastos o cobros
+  // creados o editados en otras pantallas sin tener que pulsar "Actualizar".
+  useEffect(() => {
+    const refrescar = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        cargarDatos()
+      }
+    }
+    window.addEventListener('focus', refrescar)
+    document.addEventListener('visibilitychange', refrescar)
+    return () => {
+      window.removeEventListener('focus', refrescar)
+      document.removeEventListener('visibilitychange', refrescar)
+    }
+  }, [])
+
   // Calcular rango de fechas según filtro de período
   const rangoFechas = useMemo(() => {
     const hoy = new Date()
@@ -223,6 +239,10 @@ export default function DiarioCajaView() {
         return { inicio: hoy, fin: hoy }
       case 'SEMANA':
         return { inicio: startOfWeek(hoy, { weekStartsOn: 1 }), fin: endOfWeek(hoy, { weekStartsOn: 1 }) }
+      case 'SEMANA_PASADA': {
+        const semanaPasada = subWeeks(hoy, 1)
+        return { inicio: startOfWeek(semanaPasada, { weekStartsOn: 1 }), fin: endOfWeek(semanaPasada, { weekStartsOn: 1 }) }
+      }
       case 'MES_ACTUAL':
         return { inicio: startOfMonth(hoy), fin: endOfMonth(hoy) }
       case 'MES_ANTERIOR':
@@ -341,6 +361,7 @@ export default function DiarioCajaView() {
             onClick={async () => {
               const periodoTexto = filtroPeriodo === 'HOY' ? 'Hoy' :
                 filtroPeriodo === 'SEMANA' ? 'Esta semana' :
+                filtroPeriodo === 'SEMANA_PASADA' ? 'Semana pasada' :
                 filtroPeriodo === 'MES_ACTUAL' ? 'Mes actual' :
                 filtroPeriodo === 'MES_ANTERIOR' ? 'Mes anterior' :
                 `${fechaInicio || ''} - ${fechaFin || ''}`
@@ -357,6 +378,7 @@ export default function DiarioCajaView() {
               onClick={async () => {
                 const periodoTexto = filtroPeriodo === 'HOY' ? 'Hoy' :
                   filtroPeriodo === 'SEMANA' ? 'Esta semana' :
+                  filtroPeriodo === 'SEMANA_PASADA' ? 'Semana pasada' :
                   filtroPeriodo === 'MES_ACTUAL' ? 'Mes actual' :
                   filtroPeriodo === 'MES_ANTERIOR' ? 'Mes anterior' :
                   `${fechaInicio || ''} - ${fechaFin || ''}`
@@ -521,6 +543,7 @@ export default function DiarioCajaView() {
               <SelectContent>
                 <SelectItem value="HOY">Hoy</SelectItem>
                 <SelectItem value="SEMANA">Esta semana</SelectItem>
+                <SelectItem value="SEMANA_PASADA">Semana pasada</SelectItem>
                 <SelectItem value="MES_ACTUAL">Mes actual</SelectItem>
                 <SelectItem value="MES_ANTERIOR">Mes anterior</SelectItem>
                 <SelectItem value="PERSONALIZADO">Personalizado</SelectItem>
