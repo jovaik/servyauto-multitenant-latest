@@ -79,6 +79,15 @@ export async function POST(request: NextRequest) {
     const localContext = await getLocalContext();
     const localIdParaIngreso = localContext ? getLocalIdForCreate(localContext) : null;
 
+    // Guard: un ingreso sin local quedaría invisible en la tarjeta Efectivo del Diario de Caja
+    // (que filtra por local). Obligamos a seleccionar un local antes de registrarlo.
+    if (!localIdParaIngreso) {
+      return NextResponse.json(
+        { error: 'Selecciona un local en la barra superior antes de registrar el ingreso, para que aparezca en el Diario de Caja de ese local.' },
+        { status: 400 }
+      );
+    }
+
     const nuevoIngreso = await prisma.ingresoAdicional.create({
       data: {
         concepto,
