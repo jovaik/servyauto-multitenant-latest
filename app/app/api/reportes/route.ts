@@ -114,9 +114,9 @@ export async function GET(request: NextRequest) {
       facturasTpvDetalle,
       citasTpvDetalle,
       gastosDetalle,
-      ingresosAdicionalesDetalle,
       gastosPorProveedor,
       gastosPorColaboradorRaw,
+      ingresosAdicionalesDetalle,
     ] = await Promise.all([
       // Facturas pagadas
       prisma.factura.aggregate({
