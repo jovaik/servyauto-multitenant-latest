@@ -35,6 +35,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { NuevoGastoDialog } from '@/components/nuevo-gasto-dialog'
 import { EditarGastoDialog } from '@/components/editar-gasto-dialog'
 import { format } from 'date-fns'
@@ -60,6 +67,9 @@ export function GastosView() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterType, setFilterType] = useState<'ALL' | 'TICKET' | 'FACTURA'>('ALL')
+  const [filterProveedor, setFilterProveedor] = useState('ALL')
+  const [filterBeneficiario, setFilterBeneficiario] = useState('ALL')
+  const [filterTipoGasto, setFilterTipoGasto] = useState('ALL')
   const [stats, setStats] = useState({
     totalGastosMes: 0,
     totalFacturas: 0,
@@ -134,6 +144,16 @@ export function GastosView() {
     return tipo === 'FACTURA' ? FileText : Receipt
   }
 
+  const proveedoresUnicos = Array.from(
+    new Set(gastos.map(g => g.proveedor).filter((v): v is string => !!v && v.trim() !== ''))
+  ).sort((a, b) => a.localeCompare(b))
+  const beneficiariosUnicos = Array.from(
+    new Set(gastos.map(g => g.beneficiario).filter((v): v is string => !!v && v.trim() !== ''))
+  ).sort((a, b) => a.localeCompare(b))
+  const tiposGastoUnicos = Array.from(
+    new Set(gastos.map(g => g.tipoGasto).filter((v): v is string => !!v && v.trim() !== ''))
+  ).sort((a, b) => a.localeCompare(b))
+
   const filteredGastos = gastos.filter(gasto => {
     const matchesSearch = searchTerm === '' || 
       gasto.concepto.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -142,9 +162,15 @@ export function GastosView() {
       gasto.tipoGasto.toLowerCase().includes(searchTerm.toLowerCase())
     
     const matchesType = filterType === 'ALL' || gasto.tipo === filterType
+    const matchesProveedor = filterProveedor === 'ALL' || gasto.proveedor === filterProveedor
+    const matchesBeneficiario = filterBeneficiario === 'ALL' || gasto.beneficiario === filterBeneficiario
+    const matchesTipoGasto = filterTipoGasto === 'ALL' || gasto.tipoGasto === filterTipoGasto
     
-    return matchesSearch && matchesType
+    return matchesSearch && matchesType && matchesProveedor && matchesBeneficiario && matchesTipoGasto
   })
+
+  const totalFiltrado = filteredGastos.reduce((sum, g) => sum + g.importe, 0)
+  const hayFiltrosActivos = filterProveedor !== 'ALL' || filterBeneficiario !== 'ALL' || filterTipoGasto !== 'ALL' || filterType !== 'ALL' || searchTerm !== ''
 
   return (
     <div className="space-y-6">
@@ -283,6 +309,77 @@ export function GastosView() {
             <Button variant="outline" size="sm" onClick={loadGastos}>
               <RefreshCw className="h-4 w-4" />
             </Button>
+          </div>
+
+          {/* Dropdown filters */}
+          <div className="flex flex-col md:flex-row md:items-end gap-3 mt-4 pt-4 border-t">
+            <div className="flex-1 min-w-[180px]">
+              <label className="text-xs font-medium text-gray-600 mb-1 block">Proveedor</label>
+              <Select value={filterProveedor} onValueChange={setFilterProveedor}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Todos los proveedores" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">Todos los proveedores</SelectItem>
+                  {proveedoresUnicos.map((p) => (
+                    <SelectItem key={p} value={p}>{p}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex-1 min-w-[180px]">
+              <label className="text-xs font-medium text-gray-600 mb-1 block">Empleado / Socio</label>
+              <Select value={filterBeneficiario} onValueChange={setFilterBeneficiario}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">Todos</SelectItem>
+                  {beneficiariosUnicos.map((b) => (
+                    <SelectItem key={b} value={b}>{b}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex-1 min-w-[180px]">
+              <label className="text-xs font-medium text-gray-600 mb-1 block">Tipo de gasto</label>
+              <Select value={filterTipoGasto} onValueChange={setFilterTipoGasto}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Todos los tipos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">Todos los tipos</SelectItem>
+                  {tiposGastoUnicos.map((t) => (
+                    <SelectItem key={t} value={t}>{t}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {hayFiltrosActivos && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSearchTerm('')
+                  setFilterType('ALL')
+                  setFilterProveedor('ALL')
+                  setFilterBeneficiario('ALL')
+                  setFilterTipoGasto('ALL')
+                }}
+                className="text-gray-500"
+              >
+                Limpiar filtros
+              </Button>
+            )}
+          </div>
+
+          {/* Total of filtered list */}
+          <div className="flex items-center justify-between mt-4 pt-4 border-t bg-red-50 -mx-6 -mb-6 px-6 py-3 rounded-b-lg">
+            <span className="text-sm text-gray-700">
+              {hayFiltrosActivos ? 'Total filtrado' : 'Total de todos los gastos'}
+              <span className="text-gray-500"> ({filteredGastos.length} {filteredGastos.length === 1 ? 'gasto' : 'gastos'})</span>
+            </span>
+            <span className="text-xl font-bold text-red-700">€{totalFiltrado.toFixed(2)}</span>
           </div>
         </CardContent>
       </Card>
