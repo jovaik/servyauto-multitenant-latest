@@ -64,6 +64,33 @@ interface DesgloseGasto {
   count: number
 }
 
+interface DesgloseProveedor {
+  proveedor: string
+  total: number
+  count: number
+}
+
+interface DesgloseColaborador {
+  colaborador: string
+  rol: string
+  total: number
+  count: number
+}
+
+interface DetalleGasto {
+  id: string
+  fecha: string
+  concepto: string
+  proveedor: string
+  tipoGasto: string
+  importe: number
+  metodoPago: string
+  beneficiario: string
+  colaborador: string
+  rolColaborador: string
+  local: string
+}
+
 interface DesgloseIngresoAdicional {
   concepto: string
   total: number
@@ -114,6 +141,9 @@ interface ReporteData {
   desglosePagos: DesglosePago[]
   desgloseTPV: DesgloseTPV[]
   desgloseGastos: DesgloseGasto[]
+  gastosPorProveedor: DesgloseProveedor[]
+  gastosPorColaborador: DesgloseColaborador[]
+  detalleGastos: DetalleGasto[]
   desgloseIngresosAdicionales: DesgloseIngresoAdicional[]
   topServicios: TopServicio[]
   detalleCitas: DetalleCita[]
@@ -155,7 +185,9 @@ export function ReportesView() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [busquedaCitas, setBusquedaCitas] = useState('')
+  const [busquedaGastos, setBusquedaGastos] = useState('')
   const [mostrarDetalle, setMostrarDetalle] = useState(true)
+  const [mostrarDetalleGastos, setMostrarDetalleGastos] = useState(true)
   const printRef = useRef<HTMLDivElement>(null)
 
   const fetchReporte = useCallback(async () => {
@@ -251,6 +283,18 @@ export function ReportesView() {
       data.desgloseGastos.forEach(g => rows.push([g.tipo, g.total.toFixed(2), String(g.count)]))
       rows.push([])
     }
+    if (data.gastosPorProveedor && data.gastosPorProveedor.length > 0) {
+      rows.push(['GASTOS POR PROVEEDOR'])
+      rows.push(['Proveedor', 'Total', 'Operaciones'])
+      data.gastosPorProveedor.forEach(p => rows.push([p.proveedor, p.total.toFixed(2), String(p.count)]))
+      rows.push([])
+    }
+    if (data.gastosPorColaborador && data.gastosPorColaborador.length > 0) {
+      rows.push(['GASTOS POR COLABORADOR / EMPLEADO'])
+      rows.push(['Colaborador', 'Rol', 'Total', 'Operaciones'])
+      data.gastosPorColaborador.forEach(c => rows.push([c.colaborador, c.rol, c.total.toFixed(2), String(c.count)]))
+      rows.push([])
+    }
     if (data.topServicios.length > 0) {
       rows.push(['TOP SERVICIOS'])
       rows.push(['Servicio', 'Total', 'Cantidad'])
@@ -271,6 +315,22 @@ export function ReportesView() {
         METODO_LABELS[c.metodoPago || ''] || c.metodoPago || '',
         c.operario,
         c.local,
+      ]))
+      rows.push([])
+    }
+    if (data.detalleGastos && data.detalleGastos.length > 0) {
+      rows.push(['DETALLE DE GASTOS'])
+      rows.push(['Fecha', 'Concepto', 'Tipo', 'Proveedor', 'Colaborador', 'Beneficiario', 'Importe', 'Método Pago', 'Local'])
+      data.detalleGastos.forEach(g => rows.push([
+        new Date(g.fecha).toLocaleDateString('es-ES'),
+        g.concepto,
+        g.tipoGasto,
+        g.proveedor || '',
+        g.colaborador || '',
+        g.beneficiario || '',
+        g.importe.toFixed(2),
+        METODO_LABELS[g.metodoPago || ''] || g.metodoPago || '',
+        g.local,
       ]))
       rows.push([])
     }
@@ -543,6 +603,65 @@ export function ReportesView() {
               </CardContent>
             </Card>
 
+            {/* Gastos por proveedor */}
+            {data.gastosPorProveedor && data.gastosPorProveedor.length > 0 && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-amber-500" />
+                    Gastos por Proveedor
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {data.gastosPorProveedor.map((p, i) => (
+                      <div key={i} className="flex items-center justify-between py-2 border-b last:border-0 dark:border-gray-700">
+                        <div>
+                          <span className="text-sm font-medium">{p.proveedor}</span>
+                          <span className="text-xs text-gray-400 ml-2">({p.count})</span>
+                        </div>
+                        <span className="text-sm font-semibold text-red-600">{formatCurrency(p.total)}</span>
+                      </div>
+                    ))}
+                    <div className="flex items-center justify-between py-2 border-t-2 dark:border-gray-600 font-bold">
+                      <span className="text-sm">TOTAL</span>
+                      <span className="text-sm text-red-600">{formatCurrency(data.gastosPorProveedor.reduce((s, p) => s + p.total, 0))}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Gastos por colaborador/empleado/socio */}
+            {data.gastosPorColaborador && data.gastosPorColaborador.length > 0 && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Users className="h-4 w-4 text-indigo-500" />
+                    Gastos por Colaborador / Empleado
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {data.gastosPorColaborador.map((c, i) => (
+                      <div key={i} className="flex items-center justify-between py-2 border-b last:border-0 dark:border-gray-700">
+                        <div>
+                          <span className="text-sm font-medium">{c.colaborador}</span>
+                          {c.rol && <span className="text-xs bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded ml-2">{c.rol}</span>}
+                          <span className="text-xs text-gray-400 ml-2">({c.count})</span>
+                        </div>
+                        <span className="text-sm font-semibold text-red-600">{formatCurrency(c.total)}</span>
+                      </div>
+                    ))}
+                    <div className="flex items-center justify-between py-2 border-t-2 dark:border-gray-600 font-bold">
+                      <span className="text-sm">TOTAL</span>
+                      <span className="text-sm text-red-600">{formatCurrency(data.gastosPorColaborador.reduce((s, c) => s + c.total, 0))}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Top servicios */}
             <Card>
               <CardHeader className="pb-3">
@@ -690,6 +809,108 @@ export function ReportesView() {
                               {localId === 'todos' && <td className="py-1.5 px-2 whitespace-nowrap text-xs">{c.local}</td>}
                             </tr>
                           ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              )}
+            </Card>
+          )}
+
+          {/* Detalle de gastos */}
+          {data.detalleGastos && data.detalleGastos.length > 0 && (
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <TrendingDown className="h-4 w-4 text-red-500" />
+                    Detalle de Gastos ({data.detalleGastos.length})
+                  </CardTitle>
+                  <div className="flex items-center gap-2">
+                    <div className="relative">
+                      <Search className="h-4 w-4 absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <Input
+                        placeholder="Buscar concepto, proveedor, tipo..."
+                        value={busquedaGastos}
+                        onChange={e => setBusquedaGastos(e.target.value)}
+                        className="pl-8 h-8 text-sm w-[250px]"
+                      />
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setMostrarDetalleGastos(!mostrarDetalleGastos)}
+                      className="text-xs"
+                    >
+                      {mostrarDetalleGastos ? 'Ocultar' : 'Mostrar'}
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              {mostrarDetalleGastos && (
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                          <th className="text-left py-2 px-2 font-semibold">Fecha</th>
+                          <th className="text-left py-2 px-2 font-semibold">Concepto</th>
+                          <th className="text-left py-2 px-2 font-semibold">Tipo</th>
+                          <th className="text-left py-2 px-2 font-semibold">Proveedor</th>
+                          <th className="text-left py-2 px-2 font-semibold">Colaborador</th>
+                          <th className="text-left py-2 px-2 font-semibold">Beneficiario</th>
+                          <th className="text-right py-2 px-2 font-semibold">Importe</th>
+                          <th className="text-left py-2 px-2 font-semibold">Pago</th>
+                          {localId === 'todos' && <th className="text-left py-2 px-2 font-semibold">Local</th>}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.detalleGastos
+                          .filter(g => {
+                            if (!busquedaGastos) return true
+                            const q = busquedaGastos.toLowerCase()
+                            return (
+                              g.concepto.toLowerCase().includes(q) ||
+                              g.proveedor.toLowerCase().includes(q) ||
+                              g.tipoGasto.toLowerCase().includes(q) ||
+                              g.colaborador.toLowerCase().includes(q) ||
+                              g.beneficiario.toLowerCase().includes(q) ||
+                              g.local.toLowerCase().includes(q)
+                            )
+                          })
+                          .map((g, i) => (
+                            <tr key={g.id} className="border-b last:border-0 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                              <td className="py-1.5 px-2 whitespace-nowrap">
+                                {new Date(g.fecha).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })}
+                              </td>
+                              <td className="py-1.5 px-2">
+                                <span className="font-medium">{g.concepto}</span>
+                              </td>
+                              <td className="py-1.5 px-2 whitespace-nowrap">
+                                <span className="inline-block bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-xs px-1.5 py-0.5 rounded">{g.tipoGasto}</span>
+                              </td>
+                              <td className="py-1.5 px-2 whitespace-nowrap text-xs">{g.proveedor || '-'}</td>
+                              <td className="py-1.5 px-2 whitespace-nowrap text-xs">
+                                {g.colaborador ? (
+                                  <span>{g.colaborador}{g.rolColaborador ? <span className="text-gray-400 ml-1">({g.rolColaborador})</span> : ''}</span>
+                                ) : '-'}
+                              </td>
+                              <td className="py-1.5 px-2 whitespace-nowrap text-xs">{g.beneficiario || '-'}</td>
+                              <td className="py-1.5 px-2 text-right font-semibold text-red-600 whitespace-nowrap">{formatCurrency(g.importe)}</td>
+                              <td className="py-1.5 px-2 whitespace-nowrap text-xs">
+                                {METODO_LABELS[g.metodoPago || ''] || g.metodoPago || '-'}
+                              </td>
+                              {localId === 'todos' && <td className="py-1.5 px-2 whitespace-nowrap text-xs">{g.local}</td>}
+                            </tr>
+                          ))}
+                        {/* Fila total */}
+                        <tr className="border-t-2 dark:border-gray-600 font-bold bg-gray-50 dark:bg-gray-800/50">
+                          <td className="py-2 px-2" colSpan={localId === 'todos' ? 6 : 5}></td>
+                          <td className="py-2 px-2 text-right text-red-600">
+                            {formatCurrency(data.detalleGastos.reduce((s, g) => s + g.importe, 0))}
+                          </td>
+                          <td className="py-2 px-2" colSpan={localId === 'todos' ? 2 : 1}></td>
+                        </tr>
                       </tbody>
                     </table>
                   </div>

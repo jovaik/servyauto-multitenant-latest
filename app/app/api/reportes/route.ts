@@ -115,6 +115,8 @@ export async function GET(request: NextRequest) {
       citasTpvDetalle,
       gastosDetalle,
       ingresosAdicionalesDetalle,
+      gastosPorProveedor,
+      gastosPorColaboradorRaw,
     ] = await Promise.all([
       // Facturas pagadas
       prisma.factura.aggregate({
@@ -202,6 +204,22 @@ export async function GET(request: NextRequest) {
         _count: true,
         orderBy: { _sum: { importe: 'desc' } },
       }),
+      // Detalle gastos por proveedor
+      prisma.gasto.groupBy({
+        by: ['proveedor'],
+        where: { fecha: { gte: startDate, lte: endDate }, proveedor: { not: null }, ...localFilter },
+        _sum: { importe: true },
+        _count: true,
+        orderBy: { _sum: { importe: 'desc' } },
+      }),
+      // Detalle gastos por colaborador
+      prisma.gasto.groupBy({
+        by: ['colaboradorId'],
+        where: { fecha: { gte: startDate, lte: endDate }, colaboradorId: { not: null }, ...localFilter },
+        _sum: { importe: true },
+        _count: true,
+        orderBy: { _sum: { importe: 'desc' } },
+      }),
       // Detalle ingresos adicionales por concepto
       prisma.ingresoAdicional.groupBy({
         by: ['concepto'],
@@ -211,6 +229,35 @@ export async function GET(request: NextRequest) {
         orderBy: { _sum: { importe: 'desc' } },
       }),
     ])
+
+    // Resolver nombres de colaboradores para el desglose
+    const colabIds = (gastosPorColaboradorRaw as any[]).map((g: any) => g.colaboradorId).filter(Boolean)
+    let colabMap: Record<string, { nombre: string; rol: string }> = {}
+    if (colabIds.length > 0) {
+      const colabs = await prisma.colaborador.findMany({
+        where: { id: { in: colabIds } },
+        select: { id: true, nombre: true, rol: true },
+      })
+      colabMap = Object.fromEntries(colabs.map((c: any) => [c.id, { nombre: c.nombre, rol: c.rol }]))
+    }
+
+    // Listado detallado de gastos individuales
+    const gastosListado = await prisma.gasto.findMany({
+      where: { fecha: { gte: startDate, lte: endDate }, ...localFilter },
+      select: {
+        id: true,
+        concepto: true,
+        fecha: true,
+        proveedor: true,
+        tipoGasto: true,
+        importe: true,
+        metodoPago: true,
+        beneficiario: true,
+        colaborador: { select: { nombre: true, rol: true } },
+        local: { select: { nombre: true, nombreComercial: true } },
+      },
+      orderBy: [{ fecha: 'asc' }],
+    })
 
     // Top servicios del periodo
     const facturasIdsPeriodo = await prisma.factura.findMany({
@@ -408,6 +455,33 @@ export async function GET(request: NextRequest) {
         concepto: i.concepto,
         total: i._sum?.importe || 0,
         count: i._count || 0,
+      })),
+      gastosPorProveedor: (gastosPorProveedor as any[]).map((g: any) => ({
+        proveedor: g.proveedor || 'Sin proveedor',
+        total: g._sum?.importe || 0,
+        count: g._count || 0,
+      })),
+      gastosPorColaborador: (gastosPorColaboradorRaw as any[]).map((g: any) => {
+        const info = colabMap[g.colaboradorId] || { nombre: g.colaboradorId, rol: '' }
+        return {
+          colaborador: info.nombre,
+          rol: info.rol,
+          total: g._sum?.importe || 0,
+          count: g._count || 0,
+        }
+      }),
+      detalleGastos: gastosListado.map((g: any) => ({
+        id: g.id,
+        fecha: g.fecha,
+        concepto: g.concepto,
+        proveedor: g.proveedor || '',
+        tipoGasto: g.tipoGasto,
+        importe: g.importe,
+        metodoPago: g.metodoPago || '',
+        beneficiario: g.beneficiario || '',
+        colaborador: g.colaborador?.nombre || '',
+        rolColaborador: g.colaborador?.rol || '',
+        local: g.local?.nombreComercial || g.local?.nombre || '',
       })),
       topServicios: topServicios.map((s: any) => ({
         servicio: s.descripcion,
