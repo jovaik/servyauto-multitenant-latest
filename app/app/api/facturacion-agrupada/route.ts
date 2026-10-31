@@ -161,7 +161,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST: crea UNA factura agrupada (fiscal) con una línea por cita y bloquea esas citas
+// POST: crea UN ticket o factura agrupada con una línea por cita y bloquea esas citas
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -170,7 +170,12 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { clienteId, citaIds, metodoPago, datosFacturacion } = body
+    const { clienteId, citaIds, metodoPago, datosFacturacion, tipo = 'FACTURA' } = body
+
+    if (tipo !== 'TICKET' && tipo !== 'FACTURA') {
+      return NextResponse.json({ error: 'Selecciona Ticket o Factura' }, { status: 400 })
+    }
+    const nombreDocumento = tipo === 'TICKET' ? 'Ticket agrupado' : 'Factura agrupada'
 
     if (!clienteId || !Array.isArray(citaIds) || citaIds.length === 0) {
       return NextResponse.json({ error: 'Faltan clienteId o citaIds' }, { status: 400 })
@@ -224,9 +229,9 @@ export async function POST(req: NextRequest) {
     const subtotal = total / 1.21
     const iva = total - subtotal
 
-    // Número FAC-YYYY-NNNN
+    // Conservar las series existentes: TICK para tickets y FAC para facturas.
     const anio = new Date().getFullYear()
-    const prefijo = 'FAC'
+    const prefijo = tipo === 'TICKET' ? 'TICK' : 'FAC'
     const ultimo = await prisma.factura.findFirst({
       where: { numero: { startsWith: `${prefijo}-${anio}-` } },
       orderBy: { createdAt: 'desc' },
@@ -255,7 +260,7 @@ export async function POST(req: NextRequest) {
     const factura = await prisma.factura.create({
       data: {
         numero,
-        tipo: 'FACTURA',
+        tipo,
         subtotal,
         iva,
         total,
@@ -295,9 +300,9 @@ export async function POST(req: NextRequest) {
         esIngreso: true,
         fecha: factura.createdAt,
         importe: factura.total,
-        descripcion: `FACTURA AGRUPADA: ${factura.numero} - ${clienteNombreCompleto}`,
-        documentType: 'FACTURA',
-        invoiceNumber: factura.numero,
+        descripcion: `${nombreDocumento.toUpperCase()}: ${factura.numero} - ${clienteNombreCompleto}`,
+        documentType: tipo,
+        invoiceNumber: tipo === 'FACTURA' ? factura.numero : undefined,
         clientName: clienteNombreCompleto || undefined,
         clientDni: factura.cliente.documento || undefined,
       }).catch(() => {})
@@ -307,19 +312,20 @@ export async function POST(req: NextRequest) {
       action: 'CREATE',
       entity: 'FACTURA',
       entityId: factura.id,
-      description: `Factura agrupada ${factura.numero} - ${citas.length} servicios - Total: ${factura.total.toFixed(2)}€`,
+      description: `${nombreDocumento} ${factura.numero} - ${citas.length} servicios - Total: ${factura.total.toFixed(2)}€`,
     }).catch(() => {})
 
     return NextResponse.json({
       ok: true,
       facturaId: factura.id,
       numero: factura.numero,
+      tipo: factura.tipo,
       total: factura.total,
       numServicios: citas.length,
       estado,
     })
   } catch (error: any) {
     console.error('Error en facturacion-agrupada POST:', error)
-    return NextResponse.json({ error: error.message || 'Error al crear la factura agrupada' }, { status: 500 })
+    return NextResponse.json({ error: error.message || 'Error al crear el documento agrupado' }, { status: 500 })
   }
 }

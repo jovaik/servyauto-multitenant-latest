@@ -11,7 +11,7 @@ type TabId = 'facturas' | 'pendientes' | 'agrupada'
 const TABS: { id: TabId; label: string; icon: any }[] = [
   { id: 'facturas', label: 'Facturas y Tickets', icon: CreditCard },
   { id: 'pendientes', label: 'Pendientes de facturar', icon: Clock },
-  { id: 'agrupada', label: 'Factura Agrupada', icon: Layers },
+  { id: 'agrupada', label: 'Agrupar: Ticket / Factura', icon: Layers },
 ]
 
 export function FacturacionHub() {

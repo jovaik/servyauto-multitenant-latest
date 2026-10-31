@@ -56,6 +56,7 @@ export function FacturacionAgrupadaView() {
 
   const [desde, setDesde] = useState('')
   const [hasta, setHasta] = useState('')
+  const [tipoDocumento, setTipoDocumento] = useState<'TICKET' | 'FACTURA'>('FACTURA')
   const [metodoPago, setMetodoPago] = useState('PENDIENTE')
   const [generando, setGenerando] = useState(false)
   const [datosEmpresa, setDatosEmpresa] = useState({ nombreFiscal: '', nif: '', direccion: '' })
@@ -135,9 +136,10 @@ export function FacturacionAgrupadaView() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           clienteId: clienteSel.id,
+          tipo: tipoDocumento,
           citaIds: citasSeleccionadas.map(c => c.id),
           metodoPago: metodoPago === 'PENDIENTE' ? null : metodoPago,
-          datosFacturacion: (datosEmpresa.nombreFiscal.trim() || datosEmpresa.nif.trim())
+          datosFacturacion: tipoDocumento === 'FACTURA' && (datosEmpresa.nombreFiscal.trim() || datosEmpresa.nif.trim())
             ? {
                 nombreFiscal: datosEmpresa.nombreFiscal.trim().toUpperCase(),
                 nif: datosEmpresa.nif.trim().toUpperCase(),
@@ -147,8 +149,8 @@ export function FacturacionAgrupadaView() {
         }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Error al generar la factura')
-      toast({ title: '✅ Factura creada', description: `${data.numero} · ${data.numServicios} servicios · ${fmtEur(data.total)}` })
+      if (!res.ok) throw new Error(data.error || 'Error al generar el documento')
+      toast({ title: data.tipo === 'TICKET' ? '✅ Ticket creado' : '✅ Factura creada', description: `${data.numero} · ${data.numServicios} servicios · ${fmtEur(data.total)}` })
       // Abrir el PDF de la factura
       window.open(`/api/facturas/${data.facturaId}/pdf`, '_blank')
       // Refrescar
@@ -180,9 +182,9 @@ export function FacturacionAgrupadaView() {
           <Layers className="h-6 w-6 text-primary" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold">Factura Agrupada</h1>
+          <h1 className="text-2xl font-bold">Tickets y Facturas Agrupados</h1>
           <p className="text-sm text-muted-foreground">
-            Agrupa en una sola factura todos los servicios pendientes de un cliente (empresas y profesionales a mes o semana vencida).
+            Agrupa los servicios pendientes de un cliente en un ticket o una factura, con una línea por servicio.
           </p>
         </div>
       </div>
@@ -307,7 +309,19 @@ export function FacturacionAgrupadaView() {
                   </table>
                 </div>
 
-                <div className="mt-4 rounded-lg border bg-blue-50/50 p-3">
+                <div className="mt-4 space-y-2 max-w-sm">
+                  <Label htmlFor="tipo-documento-agrupado">Documento a emitir</Label>
+                  <Select value={tipoDocumento} onValueChange={(value: 'TICKET' | 'FACTURA') => setTipoDocumento(value)} disabled={generando}>
+                    <SelectTrigger id="tipo-documento-agrupado"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="TICKET">Ticket agrupado</SelectItem>
+                      <SelectItem value="FACTURA">Factura agrupada</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">Emitir el documento no registra un cobro si eliges «Pendiente de cobro».</p>
+                </div>
+
+                {tipoDocumento === 'FACTURA' && <div className="mt-4 rounded-lg border bg-blue-50/50 p-3">
                   <div className="flex flex-wrap items-center gap-1.5 mb-2">
                     <Building2 className="h-4 w-4 text-blue-600" />
                     <span className="text-sm font-semibold">Datos fiscales de la factura</span>
@@ -327,7 +341,7 @@ export function FacturacionAgrupadaView() {
                       <Input value={datosEmpresa.direccion} onChange={e => setDatosEmpresa(p => ({ ...p, direccion: e.target.value }))} placeholder="Calle..." />
                     </div>
                   </div>
-                </div>
+                </div>}
 
                 <div className="mt-4 flex flex-col gap-4 border-t pt-4 sm:flex-row sm:items-end sm:justify-between">
                   <div className="space-y-1 max-w-xs">
@@ -355,7 +369,7 @@ export function FacturacionAgrupadaView() {
                 <div className="mt-4 flex justify-end">
                   <Button onClick={generarFactura} disabled={generando || citasSeleccionadas.length === 0} className="gap-2">
                     {generando ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
-                    {generando ? 'Generando...' : 'Generar Factura Agrupada'}
+                    {generando ? 'Generando...' : tipoDocumento === 'TICKET' ? 'Generar Ticket Agrupado' : 'Generar Factura Agrupada'}
                   </Button>
                 </div>
               </>
