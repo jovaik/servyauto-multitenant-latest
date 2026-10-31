@@ -53,6 +53,7 @@ export async function GET(req: NextRequest) {
     // Operaciones sin completar: excluye completadas, canceladas y no-show
     if (pendientes === 'true') {
       whereClause.estado = { notIn: ['COMPLETADA', 'CANCELADA', 'NO_SHOW'] }
+      whereClause.facturaAgrupadaId = null
     }
 
     const citas = await prisma.cita.findMany({

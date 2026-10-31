@@ -115,6 +115,7 @@ export async function GET(req: NextRequest) {
         ...(localId ? { localId } : {}),
         estado: "COMPLETADA",
         facturaAgrupadaId: null,
+        cobroDiferido: false,
         fecha: { gte: fechaDesde, lte: fechaHasta },
       },
       select: {

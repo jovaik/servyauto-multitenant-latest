@@ -135,6 +135,7 @@ export async function GET(request: NextRequest) {
         where: {
           fecha: { gte: startDate, lte: endDate },
           estado: 'COMPLETADA',
+          facturaAgrupadaId: null, cobroDiferido: false, metodoPago: { not: null },
           id: { notIn: citasConFacturaIds.length > 0 ? citasConFacturaIds : ['__none__'] },
           ...localFilter
         },

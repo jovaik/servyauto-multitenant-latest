@@ -36,7 +36,10 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       return NextResponse.json({ error: 'Cita no encontrada' }, { status: 404 })
     }
 
-    return NextResponse.json(cita)
+    const documentoAgrupado = cita.facturaAgrupadaId
+      ? await prisma.factura.findUnique({ where: { id: cita.facturaAgrupadaId }, select: { id: true, numero: true, estado: true, metodoPago: true } })
+      : null
+    return NextResponse.json({ ...cita, documentoAgrupado })
   } catch (error: any) {
     console.error('Error al obtener cita:', error)
     return NextResponse.json({ error: 'Error al obtener cita', message: error.message }, { status: 500 })
@@ -62,6 +65,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       observaciones,
       metodoPago,
       vencimientoCredito,
+      cobroDiferido,
       servicios,
       lineasManuales: bodyLineasManuales,
       ticketsUsados,
@@ -86,7 +90,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     // Verificar si la cita existe
     const citaExistente = await prisma.cita.findUnique({
       where: { id: params.id },
-      include: { cita_servicios: true, lineasManuales: true, vehiculo: true },
+      include: { cita_servicios: true, lineasManuales: true, vehiculo: true, pagosParciales: true },
     })
 
     if (!citaExistente) {
@@ -261,11 +265,13 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     if (horaFin) updateData.horaFin = horaFin
     if (box) updateData.box = box
     if (estado) updateData.estado = estado
-    // Si el estado ya no es PAGO_POSTERIOR, limpiar vencimientoCredito
-    if (estado && estado !== 'PAGO_POSTERIOR') {
-      updateData.vencimientoCredito = null
-    }
-    if (vencimientoCredito !== undefined) updateData.vencimientoCredito = vencimientoCredito || null
+    // Compatibilidad con clientes antiguos: crédito es condición de cobro, no estado de trabajo.
+    const diferido = estado === 'PAGO_POSTERIOR' || (cobroDiferido !== undefined
+      ? !!cobroDiferido : (metodoPago ? false : citaExistente.cobroDiferido || citaExistente.estado === 'PAGO_POSTERIOR'))
+    updateData.cobroDiferido = diferido
+    if (estado === 'PAGO_POSTERIOR') updateData.estado = 'COMPLETADA'
+    if (vencimientoCredito !== undefined) updateData.vencimientoCredito = diferido ? vencimientoCredito || null : null
+    if (!diferido) updateData.vencimientoCredito = null
     if (observaciones !== undefined) updateData.observaciones = observaciones
     if (ticketsUsados !== undefined) updateData.ticketsUsados = parseInt(ticketsUsados) || 0
     
@@ -281,6 +287,21 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     // Manejar metodoPago: si es undefined se envía como null a Prisma
     if (metodoPago !== undefined) {
       updateData.metodoPago = metodoPago || null
+    }
+
+    if (diferido) updateData.metodoPago = null
+    if (updateData.estado === 'COMPLETADA' && !citaExistente.facturaAgrupadaId && !(updateData.metodoPago ?? citaExistente.metodoPago)) {
+      const pagado = citaExistente.pagosParciales.reduce((sum, p) => sum + p.importe, 0)
+      if (pagado < (precioFinal || 0) - 0.01) updateData.cobroDiferido = true
+    }
+    // Las citas agrupadas se cobran desde su documento, nunca desde el estado de agenda.
+    if (citaExistente.facturaAgrupadaId) {
+      const agrupada = await prisma.factura.findUnique({ where: { id: citaExistente.facturaAgrupadaId } })
+      if (agrupada && agrupada.estado !== 'CANCELADA') {
+        updateData.estado = 'COMPLETADA'
+        updateData.metodoPago = agrupada.estado === 'PAGADA' ? agrupada.metodoPago : null
+        updateData.cobroDiferido = agrupada.estado !== 'PAGADA'
+      }
     }
 
     // Colaboradores
@@ -481,7 +502,9 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     
     // Si la cita se marca como COMPLETADA y ya tiene una factura asociada, marcarla como PAGADA
     // IMPORTANTE: Por defecto las facturas se marcan como pagadas cuando se entrega el vehículo
-    if (estado === 'COMPLETADA' && cita.facturas) {
+    const pagosRegistrados = await prisma.pagoParcial.aggregate({ where: { citaId: cita.id }, _sum: { importe: true } })
+    const cobrada = !cita.cobroDiferido && (!!cita.metodoPago || ((cita.total || 0) > 0 && (pagosRegistrados._sum.importe || 0) >= (cita.total || 0) - 0.01))
+    if (cita.estado === 'COMPLETADA' && !cita.facturaAgrupadaId && cita.facturas && cobrada) {
       console.log('=== MARCANDO FACTURA COMO PAGADA (por defecto al entregar vehículo) ===')
       console.log('Factura ID:', cita.facturas.id)
       
@@ -512,8 +535,12 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       console.log('✅ Factura actualizada. Sincronización con GSControl se hace automáticamente.')
     }
     
+    if (!cita.facturaAgrupadaId && cita.facturas && cobroDiferido === true && cita.facturas.estado !== 'CANCELADA') {
+      await prisma.factura.update({ where: { id: cita.facturas.id }, data: { estado: 'PENDIENTE', metodoPago: null, fechaPago: null } })
+    }
+
     // Si la cita se marca como COMPLETADA y no tiene factura, crear una automáticamente
-    if (estado === 'COMPLETADA' && !cita.facturas) {
+    if (cita.estado === 'COMPLETADA' && !cita.facturaAgrupadaId && !cita.facturas && cobrada) {
       console.log('=== CREANDO FACTURA/TICKET AUTOMÁTICA ===')
       console.log('Método de pago:', cita.metodoPago)
       

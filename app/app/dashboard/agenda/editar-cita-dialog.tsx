@@ -121,6 +121,7 @@ export function EditarCitaDialog({
   // Pagos parciales / a cuenta
   const [pagosParciales, setPagosParciales] = useState<any[]>([])
   const [totalPagado, setTotalPagado] = useState(0)
+  const [documentoAgrupado, setDocumentoAgrupado] = useState<{ id: string; numero: string; estado: string; metodoPago: string | null } | null>(null)
   const [saldoPendiente, setSaldoPendiente] = useState(0)
   const [nuevoPago, setNuevoPago] = useState({ importe: '', metodoPago: '', fecha: format(new Date(), 'yyyy-MM-dd'), concepto: '', tpvUserId: '', tpvNombre: '' })
   const [addingPago, setAddingPago] = useState(false)
@@ -147,6 +148,7 @@ export function EditarCitaDialog({
     tpvUserId: '',
     tpvNombre: '',
     vencimientoCredito: '',
+    cobroDiferido: false,
     clienteNombre: '',
     clienteApellido: '',
     clienteTelefono: '',
@@ -330,13 +332,14 @@ export function EditarCitaDialog({
   useEffect(() => {
     const cargarCitaCompleta = async () => {
       if (open && cita) {
+        setDocumentoAgrupado(null)
         setFormData({
           fecha: format(new Date(cita.fecha), 'yyyy-MM-dd'),
           fechaDevolucion: (cita as any).fechaDevolucion ? format(new Date((cita as any).fechaDevolucion), 'yyyy-MM-dd') : '',
           horaInicio: cita.horaInicio,
           horaFin: cita.horaFin,
           box: cita.box,
-          estado: cita.estado,
+          estado: cita.estado === EstadoCita.PAGO_POSTERIOR ? EstadoCita.COMPLETADA : cita.estado,
           observaciones: cita.observaciones || '',
           metodoPago: cita.metodoPago || '',
           ticketsUsados: cita.ticketsUsados || 0,
@@ -345,6 +348,7 @@ export function EditarCitaDialog({
           tpvUserId: (cita as any).tpvUserId || '',
           tpvNombre: (cita as any).tpvNombre || '',
           vencimientoCredito: (cita as any).vencimientoCredito || '',
+          cobroDiferido: !!(cita as any).cobroDiferido || cita.estado === EstadoCita.PAGO_POSTERIOR,
           clienteNombre: cita.cliente?.nombre || '',
           clienteApellido: cita.cliente?.apellido || '',
           clienteTelefono: cita.cliente?.telefono || '',
@@ -379,6 +383,13 @@ export function EditarCitaDialog({
           const response = await fetch(`/api/citas/${cita.id}`)
           if (response.ok) {
             const citaCompleta = await response.json()
+            const agrupado = citaCompleta.documentoAgrupado || null
+            setDocumentoAgrupado(agrupado)
+            setFormData(prev => ({ ...prev,
+              estado: citaCompleta.estado === 'PAGO_POSTERIOR' ? EstadoCita.COMPLETADA : citaCompleta.estado,
+              cobroDiferido: agrupado ? agrupado.estado !== 'PAGADA' : !!citaCompleta.cobroDiferido || citaCompleta.estado === 'PAGO_POSTERIOR',
+              metodoPago: agrupado ? (agrupado.estado === 'PAGADA' ? agrupado.metodoPago || '' : '') : citaCompleta.metodoPago || '',
+            }))
             if (citaCompleta.cita_servicios && citaCompleta.cita_servicios.length > 0) {
               setServiciosSeleccionados(citaCompleta.cita_servicios.map((cs: any) => cs.servicioId))
               // Guardar el precio real registrado en la cita por servicio
@@ -463,7 +474,7 @@ export function EditarCitaDialog({
       const dataToSend = {
         ...formData,
         fechaDevolucion: formData.fechaDevolucion && formData.fechaDevolucion.trim() !== '' ? formData.fechaDevolucion : null,
-        metodoPago: formData.metodoPago && formData.metodoPago.trim() !== '' ? formData.metodoPago : undefined,
+        metodoPago: formData.cobroDiferido ? null : formData.metodoPago || null,
         observaciones: formData.observaciones && formData.observaciones.trim() !== '' ? formData.observaciones : undefined,
         servicios: serviciosData,
         lineasManuales: lineasManuales.filter(lm => lm.descripcion.trim() !== ''),
@@ -473,7 +484,7 @@ export function EditarCitaDialog({
         realizadoPorId: formData.realizadoPorId || null,
         tpvUserId: formData.tpvUserId || null,
         tpvNombre: formData.tpvNombre || null,
-        vencimientoCredito: formData.estado === 'PAGO_POSTERIOR' ? (formData.vencimientoCredito || null) : null,
+        vencimientoCredito: formData.cobroDiferido ? (formData.vencimientoCredito || null) : null,
         clienteNombre: formData.clienteNombre && formData.clienteNombre.trim() !== '' ? formData.clienteNombre.trim() : undefined,
         clienteApellido: formData.clienteApellido !== undefined ? formData.clienteApellido.trim() : undefined,
         clienteTelefono: formData.clienteTelefono && formData.clienteTelefono.trim() !== '' ? formData.clienteTelefono.trim() : undefined,
@@ -663,11 +674,8 @@ export function EditarCitaDialog({
     }
   }
 
-  // La cita se considera COBRADA EN SU TOTALIDAD cuando tiene un método de cobro
-  // asignado o está marcada como COMPLETADA. En ese caso, el cuadro de "Pagos a
-  // cuenta" NO debe seguir mostrando saldo pendiente (los pagos a cuenta son
-  // depósitos parciales previos; el resto se cobró en el cuadro de cobro).
-  const citaCobradaTotal = !!formData.metodoPago || formData.estado === EstadoCita.COMPLETADA
+  // El estado del trabajo no prueba un cobro: manda el documento o el método explícito.
+  const citaCobradaTotal = documentoAgrupado ? documentoAgrupado.estado === 'PAGADA' : (!formData.cobroDiferido && !!formData.metodoPago)
   const pagadoMostrado = citaCobradaTotal ? (cita?.total || 0) : totalPagado
   const pendienteMostrado = citaCobradaTotal ? 0 : saldoPendiente
 
@@ -905,7 +913,7 @@ export function EditarCitaDialog({
                 <SelectValue placeholder="Estado de la cita" />
               </SelectTrigger>
               <SelectContent>
-                {estados.map((estado) => (
+                {estados.filter(estado => estado !== EstadoCita.PAGO_POSTERIOR).map((estado) => (
                   <SelectItem key={estado} value={estado}>
                     {estadoLabel(estado)}
                   </SelectItem>
@@ -913,28 +921,6 @@ export function EditarCitaDialog({
               </SelectContent>
             </Select>
           </div>
-
-          {/* Vencimiento crédito - Solo visible cuando estado es PAGO_POSTERIOR */}
-          {formData.estado === EstadoCita.PAGO_POSTERIOR && (
-            <div className="space-y-2 p-3 bg-indigo-50 rounded-lg border border-indigo-200">
-              <Label className="flex items-center gap-2">
-                <span className="text-indigo-600">💳</span>
-                Vencimiento del crédito
-              </Label>
-              <Select value={formData.vencimientoCredito || ''} onValueChange={(value) =>
-                setFormData(prev => ({ ...prev, vencimientoCredito: value }))
-              }>
-                <SelectTrigger className="bg-white">
-                  <SelectValue placeholder="Selecciona vencimiento" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="SEMANA_VENCIDA">SEMANA VENCIDA</SelectItem>
-                  <SelectItem value="MES_VENCIDO">MES VENCIDO</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-indigo-600">Indica cuándo vence el crédito de esta cita.</p>
-            </div>
-          )}
 
           {/* Tickets de Parking - Solo visible cuando el vehículo está listo o completado */}
           {(formData.estado === EstadoCita.LISTO_PARA_RECOGER || formData.estado === EstadoCita.COMPLETADA) && (
@@ -1306,7 +1292,13 @@ export function EditarCitaDialog({
           <div className="space-y-3">
             <Label>💳 Cobrar ({cita?.total ? `${cita.total.toFixed(2)}€` : 'Sin total'}) {pendienteMostrado <= 0 && (citaCobradaTotal || pagosParciales.length > 0) && '✅ SALDADO'}</Label>
             
-            {formData.metodoPago && (
+            {documentoAgrupado && (
+              <div className="rounded-lg bg-blue-50 p-3 text-sm text-blue-900">
+                Incluida en {documentoAgrupado.numero} · {documentoAgrupado.estado === 'PAGADA' ? 'Pagado' : 'Pendiente de cobro'}.
+                El cobro se gestiona en <a className="underline font-semibold" href={`/dashboard/facturacion?buscar=${documentoAgrupado.numero}`}>Facturación</a>, sin generar otro ticket.
+              </div>
+            )}
+            {formData.metodoPago && !documentoAgrupado && (
               <div className="flex items-center gap-2 p-2 bg-green-50 rounded-lg border border-green-200">
                 <Badge variant="outline" className="bg-green-100 text-green-800">
                   ✅ Pagado: {formData.tpvNombre ? formData.tpvNombre : formData.metodoPago === 'EFECTIVO' ? 'Efectivo' : formData.metodoPago === 'TPV_SUMUP' ? 'TPV SumUp' : formData.metodoPago === 'REVOLUT' ? 'TPV REVOLUT' : 'TPV Unicaja'}
@@ -1323,13 +1315,17 @@ export function EditarCitaDialog({
               </div>
             )}
             
-            {!formData.metodoPago && (
+            {!formData.metodoPago && !documentoAgrupado && (
               <div className="grid grid-cols-2 gap-2">
+                <Button type="button" variant={formData.cobroDiferido ? 'default' : 'outline'} className="h-14"
+                  onClick={() => setFormData(prev => ({ ...prev, cobroDiferido: true, metodoPago: '', tpvUserId: '', tpvNombre: '' }))}>
+                  Pendiente de cobro / Diferido
+                </Button>
                 <Button
                   type="button"
                   variant="outline"
                   className="h-14 flex flex-col items-center justify-center gap-1 border-2 hover:bg-green-50 hover:border-green-500"
-                  onClick={() => setFormData(prev => ({ ...prev, metodoPago: 'EFECTIVO' }))}
+                  onClick={() => setFormData(prev => ({ ...prev, cobroDiferido: false, metodoPago: 'EFECTIVO' }))}
                 >
                   <Banknote className="h-5 w-5 text-green-600" />
                   <span className="text-sm font-medium">Efectivo</span>
@@ -1339,7 +1335,7 @@ export function EditarCitaDialog({
                   type="button"
                   variant="outline"
                   className="h-14 flex flex-col items-center justify-center gap-1 border-2 hover:bg-blue-50 hover:border-blue-500"
-                  onClick={() => setFormData(prev => ({ ...prev, metodoPago: 'TPV_SUMUP' }))}
+                  onClick={() => setFormData(prev => ({ ...prev, cobroDiferido: false, metodoPago: 'TPV_SUMUP' }))}
                 >
                   <CreditCard className="h-5 w-5 text-blue-600" />
                   <span className="text-sm font-medium">TPV SumUp</span>
@@ -1349,7 +1345,7 @@ export function EditarCitaDialog({
                   type="button"
                   variant="outline"
                   className="h-14 flex flex-col items-center justify-center gap-1 border-2 hover:bg-purple-50 hover:border-purple-500"
-                  onClick={() => setFormData(prev => ({ ...prev, metodoPago: 'TPV_UNICAJA' }))}
+                  onClick={() => setFormData(prev => ({ ...prev, cobroDiferido: false, metodoPago: 'TPV_UNICAJA' }))}
                 >
                   <Building2 className="h-5 w-5 text-purple-600" />
                   <span className="text-sm font-medium">TPV Unicaja</span>
@@ -1384,7 +1380,7 @@ export function EditarCitaDialog({
                     type="button"
                     variant="outline"
                     className="h-14 flex flex-col items-center justify-center gap-1 border-2 hover:bg-amber-50 hover:border-amber-500"
-                    onClick={() => setFormData(prev => ({ ...prev, metodoPago: 'TPV_SUMUP', tpvUserId: t.id, tpvNombre: t.tpvNombre }))}
+                    onClick={() => setFormData(prev => ({ ...prev, cobroDiferido: false, metodoPago: 'TPV_SUMUP', tpvUserId: t.id, tpvNombre: t.tpvNombre }))}
                   >
                     <CreditCard className="h-5 w-5 text-amber-600" />
                     <span className="text-xs font-medium text-center leading-tight">{t.tpvNombre}</span>
@@ -1393,8 +1389,31 @@ export function EditarCitaDialog({
               </div>
             )}
 
+          {/* Vencimiento del cobro diferido */}
+          {formData.cobroDiferido && !documentoAgrupado && (
+            <div className="space-y-2 p-3 bg-indigo-50 rounded-lg border border-indigo-200">
+              <Label className="flex items-center gap-2">
+                <span className="text-indigo-600">💳</span>
+                Vencimiento del crédito
+              </Label>
+              <Select value={formData.vencimientoCredito || ''} onValueChange={(value) =>
+                setFormData(prev => ({ ...prev, vencimientoCredito: value }))
+              }>
+                <SelectTrigger className="bg-white">
+                  <SelectValue placeholder="Selecciona vencimiento" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="SEMANA_VENCIDA">SEMANA VENCIDA</SelectItem>
+                  <SelectItem value="MES_VENCIDO">MES VENCIDO</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-indigo-600">Indica cuándo vence el crédito de esta cita.</p>
+            </div>
+          )}
+
+
             {/* Selector de TPV utilizado (autónomo) - solo para pagos con tarjeta */}
-            {tpvsDisponibles.length > 0 && ['TPV_SUMUP', 'TPV_UNICAJA', 'REVOLUT'].includes(formData.metodoPago) && (
+            {!documentoAgrupado && tpvsDisponibles.length > 0 && ['TPV_SUMUP', 'TPV_UNICAJA', 'REVOLUT'].includes(formData.metodoPago) && (
               <div className="space-y-2 pt-1">
                 <Label>💳 TPV utilizado (autónomo)</Label>
                 <Select
@@ -1497,7 +1516,7 @@ export function EditarCitaDialog({
       clienteTelefono={cita?.cliente?.telefono}
       clienteEmail={cita?.cliente?.email}
       onPaymentComplete={(transactionCode) => {
-        setFormData(prev => ({ ...prev, metodoPago: 'TPV_SUMUP' }))
+        setFormData(prev => ({ ...prev, cobroDiferido: false, metodoPago: 'TPV_SUMUP' }))
         toast({
           title: '✅ Pago completado',
           description: `Cobro de ${cita?.total?.toFixed(2)}€ realizado con SumUp`,
@@ -1522,7 +1541,7 @@ export function EditarCitaDialog({
       clienteTelefono={cita?.cliente?.telefono}
       clienteEmail={cita?.cliente?.email}
       onPaymentComplete={() => {
-        setFormData(prev => ({ ...prev, metodoPago: 'REVOLUT' }))
+        setFormData(prev => ({ ...prev, cobroDiferido: false, metodoPago: 'REVOLUT' }))
         toast({
           title: '✅ Pago completado',
           description: `Cobro de ${cita?.total?.toFixed(2)}€ realizado con Revolut`,

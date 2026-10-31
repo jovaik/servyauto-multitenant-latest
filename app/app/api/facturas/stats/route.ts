@@ -133,6 +133,7 @@ export async function GET(request: NextRequest) {
         ...localFilter
       },
       select: {
+        id: true,
         tipo: true,
         total: true,
         estado: true,
@@ -162,6 +163,8 @@ export async function GET(request: NextRequest) {
         ...dateFilterCitas,
         ...localFilter,
         estado: 'COMPLETADA',
+        facturaAgrupadaId: null,
+        cobroDiferido: false,
         total: { not: null },
         metodoPago: { not: null },
         id: { notIn: citasConFacturaIds }
@@ -204,10 +207,12 @@ export async function GET(request: NextRequest) {
     // Suma de TODOS los pagos parciales por cita (sin filtro de fecha) para deducir el resto
     const pagosTodosDeCita = await prisma.pagoParcial.findMany({
       where: { cita: localFilter },
-      select: { citaId: true, importe: true }
+      select: { citaId: true, importe: true, cita: { select: { facturaAgrupadaId: true } } }
     })
     const sumPagosPorCita: Record<string, number> = {}
+    const sumPagosPorAgrupada: Record<string, number> = {}
     for (const p of pagosTodosDeCita) {
+      if (p.cita.facturaAgrupadaId) sumPagosPorAgrupada[p.cita.facturaAgrupadaId] = (sumPagosPorAgrupada[p.cita.facturaAgrupadaId] || 0) + p.importe
       if (!p.citaId) continue
       sumPagosPorCita[p.citaId] = (sumPagosPorCita[p.citaId] || 0) + (p.importe || 0)
     }
@@ -220,7 +225,7 @@ export async function GET(request: NextRequest) {
     const buckets: Record<string, number> = { EFECTIVO: 0, TPV_SUMUP: 0, TPV_UNICAJA: 0, REVOLUT: 0 }
     // Facturas pagadas: solo el RESTO no cubierto por pagos parciales, en el método de la factura
     for (const f of facturasPagadas) {
-      const sp = (f as any).citaId ? (sumPagosPorCita[(f as any).citaId] || 0) : 0
+      const sp = (f as any).citaId ? (sumPagosPorCita[(f as any).citaId] || 0) : (sumPagosPorAgrupada[f.id] || 0)
       const imp = sp > 0 ? Math.round((((f as any).total || 0) - sp) * 100) / 100 : ((f as any).total || 0)
       if (sp > 0 && imp <= 0.01) continue
       const m = (f as any).metodoPago

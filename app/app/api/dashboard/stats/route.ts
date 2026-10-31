@@ -153,6 +153,9 @@ export async function GET(req: NextRequest) {
           lte: endDate,
         },
         estado: 'COMPLETADA',
+        facturaAgrupadaId: null,
+        cobroDiferido: false,
+        metodoPago: { not: null },
         id: { notIn: citasConFacturaIds },
         ...localFilter
       },
@@ -205,7 +208,7 @@ export async function GET(req: NextRequest) {
       }),
       prisma.cita.groupBy({
         by: ['metodoPago'],
-        where: { fecha: { gte: startDate, lte: endDate }, estado: 'COMPLETADA', id: { notIn: citasConFacturaIds }, ...localFilter },
+        where: { fecha: { gte: startDate, lte: endDate }, estado: 'COMPLETADA', facturaAgrupadaId: null, cobroDiferido: false, metodoPago: { not: null }, id: { notIn: citasConFacturaIds }, ...localFilter },
         _sum: { total: true },
       }),
     ])

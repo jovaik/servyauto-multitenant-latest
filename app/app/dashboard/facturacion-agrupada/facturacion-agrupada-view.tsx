@@ -59,6 +59,10 @@ export function FacturacionAgrupadaView() {
   const [tipoDocumento, setTipoDocumento] = useState<'TICKET' | 'FACTURA'>('FACTURA')
   const [metodoPago, setMetodoPago] = useState('PENDIENTE')
   const [generando, setGenerando] = useState(false)
+  const [tpvs, setTpvs] = useState<{ id: string; tpvNombre: string }[]>([])
+  useEffect(() => {
+    fetch('/api/usuarios').then(r => r.ok ? r.json() : []).then(us => setTpvs(Array.isArray(us) ? us.filter(u => u.activo && u.tpvNombre) : [])).catch(console.error)
+  }, [])
   const [datosEmpresa, setDatosEmpresa] = useState({ nombreFiscal: '', nif: '', direccion: '' })
   const [autoSel, setAutoSel] = useState(false)
 
@@ -138,7 +142,9 @@ export function FacturacionAgrupadaView() {
           clienteId: clienteSel.id,
           tipo: tipoDocumento,
           citaIds: citasSeleccionadas.map(c => c.id),
-          metodoPago: metodoPago === 'PENDIENTE' ? null : metodoPago,
+          metodoPago: metodoPago === 'PENDIENTE' ? null : metodoPago.startsWith('TPV:') ? 'TPV_SUMUP' : metodoPago,
+          tpvUserId: metodoPago.startsWith('TPV:') ? metodoPago.slice(4) : null,
+          tpvNombre: metodoPago.startsWith('TPV:') ? tpvs.find(t => t.id === metodoPago.slice(4))?.tpvNombre : null,
           datosFacturacion: tipoDocumento === 'FACTURA' && (datosEmpresa.nombreFiscal.trim() || datosEmpresa.nif.trim())
             ? {
                 nombreFiscal: datosEmpresa.nombreFiscal.trim().toUpperCase(),
@@ -354,6 +360,7 @@ export function FacturacionAgrupadaView() {
                         <SelectItem value="TPV_SUMUP">TPV SumUp</SelectItem>
                         <SelectItem value="TPV_UNICAJA">TPV Unicaja</SelectItem>
                         <SelectItem value="REVOLUT">Revolut</SelectItem>
+                        {tpvs.map(t => <SelectItem key={t.id} value={`TPV:${t.id}`}>{t.tpvNombre}</SelectItem> )}
                       </SelectContent>
                     </Select>
                   </div>

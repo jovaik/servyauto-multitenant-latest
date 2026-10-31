@@ -142,6 +142,12 @@ export async function PUT(
       }
     })
 
+    if (estado === 'PAGADA' || estado === 'PENDIENTE' || estado === 'VENCIDA') {
+      await prisma.cita.updateMany({
+        where: { facturaAgrupadaId: factura.id },
+        data: { estado: 'COMPLETADA', cobroDiferido: factura.estado !== 'PAGADA', metodoPago: factura.estado === 'PAGADA' ? factura.metodoPago : null },
+      })
+    }
     console.log('=== FACTURA ACTUALIZADA ===')
 
     // ℹ️ NOTA: La solicitud de reseña se envía desde las CITAS cuando se marcan como COMPLETADA

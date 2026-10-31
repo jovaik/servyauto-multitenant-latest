@@ -31,7 +31,7 @@ const mocks: Record<string, any> = {
         assert.equal(where.facturaAgrupadaId, null)
         return available ? citas : []
       },
-      updateMany: async (args: any) => { linked = args; available = false },
+      updateMany: async (args: any) => { if (args.data.facturaAgrupadaId) { linked = args; available = false }; return { count: available || linked ? 3 : 0 } },
     },
     factura: {
       findFirst: async ({ where }: any) => ({ numero: `${where.numero.startsWith}0012` }),
@@ -46,6 +46,7 @@ Module._load = function(request: string, parent: any, isMain: boolean) {
   if (Object.prototype.hasOwnProperty.call(mocks, request)) return mocks[request]
   return originalLoad.call(this, request, parent, isMain)
 }
+mocks['@/lib/db'].prisma.$transaction = (callback: any) => callback(mocks['@/lib/db'].prisma)
 const { POST } = require('../app/api/facturacion-agrupada/route')
 const { NextRequest } = require('next/server')
 function request(body: any) {
@@ -72,6 +73,8 @@ async function main() {
       assert.equal(!!created.fechaPago, !!metodoPago)
       assert.equal(created.localId, 'local-test')
       assert.equal(linked.data.facturaAgrupadaId, 'document-test')
+      assert.equal(linked.data.estado, 'COMPLETADA')
+      assert.equal(linked.data.cobroDiferido, !metodoPago)
       if (metodoPago) assert.equal(notification.documentType, expected)
       else assert.equal(notification, undefined)
       const repeated = await POST(request(payload))

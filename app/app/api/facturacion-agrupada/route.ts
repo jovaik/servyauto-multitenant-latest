@@ -170,7 +170,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { clienteId, citaIds, metodoPago, datosFacturacion, tipo = 'FACTURA' } = body
+    const { clienteId, citaIds, metodoPago, datosFacturacion, tipo = 'FACTURA', tpvUserId, tpvNombre } = body
 
     if (tipo !== 'TICKET' && tipo !== 'FACTURA') {
       return NextResponse.json({ error: 'Selecciona Ticket o Factura' }, { status: 400 })
@@ -202,10 +202,13 @@ export async function POST(req: NextRequest) {
       orderBy: { fecha: 'asc' },
     })
 
-    if (citas.length === 0) {
+    if (citas.length !== new Set(citaIds).size || citas.length === 0) {
       return NextResponse.json({ error: 'No hay citas facturables en la selección' }, { status: 400 })
     }
 
+    if (new Set(citas.map(c => c.localId)).size !== 1) {
+      return NextResponse.json({ error: 'Agrupa únicamente servicios del mismo local' }, { status: 400 })
+    }
     const cliente = await prisma.cliente.findUnique({ where: { id: clienteId } })
     if (!cliente) {
       return NextResponse.json({ error: 'Cliente no encontrado' }, { status: 404 })
@@ -257,7 +260,14 @@ export async function POST(req: NextRequest) {
     const metodoValido = ['EFECTIVO', 'TPV_SUMUP', 'TPV_UNICAJA', 'REVOLUT'].includes(metodoPago)
     const estado = metodoValido ? 'PAGADA' : 'PENDIENTE'
 
-    const factura = await prisma.factura.create({
+    const factura = await prisma.$transaction(async (tx) => {
+      // Bloquear filas antes de emitir: una selección concurrente nunca crea otro documento.
+      const bloqueadas = await tx.cita.updateMany({
+        where: { id: { in: citas.map(c => c.id) }, facturaAgrupadaId: null, facturas: { is: null }, ...localFilter },
+        data: { estado: 'COMPLETADA' },
+      })
+      if (bloqueadas.count !== citas.length) throw new Error('Algún servicio ya ha sido facturado. Recarga la selección.')
+      const documento = await tx.factura.create({
       data: {
         numero,
         tipo,
@@ -270,7 +280,9 @@ export async function POST(req: NextRequest) {
         datosFacturacion: JSON.stringify(datos),
         clienteId,
         citaId: null,
-        localId: localIdParaFactura,
+        localId: citas[0].localId || localIdParaFactura,
+        tpvUserId: metodoValido && metodoPago !== 'EFECTIVO' ? tpvUserId || null : null,
+        tpvNombre: metodoValido && metodoPago !== 'EFECTIVO' ? tpvNombre || null : null,
         creadoPorId: (session.user as any)?.id || null,
         creadoPorNombre: session.user?.name || session.user?.email || 'Sistema',
         factura_items: {
@@ -286,10 +298,19 @@ export async function POST(req: NextRequest) {
       include: { cliente: true, factura_items: true, local: true },
     })
 
-    // Bloquear las citas incluidas para que no se vuelvan a facturar
-    await prisma.cita.updateMany({
-      where: { id: { in: citas.map((c: any) => c.id) } },
-      data: { facturaAgrupadaId: factura.id },
+      // Finalizar el trabajo NO implica cobrar: manda el estado del documento.
+      await tx.cita.updateMany({
+        where: { id: { in: citas.map(c => c.id) } },
+        data: {
+          facturaAgrupadaId: documento.id,
+          estado: 'COMPLETADA',
+          cobroDiferido: !metodoValido,
+          metodoPago: metodoValido ? metodoPago : null,
+          completadoPorId: (session.user as any)?.id || null,
+          completadoPorNombre: session.user?.name || session.user?.email || 'Sistema',
+        },
+      })
+      return documento
     })
 
     // Solo notificar a GSControl como ingreso si realmente se ha cobrado

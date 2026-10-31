@@ -242,6 +242,7 @@ model Cita {
   tpvNombre           String?
   facturaAgrupadaId   String?
   vencimientoCredito  String?
+  cobroDiferido        Boolean          @default(false)
   cita_servicios      cita_servicios[]
   cliente             Cliente          @relation(fields: [clienteId], references: [id])
   local               Local?           @relation(fields: [localId], references: [id])
@@ -256,6 +257,8 @@ model Cita {
   pagosParciales      PagoParcial[]
   costesInternos      CitaCosteInterno[]
 
+  @@index([facturaAgrupadaId])
+  @@index([localId, estado, fecha])
   @@map("citas")
 }
 
@@ -289,6 +292,7 @@ model PagoParcial {
   createdAt       DateTime   @default(now())
   cita            Cita       @relation(fields: [citaId], references: [id], onDelete: Cascade)
 
+  @@index([citaId])
   @@map("pagos_parciales")
 }
 

@@ -40,10 +40,14 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
     const cita = await prisma.cita.findUnique({
       where: { id: params.id },
-      select: { id: true, total: true, localId: true },
+      select: { id: true, total: true, localId: true, facturaAgrupadaId: true },
     })
     if (!cita) return NextResponse.json({ error: 'Cita no encontrada' }, { status: 404 })
 
+    if (cita.facturaAgrupadaId) {
+      const documento = await prisma.factura.findUnique({ where: { id: cita.facturaAgrupadaId }, select: { estado: true } })
+      if (documento?.estado === 'PAGADA') return NextResponse.json({ error: 'El documento agrupado ya está pagado. No se puede registrar otro cobro.' }, { status: 409 })
+    }
     const body = await req.json()
     const importe = parseFloat(body.importe)
     if (!importe || importe <= 0) {

@@ -81,7 +81,9 @@ export default function DiarioCajaView() {
         if (Array.isArray(pd)) pagosData = pd
       } catch {}
       const sumPagosPorCita: Record<string, number> = {}
+      const sumPagosPorAgrupada: Record<string, number> = {}
       for (const p of pagosData) {
+        if (p.facturaAgrupadaId) sumPagosPorAgrupada[p.facturaAgrupadaId] = (sumPagosPorAgrupada[p.facturaAgrupadaId] || 0) + (p.importe || 0)
         if (!p.citaId) continue
         sumPagosPorCita[p.citaId] = (sumPagosPorCita[p.citaId] || 0) + (p.importe || 0)
       }
@@ -90,7 +92,7 @@ export default function DiarioCajaView() {
       // Si la cita tiene pagos parciales, se muestran ESTOS (con su cuenta/TPV) y la factura
       // solo aporta el RESTO no cubierto por los pagos (para no contar doble ni perder importe).
       const ingresosFacturas = (facturas || []).filter((f: any) => f.estado === 'PAGADA').flatMap((f: any) => {
-        const sumPagos = f.citaId ? (sumPagosPorCita[f.citaId] || 0) : 0
+        const sumPagos = f.citaId ? (sumPagosPorCita[f.citaId] || 0) : (sumPagosPorAgrupada[f.id] || 0)
         const importeFactura = sumPagos > 0 ? Math.round(((f.total || 0) - sumPagos) * 100) / 100 : (f.total || 0)
         if (sumPagos > 0 && importeFactura <= 0.01) return [] // cubierto por los pagos parciales
         const base = f.tipo === 'TICKET' ? `Ticket #${f.numero}` : `Factura #${f.numero}`
