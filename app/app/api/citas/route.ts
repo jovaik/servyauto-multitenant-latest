@@ -50,9 +50,13 @@ export async function GET(req: NextRequest) {
       whereClause.fecha = { gte: fechaInicio }
     }
 
-    // Operaciones sin completar: excluye completadas, canceladas y no-show
+    // Pendientes de trabajo o de cobro; nunca reabrir una operación ya agrupada.
     if (pendientes === 'true') {
-      whereClause.estado = { notIn: ['COMPLETADA', 'CANCELADA', 'NO_SHOW'] }
+      whereClause.estado = { notIn: ['CANCELADA', 'NO_SHOW'] }
+      whereClause.AND = [{ OR: [
+        { estado: { not: 'COMPLETADA' } },
+        { estado: 'COMPLETADA', cobroDiferido: true },
+      ] }]
       whereClause.facturaAgrupadaId = null
     }
 
@@ -73,7 +77,8 @@ export async function GET(req: NextRequest) {
       },
     })
 
-    return NextResponse.json(citas || [])
+    return NextResponse.json(citas.map(c => c.estado === 'PAGO_POSTERIOR'
+      ? { ...c, estado: 'COMPLETADA', cobroDiferido: true, metodoPago: null } : c))
   } catch (error) {
     console.error('Error fetching appointments:', error)
     return NextResponse.json(

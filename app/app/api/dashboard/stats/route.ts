@@ -1,3 +1,4 @@
+import { facturasPorLocal } from '@/lib/factura-local'
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
@@ -89,7 +90,7 @@ export async function GET(req: NextRequest) {
     const localFilter = buildLocalFilter(localContext)
 
     // Obtener IDs de citas que ya tienen factura asociada (para evitar duplicados)
-    const citasConFactura = await prisma.factura.findMany({
+    const citasConFactura = await facturasPorLocal.findMany({
       where: {
         citaId: { not: null },
         ...localFilter
@@ -131,7 +132,7 @@ export async function GET(req: NextRequest) {
     ])
 
     // Obtener facturas pagadas del período
-    const facturasDelPeriodo = await prisma.factura.aggregate({
+    const facturasDelPeriodo = await facturasPorLocal.aggregate({
       where: {
         fecha: {
           gte: startDate,
@@ -201,7 +202,7 @@ export async function GET(req: NextRequest) {
 
     // Desglose por método de pago (facturas pagadas + citas completadas sin factura)
     const [facturasPorMetodo, citasPorMetodo] = await Promise.all([
-      prisma.factura.groupBy({
+      facturasPorLocal.groupBy({
         by: ['metodoPago'],
         where: { fecha: { gte: startDate, lte: endDate }, estado: 'PAGADA', ...localFilter },
         _sum: { total: true },
@@ -235,7 +236,7 @@ export async function GET(req: NextRequest) {
       const endDateMonth = new Date(currentYear, month + 1, 0, 23, 59, 59)
 
       const [facturasDelMes, citasDelMes, ingresosAdicionalesDelMes, gastos] = await Promise.all([
-        prisma.factura.aggregate({
+        facturasPorLocal.aggregate({
           where: {
             fecha: {
               gte: startDateMonth,
@@ -255,6 +256,7 @@ export async function GET(req: NextRequest) {
               lte: endDateMonth,
             },
             estado: 'COMPLETADA',
+            facturaAgrupadaId: null, cobroDiferido: false, metodoPago: { not: null },
             id: { notIn: citasConFacturaIds },
             ...localFilter
           },
@@ -306,7 +308,7 @@ export async function GET(req: NextRequest) {
     const startOfYear = new Date(currentYear, 0, 1)
     const endOfYear = new Date(currentYear, 11, 31, 23, 59, 59)
     
-    const facturasDelAnio = await prisma.factura.findMany({
+    const facturasDelAnio = await facturasPorLocal.findMany({
       where: {
         createdAt: {
           gte: startOfYear,

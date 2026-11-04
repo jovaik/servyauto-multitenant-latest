@@ -33,8 +33,10 @@ const mocks: Record<string, any> = {
       },
       updateMany: async (args: any) => { if (args.data.facturaAgrupadaId) { linked = args; available = false }; return { count: available || linked ? 3 : 0 } },
     },
+    $executeRaw: async () => 1,
+    factura_items: { findMany: async () => [] },
     factura: {
-      findFirst: async ({ where }: any) => ({ numero: `${where.numero.startsWith}0012` }),
+      findMany: async ({ where }: any) => [{ numero: `${where.numero.startsWith}0012` }],
       create: async ({ data }: any) => {
         created = data
         return { ...data, id: 'document-test', createdAt: new Date(), cliente }

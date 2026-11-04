@@ -1,3 +1,4 @@
+import { facturasPorLocal } from '@/lib/factura-local'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 
@@ -140,7 +141,7 @@ export async function GET(request: NextRequest) {
     }
 
     // ---- VENTAS (IVA repercutido) — TODOS los movimientos (FACTURA y TICKET), TODOS los locales ----
-    const ventas = await prisma.factura.findMany({
+    const ventas = await facturasPorLocal.findMany({
       where: {
         ...tipoFilter,
         fecha: { gte: startDate, lte: endDate },

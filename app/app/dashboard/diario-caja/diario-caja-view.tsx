@@ -93,7 +93,8 @@ export default function DiarioCajaView() {
       // solo aporta el RESTO no cubierto por los pagos (para no contar doble ni perder importe).
       const ingresosFacturas = (facturas || []).filter((f: any) => f.estado === 'PAGADA').flatMap((f: any) => {
         const sumPagos = f.citaId ? (sumPagosPorCita[f.citaId] || 0) : (sumPagosPorAgrupada[f.id] || 0)
-        const importeFactura = sumPagos > 0 ? Math.round(((f.total || 0) - sumPagos) * 100) / 100 : (f.total || 0)
+        const totalLocal = f.totalLocal ?? f.total ?? 0
+        const importeFactura = sumPagos > 0 ? Math.round((totalLocal - sumPagos) * 100) / 100 : totalLocal
         if (sumPagos > 0 && importeFactura <= 0.01) return [] // cubierto por los pagos parciales
         const base = f.tipo === 'TICKET' ? `Ticket #${f.numero}` : `Factura #${f.numero}`
         return [{

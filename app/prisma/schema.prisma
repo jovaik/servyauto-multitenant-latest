@@ -331,12 +331,15 @@ model Factura {
   localId          String?
   tpvUserId        String?
   tpvNombre        String?
+  localesAgrupados String[]        @default([])
+  repartoLocales   Json?
   factura_items    factura_items[]
   citas            Cita?           @relation(fields: [citaId], references: [id])
   cliente          Cliente         @relation(fields: [clienteId], references: [id])
   local            Local?          @relation(fields: [localId], references: [id])
   servicioRapido   ServicioTaller?
 
+  @@index([localesAgrupados], type: Gin)
   @@map("facturas")
 }
 

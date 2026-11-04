@@ -39,7 +39,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     const documentoAgrupado = cita.facturaAgrupadaId
       ? await prisma.factura.findUnique({ where: { id: cita.facturaAgrupadaId }, select: { id: true, numero: true, estado: true, metodoPago: true } })
       : null
-    return NextResponse.json({ ...cita, documentoAgrupado })
+    return NextResponse.json({ ...cita, ...(cita.estado === 'PAGO_POSTERIOR'
+      ? { estado: 'COMPLETADA', cobroDiferido: true, metodoPago: null } : {}), documentoAgrupado })
   } catch (error: any) {
     console.error('Error al obtener cita:', error)
     return NextResponse.json({ error: 'Error al obtener cita', message: error.message }, { status: 500 })

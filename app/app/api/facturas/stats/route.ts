@@ -1,3 +1,4 @@
+import { facturasPorLocal } from '@/lib/factura-local'
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
@@ -127,7 +128,7 @@ export async function GET(request: NextRequest) {
     const dateFilterGastos = buildDateFilterGastos()
 
     // Obtener todas las facturas (incluyendo tickets) con filtro de fecha Y local
-    const todasFacturas = await prisma.factura.findMany({
+    const todasFacturas = await facturasPorLocal.findMany({
       where: {
         ...dateFilterFacturas,
         ...localFilter
@@ -144,7 +145,7 @@ export async function GET(request: NextRequest) {
     })
 
     // Obtener IDs de citas que ya tienen factura asociada (para evitar duplicados) - filtrado por local
-    const citasConFactura = await prisma.factura.findMany({
+    const citasConFactura = await facturasPorLocal.findMany({
       where: {
         citaId: { not: null },
         ...localFilter

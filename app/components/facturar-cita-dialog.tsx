@@ -13,6 +13,7 @@ export interface CitaFacturable {
   id: string
   fecha: string
   estado?: string
+  cobroDiferido?: boolean
   total: number
   servicios?: string
   vehiculo?: { matricula?: string; marca?: string; modelo?: string } | null

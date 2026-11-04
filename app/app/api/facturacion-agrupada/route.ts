@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
+import { randomUUID } from 'crypto'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
@@ -35,9 +36,11 @@ export async function GET(req: NextRequest) {
     if (!localContext) {
       return NextResponse.json({ clientes: [], citas: [] })
     }
-    const localFilter = buildLocalFilter(localContext)
-
+    // Agrupar permite todos los locales autorizados, sin saltarse permisos del usuario.
     const { searchParams } = new URL(req.url)
+    const localFilter = buildLocalFilter(searchParams.get('todosLocales') === 'true'
+      ? { ...localContext, selectedLocalId: undefined } : localContext)
+
     const clienteId = searchParams.get('clienteId')
     const desdeStr = searchParams.get('desde')
     const hastaStr = searchParams.get('hasta')
@@ -77,7 +80,8 @@ export async function GET(req: NextRequest) {
       const out = citas.map((c: any) => ({
         id: c.id,
         fecha: c.fecha,
-        estado: c.estado,
+        estado: c.estado === 'PAGO_POSTERIOR' ? 'COMPLETADA' : c.estado,
+        cobroDiferido: c.cobroDiferido || c.estado === 'PAGO_POSTERIOR',
         total: c.total || 0,
         servicios: describirServicios(c),
         vehiculo: c.vehiculo
@@ -129,6 +133,7 @@ export async function GET(req: NextRequest) {
     const citas = await prisma.cita.findMany({
       where: { ...baseWhere, clienteId },
       include: {
+        local: { select: { nombre: true } },
         vehiculo: { select: { matricula: true, marca: true, modelo: true } },
         cita_servicios: { include: { servicios: { select: { nombre: true } } } },
         lineasManuales: true,
@@ -139,6 +144,8 @@ export async function GET(req: NextRequest) {
     const citasOut = citas.map((c: any) => ({
       id: c.id,
       fecha: c.fecha,
+      localNombre: c.local?.nombre || 'Sin local',
+      cobroDiferido: c.cobroDiferido || c.estado === 'PAGO_POSTERIOR',
       matricula: c.vehiculo?.matricula || '',
       marca: c.vehiculo?.marca || '',
       modelo: c.vehiculo?.modelo || '',
@@ -170,7 +177,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { clienteId, citaIds, metodoPago, datosFacturacion, tipo = 'FACTURA', tpvUserId, tpvNombre } = body
+    const { clienteId, citaIds, metodoPago, datosFacturacion, tipo = 'FACTURA', tpvUserId, tpvNombre, todosLocales = false } = body
 
     if (tipo !== 'TICKET' && tipo !== 'FACTURA') {
       return NextResponse.json({ error: 'Selecciona Ticket o Factura' }, { status: 400 })
@@ -182,13 +189,15 @@ export async function POST(req: NextRequest) {
     }
 
     const localContext = await getLocalContext()
-    const localFilter = localContext ? buildLocalFilter(localContext) : {}
+    if (!localContext) return NextResponse.json({ error: 'Sin acceso a locales' }, { status: 403 })
+    const localFilter = buildLocalFilter(todosLocales ? { ...localContext, selectedLocalId: undefined } : localContext)
     const localIdParaFactura = localContext ? getLocalIdForCreate(localContext) : null
 
     // Cargar las citas seleccionadas (verificando que son facturables y del cliente)
     const citas = await prisma.cita.findMany({
       where: {
         id: { in: citaIds },
+        estado: { notIn: ['CANCELADA', 'NO_SHOW'] },
         clienteId,
         ...localFilter,
         facturas: { is: null },
@@ -206,9 +215,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No hay citas facturables en la selección' }, { status: 400 })
     }
 
-    if (new Set(citas.map(c => c.localId)).size !== 1) {
-      return NextResponse.json({ error: 'Agrupa únicamente servicios del mismo local' }, { status: 400 })
+    if (new Set(citaIds).size !== citaIds.length) {
+      return NextResponse.json({ error: 'Hay servicios repetidos en la selección' }, { status: 400 })
     }
+    const esMultilocal = new Set(citas.map(c => c.localId)).size > 1
+    if (esMultilocal && citas.some(c => !c.localId)) {
+      return NextResponse.json({ error: 'Asigna un local a todos los servicios antes de agruparlos entre locales' }, { status: 400 })
+    }
+    const reparto = Array.from(new Set(citas.map(c => c.localId))).sort().map(localId => ({
+      localId: localId as string,
+      total: Math.round(citas.filter(c => c.localId === localId).reduce((s, c) => s + (c.total || 0), 0) * 100) / 100,
+    }))
     const cliente = await prisma.cliente.findUnique({ where: { id: clienteId } })
     if (!cliente) {
       return NextResponse.json({ error: 'Cliente no encontrado' }, { status: 404 })
@@ -235,16 +252,7 @@ export async function POST(req: NextRequest) {
     // Conservar las series existentes: TICK para tickets y FAC para facturas.
     const anio = new Date().getFullYear()
     const prefijo = tipo === 'TICKET' ? 'TICK' : 'FAC'
-    const ultimo = await prisma.factura.findFirst({
-      where: { numero: { startsWith: `${prefijo}-${anio}-` } },
-      orderBy: { createdAt: 'desc' },
-    })
-    let secuencia = 1
-    if (ultimo) {
-      const partes = ultimo.numero.split('-')
-      if (partes.length === 3 && partes[0] === prefijo) secuencia = (parseInt(partes[2]) || 0) + 1
-    }
-    const numero = `${prefijo}-${anio}-${secuencia.toString().padStart(4, '0')}`
+    const serie = `${prefijo}-${anio}-`
 
     // Datos fiscales del cliente para la factura
     const datos = datosFacturacion && Object.keys(datosFacturacion).length > 0
@@ -261,6 +269,12 @@ export async function POST(req: NextRequest) {
     const estado = metodoValido ? 'PAGADA' : 'PENDIENTE'
 
     const factura = await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${serie}))`
+      const documentosSerie = await tx.factura.findMany({ where: { numero: { startsWith: serie } }, select: { numero: true } })
+      // Las líneas antiguas reservan también números de documentos convertidos.
+      const lineasSerie = await tx.factura_items.findMany({ where: { id: { startsWith: serie } }, select: { id: true } })
+      const secuencia = Math.max(0, ...documentosSerie.map(d => parseInt(d.numero.split('-')[2]) || 0), ...lineasSerie.map(l => parseInt(l.id.split('-')[2]) || 0)) + 1
+      const numero = `${serie}${secuencia.toString().padStart(4, '0')}`
       // Bloquear filas antes de emitir: una selección concurrente nunca crea otro documento.
       const bloqueadas = await tx.cita.updateMany({
         where: { id: { in: citas.map(c => c.id) }, facturaAgrupadaId: null, facturas: { is: null }, ...localFilter },
@@ -280,14 +294,15 @@ export async function POST(req: NextRequest) {
         datosFacturacion: JSON.stringify(datos),
         clienteId,
         citaId: null,
-        localId: citas[0].localId || localIdParaFactura,
+        localId: esMultilocal ? null : citas[0].localId || localIdParaFactura,
+        ...(esMultilocal ? { localesAgrupados: reparto.map(r => r.localId), repartoLocales: reparto } : {}),
         tpvUserId: metodoValido && metodoPago !== 'EFECTIVO' ? tpvUserId || null : null,
         tpvNombre: metodoValido && metodoPago !== 'EFECTIVO' ? tpvNombre || null : null,
         creadoPorId: (session.user as any)?.id || null,
         creadoPorNombre: session.user?.name || session.user?.email || 'Sistema',
         factura_items: {
           create: items.map((item, index) => ({
-            id: `${numero}-${index + 1}`,
+            id: `${numero}-${index + 1}-${randomUUID()}`,
             descripcion: item.descripcion,
             cantidad: item.cantidad,
             precio: item.precio,

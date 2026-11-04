@@ -34,6 +34,8 @@ interface CitaFacturable {
   marca: string
   modelo: string
   servicios: string
+  localNombre?: string
+  cobroDiferido?: boolean
   total: number
 }
 
@@ -68,7 +70,7 @@ export function FacturacionAgrupadaView() {
 
   const cargarClientes = useCallback(() => {
     setLoadingClientes(true)
-    fetch('/api/facturacion-agrupada')
+    fetch('/api/facturacion-agrupada?todosLocales=true')
       .then(r => r.ok ? r.json() : { clientes: [] })
       .then(d => setClientes(d.clientes || []))
       .catch(() => setClientes([]))
@@ -86,7 +88,7 @@ export function FacturacionAgrupadaView() {
       direccion: '',
     })
     setLoadingCitas(true)
-    const params = new URLSearchParams({ clienteId: cliente.id })
+    const params = new URLSearchParams({ clienteId: cliente.id, todosLocales: 'true' })
     if (desde) params.set('desde', desde)
     if (hasta) params.set('hasta', hasta)
     fetch(`/api/facturacion-agrupada?${params.toString()}`)
@@ -140,6 +142,7 @@ export function FacturacionAgrupadaView() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           clienteId: clienteSel.id,
+          todosLocales: true,
           tipo: tipoDocumento,
           citaIds: citasSeleccionadas.map(c => c.id),
           metodoPago: metodoPago === 'PENDIENTE' ? null : metodoPago.startsWith('TPV:') ? 'TPV_SUMUP' : metodoPago,
@@ -190,7 +193,7 @@ export function FacturacionAgrupadaView() {
         <div>
           <h1 className="text-2xl font-bold">Tickets y Facturas Agrupados</h1>
           <p className="text-sm text-muted-foreground">
-            Agrupa los servicios pendientes de un cliente en un ticket o una factura, con una línea por servicio.
+            Agrupa los servicios pendientes de un cliente de todos tus locales autorizados en un único ticket o factura. Cada servicio conserva su local de origen.
           </p>
         </div>
       </div>
@@ -292,6 +295,7 @@ export function FacturacionAgrupadaView() {
                         <th className="p-2">Matrícula</th>
                         <th className="p-2">Vehículo</th>
                         <th className="p-2">Servicios</th>
+                        <th className="p-2">Local / cobro</th>
                         <th className="p-2 text-right">Importe</th>
                       </tr>
                     </thead>
@@ -308,6 +312,7 @@ export function FacturacionAgrupadaView() {
                           <td className="p-2 font-medium">{c.matricula || '—'}</td>
                           <td className="p-2">{[c.marca, c.modelo].filter(Boolean).join(' ') || '—'}</td>
                           <td className="p-2 text-muted-foreground">{c.servicios}</td>
+                          <td className="p-2 text-xs">{c.localNombre}{c.cobroDiferido && <div className="text-indigo-800">Pago diferido</div>}</td>
                           <td className="p-2 text-right font-semibold whitespace-nowrap">{fmtEur(c.total)}</td>
                         </tr>
                       ))}

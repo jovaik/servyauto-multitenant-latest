@@ -1,3 +1,4 @@
+import { facturasPorLocal } from '@/lib/factura-local'
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
     if (tipoFilter) whereClause.tipo = tipoFilter
 
     // Obtener facturas y tickets (documentos reales)
-    const facturas = await prisma.factura.findMany({
+    const facturas = await facturasPorLocal.findMany({
       where: whereClause,
       include: {
         cliente: {
@@ -62,7 +63,7 @@ export async function GET(request: NextRequest) {
         createdAt: 'desc'
       },
       ...(limitParam ? { take: parseInt(limitParam) } : {}),
-    })
+    }, true)
 
     return NextResponse.json(facturas)
   } catch (error) {

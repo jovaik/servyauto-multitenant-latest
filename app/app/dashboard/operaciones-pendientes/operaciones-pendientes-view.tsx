@@ -16,6 +16,7 @@ interface CitaPendiente {
   fecha: string
   horaInicio?: string
   estado: string
+  cobroDiferido?: boolean
   total?: number
   observaciones?: string
   vencimientoCredito?: string
@@ -47,7 +48,7 @@ const getEstadoLabel = (estado?: string) => {
     case 'CONFIRMADA': return 'CONFIRMADA'
     case 'EN_PROCESO': return 'EN PROCESO'
     case 'LISTO_PARA_RECOGER': return 'LISTO PARA RECOGER'
-    case 'PAGO_POSTERIOR': return 'PAGO POSTERIOR (CRÉDITO)'
+    case 'PAGO_POSTERIOR': return 'COMPLETADA · PAGO DIFERIDO'
     default: return estado || '-'
   }
 }
@@ -108,7 +109,7 @@ export function OperacionesPendientesView() {
             Operaciones sin completar
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Citas de la agenda que aún no se han marcado como completadas (excluye canceladas y no-show).
+            Trabajos pendientes y vehículos entregados con pago diferido. Excluye canceladas, no-show y operaciones ya agrupadas.
           </p>
         </div>
         <Button variant="outline" onClick={loadData} disabled={loading}>
@@ -196,7 +197,8 @@ export function OperacionesPendientesView() {
                             <Badge variant="outline" className={getEstadoColor(c.estado)}>
                               {getEstadoLabel(c.estado)}
                             </Badge>
-                            {c.estado === 'PAGO_POSTERIOR' && c.vencimientoCredito && (
+                            {c.cobroDiferido && c.estado !== 'PAGO_POSTERIOR' && <Badge variant="outline" className="bg-indigo-50 text-indigo-800">PAGO DIFERIDO</Badge>}
+                            {(c.cobroDiferido || c.estado === 'PAGO_POSTERIOR') && c.vencimientoCredito && (
                               <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200 text-[10px]">
                                 💳 {getVencimientoLabel(c.vencimientoCredito)}
                               </Badge>
@@ -209,7 +211,7 @@ export function OperacionesPendientesView() {
                         <td className="py-2 pr-3 text-right font-semibold">{(Number(c.total) || 0).toFixed(2)}€</td>
                         <td className="py-2 pr-3 text-right">
                           <div className="flex items-center justify-end gap-2">
-                            {c.estado === 'PAGO_POSTERIOR' && c.cliente?.id && (
+                            {(c.cobroDiferido || c.estado === 'PAGO_POSTERIOR') && c.cliente?.id && (
                               <Button
                                 size="sm"
                                 onClick={() => router.push(`/dashboard/facturacion?tab=pendientes`)}

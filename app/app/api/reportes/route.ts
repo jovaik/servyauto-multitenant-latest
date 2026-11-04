@@ -1,3 +1,4 @@
+import { facturasPorLocal } from '@/lib/factura-local'
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
@@ -93,7 +94,7 @@ export async function GET(request: NextRequest) {
     }
 
     // IDs de citas con factura para evitar duplicar ingresos
-    const citasConFactura = await prisma.factura.findMany({
+    const citasConFactura = await facturasPorLocal.findMany({
       where: { citaId: { not: null }, ...localFilter },
       select: { citaId: true }
     })
@@ -119,13 +120,13 @@ export async function GET(request: NextRequest) {
       ingresosAdicionalesDetalle,
     ] = await Promise.all([
       // Facturas pagadas
-      prisma.factura.aggregate({
+      facturasPorLocal.aggregate({
         where: { fecha: { gte: startDate, lte: endDate }, estado: 'PAGADA', ...localFilter },
         _sum: { total: true },
         _count: true,
       }),
       // Facturas pendientes
-      prisma.factura.aggregate({
+      facturasPorLocal.aggregate({
         where: { fecha: { gte: startDate, lte: endDate }, estado: 'PENDIENTE', ...localFilter },
         _sum: { total: true },
         _count: true,
@@ -171,14 +172,14 @@ export async function GET(request: NextRequest) {
         where: { createdAt: { gte: startDate, lte: endDate }, ...localFilter }
       }),
       // Detalle facturas por método de pago
-      prisma.factura.groupBy({
+      facturasPorLocal.groupBy({
         by: ['metodoPago'],
         where: { fecha: { gte: startDate, lte: endDate }, estado: 'PAGADA', ...localFilter },
         _sum: { total: true },
         _count: true,
       }),
       // Detalle facturas por TPV (autónomo)
-      prisma.factura.groupBy({
+      facturasPorLocal.groupBy({
         by: ['tpvNombre'],
         where: { fecha: { gte: startDate, lte: endDate }, estado: 'PAGADA', tpvNombre: { not: null }, ...localFilter },
         _sum: { total: true },
@@ -190,6 +191,7 @@ export async function GET(request: NextRequest) {
         where: {
           fecha: { gte: startDate, lte: endDate },
           estado: 'COMPLETADA',
+          facturaAgrupadaId: null, cobroDiferido: false, metodoPago: { not: null },
           tpvNombre: { not: null },
           id: { notIn: citasConFacturaIds.length > 0 ? citasConFacturaIds : ['__none__'] },
           ...localFilter
@@ -261,7 +263,7 @@ export async function GET(request: NextRequest) {
     })
 
     // Top servicios del periodo
-    const facturasIdsPeriodo = await prisma.factura.findMany({
+    const facturasIdsPeriodo = await facturasPorLocal.findMany({
       where: { fecha: { gte: startDate, lte: endDate }, estado: 'PAGADA', ...localFilter },
       select: { id: true },
     })
@@ -347,7 +349,7 @@ export async function GET(request: NextRequest) {
 
       datosLocales = await Promise.all(locales.map(async (local: any) => {
         const [facturasLocal, gastosLocal, ingresosAdLocal, citasLocal] = await Promise.all([
-          prisma.factura.aggregate({
+          facturasPorLocal.aggregate({
             where: { fecha: { gte: startDate, lte: endDate }, estado: 'PAGADA', localId: local.id },
             _sum: { total: true },
           }),
@@ -369,6 +371,7 @@ export async function GET(request: NextRequest) {
           where: {
             fecha: { gte: startDate, lte: endDate },
             estado: 'COMPLETADA',
+            facturaAgrupadaId: null, cobroDiferido: false, metodoPago: { not: null },
             localId: local.id,
             id: { notIn: citasConFacturaIds.length > 0 ? citasConFacturaIds : ['__none__'] },
           },

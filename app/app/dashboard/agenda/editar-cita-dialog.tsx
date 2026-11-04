@@ -341,7 +341,7 @@ export function EditarCitaDialog({
           box: cita.box,
           estado: cita.estado === EstadoCita.PAGO_POSTERIOR ? EstadoCita.COMPLETADA : cita.estado,
           observaciones: cita.observaciones || '',
-          metodoPago: cita.metodoPago || '',
+          metodoPago: ((cita as any).cobroDiferido || cita.estado === EstadoCita.PAGO_POSTERIOR) ? '' : cita.metodoPago || '',
           ticketsUsados: cita.ticketsUsados || 0,
           prescriptorId: (cita as any).prescriptorId || '',
           realizadoPorId: (cita as any).realizadoPorId || '',
@@ -388,7 +388,7 @@ export function EditarCitaDialog({
             setFormData(prev => ({ ...prev,
               estado: citaCompleta.estado === 'PAGO_POSTERIOR' ? EstadoCita.COMPLETADA : citaCompleta.estado,
               cobroDiferido: agrupado ? agrupado.estado !== 'PAGADA' : !!citaCompleta.cobroDiferido || citaCompleta.estado === 'PAGO_POSTERIOR',
-              metodoPago: agrupado ? (agrupado.estado === 'PAGADA' ? agrupado.metodoPago || '' : '') : citaCompleta.metodoPago || '',
+              metodoPago: agrupado ? (agrupado.estado === 'PAGADA' ? agrupado.metodoPago || '' : '') : (citaCompleta.cobroDiferido || citaCompleta.estado === 'PAGO_POSTERIOR') ? '' : citaCompleta.metodoPago || '',
             }))
             if (citaCompleta.cita_servicios && citaCompleta.cita_servicios.length > 0) {
               setServiciosSeleccionados(citaCompleta.cita_servicios.map((cs: any) => cs.servicioId))
@@ -1315,12 +1315,15 @@ export function EditarCitaDialog({
               </div>
             )}
             
+            {!documentoAgrupado && <div className="space-y-1">
+              <Button type="button" variant={formData.cobroDiferido ? 'default' : 'outline'} className="h-12 w-full"
+                onClick={() => setFormData(prev => ({ ...prev, cobroDiferido: true, metodoPago: '', tpvUserId: '', tpvNombre: '' }))}>
+                Pago posterior / Diferido
+              </Button>
+              <p className="text-xs text-gray-600">Si el vehículo ya se entregó, conserva el estado Completada. El pago diferido no registra un cobro.</p>
+            </div>}
             {!formData.metodoPago && !documentoAgrupado && (
               <div className="grid grid-cols-2 gap-2">
-                <Button type="button" variant={formData.cobroDiferido ? 'default' : 'outline'} className="h-14"
-                  onClick={() => setFormData(prev => ({ ...prev, cobroDiferido: true, metodoPago: '', tpvUserId: '', tpvNombre: '' }))}>
-                  Pendiente de cobro / Diferido
-                </Button>
                 <Button
                   type="button"
                   variant="outline"

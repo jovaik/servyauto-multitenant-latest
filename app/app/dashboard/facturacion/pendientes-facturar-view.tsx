@@ -98,7 +98,9 @@ export function PendientesFacturarView() {
                     const veh = c.vehiculo
                       ? `${c.vehiculo.marca || ''} ${c.vehiculo.modelo || ''} ${c.vehiculo.matricula ? '· ' + c.vehiculo.matricula : ''}`.trim()
                       : '—'
-                    const badge = estadoBadge(c.estado)
+                    const badge = c.cobroDiferido || c.estado === 'PAGO_POSTERIOR'
+                      ? { cls: 'bg-indigo-100 text-indigo-800 border-indigo-300', label: `${c.estado === 'PAGO_POSTERIOR' ? 'COMPLETADA' : c.estado || ''} · PAGO DIFERIDO` }
+                      : estadoBadge(c.estado)
                     return (
                       <tr key={c.id} className="border-b last:border-0 hover:bg-gray-50">
                         <td className="py-2 pr-3 whitespace-nowrap">

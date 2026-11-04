@@ -1,3 +1,4 @@
+import { facturasPorLocal, partesFactura } from '@/lib/factura-local'
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
@@ -145,17 +146,17 @@ export async function GET(req: NextRequest) {
 
     let facturasAgrupadasCobradas: Array<{ id: string; numero: string; total: number; localId: string | null; fecha: Date; fechaPago: Date | null }> = [];
     if (idsAgrupadas.length > 0) {
-      const facturasAgr = await prisma.factura.findMany({
+      const facturasAgr = await facturasPorLocal.findMany({
         where: {
           id: { in: idsAgrupadas },
           estado: 'PAGADA',
           ...(localId ? { localId } : {}),
         },
         select: { id: true, numero: true, total: true, localId: true, fecha: true, fechaPago: true },
-      });
-      facturasAgrupadasCobradas = facturasAgr.filter(f => {
+      }, true);
+      facturasAgrupadasCobradas = facturasAgr.flatMap(partesFactura).filter(f => {
         const ref = f.fechaPago || f.fecha;
-        return ref >= fechaDesde && ref <= fechaHasta;
+        return (!localId || f.localId === localId) && ref >= fechaDesde && ref <= fechaHasta;
       });
     }
     const ingresosFacturasAgrupadas = facturasAgrupadasCobradas.reduce((s, f) => s + (f.total || 0), 0);
