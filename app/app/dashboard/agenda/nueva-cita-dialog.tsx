@@ -124,11 +124,8 @@ export function NuevaCitaDialog({
     servicios: [] as string[],
     ticketsUsados: 0,
     observaciones: '',
-    metodoPago: '',
     prescriptorId: '',
     realizadoPorId: '',
-    tpvUserId: '',
-    tpvNombre: '',
   })
   
   // Guardar info del cliente seleccionado para evitar problemas de sincronización
@@ -148,8 +145,6 @@ export function NuevaCitaDialog({
 
   // Colaboradores del local
   const [colaboradores, setColaboradores] = useState<{ id: string; nombre: string; rol: string }[]>([])
-  // TPVs propios (usuarios con tpvNombre)
-  const [tpvsDisponibles, setTpvsDisponibles] = useState<{ id: string; name: string | null; tpvNombre: string }[]>([])
 
   // Líneas manuales
   const [lineasManuales, setLineasManuales] = useState<{ descripcion: string; cantidad: number; precioUnitario: number }[]>([])
@@ -183,7 +178,6 @@ export function NuevaCitaDialog({
 
   // Franjas horarias removidas - ahora se usa input type="time" para mayor flexibilidad
 
-  const metodosPago = ['EFECTIVO', 'TPV_SUMUP', 'TPV_UNICAJA']
 
   const loadOverridesLocal = async () => {
     try {
@@ -226,11 +220,6 @@ export function NuevaCitaDialog({
       const localId = getSelectedLocalId()
       const colabUrl = localId ? `/api/colaboradores?localId=${localId}&activo=true` : `/api/colaboradores?activo=true`
       fetch(colabUrl).then(r => r.ok ? r.json() : []).then(setColaboradores).catch(() => {})
-      // Cargar TPVs propios (usuarios con tpvNombre del local)
-      const tpvUrl = localId ? `/api/usuarios?localId=${localId}` : `/api/usuarios`
-      fetch(tpvUrl).then(r => r.ok ? r.json() : []).then((us: any[]) => {
-        setTpvsDisponibles((us || []).filter(u => u.tpvNombre && u.activo).map(u => ({ id: u.id, name: u.name, tpvNombre: u.tpvNombre })))
-      }).catch(() => {})
       setFormData(prev => ({ 
         ...prev, 
         fecha: format(selectedDate, 'yyyy-MM-dd'),
@@ -638,8 +627,8 @@ export function NuevaCitaDialog({
         descuentoManual: descuentoManual || 0,
         prescriptorId: formData.prescriptorId || null,
         realizadoPorId: formData.realizadoPorId || null,
-        tpvUserId: formData.tpvUserId || null,
-        tpvNombre: formData.tpvNombre || null,
+        // El método se registra al cobrar, no al recibir el vehículo.
+        metodoPago: null,
         servicios: formData.servicios.map(servicioId => ({
           servicioId,
           precio: getPrecioEfectivo(servicioId)
@@ -760,11 +749,8 @@ export function NuevaCitaDialog({
       servicios: [],
       ticketsUsados: 0,
       observaciones: '',
-      metodoPago: '',
       prescriptorId: '',
       realizadoPorId: '',
-      tpvUserId: '',
-      tpvNombre: '',
     })
     setClienteSeleccionadoInfo(null)
     setDescuentoManual(0)
@@ -1618,85 +1604,6 @@ export function NuevaCitaDialog({
               </Card>
             )
           })()}
-
-          {/* Método de Pago */}
-          <div className="space-y-2">
-            <Label>Método de pago</Label>
-            <Select value={formData.tpvUserId ? `tpv:${formData.tpvUserId}` : (formData.metodoPago || "")} onValueChange={(value) => {
-              if (value.startsWith('tpv:')) {
-                const id = value.slice(4)
-                const t = tpvsDisponibles.find(x => x.id === id)
-                setFormData(prev => ({ ...prev, metodoPago: 'TPV_SUMUP', tpvUserId: id, tpvNombre: t?.tpvNombre || '' }))
-              } else {
-                setFormData(prev => ({ ...prev, metodoPago: value, tpvUserId: '', tpvNombre: '' }))
-              }
-            }}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecciona método de pago" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="EFECTIVO">
-                  <div className="flex items-center">
-                    <CreditCard className="mr-2 h-4 w-4" />
-                    Efectivo
-                  </div>
-                </SelectItem>
-                <SelectItem value="TPV_SUMUP">
-                  <div className="flex items-center">
-                    <CreditCard className="mr-2 h-4 w-4" />
-                    TPV SUMUP
-                  </div>
-                </SelectItem>
-                <SelectItem value="TPV_UNICAJA">
-                  <div className="flex items-center">
-                    <CreditCard className="mr-2 h-4 w-4" />
-                    TPV UNICAJA
-                  </div>
-                </SelectItem>
-                <SelectItem value="REVOLUT">
-                  <div className="flex items-center">
-                    <CreditCard className="mr-2 h-4 w-4" />
-                    TPV REVOLUT
-                  </div>
-                </SelectItem>
-                {/* TPVs propios de autónomos del local */}
-                {tpvsDisponibles.map(t => (
-                  <SelectItem key={t.id} value={`tpv:${t.id}`}>
-                    <div className="flex items-center">
-                      <CreditCard className="mr-2 h-4 w-4" />
-                      {t.tpvNombre}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {/* Selector de TPV utilizado (autónomo) - solo para pagos con tarjeta */}
-            {tpvsDisponibles.length > 0 && ['TPV_SUMUP', 'TPV_UNICAJA', 'REVOLUT'].includes(formData.metodoPago) && (
-              <div className="space-y-2 pt-2">
-                <Label>💳 TPV utilizado (autónomo)</Label>
-                <Select
-                  value={formData.tpvUserId || '_none'}
-                  onValueChange={(v) => {
-                    if (v === '_none') {
-                      setFormData(prev => ({ ...prev, tpvUserId: '', tpvNombre: '' }))
-                    } else {
-                      const t = tpvsDisponibles.find(x => x.id === v)
-                      setFormData(prev => ({ ...prev, tpvUserId: v, tpvNombre: t?.tpvNombre || '' }))
-                    }
-                  }}
-                >
-                  <SelectTrigger><SelectValue placeholder="Sin especificar" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="_none">Sin especificar</SelectItem>
-                    {tpvsDisponibles.map(t => (
-                      <SelectItem key={t.id} value={t.id}>{t.tpvNombre}{t.name ? ` (${t.name})` : ''}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-          </div>
 
           {/* Colaboradores (prescriptor / realizado por) */}
           {colaboradores.length > 0 && (
