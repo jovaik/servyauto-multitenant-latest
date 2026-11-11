@@ -4,7 +4,7 @@
 import React, { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { format } from 'date-fns'
-import { Calendar, Clock, User, Car, CreditCard, Trash2, Smartphone, Banknote, Building2, ToggleLeft, ToggleRight, Plus, X } from 'lucide-react'
+import { Calendar, Clock, User, Car, CreditCard, Trash2, Smartphone, Banknote, Building2, ToggleLeft, ToggleRight, Plus, X, Loader2, RefreshCw } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -132,6 +132,9 @@ export function EditarCitaDialog({
   const [nuevoCoste, setNuevoCoste] = useState({ descripcion: '', importe: '', tipo: 'RECAMBIO', proveedor: '', fecha: '' })
   const [addingCoste, setAddingCoste] = useState(false)
   const [showAddCoste, setShowAddCoste] = useState(false)
+  // Revolut pendientes
+  const [revolutPendientes, setRevolutPendientes] = useState<any[]>([])
+  const [syncingRevolut, setSyncingRevolut] = useState(false)
   
   const [formData, setFormData] = useState({
     fecha: '',
@@ -172,6 +175,34 @@ export function EditarCitaDialog({
   }
 
   useEffect(() => { if (open && cita?.id) cargarPagos() }, [open, cita?.id])
+
+  const syncRevolut = async () => {
+    if (!cita?.id) return
+    setSyncingRevolut(true)
+    try {
+      const res = await fetch('/api/revolut/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ citaId: cita.id }),
+      })
+      const data = await res.json()
+      if (!res.ok) { toast({ title: 'Error', description: data.error, variant: 'destructive' }); return }
+      if (data.alguno_pagado) {
+        setFormData(prev => ({ ...prev, cobroDiferido: false, metodoPago: 'REVOLUT' }))
+        setRevolutPendientes([])
+        toast({ title: '✅ Pago confirmado', description: `Revolut ha confirmado el cobro. Se ha registrado como pagado.` })
+        cargarPagos()
+      } else {
+        const pendientes = (data.transacciones || []).filter((t: any) => t.status === 'PENDING')
+        setRevolutPendientes(pendientes)
+        toast({ title: 'Sin pago aún', description: `Revolut no ha recibido el pago todavía (${data.sincronizadas} enlace(s) comprobado(s)).`, variant: 'destructive' })
+      }
+    } catch {
+      toast({ title: 'Error de conexión', description: 'No se pudo contactar con Revolut', variant: 'destructive' })
+    } finally {
+      setSyncingRevolut(false)
+    }
+  }
 
   const handleAddPago = async () => {
     if (!nuevoPago.importe || !nuevoPago.metodoPago) return
@@ -385,6 +416,7 @@ export function EditarCitaDialog({
             const citaCompleta = await response.json()
             const agrupado = citaCompleta.documentoAgrupado || null
             setDocumentoAgrupado(agrupado)
+            setRevolutPendientes(citaCompleta.revolutPendientes || [])
             setFormData(prev => ({ ...prev,
               estado: citaCompleta.estado === 'PAGO_POSTERIOR' ? EstadoCita.COMPLETADA : citaCompleta.estado,
               cobroDiferido: agrupado ? agrupado.estado !== 'PAGADA' : !!citaCompleta.cobroDiferido || citaCompleta.estado === 'PAGO_POSTERIOR',
@@ -1376,6 +1408,21 @@ export function EditarCitaDialog({
                   <span className="text-xs font-medium text-center leading-tight">Generar Link Revolut</span>
                 </Button>
 
+                {revolutPendientes.length > 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-14 flex flex-col items-center justify-center gap-1 border-2 border-amber-400 bg-amber-50 hover:bg-amber-100 hover:border-amber-500 col-span-2"
+                    onClick={syncRevolut}
+                    disabled={syncingRevolut}
+                  >
+                    {syncingRevolut ? <Loader2 className="h-5 w-5 animate-spin text-amber-600" /> : <RefreshCw className="h-5 w-5 text-amber-600" />}
+                    <span className="text-xs font-medium text-center leading-tight text-amber-800">
+                      {syncingRevolut ? 'Comprobando...' : `Comprobar pago Revolut (${revolutPendientes.length} pendiente${revolutPendientes.length > 1 ? 's' : ''})`}
+                    </span>
+                  </Button>
+                )}
+
                 {/* TPVs propios de autónomos del local (cobro directo en su datáfono) */}
                 {tpvsDisponibles.map(t => (
                   <Button
@@ -1545,6 +1592,7 @@ export function EditarCitaDialog({
       clienteEmail={cita?.cliente?.email}
       onPaymentComplete={() => {
         setFormData(prev => ({ ...prev, cobroDiferido: false, metodoPago: 'REVOLUT' }))
+        setRevolutPendientes([])
         toast({
           title: '✅ Pago completado',
           description: `Cobro de ${cita?.total?.toFixed(2)}€ realizado con Revolut`,

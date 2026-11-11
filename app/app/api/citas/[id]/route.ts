@@ -36,11 +36,19 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       return NextResponse.json({ error: 'Cita no encontrada' }, { status: 404 })
     }
 
-    const documentoAgrupado = cita.facturaAgrupadaId
-      ? await prisma.factura.findUnique({ where: { id: cita.facturaAgrupadaId }, select: { id: true, numero: true, estado: true, metodoPago: true } })
-      : null
+    const [documentoAgrupado, revolutPendientes] = await Promise.all([
+      cita.facturaAgrupadaId
+        ? prisma.factura.findUnique({ where: { id: cita.facturaAgrupadaId }, select: { id: true, numero: true, estado: true, metodoPago: true } })
+        : null,
+      prisma.revolut_transactions.findMany({
+        where: { citaId: params.id, status: 'PENDING' },
+        select: { order_id: true, amount: true, checkout_url: true, created_at: true, reference: true },
+        orderBy: { created_at: 'desc' },
+        take: 5,
+      }),
+    ])
     return NextResponse.json({ ...cita, ...(cita.estado === 'PAGO_POSTERIOR'
-      ? { estado: 'COMPLETADA', cobroDiferido: true, metodoPago: null } : {}), documentoAgrupado })
+      ? { estado: 'COMPLETADA', cobroDiferido: true, metodoPago: null } : {}), documentoAgrupado, revolutPendientes })
   } catch (error: any) {
     console.error('Error al obtener cita:', error)
     return NextResponse.json({ error: 'Error al obtener cita', message: error.message }, { status: 500 })
