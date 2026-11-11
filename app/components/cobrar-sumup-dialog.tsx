@@ -27,6 +27,7 @@ interface CobrarSumUpDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   amount: number
+  initialMode?: 'terminal' | 'link'
   description: string
   reference?: string
   citaId?: string
@@ -53,6 +54,7 @@ export function CobrarSumUpDialog({
   open,
   onOpenChange,
   amount,
+  initialMode,
   description,
   reference,
   citaId,
@@ -77,11 +79,15 @@ export function CobrarSumUpDialog({
   // Cargar lectores cuando se abre el dialog
   useEffect(() => {
     if (open) {
+      setActiveTab(initialMode || 'terminal')
+      setSelectedReader('')
+      setReaders([])
+      setErrorMessage('')
       loadReaders()
     } else {
       resetState()
     }
-  }, [open])
+  }, [open, initialMode])
 
   const resetState = () => {
     setStatus('idle')
@@ -98,6 +104,7 @@ export function CobrarSumUpDialog({
   const loadReaders = async () => {
     try {
       setStatus('loading_readers')
+      setErrorMessage('')
       const response = await fetch('/api/sumup/readers')
       if (response.ok) {
         const data = await response.json()
@@ -113,17 +120,21 @@ export function CobrarSumUpDialog({
           setSelectedReader(readerList[0].id)
         }
         // Si no hay terminales, cambiar a tab de link
-        if (readerList.length === 0) {
+        if (readerList.length === 0 && !initialMode) {
           setActiveTab('link')
         }
         setStatus('ready')
       } else {
+        console.error('Error cargando terminales SumUp:', response.status)
+        setErrorMessage('No se pudieron consultar los terminales. Reintenta la consulta.')
         setStatus('ready')
-        setActiveTab('link') // Sin terminales, usar link
+        if (!initialMode) setActiveTab('link')
       }
     } catch (error) {
+      console.error('Error cargando terminales SumUp:', error)
+      setErrorMessage('No se pudo conectar para consultar los terminales.')
       setStatus('ready')
-      setActiveTab('link')
+      if (!initialMode) setActiveTab('link')
     }
   }
 
@@ -301,7 +312,7 @@ export function CobrarSumUpDialog({
         {status === 'ready' && (
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'terminal' | 'link')}>
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="terminal" disabled={readers.length === 0}>
+              <TabsTrigger value="terminal">
                 <CreditCard className="h-4 w-4 mr-2" />
                 Terminal
               </TabsTrigger>
@@ -314,8 +325,11 @@ export function CobrarSumUpDialog({
             <TabsContent value="terminal" className="space-y-4 pt-4">
               {readers.length === 0 ? (
                 <div className="text-center py-4 text-gray-500">
-                  <p>No hay terminales Solo emparejados</p>
-                  <p className="text-sm">Usa "Link de pago" para Solo Lite/Air</p>
+                  <p>{errorMessage || 'No hay terminales Solo disponibles para este local o cuenta.'}</p>
+                  <p className="text-sm mt-2">Comprueba el emparejamiento y la asignación en Configuración → SumUp.</p>
+                  <Button type="button" variant="outline" className="mt-3" onClick={loadReaders}>
+                    <RefreshCw className="h-4 w-4 mr-2" />Actualizar terminales
+                  </Button>
                 </div>
               ) : (
                 <>

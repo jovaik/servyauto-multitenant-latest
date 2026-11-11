@@ -104,6 +104,7 @@ export function EditarCitaDialog({
   const [servicios, setServicios] = useState<Servicio[]>([])
   const [serviciosSeleccionados, setServiciosSeleccionados] = useState<string[]>([])
   const [showSumUpDialog, setShowSumUpDialog] = useState(false)
+  const [sumUpMode, setSumUpMode] = useState<'terminal' | 'link'>('terminal')
   const [showRevolutDialog, setShowRevolutDialog] = useState(false)
   const [locales, setLocales] = useState<Local[]>([])
   const [localIdSeleccionado, setLocalIdSeleccionado] = useState<string>('')
@@ -1390,11 +1391,22 @@ export function EditarCitaDialog({
                   type="button"
                   variant="outline"
                   className="h-14 flex flex-col items-center justify-center gap-1 border-2 hover:bg-cyan-50 hover:border-cyan-500"
-                  onClick={() => setShowSumUpDialog(true)}
+                  onClick={() => { setSumUpMode('link'); setShowSumUpDialog(true) }}
                   disabled={!cita?.total || cita.total <= 0}
                 >
                   <Smartphone className="h-5 w-5 text-cyan-600" />
                   <span className="text-xs font-medium text-center leading-tight">Generar Link SumUp</span>
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-14 flex flex-col items-center justify-center gap-1 border-2 hover:bg-blue-50 hover:border-blue-500"
+                  onClick={() => { setSumUpMode('terminal'); setShowSumUpDialog(true) }}
+                  disabled={!cita?.total || cita.total <= 0}
+                >
+                  <CreditCard className="h-5 w-5 text-blue-600" />
+                  <span className="text-xs font-medium text-center leading-tight">Terminal SumUp</span>
                 </Button>
 
                 <Button
@@ -1560,6 +1572,7 @@ export function EditarCitaDialog({
     <CobrarSumUpDialog
       open={showSumUpDialog}
       onOpenChange={setShowSumUpDialog}
+      initialMode={sumUpMode}
       amount={cita?.total || 0}
       description={`${cita?.cliente?.nombre || 'Cliente'} - ${cita?.vehiculo?.matricula || 'Vehículo'}`}
       citaId={cita?.id}
