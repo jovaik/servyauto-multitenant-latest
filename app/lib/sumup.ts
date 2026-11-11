@@ -104,6 +104,50 @@ export async function resolveSumUpKeys(opts: {
   return getLocalSumUpKeys(opts.localId)
 }
 
+/**
+ * El local de la venta NO identifica la cuenta propietaria del terminal.
+ * Comprueba la pertenencia del reader con consultas de solo lectura antes de
+ * elegir credenciales. Nunca reintenta un POST de cobro con otra cuenta.
+ */
+export async function resolveReaderSumUpKeys(opts: {
+  readerId: string
+  cuentaTpvId?: string | null
+  localId?: string | null
+}): Promise<{ apiKey: string }> {
+  const reader = await prisma.sumUpReader.findUnique({
+    where: { sumupReaderId: opts.readerId },
+    select: { localId: true, cuentaTpvId: true },
+  })
+  const cuentaId = reader?.cuentaTpvId || opts.cuentaTpvId
+  const cuenta = cuentaId ? await prisma.cuentaTpv.findUnique({
+    where: { id: cuentaId },
+    select: { sumupApiKey: true, localId: true },
+  }) : null
+  const ownerLocalId = cuenta?.localId || reader?.localId
+  const ownerKeys = ownerLocalId ? await getLocalSumUpKeys(ownerLocalId) : {}
+  const saleKeys = opts.localId && opts.localId !== ownerLocalId
+    ? await getLocalSumUpKeys(opts.localId) : {}
+  const candidates = Array.from(new Set([
+    cuenta?.sumupApiKey,
+    ownerKeys.apiKey,
+    process.env.SUMUP_API_KEY,
+    saleKeys.apiKey,
+  ].filter((key): key is string => !!key)))
+
+  for (const apiKey of candidates) {
+    const merchantCode = await getMerchantCode(apiKey)
+    const response = await fetch(
+      `${SUMUP_API_BASE}/v0.1/merchants/${merchantCode}/readers/${encodeURIComponent(opts.readerId)}`,
+      { headers: getHeaders(apiKey), cache: 'no-store' }
+    )
+    if (response.ok) return { apiKey }
+    if (response.status === 404) continue
+    // Un fallo de permisos o de red no autoriza probar otras credenciales.
+    throw new Error(`No se pudo verificar el terminal en SumUp (HTTP ${response.status}). Revisa los permisos de la cuenta.`)
+  }
+  throw new Error('El terminal no está vinculado a las cuentas SumUp configuradas. Actualiza los terminales y revisa su cuenta en Configuración → SumUp.')
+}
+
 export type ModoAsignacion = 'COMPARTIDO' | 'POR_LOCAL'
 export type MetodoCobro = 'TERMINAL' | 'LINK'
 

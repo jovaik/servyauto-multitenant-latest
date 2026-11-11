@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
@@ -35,7 +37,9 @@ export async function GET() {
       for (const cuenta of cuentas) {
         const keys = await resolveSumUpKeys({
           cuentaTpvId: cuenta.id,
-          localId: localContextForKey?.selectedLocalId,
+          // Una cuenta sin clave propia usa su local fijo o la central,
+          // nunca cambia de identidad al cambiar el filtro de la agenda.
+          localId: cuenta.localId,
         })
         try {
           const rs = await listReaders(keys.apiKey)

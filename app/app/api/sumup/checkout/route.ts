@@ -1,7 +1,9 @@
+export const dynamic = 'force-dynamic'
+
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { initiateReaderPayment, getLocalSumUpKeys, resolveSumUpKeys } from '@/lib/sumup'
+import { initiateReaderPayment, resolveReaderSumUpKeys } from '@/lib/sumup'
 import { prisma } from '@/lib/db'
 import { getLocalContext } from '@/lib/local-context'
 import { randomUUID } from 'crypto'
@@ -90,8 +92,8 @@ export async function POST(request: NextRequest) {
       where: { sumupReaderId: readerId },
     })
 
-    // Determinar la CUENTA TPV que cobra: override del body, o la del datáfono
-    const cuentaTpvId: string | null = cuentaTpvIdBody || dbReader?.cuentaTpvId || null
+    // Conservar la cuenta guardada del datáfono; si no, la seleccionada.
+    const cuentaTpvId: string | null = dbReader?.cuentaTpvId || cuentaTpvIdBody || null
     let cuentaTpvNombre: string | null = null
     if (cuentaTpvId) {
       const cuenta = await prisma.cuentaTpv.findUnique({
@@ -101,8 +103,14 @@ export async function POST(request: NextRequest) {
       cuentaTpvNombre = cuenta?.nombre || null
     }
 
-    // Obtener API keys: prioridad a la cuenta TPV, si no, las del local (o central)
-    const localKeys = await resolveSumUpKeys({ cuentaTpvId, localId })
+    // La cuenta del terminal se verifica independientemente del local de la venta.
+    const localKeys = await resolveReaderSumUpKeys({ readerId, cuentaTpvId, localId })
+    if (!dbReader) {
+      return NextResponse.json(
+        { error: 'Guarda la asignación de este terminal en Configuración → SumUp antes de cobrar.' },
+        { status: 400 }
+      )
+    }
 
     // 1. Enviar el cobro DIRECTAMENTE al terminal (Cloud API).
     // La Cloud API inicia el cobro en el datáfono con el IMPORTE y DEVUELVE el
@@ -125,7 +133,7 @@ export async function POST(request: NextRequest) {
       data: {
         checkoutId: realCheckoutId,
         clientTransactionId: readerResult.client_transaction_id || null,
-        readerId: dbReader?.id || '', // Si no existe en BD, string vacío temporal
+        readerId: dbReader.id,
         localId: localId,
         amount: amount,
         status: 'PENDING',

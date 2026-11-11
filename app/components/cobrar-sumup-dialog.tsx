@@ -173,13 +173,15 @@ export function CobrarSumUpDialog({
         setStatus('polling')
         startPolling(data.checkoutId)
       } else {
-        const error = await response.json()
+        const error = await response.json().catch(() => null)
+        console.error('Error enviando cobro al terminal SumUp:', response.status, error?.error)
         setStatus('failed')
-        setErrorMessage(error.error || 'Error al iniciar el cobro')
+        setErrorMessage(error?.error || `No se pudo confirmar el envío al terminal (HTTP ${response.status}). Comprueba el terminal antes de reintentar.`)
       }
     } catch (error) {
+      console.error('Error de conexión al enviar el cobro SumUp:', error)
       setStatus('failed')
-      setErrorMessage('Error de conexión')
+      setErrorMessage('No se pudo confirmar el envío al terminal. Comprueba si recibió el importe antes de reintentar para evitar un cobro duplicado.')
     }
   }
 

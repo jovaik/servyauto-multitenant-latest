@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
@@ -7,6 +9,7 @@ import {
   cancelCheckout,
   terminateReaderTransaction,
   resolveSumUpKeys,
+  resolveReaderSumUpKeys,
 } from '@/lib/sumup'
 import { prisma } from '@/lib/db'
 import { requireSuperAdminForDelete } from '@/lib/activity-logger'
@@ -67,10 +70,13 @@ export async function GET(
         facturaId: true,
         cuentaTpvId: true,
         cuentaTpvNombre: true,
+        reader: { select: { sumupReaderId: true } },
       },
     })
     // IMPRESCINDIBLE: consultar /me/transactions con la MISMA cuenta que cobró.
-    const localKeys = await resolveSumUpKeys({ cuentaTpvId: dbTxn?.cuentaTpvId, localId: dbTxn?.localId })
+    const localKeys = dbTxn?.clientTransactionId && dbTxn.reader?.sumupReaderId
+      ? await resolveReaderSumUpKeys({ readerId: dbTxn.reader.sumupReaderId, cuentaTpvId: dbTxn.cuentaTpvId, localId: dbTxn.localId })
+      : await resolveSumUpKeys({ cuentaTpvId: dbTxn?.cuentaTpvId, localId: dbTxn?.localId })
 
     // Los cobros iniciados en el terminal (Cloud API) NO se consultan por
     // /checkouts/{id} (devuelve NOT_FOUND). Hay que consultarlos por
@@ -151,7 +157,9 @@ export async function DELETE(
       where: { checkoutId: params.id },
       include: { reader: true },
     })
-    const localKeys = await resolveSumUpKeys({ cuentaTpvId: dbTxn?.cuentaTpvId, localId: dbTxn?.localId })
+    const localKeys = dbTxn?.clientTransactionId && dbTxn.reader?.sumupReaderId
+      ? await resolveReaderSumUpKeys({ readerId: dbTxn.reader.sumupReaderId, cuentaTpvId: dbTxn.cuentaTpvId, localId: dbTxn.localId })
+      : await resolveSumUpKeys({ cuentaTpvId: dbTxn?.cuentaTpvId, localId: dbTxn?.localId })
 
     // Si es un cobro iniciado en el terminal, se aborta en el propio datáfono.
     if (dbTxn?.clientTransactionId && dbTxn.reader?.sumupReaderId) {
