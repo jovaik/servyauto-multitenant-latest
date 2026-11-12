@@ -6,6 +6,7 @@ import { authOptions } from '@/lib/auth'
 import {
   getCheckoutStatus,
   getReaderTransactionStatus,
+  getReaderFailureReason,
   cancelCheckout,
   terminateReaderTransaction,
   resolveSumUpKeys,
@@ -102,6 +103,16 @@ export async function GET(
       checkout = await getCheckoutStatus(params.id, localKeys.apiKey)
     }
 
+    // FAILED no distingue un rechazo bancario de un fallo de procesamiento.
+    let failureReason: string | null = null
+    if (checkout.status === 'FAILED' && dbTxn?.clientTransactionId && dbTxn.reader?.sumupReaderId) {
+      try {
+        failureReason = await getReaderFailureReason(dbTxn.reader.sumupReaderId, params.id, localKeys.apiKey)
+      } catch (error) {
+        console.error('No se pudo recuperar el motivo de fallo SumUp:', error)
+      }
+    }
+
     // Actualizar estado en nuestra BD
     if (
       checkout.status === 'PAID' ||
@@ -133,6 +144,7 @@ export async function GET(
       amount: checkout.amount ?? dbTxn?.amount ?? null,
       transactionCode: checkout.transaction_code,
       transactionId: checkout.transaction_id,
+      failureReason,
     })
   } catch (error: any) {
     console.error('Error consultando checkout SumUp:', error)

@@ -428,6 +428,24 @@ export async function getReaderTransactionStatus(
   } as any
 }
 
+/** Motivo del fallo comunicado por el checkout del lector, sin iniciar otro cobro. */
+export async function getReaderFailureReason(
+  readerId: string,
+  checkoutId: string,
+  overrideApiKey?: string
+): Promise<string | null> {
+  const merchantCode = await getMerchantCode(overrideApiKey)
+  const response = await fetch(
+    `${SUMUP_API_BASE}/v0.1/merchants/${merchantCode}/readers/${encodeURIComponent(readerId)}/checkout/${encodeURIComponent(checkoutId)}`,
+    { method: 'GET', headers: getHeaders(overrideApiKey), cache: 'no-store' }
+  )
+  if (response.status === 404) return null
+  if (!response.ok) throw new Error(`Error consultando motivo SumUp (HTTP ${response.status})`)
+  const result = await response.json()
+  const reason = result?.data?.payment_failure_reason
+  return typeof reason === 'string' && reason.trim() ? reason.trim() : null
+}
+
 /**
  * Cancelar un checkout/cobro pendiente
  */

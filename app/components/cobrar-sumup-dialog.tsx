@@ -245,7 +245,11 @@ export function CobrarSumUpDialog({
             clearInterval(pollingRef.current!)
             pollingRef.current = null
             setStatus('failed')
-            setErrorMessage('El pago fue rechazado')
+            const reference = data.transactionCode || data.transactionId || id
+            setErrorMessage(data.failureReason
+              ? `SumUp no completó el pago. Motivo comunicado: «${data.failureReason}». Referencia: ${reference}. Si se repite con distintas tarjetas, facilita esta referencia a soporte SumUp antes de seguir reintentando.`
+              : `SumUp indica que el pago ha fallado, sin facilitar el motivo. Referencia: ${reference}. Comprueba la operación en SumUp antes de reintentar.`)
+            console.error('Pago SumUp fallido:', { checkoutId: id, reference, failureReason: data.failureReason || null })
             onPaymentFailed?.()
           } else if (data.status === 'CANCELLED') {
             clearInterval(pollingRef.current!)
