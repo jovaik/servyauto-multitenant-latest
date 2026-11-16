@@ -25,7 +25,7 @@ import {
 } from 'lucide-react'
 import { generarPDFDiarioCaja } from '@/lib/pdf-generator'
 import { exportarDiarioCajaExcel } from '@/lib/excel-generator'
-import { getSelectedLocalId, useLocalStore } from '@/lib/local-store'
+import { useLocalStore } from '@/lib/local-store'
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, subMonths, subWeeks, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 
@@ -58,153 +58,11 @@ export default function DiarioCajaView() {
   const cargarDatos = async () => {
     setLoading(true)
     try {
-      // Cargar facturas (ingresos)
-      const resFacturas = await fetch('/api/facturas')
-      const facturas = await resFacturas.json()
-
-      // Cargar gastos
-      const resGastos = await fetch('/api/gastos')
-      const gastos = await resGastos.json()
-
-      // Cargar ingresos adicionales (parking, máquinas, etc.)
-      const resIngresosAdicionales = await fetch('/api/ingresos-adicionales')
-      const ingresosAdicionales = await resIngresosAdicionales.json()
-
-      // Cargar pagos parciales / a cuenta ANTES de las facturas, para poder deduplicar.
-      // Una cita puede cobrarse en varios tramos/cuentas (pagos parciales). Si además existe
-      // su factura/ticket PAGADA, contar ambos duplica el ingreso. Los pagos parciales son el
-      // desglose real (método + cuenta/TPV concreto); la factura solo lleva un método único.
-      let pagosData: any[] = []
-      try {
-        const resPagos = await fetch('/api/pagos-parciales')
-        const pd = await resPagos.json()
-        if (Array.isArray(pd)) pagosData = pd
-      } catch {}
-      const sumPagosPorCita: Record<string, number> = {}
-      const sumPagosPorAgrupada: Record<string, number> = {}
-      for (const p of pagosData) {
-        if (p.facturaAgrupadaId) sumPagosPorAgrupada[p.facturaAgrupadaId] = (sumPagosPorAgrupada[p.facturaAgrupadaId] || 0) + (p.importe || 0)
-        if (!p.citaId) continue
-        sumPagosPorCita[p.citaId] = (sumPagosPorCita[p.citaId] || 0) + (p.importe || 0)
-      }
-
-      // Transformar facturas a movimientos (solo pagadas).
-      // Si la cita tiene pagos parciales, se muestran ESTOS (con su cuenta/TPV) y la factura
-      // solo aporta el RESTO no cubierto por los pagos (para no contar doble ni perder importe).
-      const ingresosFacturas = (facturas || []).filter((f: any) => f.estado === 'PAGADA').flatMap((f: any) => {
-        const sumPagos = f.citaId ? (sumPagosPorCita[f.citaId] || 0) : (sumPagosPorAgrupada[f.id] || 0)
-        const totalLocal = f.totalLocal ?? f.total ?? 0
-        const importeFactura = sumPagos > 0 ? Math.round((totalLocal - sumPagos) * 100) / 100 : totalLocal
-        if (sumPagos > 0 && importeFactura <= 0.01) return [] // cubierto por los pagos parciales
-        const base = f.tipo === 'TICKET' ? `Ticket #${f.numero}` : `Factura #${f.numero}`
-        return [{
-          id: `FAC-${f.id}`,
-          fecha: new Date(f.fechaPago || f.fecha),
-          tipo: 'INGRESO' as const,
-          concepto: sumPagos > 0 ? `${base} (resto)` : base,
-          categoria: f.tipo === 'TICKET' ? 'Ticket' : 'Factura',
-          importe: importeFactura,
-          metodoPago: f.metodoPago,
-          referencia: f.numero,
-          // Trazabilidad
-          creadoPor: f.creadoPorNombre || null,
-          creadoEn: f.createdAt ? new Date(f.createdAt) : null
-        }]
-      })
-
-      // Transformar ingresos adicionales a movimientos
-      const movimientosIngresosAdicionales = (ingresosAdicionales || []).map((i: any) => ({
-        id: `ING-${i.id}`,
-        fecha: new Date(i.fecha),
-        tipo: 'INGRESO' as const,
-        concepto: i.concepto + (i.descripcion ? ` - ${i.descripcion}` : ''),
-        categoria: 'Ingreso Extra',
-        importe: i.importe,
-        metodoPago: i.metodoPago,
-        referencia: null,
-        // Trazabilidad
-        creadoPor: i.creadoPorNombre || null,
-        creadoEn: i.createdAt ? new Date(i.createdAt) : null
-      }))
-
-      // Transformar gastos a movimientos
-      const movimientosGastos = (gastos || []).map((g: any) => ({
-        id: `GAS-${g.id}`,
-        fecha: new Date(g.fecha),
-        tipo: 'GASTO' as const,
-        concepto: g.concepto || g.descripcion || 'Gasto',
-        categoria: g.tipoGasto || g.categoria || 'General',
-        importe: g.importe || g.total,
-        metodoPago: g.metodoPago,
-        referencia: g.numeroFactura,
-        // Trazabilidad
-        creadoPor: g.creadoPorNombre || null,
-        creadoEn: g.createdAt ? new Date(g.createdAt) : null
-      }))
-
-      // Movimientos de pagos parciales / a cuenta (ya cargados arriba en pagosData).
-      // El método real de caja es p.metodoPago; p.tpvNombre identifica la cuenta/TPV concreto.
-      const pagosParciales: Movimiento[] = pagosData.map((p: any) => ({
-        id: `PAG-${p.id}`,
-        fecha: new Date(p.fecha),
-        tipo: 'INGRESO' as const,
-        concepto: `PAGO A CUENTA${p.concepto ? ' - ' + p.concepto : ''} (${p.clienteNombre || 'Cliente'})${p.tpvNombre ? ' [' + p.tpvNombre + ']' : ''}`,
-        categoria: 'Pago a cuenta',
-        importe: p.importe,
-        metodoPago: p.metodoPago,
-        referencia: undefined,
-        creadoPor: p.creadoPorNombre || undefined,
-        creadoEn: p.createdAt ? new Date(p.createdAt) : undefined
-      }))
-
-      // Cargar transferencias de caja entre locales
-      // Una transferencia SALE de la caja del origen (GASTO) y ENTRA en la del destino (INGRESO).
-      // Cuando se marca DEVUELTA, se registra el movimiento inverso en su fecha de devolución.
-      let transferencias: any[] = []
-      try {
-        const resTransferencias = await fetch('/api/transferencias-caja')
-        transferencias = await resTransferencias.json()
-        if (!Array.isArray(transferencias)) transferencias = []
-      } catch (e) {
-        transferencias = []
-      }
-
-      const selectedLocalId = getSelectedLocalId()
-      const movimientosTransferencias: Movimiento[] = []
-      for (const t of transferencias) {
-        const origenNombre = t.origenLocal?.nombre || 'OTRO LOCAL'
-        const destinoNombre = t.destinoLocal?.nombre || 'OTRO LOCAL'
-        // Movimiento original (en la fecha de la transferencia)
-        const addSalida = (fecha: any, id: string) => movimientosTransferencias.push({
-          id, fecha: new Date(fecha), tipo: 'GASTO',
-          concepto: `TRANSFERENCIA A ${destinoNombre}${t.concepto ? ' - ' + t.concepto : ''}`,
-          categoria: 'Transferencia Caja', importe: t.importe, metodoPago: 'EFECTIVO',
-          referencia: undefined, creadoPor: t.creadoPorNombre || undefined,
-          creadoEn: t.createdAt ? new Date(t.createdAt) : undefined
-        })
-        const addEntrada = (fecha: any, id: string) => movimientosTransferencias.push({
-          id, fecha: new Date(fecha), tipo: 'INGRESO',
-          concepto: `TRANSFERENCIA DE ${origenNombre}${t.concepto ? ' - ' + t.concepto : ''}`,
-          categoria: 'Transferencia Caja', importe: t.importe, metodoPago: 'EFECTIVO',
-          referencia: undefined, creadoPor: t.creadoPorNombre || undefined,
-          creadoEn: t.createdAt ? new Date(t.createdAt) : undefined
-        })
-        // Sin local seleccionado (ver todo): mostramos ambos lados → el total neto es cero.
-        // Con un local seleccionado: solo el lado que corresponde a ese local.
-        if (!selectedLocalId || t.origenLocalId === selectedLocalId) addSalida(t.fecha, `TRF-OUT-${t.id}`)
-        if (!selectedLocalId || t.destinoLocalId === selectedLocalId) addEntrada(t.fecha, `TRF-IN-${t.id}`)
-        // Devolución: movimiento inverso en la fecha de devolución
-        if (t.estado === 'DEVUELTO' && t.fechaDevolucion) {
-          if (!selectedLocalId || t.origenLocalId === selectedLocalId) addEntrada(t.fechaDevolucion, `TRF-RET-IN-${t.id}`)
-          if (!selectedLocalId || t.destinoLocalId === selectedLocalId) addSalida(t.fechaDevolucion, `TRF-RET-OUT-${t.id}`)
-        }
-      }
-
-      // Combinar y ordenar por fecha (más reciente primero)
-      const todoMovimientos = [...ingresosFacturas, ...movimientosIngresosAdicionales, ...movimientosGastos, ...pagosParciales, ...movimientosTransferencias]
-        .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
-
-      setMovimientos(todoMovimientos)
+      // Fuente única compartida con el flujo de caja de Facturación.
+      const response = await fetch('/api/facturas/stats?diario=1')
+      if (!response.ok) throw new Error('No se han podido cargar los movimientos de caja')
+      const rows = await response.json()
+      setMovimientos(rows.map((m: any) => ({ ...m, fecha: new Date(m.fecha), creadoEn: m.creadoEn ? new Date(m.creadoEn) : undefined })))
     } catch (error) {
       console.error('Error cargando datos:', error)
     } finally {
@@ -268,12 +126,10 @@ export default function DiarioCajaView() {
       if (filtroTipo !== 'TODOS' && m.tipo !== filtroTipo) return false
 
       // Filtro por fecha
-      const fechaMov = new Date(m.fecha)
-      fechaMov.setHours(0, 0, 0, 0)
-      const inicio = new Date(rangoFechas.inicio)
-      inicio.setHours(0, 0, 0, 0)
-      const fin = new Date(rangoFechas.fin)
-      fin.setHours(23, 59, 59, 999)
+      const diaMadrid = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Madrid', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d)
+      const fechaMov = diaMadrid(new Date(m.fecha))
+      const inicio = filtroPeriodo === 'PERSONALIZADO' && fechaInicio ? fechaInicio : diaMadrid(rangoFechas.inicio)
+      const fin = filtroPeriodo === 'PERSONALIZADO' && fechaFin ? fechaFin : diaMadrid(rangoFechas.fin)
       
       if (fechaMov < inicio || fechaMov > fin) return false
 
@@ -289,7 +145,7 @@ export default function DiarioCajaView() {
 
       return true
     })
-  }, [movimientos, filtroTipo, rangoFechas, busqueda])
+  }, [movimientos, filtroTipo, rangoFechas, busqueda, filtroPeriodo, fechaInicio, fechaFin])
 
   // Calcular totales
   const totales = useMemo(() => {

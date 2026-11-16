@@ -137,7 +137,9 @@ export function FacturacionView() {
     gastosTotal: 0,
     transferenciasEntrada: 0,
     transferenciasSalida: 0,
-    efectivoEnCaja: 0
+    efectivoEnCaja: 0,
+    netoTPVSumup: 0, netoTPVUnicaja: 0, netoRevolut: 0,
+    gastosTPVSumup: 0, gastosTPVUnicaja: 0, gastosRevolut: 0,
   })
 
   const selectedLocalId = useLocalStore((s) => s.selectedLocalId)
@@ -418,14 +420,14 @@ export function FacturacionView() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              {(filterFechaDesde || filterFechaHasta) ? 'Ingresos (Período)' : 'Ingresos del Mes'}
+              {(filterFechaDesde || filterFechaHasta) ? 'Ingresos de caja (Período)' : 'Ingresos de caja (Todos)'}
             </CardTitle>
             <Euro className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">€{stats.ingresosMes.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">
-              {(filterFechaDesde || filterFechaHasta) ? 'Facturas + citas cobradas' : 'Facturación mensual'}
+              Cobros, ingresos extra y entradas entre locales
             </p>
           </CardContent>
         </Card>
@@ -518,7 +520,7 @@ export function FacturacionView() {
                 <div className="text-center md:text-left">
                   <div className="flex items-center justify-center md:justify-start mb-2">
                     <TrendingUp className="h-5 w-5 text-blue-600 mr-2" />
-                    <span className="text-lg font-semibold text-gray-700">TOTAL VENTAS COBRADAS</span>
+                    <span className="text-lg font-semibold text-gray-700">COBROS E INGRESOS</span>
                   </div>
                   <div className="text-4xl font-bold text-blue-600">
                     €{stats.totalVentas.toFixed(2)}
@@ -539,7 +541,7 @@ export function FacturacionView() {
                   </div>
                   <div className="text-xs text-green-700 mt-2 space-y-1">
                     <div className="flex justify-between">
-                      <span>Ventas efectivo:</span>
+                      <span>Cobros e ingresos efectivo:</span>
                       <span className="font-medium">€{stats.ventasEfectivo.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between text-red-700">
@@ -597,11 +599,11 @@ export function FacturacionView() {
                   </div>
                 </div>
                 <div className="text-3xl font-bold text-purple-600">
-                  €{stats.ventasTPVSumup.toFixed(2)}
+                  €{(stats.netoTPVSumup ?? 0).toFixed(2)}
                 </div>
                 <div className="flex justify-between items-center mt-2">
                   <span className="text-xs text-gray-500">
-                    {stats.totalVentas > 0 ? ((stats.ventasTPVSumup / stats.totalVentas) * 100).toFixed(1) : '0'}% del total
+                    +€{stats.ventasTPVSumup.toFixed(2)} − €{(stats.gastosTPVSumup ?? 0).toFixed(2)}
                   </span>
                   <span className="text-xs font-medium text-purple-600">
                     Cobrado por tarjeta
@@ -618,11 +620,11 @@ export function FacturacionView() {
                   </div>
                 </div>
                 <div className="text-3xl font-bold text-orange-600">
-                  €{stats.ventasTPVUnicaja.toFixed(2)}
+                  €{(stats.netoTPVUnicaja ?? 0).toFixed(2)}
                 </div>
                 <div className="flex justify-between items-center mt-2">
                   <span className="text-xs text-gray-500">
-                    {stats.totalVentas > 0 ? ((stats.ventasTPVUnicaja / stats.totalVentas) * 100).toFixed(1) : '0'}% del total
+                    +€{stats.ventasTPVUnicaja.toFixed(2)} − €{(stats.gastosTPVUnicaja ?? 0).toFixed(2)}
                   </span>
                   <span className="text-xs font-medium text-orange-600">
                     Cobrado por tarjeta
@@ -639,11 +641,11 @@ export function FacturacionView() {
                   </div>
                 </div>
                 <div className="text-3xl font-bold text-slate-700">
-                  €{stats.ventasRevolut.toFixed(2)}
+                  €{(stats.netoRevolut ?? 0).toFixed(2)}
                 </div>
                 <div className="flex justify-between items-center mt-2">
                   <span className="text-xs text-gray-500">
-                    {stats.totalVentas > 0 ? ((stats.ventasRevolut / stats.totalVentas) * 100).toFixed(1) : '0'}% del total
+                    +€{stats.ventasRevolut.toFixed(2)} − €{(stats.gastosRevolut ?? 0).toFixed(2)}
                   </span>
                   <span className="text-xs font-medium text-slate-700">
                     Cobrado por enlace
@@ -662,10 +664,10 @@ export function FacturacionView() {
                 </div>
                 <div className="ml-3 text-sm text-blue-800">
                   <p className="font-medium">
-                    Este resumen incluye todas las ventas cobradas: facturas/tickets pagados y citas completadas de la agenda.
+                    Mismos movimientos y fechas de cobro que Diario de Caja: documentos pagados, citas cobradas sin documento, anticipos e ingresos extra, sin duplicación.
                   </p>
                   <p className="mt-1">
-                    Los importes de TPV se ingresan automáticamente en cuenta bancaria. El efectivo debe estar físicamente en la caja.
+                    Las tarjetas muestran ingresos menos gastos del método. Las transferencias entre locales se muestran aparte. Compara el mismo local y período, sin búsqueda ni filtro de tipo en Diario.
                   </p>
                 </div>
               </div>
