@@ -30,6 +30,7 @@ import { Cita, EstadoCita, MetodoPago } from '@/lib/types'
 import { Checkbox } from '@/components/ui/checkbox'
 import { CobrarSumUpDialog } from '@/components/cobrar-sumup-dialog'
 import { CobrarRevolutDialog } from '@/components/cobrar-revolut-dialog'
+import { ConciliarRevolutDialog } from '@/components/conciliar-revolut-dialog'
 import { getSelectedLocalId } from '@/lib/local-store'
 import { 
   detectVehicleCategory, 
@@ -106,6 +107,7 @@ export function EditarCitaDialog({
   const [showSumUpDialog, setShowSumUpDialog] = useState(false)
   const [sumUpMode, setSumUpMode] = useState<'terminal' | 'link'>('terminal')
   const [showRevolutDialog, setShowRevolutDialog] = useState(false)
+  const [showConciliarRevolut, setShowConciliarRevolut] = useState(false)
   const [locales, setLocales] = useState<Local[]>([])
   const [localIdSeleccionado, setLocalIdSeleccionado] = useState<string>('')
   const [categoriaVehiculo, setCategoriaVehiculo] = useState<VehicleCategory | null>(null)
@@ -233,8 +235,14 @@ export function EditarCitaDialog({
       if (res.ok) {
         toast({ title: 'Pago eliminado' })
         await cargarPagos()
+      } else {
+        const data = await res.json()
+        toast({ title: 'No se puede eliminar', description: data.error, variant: 'destructive' })
       }
-    } catch {}
+    } catch (error) {
+      console.error('Error eliminando pago:', error)
+      toast({ title: 'No se pudo eliminar el pago', variant: 'destructive' })
+    }
   }
 
   // Cargar costes internos (subcontratas / recambios)
@@ -1348,6 +1356,9 @@ export function EditarCitaDialog({
               </div>
             )}
             
+            {formData.metodoPago === 'REVOLUT' && !documentoAgrupado && (
+              <p className="text-xs text-slate-600">Si has elegido el registro manual, pulsa Actualizar Cita para guardarlo. No se genera un nuevo cargo. Los cobros conciliados ya están guardados en Pagos a cuenta.</p>
+            )}
             {!documentoAgrupado && <div className="space-y-1">
               <Button type="button" variant={formData.cobroDiferido ? 'default' : 'outline'} className="h-12 w-full"
                 onClick={() => setFormData(prev => ({ ...prev, cobroDiferido: true, metodoPago: '', tpvUserId: '', tpvNombre: '' }))}>
@@ -1418,6 +1429,31 @@ export function EditarCitaDialog({
                 >
                   <Smartphone className="h-5 w-5 text-slate-800" />
                   <span className="text-xs font-medium text-center leading-tight">Generar Link Revolut</span>
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-14 flex flex-col items-center justify-center gap-1 border-2 hover:bg-slate-100 hover:border-slate-700"
+                  onClick={() => setShowConciliarRevolut(true)}
+                  disabled={!cita?.total || pendienteMostrado <= 0}
+                >
+                  <RefreshCw className="h-5 w-5 text-slate-800" />
+                  <span className="text-xs font-medium text-center leading-tight">Conciliar Revolut · QR / enlace externo</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-14 flex flex-col items-center justify-center gap-1 border-2 hover:bg-slate-100 hover:border-slate-700"
+                  onClick={() => {
+                    if (window.confirm('Solo si ya has recibido el saldo pendiente en Revolut y no aparece para conciliar. Para un anticipo utiliza Pagos a cuenta → Revolut. ¿Marcar el saldo como cobrado manualmente?')) {
+                      setFormData(prev => ({ ...prev, cobroDiferido: false, metodoPago: 'REVOLUT', tpvUserId: '', tpvNombre: '' }))
+                    }
+                  }}
+                  disabled={!cita?.total || pendienteMostrado <= 0}
+                >
+                  <CreditCard className="h-5 w-5 text-slate-800" />
+                  <span className="text-xs font-medium text-center leading-tight">TPV REVOLUT · registro manual</span>
                 </Button>
 
                 {revolutPendientes.length > 0 && (
@@ -1591,6 +1627,18 @@ export function EditarCitaDialog({
           description: 'El pago no se pudo completar',
           variant: 'destructive',
         })
+      }}
+    />
+
+    <ConciliarRevolutDialog
+      open={showConciliarRevolut}
+      onOpenChange={setShowConciliarRevolut}
+      citaId={cita?.id}
+      descripcion={`${cita?.cliente?.nombre || 'Cliente'} · ${cita?.vehiculo?.matricula || 'Vehículo'}`}
+      onComplete={(result) => {
+        setFormData(prev => ({ ...prev, cobroDiferido: !result.saldada, metodoPago: result.saldada ? 'REVOLUT' : '', tpvUserId: '', tpvNombre: '' }))
+        void cargarPagos()
+        toast({ title: 'Cobro Revolut conciliado', description: result.saldada ? 'Saldo cubierto. El ingreso ya está guardado sin duplicar los pagos a cuenta.' : `Pago guardado. Quedan ${result.saldoPendiente.toFixed(2)}€ pendientes.` })
       }}
     />
 

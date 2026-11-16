@@ -51,6 +51,20 @@ export interface RevolutOrder {
   checkout_url?: string
   amount?: number
   currency?: string
+  type?: string
+  created_at?: string
+  updated_at?: string
+  description?: string
+  refunded_amount?: number
+  merchant_order_data?: { reference?: string }
+}
+
+/** Consulta de solo lectura; no crea ni captura pagos. */
+export async function listRevolutOrders(): Promise<RevolutOrder[]> {
+  const data = await revolutFetch('/api/orders?limit=100')
+  const orders = Array.isArray(data) ? data : data?.orders
+  if (!Array.isArray(orders)) throw new Error('Revolut no devolvió una lista de pedidos válida.')
+  return orders
 }
 
 export async function createRevolutOrder(params: {

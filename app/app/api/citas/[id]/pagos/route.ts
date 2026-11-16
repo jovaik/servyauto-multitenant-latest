@@ -108,6 +108,11 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
       return NextResponse.json({ error: 'Pago no encontrado' }, { status: 404 })
     }
 
+    if (pagoId.startsWith('revolut-')) {
+      const conciliado = await prisma.revolut_transactions.findUnique({ where: { order_id: pagoId.slice('revolut-'.length) } })
+      if (conciliado?.reconciled) return NextResponse.json({ error: 'Este pago está conciliado con una operación real de Revolut. Revisa la operación antes de corregirla; no se puede borrar como un pago manual.' }, { status: 409 })
+    }
+
     await prisma.pagoParcial.delete({ where: { id: pagoId } })
 
     return NextResponse.json({ ok: true })
