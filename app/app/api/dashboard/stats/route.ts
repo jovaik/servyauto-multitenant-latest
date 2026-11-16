@@ -1,4 +1,5 @@
 import { facturasPorLocal } from '@/lib/factura-local'
+import { dashboardExtraPeriod } from '@/lib/dashboard-period'
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
@@ -37,6 +38,12 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url)
     const period = searchParams.get('period') || 'hoy'
+    let extraRange: ReturnType<typeof dashboardExtraPeriod>
+    try {
+      extraRange = dashboardExtraPeriod(period, searchParams.get('fechaDesde'), searchParams.get('fechaHasta'))
+    } catch (error) {
+      return NextResponse.json({ error: (error as Error).message }, { status: 400 })
+    }
 
     const today = new Date()
     today.setHours(0, 0, 0, 0)
@@ -72,6 +79,8 @@ export async function GET(req: NextRequest) {
         endDate = new Date(today)
         endDate.setHours(23, 59, 59, 999)
     }
+
+    if (extraRange) { startDate = extraRange.startDate; endDate = extraRange.endDate }
 
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
     const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59)

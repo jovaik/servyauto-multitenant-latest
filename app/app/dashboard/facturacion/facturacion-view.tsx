@@ -61,6 +61,7 @@ interface Factura {
   numero: string
   tipo: 'TICKET' | 'FACTURA'
   fecha: string
+  fechaPago?: string | null
   clienteId: string
   cliente: {
     nombre: string
@@ -872,6 +873,9 @@ export function FacturacionView() {
                     </TableCell>
                     <TableCell>
                       {format(new Date(factura.fecha), 'dd/MM/yyyy', { locale: es })}
+                      {factura.estado === 'PAGADA' && factura.fechaPago && (
+                        <div className="text-xs text-muted-foreground">Cobro: {new Intl.DateTimeFormat('es-ES', { timeZone: 'Europe/Madrid' }).format(new Date(factura.fechaPago))}</div>
+                      )}
                     </TableCell>
                     <TableCell>€{factura.total.toFixed(2)}</TableCell>
                     <TableCell>

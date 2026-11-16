@@ -203,7 +203,19 @@ export async function GET(request: NextRequest) {
     // guarda un único método, pero el desglose real está en los pagos parciales. Para que
     // Facturación coincida EXACTAMENTE con el Diario: la factura solo aporta el RESTO no
     // cubierto por pagos parciales (en su método), y cada pago parcial se suma por su método real.
-    const facturasPagadas = todasFacturas.filter((f: any) => f.estado === 'PAGADA')
+    // Las cifras de caja siguen el cobro, no la emisión fiscal (una conversión no mueve dinero).
+    const rangoCobro = { gte: fechaDesdeDate, lte: fechaHastaDate }
+    const facturasPagadas = await facturasPorLocal.findMany({
+      where: {
+        ...localFilter,
+        estado: 'PAGADA',
+        ...((fechaDesdeDate || fechaHastaDate) ? { OR: [
+          { fechaPago: rangoCobro },
+          { fechaPago: null, fecha: rangoCobro },
+        ] } : {}),
+      },
+      select: { id: true, citaId: true, total: true, metodoPago: true },
+    })
 
     // Suma de TODOS los pagos parciales por cita (sin filtro de fecha) para deducir el resto
     const pagosTodosDeCita = await prisma.pagoParcial.findMany({

@@ -59,6 +59,7 @@ export default function TransferenciasCajaView() {
   const [concepto, setConcepto] = useState('')
   const [tipo, setTipo] = useState<'PRESTAMO' | 'APORTACION'>('PRESTAMO')
   const [observaciones, setObservaciones] = useState('')
+  const [fechaOperacion, setFechaOperacion] = useState('')
 
   const loadData = async () => {
     try {
@@ -79,7 +80,7 @@ export default function TransferenciasCajaView() {
   useEffect(() => { loadData() }, [])
 
   const resetForm = () => {
-    setOrigenLocalId(''); setDestinoLocalId(''); setImporte(''); setConcepto(''); setTipo('PRESTAMO'); setObservaciones('')
+    setOrigenLocalId(''); setDestinoLocalId(''); setImporte(''); setConcepto(''); setTipo('PRESTAMO'); setObservaciones(''); setFechaOperacion('')
   }
 
   const handleSubmit = async () => {
@@ -92,12 +93,15 @@ export default function TransferenciasCajaView() {
     if (!importe || parseFloat(importe) <= 0) {
       toast({ title: 'Introduce un importe válido', variant: 'destructive' }); return
     }
+    if (!fechaOperacion) {
+      toast({ title: 'Indica la fecha real del movimiento', variant: 'destructive' }); return
+    }
     setSaving(true)
     try {
       const res = await fetch('/api/transferencias-caja', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ origenLocalId, destinoLocalId, importe, concepto, tipo, observaciones }),
+        body: JSON.stringify({ origenLocalId, destinoLocalId, importe, concepto, tipo, observaciones, fecha: fechaOperacion }),
       })
       if (!res.ok) { const e = await res.json(); throw new Error(e.error || 'Error') }
       toast({ title: 'Transferencia registrada' })
@@ -168,6 +172,11 @@ export default function TransferenciasCajaView() {
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-2">
+              <div className="space-y-1">
+                <Label htmlFor="fecha-transferencia" className="text-xs">Fecha real del movimiento *</Label>
+                <Input id="fecha-transferencia" type="date" required value={fechaOperacion} onChange={e => setFechaOperacion(e.target.value)} />
+                <p className="text-xs text-muted-foreground">Día en que salió el efectivo. Determina la semana del Diario y de la liquidación, aunque lo registres después.</p>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label className="text-xs">Desde (origen)</Label>

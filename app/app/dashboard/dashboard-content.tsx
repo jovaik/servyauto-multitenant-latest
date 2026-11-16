@@ -21,6 +21,8 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { HorasServicioCard } from '@/components/horas-servicio-card'
@@ -45,10 +47,14 @@ interface CitaReciente {
   estado: string
 }
 
-type PeriodType = 'hoy' | 'semanal' | 'mensual' | 'anual'
+type PeriodType = 'hoy' | 'semanal' | 'semana_pasada' | 'mensual' | 'anual' | 'personalizado'
 
 export function DashboardContent({ session }: DashboardContentProps) {
   const [period, setPeriod] = useState<PeriodType>('hoy')
+  const [fechaDesde, setFechaDesde] = useState('')
+  const [fechaHasta, setFechaHasta] = useState('')
+  const [errorDatos, setErrorDatos] = useState('')
+  const rangoValido = period !== 'personalizado' || (!!fechaDesde && !!fechaHasta && fechaDesde <= fechaHasta)
   
   const [stats, setStats] = useState<DashboardStats>({
     citasHoy: 0,
@@ -68,13 +74,20 @@ export function DashboardContent({ session }: DashboardContentProps) {
   const selectedLocalId = useLocalStore((s) => s.selectedLocalId)
 
   useEffect(() => {
+    if (!rangoValido) return
+    const controller = new AbortController()
     const fetchDashboardData = async () => {
+      setLoading(true)
+      setErrorDatos('')
       try {
+        const query = new URLSearchParams({ period })
+        if (period === 'personalizado') { query.set('fechaDesde', fechaDesde); query.set('fechaHasta', fechaHasta) }
         const [statsResponse, citasResponse] = await Promise.all([
-          fetch(`/api/dashboard/stats?period=${period}`),
-          fetch('/api/dashboard/citas-recientes')
+          fetch(`/api/dashboard/stats?${query}`, { signal: controller.signal }),
+          fetch('/api/dashboard/citas-recientes', { signal: controller.signal })
         ])
 
+        if (!statsResponse.ok) throw new Error('No se han podido cargar las cifras del período')
         if (statsResponse.ok) {
           const statsData = await statsResponse.json()
           setStats({
@@ -95,14 +108,18 @@ export function DashboardContent({ session }: DashboardContentProps) {
           setCitasRecientes(citasData)
         }
       } catch (error) {
-        console.error('Error fetching dashboard data:', error)
+        if (!controller.signal.aborted) {
+          console.error('Error fetching dashboard data:', error)
+          setErrorDatos('No se han podido cargar las cifras del período. Vuelve a seleccionar las fechas.')
+        }
       } finally {
-        setLoading(false)
+        if (!controller.signal.aborted) setLoading(false)
       }
     }
 
     fetchDashboardData()
-  }, [period, selectedLocalId])
+    return () => controller.abort()
+  }, [period, selectedLocalId, fechaDesde, fechaHasta, rangoValido])
 
   const getEstadoBadge = (estado: string) => {
     const variants = {
@@ -128,6 +145,10 @@ export function DashboardContent({ session }: DashboardContentProps) {
         return 'Hoy'
       case 'semanal':
         return 'Semana'
+      case 'semana_pasada':
+        return 'Semana pasada'
+      case 'personalizado':
+        return 'Periodo personalizado'
       case 'mensual':
         return 'Mes'
       case 'anual':
@@ -152,21 +173,32 @@ export function DashboardContent({ session }: DashboardContentProps) {
         <div className="flex items-center gap-3">
           <span className="text-sm font-medium text-gray-700">Período:</span>
           <Select value={period} onValueChange={(value) => setPeriod(value as PeriodType)}>
-            <SelectTrigger className="w-[160px]">
+            <SelectTrigger className="w-[210px]">
               <SelectValue placeholder="Seleccionar período" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="hoy">Hoy</SelectItem>
               <SelectItem value="semanal">Semanal</SelectItem>
+              <SelectItem value="semana_pasada">Semana pasada</SelectItem>
               <SelectItem value="mensual">Mensual</SelectItem>
               <SelectItem value="anual">Anual</SelectItem>
+              <SelectItem value="personalizado">Periodo personalizado</SelectItem>
             </SelectContent>
           </Select>
         </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5">
+      {period === 'personalizado' && (
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="space-y-1"><Label htmlFor="dashboard-desde">Desde</Label><Input id="dashboard-desde" type="date" value={fechaDesde} max={fechaHasta || undefined} onChange={e => setFechaDesde(e.target.value)} /></div>
+          <div className="space-y-1"><Label htmlFor="dashboard-hasta">Hasta</Label><Input id="dashboard-hasta" type="date" value={fechaHasta} min={fechaDesde || undefined} onChange={e => setFechaHasta(e.target.value)} /></div>
+          {!rangoValido && <p role="status" className="text-sm text-amber-800">{fechaDesde && fechaHasta ? 'La fecha inicial no puede ser posterior a la final.' : 'Selecciona las fechas de inicio y fin.'}</p>}
+        </div>
+      )}
+      {errorDatos && <p role="alert" className="text-sm text-red-700">{errorDatos}</p>}
+      {loading && rangoValido && <p role="status" className="text-sm text-gray-600">Cargando cifras del período…</p>}
+      {/* Stats Grid: no mostrar cifras de otro período mientras se eligen las fechas. */}
+      <div className={`grid gap-6 md:grid-cols-2 lg:grid-cols-5 ${!rangoValido || loading || errorDatos ? 'hidden' : ''}`}>
         <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">

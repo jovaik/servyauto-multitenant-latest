@@ -49,6 +49,11 @@ export async function POST(req: NextRequest) {
     if (origenLocalId === destinoLocalId) {
       return NextResponse.json({ error: 'El origen y el destino deben ser locales distintos' }, { status: 400 })
     }
+    // Exigir fecha operativa: nunca sustituirla silenciosamente por la de registro.
+    const fechaMovimiento = typeof fecha === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(fecha) ? new Date(`${fecha}T12:00:00.000Z`) : null
+    if (!fechaMovimiento || Number.isNaN(fechaMovimiento.getTime()) || fechaMovimiento.toISOString().slice(0, 10) !== fecha) {
+      return NextResponse.json({ error: 'Indica una fecha real del movimiento válida (AAAA-MM-DD)' }, { status: 400 })
+    }
     const importeNum = parseFloat(importe)
     if (!importeNum || importeNum <= 0) {
       return NextResponse.json({ error: 'El importe debe ser mayor que 0' }, { status: 400 })
@@ -66,7 +71,7 @@ export async function POST(req: NextRequest) {
         concepto: (concepto || 'TRANSFERENCIA DE CAJA').trim().toUpperCase(),
         tipo: tipo === 'APORTACION' ? 'APORTACION' : 'PRESTAMO',
         observaciones: observaciones ? String(observaciones).trim().toUpperCase() : null,
-        fecha: fecha ? new Date(fecha) : new Date(),
+        fecha: fechaMovimiento,
         creadoPorId: user?.id || null,
         creadoPorNombre: userName,
       },
