@@ -28,6 +28,8 @@ import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/use-toast'
 import { Cita, EstadoCita, MetodoPago } from '@/lib/types'
 import { Checkbox } from '@/components/ui/checkbox'
+import { PrecioServicioIva } from '@/components/precio-servicio-iva'
+import { precioConIva, lineasConPrecioFinal, type LineaPrecioIva } from '@/lib/precio-iva'
 import { CobrarSumUpDialog } from '@/components/cobrar-sumup-dialog'
 import { CobrarRevolutDialog } from '@/components/cobrar-revolut-dialog'
 import { ConciliarRevolutDialog } from '@/components/conciliar-revolut-dialog'
@@ -119,7 +121,8 @@ export function EditarCitaDialog({
   const [preciosGuardados, setPreciosGuardados] = useState<Record<string, number>>({})
   const [colaboradores, setColaboradores] = useState<{ id: string; nombre: string; rol: string }[]>([])
   const [tpvsDisponibles, setTpvsDisponibles] = useState<{ id: string; name: string | null; tpvNombre: string }[]>([])
-  const [lineasManuales, setLineasManuales] = useState<{ descripcion: string; cantidad: number; precioUnitario: number }[]>([])
+  const [lineasManuales, setLineasManuales] = useState<LineaPrecioIva[]>([])
+  const [ivaServicios, setIvaServicios] = useState<Record<string, boolean>>({})
   
   // Pagos parciales / a cuenta
   const [pagosParciales, setPagosParciales] = useState<any[]>([])
@@ -311,13 +314,14 @@ export function EditarCitaDialog({
   }
 
   // Helper: obtener precio efectivo (con override local si existe)
-  const getPrecioEfectivo = (servicioId: string): number => {
+  const getPrecioBase = (servicioId: string): number => {
+    // El precio final guardado (incluido el IVA añadido) prevalece sobre el catálogo.
+    if (preciosGuardados[servicioId] !== undefined) return preciosGuardados[servicioId]
     const po = precioOverrides.find(o => o.servicioId === servicioId)
     if (po) return po.precio
-    // Preferir el precio guardado en la cita (p.ej. precio pactado en el presupuesto)
-    if (preciosGuardados[servicioId] !== undefined) return preciosGuardados[servicioId]
     return servicios?.find(s => s.id === servicioId)?.precio || 0
   }
+  const getPrecioEfectivo = (servicioId: string) => precioConIva(getPrecioBase(servicioId), ivaServicios[servicioId])
 
   // Cargar servicios y overrides
   useEffect(() => {
@@ -372,6 +376,7 @@ export function EditarCitaDialog({
   useEffect(() => {
     const cargarCitaCompleta = async () => {
       if (open && cita) {
+        setIvaServicios({})
         setDocumentoAgrupado(null)
         setFormData({
           fecha: format(new Date(cita.fecha), 'yyyy-MM-dd'),
@@ -495,7 +500,7 @@ export function EditarCitaDialog({
       return sum + getPrecioEfectivo(servicioId)
     }, 0)
     const totalManuales = lineasManuales.reduce((sum, lm) => {
-      return sum + (lm.cantidad * lm.precioUnitario)
+      return sum + (lm.descripcion.trim() ? lm.cantidad * precioConIva(lm.precioUnitario, lm.anadirIva) : 0)
     }, 0)
     return totalServicios + totalManuales
   }
@@ -518,7 +523,7 @@ export function EditarCitaDialog({
         metodoPago: formData.cobroDiferido ? null : formData.metodoPago || null,
         observaciones: formData.observaciones && formData.observaciones.trim() !== '' ? formData.observaciones : undefined,
         servicios: serviciosData,
-        lineasManuales: lineasManuales.filter(lm => lm.descripcion.trim() !== ''),
+        lineasManuales: lineasConPrecioFinal(lineasManuales),
         total: calcularPrecioTotal(),
         localId: localIdSeleccionado || undefined,
         prescriptorId: formData.prescriptorId || null,
@@ -1018,7 +1023,7 @@ export function EditarCitaDialog({
                   ? servicios
                   : filterServicesByCategory(servicios, categoriaVehiculo)
                 ).map((servicio) => (
-                  <div key={servicio.id} className="flex items-center space-x-2">
+                  <div key={servicio.id} className="flex flex-wrap items-center gap-2">
                     <Checkbox
                       id={`servicio-${servicio.id}`}
                       checked={serviciosSeleccionados.includes(servicio.id)}
@@ -1042,10 +1047,16 @@ export function EditarCitaDialog({
                         <span className="text-xs text-blue-600 ml-1" title="Precio especial de este local">📍</span>
                       )}
                     </span>
+                    {serviciosSeleccionados.includes(servicio.id) && <div className="w-full pl-6">
+                      <PrecioServicioIva nombre={servicio.nombre} precio={getPrecioBase(servicio.id)} anadirIva={!!ivaServicios[servicio.id]}
+                        onPrecioChange={precio => setPreciosGuardados(prev => ({ ...prev, [servicio.id]: precio }))}
+                        onIvaChange={checked => setIvaServicios(prev => ({ ...prev, [servicio.id]: checked }))} />
+                    </div>}
                   </div>
                 ))
               )}
             </div>
+            <p className="text-xs text-slate-600">Marca «Añadir IVA» solo si introduces una base sin IVA. Al guardar se conserva el precio final; al reabrir no se vuelve a sumar.</p>
           </div>
 
           {/* Líneas Manuales */}
@@ -1066,7 +1077,7 @@ export function EditarCitaDialog({
             {lineasManuales.length > 0 && (
               <div className="border rounded-md p-3 space-y-2 bg-amber-50/50">
                 {lineasManuales.map((lm, index) => (
-                  <div key={index} className="flex items-center gap-2">
+                  <div key={index} className="flex flex-wrap items-center gap-2">
                     <Input
                       placeholder="Descripción"
                       value={lm.descripcion}
@@ -1089,21 +1100,11 @@ export function EditarCitaDialog({
                       }}
                       className="w-16 h-8 text-sm bg-white"
                     />
-                    <Input
-                      type="number"
-                      placeholder="€"
-                      step="0.01"
-                      min="0"
-                      value={lm.precioUnitario || ''}
-                      onChange={(e) => {
-                        const updated = [...lineasManuales]
-                        updated[index] = { ...updated[index], precioUnitario: parseFloat(e.target.value) || 0 }
-                        setLineasManuales(updated)
-                      }}
-                      className="w-20 h-8 text-sm bg-white"
-                    />
+                    <PrecioServicioIva nombre={lm.descripcion || `Línea ${index + 1}`} precio={lm.precioUnitario} anadirIva={!!lm.anadirIva}
+                      onPrecioChange={precio => setLineasManuales(prev => prev.map((l, i) => i === index ? { ...l, precioUnitario: precio } : l))}
+                      onIvaChange={checked => setLineasManuales(prev => prev.map((l, i) => i === index ? { ...l, anadirIva: checked } : l))} />
                     <span className="text-sm font-semibold text-green-600 w-16 text-right">
-                      {(lm.cantidad * lm.precioUnitario).toFixed(2)}€
+                      {(lm.cantidad * precioConIva(lm.precioUnitario, lm.anadirIva)).toFixed(2)}€
                     </span>
                     <Button
                       type="button"

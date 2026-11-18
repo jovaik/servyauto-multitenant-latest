@@ -1,0 +1,89 @@
+{
+  "factura": {
+    "id": "cmwl1kc6c000opd07so2kn2x4",
+    "numero": "TICK-2026-1084",
+    "tipo": "TICKET",
+    "fecha": "2026-11-17T18:44:23.077Z",
+    "subtotal": 330.5785123966942,
+    "iva": 69.42148760330576,
+    "total": 400,
+    "estado": "PENDIENTE",
+    "metodoPago": null,
+    "clienteId": "cmwl0zwyz0001pd07pj6yjn21",
+    "citaId": null,
+    "datosFacturacion": "{\"nombreFiscal\":\"JESUS ORTIZ\",\"nif\":\"\",\"direccion\":\"\",\"telefono\":\"+34 686 76 23 29\"}",
+    "pdfPath": null,
+    "createdAt": "2026-11-17T18:44:23.077Z",
+    "updatedAt": "2026-11-17T18:44:23.077Z",
+    "creadoPorId": "cmmasq2bh000bml08tffc4hzk",
+    "creadoPorNombre": "SERGIO ",
+    "fechaPago": null,
+    "localId": "cmm9arii40000on1r1znffzhv",
+    "tpvUserId": null,
+    "tpvNombre": null,
+    "localesAgrupados": [],
+    "repartoLocales": null,
+    "factura_items": [
+      {
+        "id": "TICK-2026-1084-1-473f83ab-db87-4431-ae3e-75cf1a0d0137",
+        "descripcion": "17/11/2026 · 7773NTR KIA SPORTAGE · PULIDO EXT. CON DESCUENTO X 3, PULIDO CRISTALES, ALUMINIO Y DESCONTAMINACIÓN ",
+        "cantidad": 1,
+        "precio": 400,
+        "total": 400,
+        "facturaId": "cmwl1kc6c000opd07so2kn2x4"
+      }
+    ]
+  },
+  "citas": [
+    {
+      "id": "cmwl13qom0005pd07ycf53czd",
+      "fecha": "2026-11-17T00:00:00.000Z",
+      "fechaDevolucion": null,
+      "horaInicio": "09:26",
+      "horaFin": "20:27",
+      "box": "Box 2",
+      "estado": "COMPLETADA",
+      "observaciones": "",
+      "metodoPago": null,
+      "total": 484,
+      "clienteId": "cmwl0zwyz0001pd07pj6yjn21",
+      "vehiculoId": "cmwl10iny0003pd076sq8ckzn",
+      "createdAt": "2026-11-17T18:31:28.726Z",
+      "updatedAt": "2026-11-18T11:07:54.128Z",
+      "ticketsUsados": 0,
+      "localId": "cmm9arii40000on1r1znffzhv",
+      "completadoPorId": "cmgi8k1a90000nl08tcxp2iaw",
+      "completadoPorNombre": "jm",
+      "creadoPorId": "cmmasq2bh000bml08tffc4hzk",
+      "creadoPorNombre": "SERGIO ",
+      "tpvUserId": null,
+      "tpvNombre": null,
+      "facturaAgrupadaId": "cmwl1kc6c000opd07so2kn2x4",
+      "vencimientoCredito": "SEMANA_VENCIDA",
+      "cobroDiferido": true,
+      "prescriptorId": null,
+      "realizadoPorId": null,
+      "lineasManuales": [
+        {
+          "id": "cmwm0p5dz0006ql084q6be56n",
+          "citaId": "cmwl13qom0005pd07ycf53czd",
+          "descripcion": "Pulido EXT. con descuento X 3",
+          "cantidad": 1,
+          "precioUnitario": 360,
+          "total": 360,
+          "createdAt": "2026-11-18T11:07:54.120Z"
+        },
+        {
+          "id": "cmwm0p5e20008ql08fd0zywz7",
+          "citaId": "cmwl13qom0005pd07ycf53czd",
+          "descripcion": "Pulido cristales, aluminio y descontaminación ",
+          "cantidad": 1,
+          "precioUnitario": 124,
+          "total": 124,
+          "createdAt": "2026-11-18T11:07:54.123Z"
+        }
+      ],
+      "pagosParciales": []
+    }
+  ]
+}

@@ -1,0 +1,93 @@
+=== GENERANDO CONFIRMACIÓN DE DEPÓSITO (CITA NUEVA) ===
+Cliente: JESUS
+Teléfono: +34 686 76 23 29
+Vehículo: KIA SPORTAGE - 7773NTR
+📱 Número internacional o ya con prefijo: 34686762329
+✅ Enlaces de confirmación de depósito generados correctamente
+📱 Número para WhatsApp: 34686762329
+🔗 WhatsApp URL: https://wa.me/34686762329?text=Hola%20JESUS%2C%0A%0A%C2%A1Hemos%20recibido%20su%20veh%C3%ADculo%20en%20ServyAuto!%20%F0%9F%9A%97%0A%0A%F0%9F%93%8B%20*CONFIRMACI%C3%93N%20DE%20DEP%C3%93SITO*%0A%0A%F0%9F%9A%99%20Veh%C3%ADculo%3A%20KIA%20SPORTAGE%0A%F0%9F%94%A2%20Matr%C3%ADcula%3A%207773NTR%0A%F0%9F%93%85%20Fecha%3A%2001%2F01%2F2099%20-%2000%3A01%0A%F0%9F%93%8D%20Box%20asignado%3A%20VERIFICACION%20IVA%0A%0A%F0%9F%94%A7%20*Servicios%20solicitados%3A*%0A%E2%80%A2%20PULIDO%20COMPLETO%20PEQ%2FMED%202%20PASOS%0A%0ALe%20mantendremos%20informado%20del%20progreso%20de%20su%20veh%C3%ADculo.%0A%0A%F0%9F%93%85%20Puede%20hacer%20su%20pr%C3%B3xima%20cita%20desde%20este%20enlace%3A%0Ahttps%3A%2F%2Fapp.servyauto.com%2Freservas%0A%0A%C2%A1Gracias%20por%20confiar%20en%20nosotros!%0A%0A*ServyAuto%20Car%20Wash%20%26%20Detailing*%0A%F0%9F%93%9E%20%2B34%20678%20569%20098
+📧 SMS URL: sms:34686762329?body=Hola%20JESUS%2C%0A%0A%C2%A1Hemos%20recibido%20su%20veh%C3%ADculo%20en%20ServyAuto!%20%F0%9F%9A%97%0A%0A%F0%9F%93%8B%20*CONFIRMACI%C3%93N%20DE%20DEP%C3%93SITO*%0A%0A%F0%9F%9A%99%20Veh%C3%ADculo%3A%20KIA%20SPORTAGE%0A%F0%9F%94%A2%20Matr%C3%ADcula%3A%207773NTR%0A%F0%9F%93%85%20Fecha%3A%2001%2F01%2F2099%20-%2000%3A01%0A%F0%9F%93%8D%20Box%20asignado%3A%20VERIFICACION%20IVA%0A%0A%F0%9F%94%A7%20*Servicios%20solicitados%3A*%0A%E2%80%A2%20PULIDO%20COMPLETO%20PEQ%2FMED%202%20PASOS%0A%0ALe%20mantendremos%20informado%20del%20progreso%20de%20su%20veh%C3%ADculo.%0A%0A%F0%9F%93%85%20Puede%20hacer%20su%20pr%C3%B3xima%20cita%20desde%20este%20enlace%3A%0Ahttps%3A%2F%2Fapp.servyauto.com%2Freservas%0A%0A%C2%A1Gracias%20por%20confiar%20en%20nosotros!%0A%0A*ServyAuto%20Car%20Wash%20%26%20Detailing*%0A%F0%9F%93%9E%20%2B34%20678%20569%20098
+✅ Enlaces de confirmación de depósito generados exitosamente
+✅ Notificación con ICS generada (CLIENTE)
+📅 URL ICS: https://app.servyauto.com/api/citas/cmwm18t0s0001yrvqmndg011j/ics?tipo=CLIENTE
+📅 Confirmación con ICS generada exitosamente
+[AD4U-Sync] Enviando reserva (intento 1): {
+  nombre: 'JESUS',
+  matricula: '7773NTR',
+  fecha: '2099-01-01',
+  hora: '00:01'
+}
+[AD4U-Sync] ✅ Reserva replicada OK: {}
+=== INICIO ACTUALIZACIÓN CITA ===
+Cita ID: cmwm18t0s0001yrvqmndg011j
+Body completo: {
+  "servicios": [
+    {
+      "servicioId": "cmumdxxsm0000nx08s5nqo5wi",
+      "precio": 121
+    }
+  ],
+  "lineasManuales": [
+    {
+      "descripcion": "PRUEBA IVA",
+      "cantidad": 2,
+      "precioUnitario": 121
+    }
+  ],
+  "total": 363
+}
+metodoPago: undefined tipo: undefined es null: false es undefined: true
+=== DATOS PREPARADOS PARA PRISMA ===
+Update data: {
+  "cobroDiferido": false,
+  "vencimientoCredito": null,
+  "total": 363
+}
+Cantidad de campos: 3
+=== EJECUTANDO PRISMA UPDATE ===
+Actualizando servicios de la cita...
+Servicios actualizados: 1 servicios
+=== ACTUALIZANDO FACTURA EXISTENTE CON NUEVOS SERVICIOS ===
+Factura TEST-IVA-ROLLBACK actualizada: Total 363€
+=== ACTUALIZACIÓN EXITOSA ===
+Cita actualizada: cmwm18t0s0001yrvqmndg011j
+=== INICIO ACTUALIZACIÓN CITA ===
+Cita ID: cmwm18t0s0001yrvqmndg011j
+Body completo: {
+  "servicios": [
+    {
+      "servicioId": "cmumdxxsm0000nx08s5nqo5wi",
+      "precio": 121
+    }
+  ],
+  "lineasManuales": [
+    {
+      "descripcion": "PRUEBA IVA",
+      "cantidad": 2,
+      "precioUnitario": 121
+    }
+  ],
+  "total": 363
+}
+metodoPago: undefined tipo: undefined es null: false es undefined: true
+=== DATOS PREPARADOS PARA PRISMA ===
+Update data: {
+  "cobroDiferido": false,
+  "vencimientoCredito": null,
+  "total": 363
+}
+Cantidad de campos: 3
+=== EJECUTANDO PRISMA UPDATE ===
+Actualizando servicios de la cita...
+Servicios actualizados: 1 servicios
+=== ACTUALIZANDO FACTURA EXISTENTE CON NUEVOS SERVICIOS ===
+Factura TEST-IVA-ROLLBACK actualizada: Total 363€
+=== ACTUALIZACIÓN EXITOSA ===
+Cita actualizada: cmwm18t0s0001yrvqmndg011j
+{
+  "ok": true,
+  "casilla": "400 → 484; desmarcada 400; 19,99 → 24,19",
+  "nuevaCita": "Catálogo 121 + 2 manuales de 121 = 363",
+  "editar": "Dos guardados mantienen 363 en cita y ticket individual, sin cobro",
+  "datosPrueba": "REVERTIDOS"
+}

@@ -16,6 +16,8 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PrecioServicioIva } from '@/components/precio-servicio-iva'
+import { precioConIva, lineasConPrecioFinal, type LineaPrecioIva } from '@/lib/precio-iva'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import {
@@ -147,7 +149,9 @@ export function NuevaCitaDialog({
   const [colaboradores, setColaboradores] = useState<{ id: string; nombre: string; rol: string }[]>([])
 
   // Líneas manuales
-  const [lineasManuales, setLineasManuales] = useState<{ descripcion: string; cantidad: number; precioUnitario: number }[]>([])
+  const [lineasManuales, setLineasManuales] = useState<LineaPrecioIva[]>([])
+  const [preciosIntroducidos, setPreciosIntroducidos] = useState<Record<string, number>>({})
+  const [ivaServicios, setIvaServicios] = useState<Record<string, boolean>>({})
 
   // Autocomplete de matrícula
   const [matriculaBusqueda, setMatriculaBusqueda] = useState('')
@@ -202,11 +206,13 @@ export function NuevaCitaDialog({
   }
 
   // Helper: obtener precio efectivo (con override local si existe)
-  const getPrecioEfectivo = (servicioId: string): number => {
+  const getPrecioBase = (servicioId: string): number => {
+    if (preciosIntroducidos[servicioId] !== undefined) return preciosIntroducidos[servicioId]
     const po = precioOverrides.find(o => o.servicioId === servicioId)
     if (po) return po.precio
     return servicios?.find(s => s.id === servicioId)?.precio || 0
   }
+  const getPrecioEfectivo = (servicioId: string) => precioConIva(getPrecioBase(servicioId), ivaServicios[servicioId])
 
   useEffect(() => {
     if (open) {
@@ -633,7 +639,7 @@ export function NuevaCitaDialog({
           servicioId,
           precio: getPrecioEfectivo(servicioId)
         })),
-        lineasManuales: lineasManuales.filter(lm => lm.descripcion.trim() !== '')
+        lineasManuales: lineasConPrecioFinal(lineasManuales)
       }
 
       const response = await fetch('/api/citas', {
@@ -755,6 +761,8 @@ export function NuevaCitaDialog({
     setClienteSeleccionadoInfo(null)
     setDescuentoManual(0)
     setLineasManuales([])
+    setIvaServicios({})
+    setPreciosIntroducidos({})
     setNewCliente({
       nombre: '',
       apellido: '',
@@ -1387,12 +1395,13 @@ export function NuevaCitaDialog({
                 ⚠️ Modo manual: mostrando TODOS los servicios sin filtrar por tamaño
               </div>
             )}
-            <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto border rounded-lg p-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto border rounded-lg p-3">
               {((!categoriaVehiculo || modoManualServicios) 
                 ? servicios 
                 : filterServicesByCategory(servicios || [], categoriaVehiculo)
               )?.map((servicio) => (
-                <label key={servicio.id} className="flex items-center space-x-2 cursor-pointer">
+                <div key={servicio.id} className="space-y-2">
+                <label className="flex items-center space-x-2 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={formData.servicios.includes(servicio.id)}
@@ -1418,8 +1427,13 @@ export function NuevaCitaDialog({
                     {' '}- {servicio.duracion}min)
                   </span>
                 </label>
+                {formData.servicios.includes(servicio.id) && <PrecioServicioIva nombre={servicio.nombre} precio={getPrecioBase(servicio.id)} anadirIva={!!ivaServicios[servicio.id]}
+                  onPrecioChange={precio => setPreciosIntroducidos(prev => ({ ...prev, [servicio.id]: precio }))}
+                  onIvaChange={checked => setIvaServicios(prev => ({ ...prev, [servicio.id]: checked }))} />}
+                </div>
               ))}
             </div>
+            <p className="text-xs text-slate-600">Marca «Añadir IVA» solo si introduces una base sin IVA. Se guardará el precio final, sin volver a sumar el IVA al reabrir.</p>
           </div>
 
           {/* Líneas Manuales */}
@@ -1440,7 +1454,7 @@ export function NuevaCitaDialog({
             {lineasManuales.length > 0 && (
               <div className="border rounded-md p-3 space-y-2 bg-amber-50/50">
                 {lineasManuales.map((lm, index) => (
-                  <div key={index} className="flex items-center gap-2">
+                  <div key={index} className="flex flex-wrap items-center gap-2">
                     <Input
                       placeholder="Descripción"
                       value={lm.descripcion}
@@ -1463,21 +1477,11 @@ export function NuevaCitaDialog({
                       }}
                       className="w-16 h-8 text-sm bg-white"
                     />
-                    <Input
-                      type="number"
-                      placeholder="€"
-                      step="0.01"
-                      min="0"
-                      value={lm.precioUnitario || ''}
-                      onChange={(e) => {
-                        const updated = [...lineasManuales]
-                        updated[index] = { ...updated[index], precioUnitario: parseFloat(e.target.value) || 0 }
-                        setLineasManuales(updated)
-                      }}
-                      className="w-20 h-8 text-sm bg-white"
-                    />
+                    <PrecioServicioIva nombre={lm.descripcion || `Línea ${index + 1}`} precio={lm.precioUnitario} anadirIva={!!lm.anadirIva}
+                      onPrecioChange={precio => setLineasManuales(prev => prev.map((l, i) => i === index ? { ...l, precioUnitario: precio } : l))}
+                      onIvaChange={checked => setLineasManuales(prev => prev.map((l, i) => i === index ? { ...l, anadirIva: checked } : l))} />
                     <span className="text-sm font-semibold text-green-600 w-16 text-right">
-                      {(lm.cantidad * lm.precioUnitario).toFixed(2)}€
+                      {(lm.cantidad * precioConIva(lm.precioUnitario, lm.anadirIva)).toFixed(2)}€
                     </span>
                     <Button
                       type="button"
@@ -1500,7 +1504,7 @@ export function NuevaCitaDialog({
               return sum + getPrecioEfectivo(servicioId)
             }, 0)
             const subtotalManuales = lineasManuales.reduce((sum, lm) => {
-              return sum + (lm.cantidad * lm.precioUnitario)
+              return sum + (lm.descripcion.trim() ? lm.cantidad * precioConIva(lm.precioUnitario, lm.anadirIva) : 0)
             }, 0)
             const subtotal = subtotalServicios + subtotalManuales
             

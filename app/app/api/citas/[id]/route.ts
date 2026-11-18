@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { syncDocumentoAgrupado, DocumentoAgrupadoError } from '@/lib/sync-documento-agrupado'
 import { enviarNotificacionVehiculoListo, enviarSolicitudResena } from '@/lib/notifications'
 import { notificarCreacionGSControl } from '@/lib/gscontrol-sync'
 import { logActivity, requireSuperAdminForDelete } from '@/lib/activity-logger'
@@ -351,6 +352,14 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
     console.log('=== EJECUTANDO PRISMA UPDATE ===')
     
+    // Guardar líneas, cita y documento juntos: un error no deja importes divergentes.
+    const cita = await prisma.$transaction(async (tx) => {
+    const prisma = tx
+    if (citaExistente.facturaAgrupadaId) {
+      await tx.$queryRaw`SELECT id FROM facturas WHERE id = ${citaExistente.facturaAgrupadaId} FOR UPDATE`
+    }
+    await tx.$queryRaw`SELECT id FROM citas WHERE id = ${params.id} FOR UPDATE`
+
     // Persistir primero las manuales para que el ticket use las líneas de ESTA edición.
     if (bodyLineasManuales !== undefined) {
       await prisma.citaLineaManual.deleteMany({ where: { citaId: params.id } })
@@ -505,6 +514,12 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         facturas: true,
       },
     })
+
+    if (cita.facturaAgrupadaId && (cambianLineas || body.total !== undefined || fecha || localId || vehiculoMarca !== undefined || vehiculoModelo !== undefined || vehiculoMatricula !== undefined)) {
+      await syncDocumentoAgrupado(tx, cita.facturaAgrupadaId)
+    }
+    return cita
+    }, { timeout: 15000 })
 
     console.log('=== ACTUALIZACIÓN EXITOSA ===')
     console.log('Cita actualizada:', cita.id)
@@ -899,6 +914,9 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       whatsappData: whatsappData
     })
   } catch (error: any) {
+    if (error instanceof DocumentoAgrupadoError) {
+      return NextResponse.json({ error: error.message }, { status: 409 })
+    }
     console.error('=== ERROR EN ACTUALIZACIÓN ===')
     console.error('Error completo:', error)
     console.error('Error message:', error.message)

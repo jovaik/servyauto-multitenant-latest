@@ -1,0 +1,44 @@
+=== INICIO ACTUALIZACIÓN CITA ===
+Cita ID: cmwl13qom0005pd07ycf53czd
+Body completo: {
+  "servicios": [],
+  "lineasManuales": [
+    {
+      "descripcion": "Pulido EXT. con descuento X 3",
+      "cantidad": 1,
+      "precioUnitario": 360
+    },
+    {
+      "descripcion": "Pulido cristales, aluminio y descontaminación ",
+      "cantidad": 1,
+      "precioUnitario": 124
+    }
+  ],
+  "total": 484
+}
+metodoPago: undefined tipo: undefined es null: false es undefined: true
+=== DATOS PREPARADOS PARA PRISMA ===
+Update data: {
+  "cobroDiferido": true,
+  "metodoPago": null,
+  "estado": "COMPLETADA",
+  "total": 484
+}
+Cantidad de campos: 4
+=== EJECUTANDO PRISMA UPDATE ===
+Actualizando servicios de la cita...
+Servicios actualizados: 0 servicios
+=== ACTUALIZACIÓN EXITOSA ===
+Cita actualizada: cmwl13qom0005pd07ycf53czd
+{
+  "ok": true,
+  "modo": "REPRODUCCIÓN ANTES",
+  "casoReal": {
+    "antes": 400,
+    "agenda": 484,
+    "ticket": 400,
+    "estado": "PENDIENTE",
+    "fechaPago": null
+  },
+  "datosPrueba": "REVERTIDOS"
+}
